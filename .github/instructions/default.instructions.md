@@ -28,6 +28,9 @@ Trước khi làm bất kỳ thay đổi nào, **phải đọc (hoặc refresh)*
 4. `agent-hierarchy.md` (`.github/docs/agent-hierarchy.md`)
    → Quy tắc L0/L1/L2, quyền hạn, approval mode, inbox.
 
+5. `ui-style-guide.md` (`.github/docs/ui-style-guide.md`)
+   → Quy tắc thiết kế UI, naming convention, component structure.
+
 Nếu yêu cầu mới conflict với các file trên, **không tự quyết** → ghi rõ conflict vào comment/PR.
 
 ---

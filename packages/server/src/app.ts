@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import cors from '@fastify/cors';
 import {
   AgentRunner,
   AgentService,
@@ -65,6 +66,14 @@ export interface CreateAppOptions {
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const app = Fastify({ logger: options.logger ?? true });
+
+  app.register(cors, {
+    origin: createCorsOriginMatcher(),
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+    credentials: false
+  });
+
   registerAuthPlugin(app);
 
   const repositoryDriver =
@@ -183,6 +192,25 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
 
   return app;
+}
+
+function createCorsOriginMatcher(): (origin: string | undefined, callback: (error: Error | null, allow: boolean) => void) => void {
+  const configuredOrigins =
+    process.env.CORS_ORIGINS?.split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0) ?? [];
+
+  const defaultOrigins = ['http://127.0.0.1:5173', 'http://localhost:5173'];
+  const allowedOrigins = new Set([...defaultOrigins, ...configuredOrigins]);
+
+  return (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, allowedOrigins.has(origin));
+  };
 }
 
 function createRepositories(

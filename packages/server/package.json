@@ -17,6 +17,7 @@
   ],
   "dependencies": {
     "@familyco/core": "workspace:*",
+    "@fastify/cors": "^11.1.0",
     "@fastify/jwt": "^10.0.0",
     "@prisma/client": "^6.17.1",
     "bullmq": "^5.73.0",

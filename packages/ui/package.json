@@ -1,7 +1,7 @@
 {
   "name": "@familyco/ui",
   "version": "1.0.0",
-  "description": "FamilyCo Vue UI package",
+  "description": "FamilyCo UI contracts and design system package",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,5 +17,9 @@
   ],
   "author": "",
   "license": "UNLICENSED",
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@10.33.0",
+  "dependencies": {
+    "axios": "^1.14.0"
+  },
+  "devDependencies": {}
 }
