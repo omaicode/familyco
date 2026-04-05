@@ -5,6 +5,7 @@ import {
   ApprovalGuard,
   ApprovalService,
   AuditService,
+  EventBus,
   ProjectService,
   TaskService,
   type AgentRepository,
@@ -89,12 +90,13 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     taskRepository
   } =
     createRepositories(repositoryDriver);
-  const agentService = new AgentService(agentRepository);
+  const eventBus = new EventBus();
+  const agentService = new AgentService(agentRepository, eventBus);
   const apiKeyService = new ApiKeyService(apiKeyRepository, authApiKeySalt);
-  const approvalService = new ApprovalService(approvalRepository);
+  const approvalService = new ApprovalService(approvalRepository, eventBus);
   const auditService = new AuditService(auditRepository);
   const projectService = new ProjectService(projectRepository);
-  const taskService = new TaskService(taskRepository);
+  const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const toolExecutor = new DefaultToolExecutor();
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor);
@@ -108,7 +110,15 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const workers: Array<{ close: () => Promise<void> }> = [];
 
   app.addHook('onReady', async () => {
-    await apiKeyService.ensureBootstrapKey('bootstrap', authApiKey);
+    const bootstrapApiKey = await apiKeyService.ensureBootstrapKey('bootstrap', authApiKey);
+    await auditService.write({
+      actorId: 'system',
+      action: 'auth.api_key.bootstrap',
+      targetId: bootstrapApiKey.id,
+      payload: {
+        name: bootstrapApiKey.name
+      }
+    });
 
     if (enableQueueWorkers && queueDriver === 'bullmq') {
       workers.push(
@@ -141,6 +151,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     registerAuthController(api, {
       apiKeyService,
       agentService,
+      auditService,
       signToken: (payload) => api.jwt.sign(payload)
     });
 

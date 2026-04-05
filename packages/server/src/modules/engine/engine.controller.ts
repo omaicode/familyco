@@ -10,6 +10,16 @@ export interface EngineModuleDeps {
 }
 
 export function registerEngineController(app: FastifyInstance, deps: EngineModuleDeps): void {
+  app.get('/engine/jobs', async (request) => {
+    requireMinimumLevel(request, 'L1');
+    const jobs = await deps.queueService.listPendingJobs();
+
+    return {
+      total: jobs.length,
+      jobs
+    };
+  });
+
   app.post('/engine/agent-runs', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = enqueueAgentRunSchema.parse(request.body);

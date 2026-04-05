@@ -4,4 +4,5 @@ export interface FamilyCoEvents {
   'task.created': { taskId: string; projectId: string };
   'task.status.updated': { taskId: string; status: string };
   'approval.requested': { actorId: string; action: string };
+  'approval.decided': { approvalId: string; status: string };
 }

@@ -1,13 +1,19 @@
-import type { AgentService } from '@familyco/core';
+import type { AgentService, AuditService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import type { ApiKeyService } from './api-key.service.js';
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
-import { createTokenSchema, revokeApiKeySchema } from './auth.schema.js';
+import {
+  createApiKeySchema,
+  createTokenSchema,
+  revokeApiKeySchema,
+  rotateApiKeySchema
+} from './auth.schema.js';
 
 export interface AuthModuleDeps {
   apiKeyService: ApiKeyService;
   agentService: AgentService;
+  auditService: AuditService;
   signToken: (payload: { sub: string; level: 'L0' | 'L1' | 'L2' }) => string;
 }
 
@@ -56,9 +62,61 @@ export function registerAuthController(app: FastifyInstance, deps: AuthModuleDep
       };
     }
 
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'auth.api_key.revoked',
+      targetId: revokedApiKey.id,
+      payload: {
+        active: revokedApiKey.active
+      }
+    });
+
     return {
       id: revokedApiKey.id,
       active: revokedApiKey.active
+    };
+  });
+
+  app.post('/auth/api-keys/create', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
+    const body = createApiKeySchema.parse(request.body);
+    const createdApiKey = await deps.apiKeyService.create(body.name, body.apiKey);
+
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'auth.api_key.created',
+      targetId: createdApiKey.id,
+      payload: {
+        name: createdApiKey.name
+      }
+    });
+
+    reply.code(201);
+    return {
+      id: createdApiKey.id,
+      name: createdApiKey.name,
+      active: createdApiKey.active
+    };
+  });
+
+  app.post('/auth/api-keys/rotate', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const body = rotateApiKeySchema.parse(request.body);
+    const rotationResult = await deps.apiKeyService.rotate(body);
+
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'auth.api_key.rotated',
+      targetId: rotationResult.created.id,
+      payload: {
+        revokedId: rotationResult.revoked.id,
+        createdId: rotationResult.created.id
+      }
+    });
+
+    return {
+      revokedId: rotationResult.revoked.id,
+      createdId: rotationResult.created.id
     };
   });
 }

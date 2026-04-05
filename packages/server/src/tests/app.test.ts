@@ -68,6 +68,50 @@ test('API rejects unauthorized requests and allows JWT access', async () => {
 
   assert.equal(authorizedResponse.statusCode, 200);
 
+  const createApiKeyResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/api-keys/create',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'secondary',
+      apiKey: 'secondary-key'
+    }
+  });
+
+  assert.equal(createApiKeyResponse.statusCode, 201);
+
+  const rotateApiKeyResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/api-keys/rotate',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'secondary-rotated',
+      currentApiKey: 'secondary-key',
+      newApiKey: 'secondary-key-v2'
+    }
+  });
+
+  assert.equal(rotateApiKeyResponse.statusCode, 200);
+
+  const authAuditResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/audit?limit=20',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(authAuditResponse.statusCode, 200);
+  const authAuditActions = (authAuditResponse.json() as Array<{ action: string }>).map(
+    (record) => record.action
+  );
+  assert.equal(authAuditActions.includes('auth.api_key.created'), true);
+  assert.equal(authAuditActions.includes('auth.api_key.rotated'), true);
+
   const revokeResponse = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/api-keys/revoke',
@@ -80,6 +124,20 @@ test('API rejects unauthorized requests and allows JWT access', async () => {
   });
 
   assert.equal(revokeResponse.statusCode, 200);
+
+  const postRevokeAuditResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/audit?limit=30',
+    headers: {
+      'x-api-key': 'secondary-key-v2'
+    }
+  });
+
+  assert.equal(postRevokeAuditResponse.statusCode, 200);
+  const postRevokeActions = (postRevokeAuditResponse.json() as Array<{ action: string }>).map(
+    (record) => record.action
+  );
+  assert.equal(postRevokeActions.includes('auth.api_key.revoked'), true);
 
   const revokedTokenResponse = await app.inject({
     method: 'POST',
@@ -291,15 +349,14 @@ test('agent + project + task flow works with in-memory repositories', async () =
     targetId?: string;
   }>;
 
-  assert.equal(auditRecords.length, 6);
-  assert.deepEqual(auditRecords.map((record) => record.action), [
-    'agent.create',
-    'project.create',
-    'task.create',
-    'task.status.update',
-    'approval.request.create',
-    'approval.request.decide'
-  ]);
+  const auditActions = auditRecords.map((record) => record.action);
+  assert.equal(auditActions.includes('auth.api_key.bootstrap'), true);
+  assert.equal(auditActions.includes('agent.create'), true);
+  assert.equal(auditActions.includes('project.create'), true);
+  assert.equal(auditActions.includes('task.create'), true);
+  assert.equal(auditActions.includes('task.status.update'), true);
+  assert.equal(auditActions.includes('approval.request.create'), true);
+  assert.equal(auditActions.includes('approval.request.decide'), true);
 
   const approvedAudit = auditRecords.find((record) => record.action === 'approval.request.decide');
   assert.equal(approvedAudit?.targetId, approvalRequest.id);
@@ -328,10 +385,76 @@ test('agent + project + task flow works with in-memory repositories', async () =
   assert.equal(paginatedAuditResponse.statusCode, 200);
   const paginatedAuditRecords = paginatedAuditResponse.json() as Array<{ action: string }>;
   assert.equal(paginatedAuditRecords.length, 2);
+  const paginatedActions = paginatedAuditRecords.map((record) => record.action);
+  assert.equal(paginatedActions.every((action) => action.length > 0), true);
+
+  const enqueueAgentRunResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/engine/agent-runs',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      agentId: agent.id,
+      input: 'run planner',
+      approvalMode: 'auto',
+      action: 'engine.run',
+      toolName: 'echo',
+      toolArguments: {
+        message: 'queued'
+      }
+    }
+  });
+
+  assert.equal(enqueueAgentRunResponse.statusCode, 202);
+
+  const enqueueToolRunResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/engine/tool-runs',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      toolName: 'task.log',
+      arguments: {
+        message: 'hello'
+      }
+    }
+  });
+
+  assert.equal(enqueueToolRunResponse.statusCode, 202);
+
+  const queueJobsResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/engine/jobs',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(queueJobsResponse.statusCode, 200);
+  const queuePayload = queueJobsResponse.json() as {
+    total: number;
+    jobs: Array<{ type: string }>;
+  };
+  assert.equal(queuePayload.total, 2);
   assert.deepEqual(
-    paginatedAuditRecords.map((record) => record.action),
-    ['task.create', 'task.status.update']
+    queuePayload.jobs.map((job) => job.type),
+    ['agent.run', 'tool.execute']
   );
+
+  const engineAuditResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/audit?action=engine.agent.run.enqueued',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(engineAuditResponse.statusCode, 200);
+  const engineAuditRecords = engineAuditResponse.json() as Array<{ action: string }>;
+  assert.equal(engineAuditRecords.length, 1);
+  assert.equal(engineAuditRecords[0]?.action, 'engine.agent.run.enqueued');
 
   await app.close();
 });

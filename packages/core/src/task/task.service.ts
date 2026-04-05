@@ -1,5 +1,6 @@
 import type { CreateTaskInput, Task, TaskStatus } from './task.entity.js';
 import type { TaskRepository } from './task.repository.js';
+import type { EventBus } from '../events/event-bus.js';
 
 const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   pending: ['in_progress', 'cancelled'],
@@ -11,10 +12,18 @@ const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
 };
 
 export class TaskService {
-  constructor(private readonly repository: TaskRepository) {}
+  constructor(
+    private readonly repository: TaskRepository,
+    private readonly eventBus?: EventBus
+  ) {}
 
-  createTask(input: CreateTaskInput): Promise<Task> {
-    return this.repository.create(input);
+  async createTask(input: CreateTaskInput): Promise<Task> {
+    const task = await this.repository.create(input);
+    this.eventBus?.emit('task.created', {
+      taskId: task.id,
+      projectId: task.projectId
+    });
+    return task;
   }
 
   listProjectTasks(projectId: string): Promise<Task[]> {
@@ -32,6 +41,12 @@ export class TaskService {
       throw new Error(`TASK_INVALID_STATUS:${currentTask.status}->${status}`);
     }
 
-    return this.repository.updateStatus(taskId, status);
+    const updatedTask = await this.repository.updateStatus(taskId, status);
+    this.eventBus?.emit('task.status.updated', {
+      taskId: updatedTask.id,
+      status: updatedTask.status
+    });
+
+    return updatedTask;
   }
 }

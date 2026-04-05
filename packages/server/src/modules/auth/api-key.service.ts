@@ -36,7 +36,31 @@ export class ApiKeyService {
     });
   }
 
+  async create(name: string, rawApiKey: string): Promise<ApiKeyRecord> {
+    return this.repository.ensureActive({
+      name,
+      keyHash: this.hash(rawApiKey)
+    });
+  }
+
   async revoke(rawApiKey: string): Promise<ApiKeyRecord | null> {
     return this.repository.revokeByHash(this.hash(rawApiKey));
+  }
+
+  async rotate(input: {
+    name: string;
+    currentApiKey: string;
+    newApiKey: string;
+  }): Promise<{ revoked: ApiKeyRecord; created: ApiKeyRecord }> {
+    const revoked = await this.revoke(input.currentApiKey);
+    if (!revoked) {
+      throw new Error('AUTH_API_KEY_NOT_FOUND');
+    }
+
+    const created = await this.create(input.name, input.newApiKey);
+    return {
+      revoked,
+      created
+    };
   }
 }

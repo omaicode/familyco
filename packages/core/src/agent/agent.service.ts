@@ -1,11 +1,17 @@
 import type { AgentProfile, CreateAgentInput } from './agent.entity.js';
 import type { AgentRepository } from './agent.repository.js';
+import type { EventBus } from '../events/event-bus.js';
 
 export class AgentService {
-  constructor(private readonly repository: AgentRepository) {}
+  constructor(
+    private readonly repository: AgentRepository,
+    private readonly eventBus?: EventBus
+  ) {}
 
-  createAgent(input: CreateAgentInput): Promise<AgentProfile> {
-    return this.repository.create(input);
+  async createAgent(input: CreateAgentInput): Promise<AgentProfile> {
+    const agent = await this.repository.create(input);
+    this.eventBus?.emit('agent.created', { agentId: agent.id });
+    return agent;
   }
 
   listAgents(): Promise<AgentProfile[]> {
@@ -21,7 +27,9 @@ export class AgentService {
     return agent;
   }
 
-  pauseAgent(id: string): Promise<AgentProfile> {
-    return this.repository.pause(id);
+  async pauseAgent(id: string): Promise<AgentProfile> {
+    const agent = await this.repository.pause(id);
+    this.eventBus?.emit('agent.paused', { agentId: agent.id });
+    return agent;
   }
 }
