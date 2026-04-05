@@ -69,11 +69,13 @@
 
 ```
 familyco/
+├── apps/
+│   ├── renderer/                # @familyco/renderer (Vue 3 runtime)
+│   └── desktop/                 # @familyco/desktop (Electron shell)
 ├── packages/
 │   ├── core/                    # @familyco/core
 │   ├── server/                  # @familyco/server
-│   ├── desktop/                 # @familyco/desktop (Electron)
-│   ├── ui/                      # @familyco/ui (Vue 3)
+│   ├── ui/                      # @familyco/ui (UI contracts/theme/store abstractions)
 │   └── cli/                     # @familyco/cli (Server Only console)
 ├── prisma/
 │   └── schema.prisma            # Single source of truth cho DB schema
@@ -86,7 +88,8 @@ familyco/
 
 ```
 @familyco/ui        →  @familyco/core (types only)
-@familyco/desktop   →  @familyco/server + @familyco/ui
+@familyco/renderer  →  @familyco/ui + @familyco/core (contracts/types)
+@familyco/desktop   →  @familyco/server + @familyco/renderer
 @familyco/server    →  @familyco/core
 @familyco/cli       →  @familyco/server (hoặc core trực tiếp)
 @familyco/core      →  (không import package nào trong monorepo)
@@ -205,7 +208,7 @@ packages/server/src/
 ## 5. Cấu Trúc `@familyco/desktop` (Electron)
 
 ```
-packages/desktop/
+apps/desktop/src/
 ├── electron/
 │   ├── main.ts                  # Electron main process
 │   ├── preload.ts               # contextBridge — expose API lên renderer
@@ -213,9 +216,7 @@ packages/desktop/
 │   ├── ipc/
 │   │   ├── ipc-handlers.ts      # IPC handler: forward calls từ renderer → server
 │   │   └── ipc.types.ts         # Typed IPC channel names
-│   └── updater.ts               # Auto-update logic
-├── electron-vite.config.ts
-└── package.json
+│   └── smoke.ts                 # Smoke validation for embedded startup
 ```
 
 **IPC Pattern:**
@@ -237,64 +238,23 @@ ipcMain.handle('agent:list', async () => {
 
 ---
 
-## 6. Cấu Trúc `@familyco/ui` (Vue 3)
+## 6. Cấu Trúc `@familyco/renderer` (Vue 3)
 
 ```
-packages/ui/src/
+apps/renderer/src/
 ├── main.ts
 ├── App.vue
-├── router/
-│   └── index.ts                 # Hash mode routes
-├── stores/                      # Pinia stores
-│   ├── agent.store.ts
-│   ├── task.store.ts
-│   ├── project.store.ts
-│   ├── inbox.store.ts
-│   ├── approval.store.ts
-│   └── app.store.ts             # Global: theme, server mode, connection status
-├── api/
-│   ├── client.ts                # Axios instance — base URL có thể là localhost hoặc remote
-│   ├── agent.api.ts
-│   ├── task.api.ts
-│   ├── project.api.ts
-│   ├── inbox.api.ts
-│   └── websocket.ts             # WS client + event handlers
-├── layouts/
-│   ├── AppLayout.vue            # Sidebar + TopBar + Main content slot
-│   └── OnboardingLayout.vue
-├── pages/
-│   ├── onboarding/
-│   │   ├── Step1Provider.vue
-│   │   ├── Step2Company.vue
-│   │   ├── Step3Preferences.vue
-│   │   ├── Step4FirstAgent.vue
-│   │   ├── Step5OrgChart.vue
-│   │   └── Step6Complete.vue
-│   ├── dashboard/
-│   │   └── DashboardPage.vue
-│   ├── agents/
-│   │   ├── AgentListPage.vue
-│   │   ├── AgentDetailPage.vue
-│   │   └── AgentCreatePage.vue
-│   ├── projects/
-│   ├── tasks/
-│   ├── inbox/
-│   ├── command/
-│   │   └── CommandCenterPage.vue
-│   ├── audit/
-│   └── settings/
-│       ├── SettingsLayout.vue
-│       ├── AIProviderSettings.vue
-│       ├── ServerSettings.vue
-│       ├── DatabaseSettings.vue
-│       └── NotificationSettings.vue
-└── components/
-    ├── common/                  # Button, Input, Badge, Modal, Drawer, Toast, Skeleton
-    ├── agent/                   # AgentCard, AgentStatusBadge, AgentTree, AgentForm
-    ├── task/                    # TaskRow, TaskCard, TaskStatusBadge
-    ├── inbox/                   # InboxItem, ApprovalCard, MessageThread
-    └── dashboard/               # KPICard, ActivityFeed, AgentHealthGrid
+├── router.ts                    # Hash mode routes
+├── runtime.ts                   # Runtime bootstrap using @familyco/ui contracts
+├── views/
+│   ├── DashboardPage.vue
+│   ├── AgentsPage.vue
+│   ├── InboxPage.vue
+│   └── PlaceholderPage.vue
+└── styles.css
 ```
+
+`@familyco/ui` continues to host shared UI contracts, tokens, and store abstractions consumed by renderer.
 
 ---
 
@@ -803,7 +763,7 @@ pnpm --filter @familyco/desktop dev
 
 # Build
 pnpm --filter @familyco/desktop build
-# Output: packages/desktop/dist/ → .exe, .dmg, .AppImage
+# Output: apps/desktop/dist/ → desktop runtime bundle
 ```
 
 ### Server Only

@@ -74,8 +74,9 @@ Khi nhận một yêu cầu (issue / task / prompt), hãy đi theo checklist sau
 2. **Xác định layer bị ảnh hưởng**  
    - Logic core? → `packages/core/*`  
    - API/REST/WS? → `packages/server/*`  
-   - UI (Vue)? → `packages/ui/*`  
-   - Electron shell / Desktop? → `packages/desktop/*`  
+   - UI runtime (Vue renderer)? → `apps/renderer/*`  
+   - UI contracts/design tokens? → `packages/ui/*`  
+   - Electron shell / Desktop? → `apps/desktop/*`  
    - CLI / Server Only? → `packages/cli/*`
 
 3. **Đọc lại tài liệu liên quan**  

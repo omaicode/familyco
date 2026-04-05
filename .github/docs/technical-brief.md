@@ -25,11 +25,13 @@ Cấu trúc:
 
 ```
 familyco/
+  apps/
+    renderer/   → @familyco/renderer (Vue 3 frontend runtime)
+    desktop/    → @familyco/desktop (Electron shell + embedded server)
   packages/
     core/       → @familyco/core (business logic)
     server/     → @familyco/server (Fastify API + queue + WS)
-    desktop/    → @familyco/desktop (Electron shell + embedded server)
-    ui/         → @familyco/ui (Vue 3 frontend)
+    ui/         → @familyco/ui (UI contracts, theme tokens, stores)
     cli/        → @familyco/cli (Server Only console)
 ```
 
@@ -37,8 +39,9 @@ Quan hệ phụ thuộc (bắt buộc):
 
 - `@familyco/core`: **không** import package nội bộ nào.
 - `@familyco/server` → import `@familyco/core`.
-- `@familyco/ui` → chỉ import types từ `@familyco/core` (nếu cần).
-- `@familyco/desktop` → wrap `@familyco/server` + `@familyco/ui` + Electron.
+- `@familyco/ui` → cung cấp UI contracts/theme/store abstractions.
+- `@familyco/renderer` → dùng `@familyco/ui` + API runtime Vue.
+- `@familyco/desktop` → wrap `@familyco/server` + `@familyco/renderer` + Electron.
 - `@familyco/cli` → dùng `@familyco/server` hoặc trực tiếp `@familyco/core`.
 
 AI Agent khi tạo file mới phải đặt đúng package, đúng layer.
@@ -100,7 +103,7 @@ repositories/prisma-agent.repository.ts  → implements AgentRepository
 
 ---
 
-## 5. `@familyco/ui` — Vue 3 Admin Panel
+## 5. `@familyco/renderer` — Vue 3 Admin Panel Runtime
 
 - Framework: Vue 3 + `<script setup>`.
 - State: Pinia.
@@ -122,11 +125,19 @@ repositories/prisma-agent.repository.ts  → implements AgentRepository
 
 ---
 
-## 6. `@familyco/desktop` — Electron Shell
+## 6. `@familyco/ui` — UI Contracts & Theme Package
+
+- Chứa contracts, route metadata, theme tokens, css-variable helpers, store abstractions.
+- Không chứa runtime Electron hoặc app bootstrapping.
+- Được dùng bởi `@familyco/renderer` để render UI nhất quán.
+
+---
+
+## 7. `@familyco/desktop` — Electron Shell
 
 - Main process khởi động:
   1. Fastify server embedded (sử dụng code từ `@familyco/server`).
-  2. Electron BrowserWindow trỏ vào UI build từ `@familyco/ui`.
+  2. Electron BrowserWindow trỏ vào UI runtime từ `@familyco/renderer`.
 - Preload script expose API sau qua `contextBridge`:
   - `invoke(channel, ...args)` → IPC từ renderer đến main.
   - `on(channel, handler)` → subscribe event.
@@ -135,7 +146,7 @@ Renderer (Vue) **không được** import `electron` trực tiếp; chỉ dùng 
 
 ---
 
-## 7. Database — Bảng Cần Ghi Nhớ
+## 8. Database — Bảng Cần Ghi Nhớ
 
 Prisma schema đầy đủ đã có trong tài liệu chi tiết; ở đây chỉ liệt kê **tên model chính** để AI Agent không tạo thêm bảng dư thừa:
 
@@ -153,7 +164,7 @@ Khi cần lưu thêm dữ liệu mới, ưu tiên **mở rộng `payload`/`metad
 
 ---
 
-## 8. API Naming & Error Format
+## 9. API Naming & Error Format
 
 - Prefix tất cả routes bằng `/api/v1`.
 - Dùng danh từ số nhiều: `/agents`, `/projects`, `/tasks`, `/inbox`, `/approvals`, `/audit`, `/settings`.
@@ -174,7 +185,7 @@ AI Agent phải tái dùng format này, **không tạo kiểu error JSON mới**
 
 ---
 
-## 9. Agent Runner & ApprovalGuard (High-Level)
+## 10. Agent Runner & ApprovalGuard (High-Level)
 
 - `AgentRunner` nhận job: `{ agentId, input, contextType }`.
 - Load Agent + memory, build system prompt, gọi AI qua Vercel AI SDK với tool-calling.
@@ -185,7 +196,7 @@ AI Agent **không được** bypass ApprovalGuard hoặc call ToolExecutor trự
 
 ---
 
-## 10. Cách AI Agent Nên Làm Khi Thêm Tính Năng
+## 11. Cách AI Agent Nên Làm Khi Thêm Tính Năng
 
 1. Xác định layer:
    - Logic nghiệp vụ mới → `@familyco/core`.
