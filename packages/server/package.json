@@ -1,13 +1,26 @@
 {
   "name": "@familyco/server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "FamilyCo Fastify server",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "test": "node -e \"console.log('No tests yet for @familyco/server')\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "keywords": [],
+  "keywords": [
+    "familyco",
+    "server"
+  ],
+  "dependencies": {
+    "@familyco/core": "workspace:*",
+    "fastify": "^5.6.1",
+    "zod": "^4.1.12"
+  },
   "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "packageManager": "pnpm@10.33.0"
 }

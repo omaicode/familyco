@@ -1,0 +1,16 @@
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  ownerAgentId: string;
+  parentProjectId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateProjectInput {
+  name: string;
+  description: string;
+  ownerAgentId: string;
+  parentProjectId?: string | null;
+}

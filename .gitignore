@@ -13,3 +13,4 @@ build/
 *.sw?
 coverage/
 *.tsbuildinfo
+.turbo/

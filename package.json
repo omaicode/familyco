@@ -1,15 +1,22 @@
 {
   "name": "familyco",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "FamilyCo monorepo",
+  "private": true,
   "scripts": {
-    "dev": "tsx scripts/watch.ts --watch",
-    "dev:p": "turbo run dev --parallel"
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "dev:p": "turbo run dev --parallel",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
   },
-  "keywords": [],
+  "keywords": [
+    "familyco",
+    "ai",
+    "monorepo"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
     "@types/node": "^24.12.2",
@@ -18,5 +25,8 @@
     "turbo": "^2.9.3",
     "vite": "^8.0.3",
     "vite-plugin-dts": "^4.5.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

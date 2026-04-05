@@ -1,13 +1,21 @@
 {
   "name": "@familyco/ui",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "FamilyCo Vue UI package",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "node -e \"console.log('No tests yet for @familyco/ui')\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "keywords": [],
+  "keywords": [
+    "familyco",
+    "ui"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "packageManager": "pnpm@10.33.0"
 }
