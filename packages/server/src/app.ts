@@ -1,19 +1,43 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import { AgentService, TaskService } from '@familyco/core';
+import {
+  AgentService,
+  ProjectService,
+  TaskService,
+  type AgentRepository,
+  type ProjectRepository,
+  type TaskRepository
+} from '@familyco/core';
 
+import { prismaClient } from './db/prisma-client.js';
 import { registerAgentController } from './modules/agent/index.js';
+import { registerProjectController } from './modules/project/index.js';
 import { registerTaskController } from './modules/task/index.js';
-import { InMemoryAgentRepository, InMemoryTaskRepository } from './repositories/index.js';
+import {
+  InMemoryAgentRepository,
+  InMemoryProjectRepository,
+  InMemoryTaskRepository,
+  PrismaAgentRepository,
+  PrismaProjectRepository,
+  PrismaTaskRepository
+} from './repositories/index.js';
+
+export type RepositoryDriver = 'memory' | 'prisma';
 
 export interface CreateAppOptions {
   logger?: boolean;
+  repositoryDriver?: RepositoryDriver;
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const app = Fastify({ logger: options.logger ?? true });
-  const agentRepository = new InMemoryAgentRepository();
-  const taskRepository = new InMemoryTaskRepository();
+  const repositoryDriver =
+    options.repositoryDriver ??
+    (process.env.FAMILYCO_REPOSITORY_DRIVER as RepositoryDriver | undefined) ??
+    'memory';
+
+  const { agentRepository, projectRepository, taskRepository } = createRepositories(repositoryDriver);
   const agentService = new AgentService(agentRepository);
+  const projectService = new ProjectService(projectRepository);
   const taskService = new TaskService(taskRepository);
 
   app.get('/health', async () => {
@@ -24,6 +48,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
 
   app.register(async (api) => {
     registerAgentController(api, { agentService });
+    registerProjectController(api, { projectService });
     registerTaskController(api, { taskService });
   }, { prefix: '/api/v1' });
 
@@ -39,4 +64,26 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
 
   return app;
+}
+
+function createRepositories(
+  repositoryDriver: RepositoryDriver
+): {
+  agentRepository: AgentRepository;
+  projectRepository: ProjectRepository;
+  taskRepository: TaskRepository;
+} {
+  if (repositoryDriver === 'prisma') {
+    return {
+      agentRepository: new PrismaAgentRepository(prismaClient),
+      projectRepository: new PrismaProjectRepository(prismaClient),
+      taskRepository: new PrismaTaskRepository(prismaClient)
+    };
+  }
+
+  return {
+    agentRepository: new InMemoryAgentRepository(),
+    projectRepository: new InMemoryProjectRepository(),
+    taskRepository: new InMemoryTaskRepository()
+  };
 }
