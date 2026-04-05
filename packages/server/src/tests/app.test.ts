@@ -394,6 +394,158 @@ test('P1 routes: setup, hierarchy, settings, inbox flow works', async () => {
   await app.close();
 });
 
+test('P2 routes: dashboard summary exposes KPI metrics', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const agentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'KPI Agent',
+      role: 'Operations',
+      level: 'L0',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(agentResponse.statusCode, 201);
+  const agent = agentResponse.json() as { id: string };
+
+  const projectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'KPI Project',
+      description: 'Project for dashboard metrics',
+      ownerAgentId: agent.id
+    }
+  });
+
+  assert.equal(projectResponse.statusCode, 201);
+  const project = projectResponse.json() as { id: string };
+
+  const taskResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'KPI Task',
+      description: 'Task for dashboard',
+      projectId: project.id,
+      createdBy: agent.id
+    }
+  });
+
+  assert.equal(taskResponse.statusCode, 201);
+
+  const summaryResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/dashboard/summary?projectId=${project.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(summaryResponse.statusCode, 200);
+  const summary = summaryResponse.json() as {
+    metrics: {
+      activeAgents: number;
+      tasksToday: number;
+      blockedTasks: number;
+      blockedRatio: number;
+      pendingApprovals: number;
+      approvalLatencyMinutes: number;
+      throughputDoneLast24h: number;
+      tokenUsageToday: number;
+    };
+  };
+
+  assert.equal(summary.metrics.activeAgents >= 1, true);
+  assert.equal(summary.metrics.tasksToday >= 1, true);
+  assert.equal(typeof summary.metrics.blockedRatio, 'number');
+  assert.equal(typeof summary.metrics.approvalLatencyMinutes, 'number');
+  assert.equal(typeof summary.metrics.throughputDoneLast24h, 'number');
+
+  await app.close();
+});
+
+test('P2 quota: engine enqueue is rate-limited by daily quota', async () => {
+  const app = createApp({
+    logger: false,
+    repositoryDriver: 'memory',
+    authApiKey: TEST_API_KEY,
+    dailyQuotaLimit: 1
+  });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Quota Agent',
+      role: 'Ops',
+      level: 'L0',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const agent = createAgentResponse.json() as { id: string };
+
+  const firstEnqueue = await app.inject({
+    method: 'POST',
+    url: '/api/v1/engine/agent-runs',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      agentId: agent.id,
+      input: 'first run',
+      approvalMode: 'auto',
+      action: 'engine.run',
+      toolName: 'echo',
+      toolArguments: {
+        message: 'ok'
+      }
+    }
+  });
+
+  assert.equal(firstEnqueue.statusCode, 202);
+
+  const secondEnqueue = await app.inject({
+    method: 'POST',
+    url: '/api/v1/engine/agent-runs',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      agentId: agent.id,
+      input: 'second run',
+      approvalMode: 'auto',
+      action: 'engine.run',
+      toolName: 'echo',
+      toolArguments: {
+        message: 'quota'
+      }
+    }
+  });
+
+  assert.equal(secondEnqueue.statusCode, 429);
+  assert.equal(secondEnqueue.json().code, 'QUOTA_EXCEEDED');
+
+  await app.close();
+});
+
 test('agent + project + task flow works with in-memory repositories', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 

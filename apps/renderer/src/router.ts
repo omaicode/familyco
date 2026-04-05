@@ -4,6 +4,7 @@ import AgentsPage from './views/AgentsPage.vue';
 import DashboardPage from './views/DashboardPage.vue';
 import InboxPage from './views/InboxPage.vue';
 import PlaceholderPage from './views/PlaceholderPage.vue';
+import AuditPage from './views/AuditPage.vue';
 import SettingsPage from './views/SettingsPage.vue';
 import SetupPage from './views/SetupPage.vue';
 
@@ -52,11 +53,8 @@ export const router = createRouter({
     },
     {
       path: '/audit',
-      component: PlaceholderPage,
-      props: {
-        title: 'Audit',
-        description: 'Inspect governance actions and mutation history.'
-      }
+      component: AuditPage,
+      meta: { title: 'Audit Inspector' }
     },
     {
       path: '/settings',

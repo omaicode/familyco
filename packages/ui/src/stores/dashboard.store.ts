@@ -2,8 +2,8 @@ import type {
   AgentListItem,
   ApprovalListItem,
   AuditListItem,
+  DashboardSummary,
   FamilyCoApiContracts,
-  TaskListItem
 } from '../api/contracts.js';
 import { createAsyncState, type AsyncState } from './async-state.js';
 
@@ -11,13 +11,16 @@ export interface DashboardMetrics {
   activeAgents: number;
   tasksToday: number;
   blockedTasks: number;
+  blockedRatio: number;
   pendingApprovals: number;
+  approvalLatencyMinutes: number;
+  throughputDoneLast24h: number;
   tokenUsageToday: number;
 }
 
 export interface DashboardStoreData {
   metrics: DashboardMetrics;
-  recentTasks: TaskListItem[];
+  recentTasks: DashboardSummary['recentTasks'];
   pendingApprovals: ApprovalListItem[];
   latestAudit: AuditListItem[];
   activeAgents: AgentListItem[];
@@ -32,7 +35,10 @@ export class DashboardStore {
         activeAgents: 0,
         tasksToday: 0,
         blockedTasks: 0,
+        blockedRatio: 0,
         pendingApprovals: 0,
+        approvalLatencyMinutes: 0,
+        throughputDoneLast24h: 0,
         tokenUsageToday: 0
       },
       recentTasks: [],
@@ -47,32 +53,21 @@ export class DashboardStore {
     this.state.errorMessage = null;
 
     try {
-      const [agents, tasks, approvals, audit] = await Promise.all([
-        this.api.listAgents(),
-        this.api.listTasks(projectId),
-        this.api.listApprovals(),
-        this.api.listAudit(12)
+      const [summary, agents] = await Promise.all([
+        this.api.getDashboardSummary(projectId),
+        this.api.listAgents()
       ]);
 
       const activeAgents = agents.filter((agent) => agent.status === 'active');
-      const blockedTasks = tasks.filter((task) => task.status === 'blocked');
-      const pendingApprovals = approvals.filter((approval) => approval.status === 'pending');
 
       this.state.data = {
-        metrics: {
-          activeAgents: activeAgents.length,
-          tasksToday: tasks.length,
-          blockedTasks: blockedTasks.length,
-          pendingApprovals: pendingApprovals.length,
-          // Placeholder until token analytics endpoint is available.
-          tokenUsageToday: 0
-        },
-        recentTasks: tasks.slice(0, 8),
-        pendingApprovals: pendingApprovals.slice(0, 8),
-        latestAudit: audit,
+        metrics: summary.metrics,
+        recentTasks: summary.recentTasks,
+        pendingApprovals: summary.pendingApprovals,
+        latestAudit: summary.latestAudit,
         activeAgents
       };
-      this.state.isEmpty = tasks.length === 0 && approvals.length === 0;
+      this.state.isEmpty = summary.recentTasks.length === 0 && summary.pendingApprovals.length === 0;
     } catch (error) {
       this.state.errorMessage =
         error instanceof Error ? error.message : 'Failed to load dashboard data';

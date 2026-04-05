@@ -1,6 +1,7 @@
 import { ApprovalGuard, type ApprovalService, type AuditService, type QueueService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
+import type { DailyQuotaGuard } from '../shared/daily-quota.guard.js';
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { ensureApproval } from '../shared/approval-flow.js';
 import { enqueueAgentRunSchema, enqueueToolRunSchema } from './engine.schema.js';
@@ -10,6 +11,7 @@ export interface EngineModuleDeps {
   auditService: AuditService;
   approvalService: ApprovalService;
   approvalGuard: ApprovalGuard;
+  dailyQuotaGuard: DailyQuotaGuard;
 }
 
 export function registerEngineController(app: FastifyInstance, deps: EngineModuleDeps): void {
@@ -26,6 +28,7 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
   app.post('/engine/agent-runs', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = enqueueAgentRunSchema.parse(request.body);
+    deps.dailyQuotaGuard.consume(request.authContext?.subject ?? body.agentId);
 
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
@@ -84,6 +87,7 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
   app.post('/engine/tool-runs', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = enqueueToolRunSchema.parse(request.body);
+    deps.dailyQuotaGuard.consume(request.authContext?.subject ?? 'system');
 
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,

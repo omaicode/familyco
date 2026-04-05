@@ -15,7 +15,7 @@ export const startEmbeddedServer = async (
   options: EmbeddedServerBootstrapOptions = {}
 ): Promise<EmbeddedServerRuntime> => {
   const host = options.host ?? process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1';
-  const port = Number(options.port ?? process.env.DESKTOP_SERVER_PORT ?? 4000);
+  const port = Number(options.port ?? process.env.DESKTOP_SERVER_PORT ?? 3040);
 
   const app = createApp({
     logger: true,

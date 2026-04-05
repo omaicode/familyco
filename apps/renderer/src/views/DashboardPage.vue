@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 
 import { uiRuntime } from '../runtime';
+import SkeletonList from '../components/SkeletonList.vue';
 
 const projectId = ref(import.meta.env.VITE_DEFAULT_PROJECT_ID || 'demo-project');
 
@@ -25,7 +26,7 @@ onMounted(async () => {
     </div>
 
     <div v-if="uiRuntime.stores.dashboard.state.isLoading" class="fc-loading">
-      Loading dashboard summary...
+      <SkeletonList />
     </div>
 
     <div v-else-if="uiRuntime.stores.dashboard.state.errorMessage" class="fc-error">
@@ -52,8 +53,20 @@ onMounted(async () => {
           <p class="fc-kpi-value">{{ uiRuntime.stores.dashboard.state.data.metrics.blockedTasks }}</p>
         </article>
         <article class="fc-card">
+          <p class="fc-kpi-label">Blocked ratio</p>
+          <p class="fc-kpi-value">{{ uiRuntime.stores.dashboard.state.data.metrics.blockedRatio }}</p>
+        </article>
+        <article class="fc-card">
           <p class="fc-kpi-label">Pending approvals</p>
           <p class="fc-kpi-value">{{ uiRuntime.stores.dashboard.state.data.metrics.pendingApprovals }}</p>
+        </article>
+        <article class="fc-card">
+          <p class="fc-kpi-label">Approval latency (min)</p>
+          <p class="fc-kpi-value">{{ uiRuntime.stores.dashboard.state.data.metrics.approvalLatencyMinutes }}</p>
+        </article>
+        <article class="fc-card">
+          <p class="fc-kpi-label">Done in 24h</p>
+          <p class="fc-kpi-value">{{ uiRuntime.stores.dashboard.state.data.metrics.throughputDoneLast24h }}</p>
         </article>
         <article class="fc-card">
           <p class="fc-kpi-label">Token usage</p>

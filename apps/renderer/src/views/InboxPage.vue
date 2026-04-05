@@ -2,6 +2,7 @@
 import { onMounted } from 'vue';
 
 import { uiRuntime } from '../runtime';
+import SkeletonList from '../components/SkeletonList.vue';
 
 const reload = async () => {
   await uiRuntime.stores.inbox.load();
@@ -37,7 +38,7 @@ onMounted(async () => {
       <button class="fc-btn-secondary" @click="reload">Refresh inbox</button>
     </div>
 
-    <div v-if="uiRuntime.stores.inbox.state.isLoading" class="fc-loading">Loading inbox items...</div>
+    <div v-if="uiRuntime.stores.inbox.state.isLoading" class="fc-loading"><SkeletonList /></div>
 
     <div v-else-if="uiRuntime.stores.inbox.state.errorMessage" class="fc-error">
       <p>{{ uiRuntime.stores.inbox.state.errorMessage }}</p>
@@ -92,7 +93,7 @@ onMounted(async () => {
           <li v-for="item in uiRuntime.stores.inbox.state.data.auditHighlights" :key="item.id" class="fc-list-item">
             <div>
               <strong>{{ item.action }}</strong>
-              <p class="fc-list-meta">{{ item.actorType }} · {{ item.createdAt }}</p>
+              <p class="fc-list-meta">{{ item.actorId }} · {{ item.createdAt }}</p>
             </div>
           </li>
         </ul>

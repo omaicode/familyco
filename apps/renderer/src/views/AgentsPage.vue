@@ -2,6 +2,7 @@
 import { onMounted, reactive } from 'vue';
 
 import { uiRuntime } from '../runtime';
+import SkeletonList from '../components/SkeletonList.vue';
 
 const draft = reactive({
   name: '',
@@ -67,7 +68,7 @@ onMounted(async () => {
       </div>
     </article>
 
-    <div v-if="uiRuntime.stores.agents.state.agents.isLoading" class="fc-loading">Loading agents...</div>
+    <div v-if="uiRuntime.stores.agents.state.agents.isLoading" class="fc-loading"><SkeletonList /></div>
 
     <div v-else-if="uiRuntime.stores.agents.state.agents.errorMessage" class="fc-error">
       <p>{{ uiRuntime.stores.agents.state.agents.errorMessage }}</p>

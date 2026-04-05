@@ -26,8 +26,12 @@ export class UIApiClient {
   }
 
   async get<TResponse>(path: string, config?: AxiosRequestConfig): Promise<TResponse> {
-    const response = await this.axios.get<TResponse>(path, config);
-    return response.data;
+    try {
+      const response = await this.axios.get<TResponse>(path, config);
+      return response.data;
+    } catch (error) {
+      throw normalizeApiError(error);
+    }
   }
 
   async post<TResponse, TPayload = unknown>(
@@ -35,8 +39,12 @@ export class UIApiClient {
     payload?: TPayload,
     config?: AxiosRequestConfig
   ): Promise<TResponse> {
-    const response = await this.axios.post<TResponse>(path, payload, config);
-    return response.data;
+    try {
+      const response = await this.axios.post<TResponse>(path, payload, config);
+      return response.data;
+    } catch (error) {
+      throw normalizeApiError(error);
+    }
   }
 
   async patch<TResponse, TPayload = unknown>(
@@ -44,10 +52,33 @@ export class UIApiClient {
     payload?: TPayload,
     config?: AxiosRequestConfig
   ): Promise<TResponse> {
-    const response = await this.axios.patch<TResponse>(path, payload, config);
-    return response.data;
+    try {
+      const response = await this.axios.patch<TResponse>(path, payload, config);
+      return response.data;
+    } catch (error) {
+      throw normalizeApiError(error);
+    }
   }
 }
 
 export const createUIApiClient = (options: UIApiClientOptions): UIApiClient =>
   new UIApiClient(options);
+
+function normalizeApiError(error: unknown): Error {
+  if (axios.isAxiosError(error)) {
+    const payload = error.response?.data as
+      | {
+          code?: string;
+          message?: string;
+          statusCode?: number;
+        }
+      | undefined;
+
+    const code = payload?.code ?? 'API_ERROR';
+    const message = payload?.message ?? error.message;
+    const statusCode = payload?.statusCode ?? error.response?.status;
+    return new Error(statusCode ? `${code}:${statusCode}:${message}` : `${code}:${message}`);
+  }
+
+  return error instanceof Error ? error : new Error('API_ERROR:Unknown error');
+}

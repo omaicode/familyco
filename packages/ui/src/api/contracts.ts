@@ -48,9 +48,40 @@ export interface SettingItem {
 export interface AuditListItem {
   id: string;
   action: string;
-  actorType: 'founder' | 'agent' | 'system';
   actorId: string;
+  targetId?: string;
+  payload?: Record<string, unknown>;
   createdAt: string;
+}
+
+export interface DashboardSummary {
+  metrics: {
+    activeAgents: number;
+    tasksToday: number;
+    blockedTasks: number;
+    blockedRatio: number;
+    pendingApprovals: number;
+    approvalLatencyMinutes: number;
+    throughputDoneLast24h: number;
+    tokenUsageToday: number;
+  };
+  recentTasks: Array<{
+    id: string;
+    title: string;
+    status: TaskListItem['status'];
+    projectId: string;
+    updatedAt: string;
+  }>;
+  pendingApprovals: ApprovalListItem[];
+  latestAudit: AuditListItem[];
+}
+
+export interface ListAuditPayload {
+  actorId?: string;
+  action?: string;
+  targetId?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export interface CreateAgentPayload {
@@ -129,7 +160,8 @@ export interface FamilyCoApiContracts {
     executiveAgent: AgentListItem;
     departmentAgents: AgentListItem[];
   }>;
-  listAudit: (limit?: number) => Promise<AuditListItem[]>;
+  getDashboardSummary: (projectId?: string) => Promise<DashboardSummary>;
+  listAudit: (query?: ListAuditPayload) => Promise<AuditListItem[]>;
 }
 
 export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiContracts => ({
@@ -177,5 +209,31 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
       },
       InitializeSetupPayload
     >('/api/v1/setup/initialize', payload),
-  listAudit: (limit = 30) => client.get<AuditListItem[]>(`/api/v1/audit?limit=${limit}`)
+  getDashboardSummary: (projectId) =>
+    client.get<DashboardSummary>(
+      projectId
+        ? `/api/v1/dashboard/summary?projectId=${encodeURIComponent(projectId)}`
+        : '/api/v1/dashboard/summary'
+    ),
+  listAudit: (query = {}) => {
+    const params = new URLSearchParams();
+    if (query.actorId) {
+      params.set('actorId', query.actorId);
+    }
+    if (query.action) {
+      params.set('action', query.action);
+    }
+    if (query.targetId) {
+      params.set('targetId', query.targetId);
+    }
+    if (typeof query.limit === 'number') {
+      params.set('limit', String(query.limit));
+    }
+    if (typeof query.offset === 'number') {
+      params.set('offset', String(query.offset));
+    }
+
+    const queryString = params.toString();
+    return client.get<AuditListItem[]>(`/api/v1/audit${queryString ? `?${queryString}` : ''}`);
+  }
 });

@@ -17,7 +17,7 @@ const connectionLabel = computed(() =>
 
 const checkHealth = async () => {
   try {
-    await uiRuntime.api.listAudit(1);
+    await uiRuntime.api.listAudit({ limit: 1 });
     uiRuntime.stores.app.setServerReachable(true, new Date().toISOString());
   } catch {
     uiRuntime.stores.app.setServerReachable(false, new Date().toISOString());

@@ -26,6 +26,7 @@ import { registerAgentController } from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
+import { registerDashboardController } from './modules/dashboard/index.js';
 import { registerEngineController } from './modules/engine/index.js';
 import { registerInboxController } from './modules/inbox/index.js';
 import { registerProjectController } from './modules/project/index.js';
@@ -64,6 +65,7 @@ import {
 } from './queue/index.js';
 import { DefaultToolExecutor } from './tools/index.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
+import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
 
 export type RepositoryDriver = 'memory' | 'prisma';
 export type QueueDriver = 'memory' | 'bullmq';
@@ -74,6 +76,7 @@ export interface CreateAppOptions {
   queueDriver?: QueueDriver;
   authApiKey?: string;
   authApiKeySalt?: string;
+  dailyQuotaLimit?: number;
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
@@ -102,6 +105,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
   const queueName = process.env.FAMILYCO_QUEUE_NAME ?? 'familyco-jobs';
   const enableQueueWorkers = process.env.ENABLE_QUEUE_WORKERS === '1';
+  const dailyQuotaLimit = options.dailyQuotaLimit ?? Number(process.env.DAILY_QUOTA_LIMIT ?? 50);
 
   const {
     agentRepository,
@@ -124,6 +128,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const settingsService = new SettingsService(settingsRepository);
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
+  const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
   const toolExecutor = new DefaultToolExecutor();
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor);
 
@@ -260,11 +265,19 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         inboxService
       });
       registerAuditController(api, { auditService });
+      registerDashboardController(api, {
+        agentService,
+        approvalService,
+        auditService,
+        projectService,
+        taskService
+      });
       registerEngineController(api, {
         queueService,
         auditService,
         approvalService,
-        approvalGuard
+        approvalGuard,
+        dailyQuotaGuard
       });
       registerInboxController(api, { inboxService, auditService });
       registerProjectController(api, {

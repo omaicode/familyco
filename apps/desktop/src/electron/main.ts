@@ -36,7 +36,7 @@ const createMainWindow = async (): Promise<void> => {
 
 const startDesktop = async (): Promise<void> => {
   embeddedServer = await startEmbeddedServer({
-    port: Number(process.env.DESKTOP_SERVER_PORT ?? 4000),
+    port: Number(process.env.DESKTOP_SERVER_PORT ?? 3040),
     host: process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1'
   });
 

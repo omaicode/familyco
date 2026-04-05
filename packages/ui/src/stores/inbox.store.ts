@@ -40,7 +40,7 @@ export class InboxStore {
     try {
       const [approvals, audit, messages] = await Promise.all([
         this.api.listApprovals(),
-        this.api.listAudit(20),
+        this.api.listAudit({ limit: 20 }),
         this.api.listInbox(recipientId)
       ]);
 
