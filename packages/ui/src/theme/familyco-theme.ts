@@ -56,7 +56,7 @@ export interface FamilyCoComponentClassTokens {
 
 export interface FamilyCoUITheme {
   name: string;
-  direction: 'light';
+  direction: 'light' | 'dark';
   colors: FamilyCoColorTokens;
   typography: FamilyCoTypographyTokens;
   spacing: FamilyCoSpacingTokens;
@@ -66,8 +66,11 @@ export interface FamilyCoUITheme {
   componentClasses: FamilyCoComponentClassTokens;
 }
 
+export type ThemePreference = 'system' | 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark';
+
 // Neutral warm surfaces + calm teal accent. Keeps admin UI clear and friendly.
-export const familyCoUITheme: FamilyCoUITheme = {
+export const familyCoUILightTheme: FamilyCoUITheme = {
   name: 'FamilyCo Calm Teal',
   direction: 'light',
   colors: {
@@ -127,3 +130,58 @@ export const familyCoUITheme: FamilyCoUITheme = {
     tableHeader: 'bg-[var(--fc-surface-muted)] text-[var(--fc-text-muted)] text-xs font-semibold'
   }
 };
+
+export const familyCoUIDarkTheme: FamilyCoUITheme = {
+  name: 'FamilyCo Deep Slate',
+  direction: 'dark',
+  colors: {
+    background: '#0F161A',
+    surface: '#162027',
+    surfaceMuted: '#1E2A33',
+    textMain: '#EAF1F4',
+    textMuted: '#AFC0CC',
+    textFaint: '#8EA0AE',
+    borderSubtle: '#2C3E4A',
+    primary: '#36A89B',
+    primaryHover: '#2F9287',
+    primaryForeground: '#08231F',
+    success: '#5EC58A',
+    warning: '#E2A45B',
+    error: '#E77878',
+    info: '#6FB7F2'
+  },
+  typography: familyCoUILightTheme.typography,
+  spacing: familyCoUILightTheme.spacing,
+  radius: familyCoUILightTheme.radius,
+  agentLevelColors: {
+    L0: '#6FB7F2',
+    L1: '#36A89B',
+    L2: '#E2A45B'
+  },
+  taskStatusColors: {
+    pending: '#8EA0AE',
+    in_progress: '#6FB7F2',
+    review: '#E2A45B',
+    done: '#5EC58A',
+    blocked: '#E77878',
+    cancelled: '#6C7C89'
+  },
+  componentClasses: familyCoUILightTheme.componentClasses
+};
+
+export const resolveThemeMode = (
+  preference: ThemePreference,
+  systemPrefersDark: boolean
+): ThemeMode => {
+  if (preference === 'system') {
+    return systemPrefersDark ? 'dark' : 'light';
+  }
+
+  return preference;
+};
+
+export const resolveFamilyCoTheme = (mode: ThemeMode): FamilyCoUITheme =>
+  mode === 'dark' ? familyCoUIDarkTheme : familyCoUILightTheme;
+
+// Backward-compat export.
+export const familyCoUITheme = familyCoUILightTheme;

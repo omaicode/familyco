@@ -1,5 +1,12 @@
 import type { AppRoutePath } from '../navigation/app-sections.js';
-import { familyCoUITheme, type FamilyCoUITheme } from '../theme/familyco-theme.js';
+import {
+  familyCoUITheme,
+  resolveFamilyCoTheme,
+  resolveThemeMode,
+  type FamilyCoUITheme,
+  type ThemeMode,
+  type ThemePreference
+} from '../theme/familyco-theme.js';
 
 export type AccessLevel = 'L0' | 'L1' | 'L2';
 
@@ -17,6 +24,8 @@ export interface AppStoreState {
   activeLevel: AccessLevel;
   founderName: string;
   theme: FamilyCoUITheme;
+  themePreference: ThemePreference;
+  themeMode: ThemeMode;
   connection: AppConnectionState;
 }
 
@@ -29,6 +38,8 @@ export class AppStore {
       activeLevel: 'L0',
       founderName: 'Founder',
       theme: familyCoUITheme,
+      themePreference: 'system',
+      themeMode: 'light',
       connection: {
         mode: 'embedded',
         baseURL,
@@ -56,6 +67,17 @@ export class AppStore {
 
   setBrowserOnline(isOnline: boolean): void {
     this.state.connection.isBrowserOnline = isOnline;
+  }
+
+  applyThemePreference(preference: ThemePreference, systemPrefersDark: boolean): void {
+    const mode = resolveThemeMode(preference, systemPrefersDark);
+    this.state.themePreference = preference;
+    this.state.themeMode = mode;
+    this.state.theme = resolveFamilyCoTheme(mode);
+  }
+
+  refreshThemeFromSystem(systemPrefersDark: boolean): void {
+    this.applyThemePreference(this.state.themePreference, systemPrefersDark);
   }
 
   canAccess(minLevel: AccessLevel): boolean {

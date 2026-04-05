@@ -10,7 +10,12 @@ import { createDashboardStore, type DashboardStore } from '../stores/dashboard.s
 import { createInboxStore, type InboxStore } from '../stores/inbox.store.js';
 import { createSettingsStore, type SettingsStore } from '../stores/settings.store.js';
 import { buildFamilyCoCssVariables } from '../theme/css-variables.js';
-import { familyCoUITheme } from '../theme/familyco-theme.js';
+import { familyCoUITheme, type ThemePreference } from '../theme/familyco-theme.js';
+
+export interface UIBootstrapOptions extends UIApiClientOptions {
+  themePreference?: ThemePreference;
+  systemPrefersDark?: boolean;
+}
 
 export interface UIBootstrap {
   api: FamilyCoApiContracts;
@@ -28,14 +33,17 @@ export interface UIBootstrap {
   cssVariables: Record<string, string>;
 }
 
-export const bootstrapFamilyCoUI = (options: UIApiClientOptions): UIBootstrap => {
+export const bootstrapFamilyCoUI = (options: UIBootstrapOptions): UIBootstrap => {
   const client = createUIApiClient(options);
   const api = createFamilyCoApiContracts(client);
+  const appStore = createAppStore(options.baseURL);
+
+  appStore.applyThemePreference(options.themePreference ?? 'system', options.systemPrefersDark ?? false);
 
   return {
     api,
     stores: {
-      app: createAppStore(options.baseURL),
+      app: appStore,
       agents: createAgentStore(api),
       dashboard: createDashboardStore(api),
       inbox: createInboxStore(api),

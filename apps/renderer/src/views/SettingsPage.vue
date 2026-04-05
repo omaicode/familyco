@@ -1,15 +1,40 @@
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 
-import { uiRuntime } from '../runtime';
+import { applyRuntimeTheme, uiRuntime } from '../runtime';
+
+type ThemePreference = 'system' | 'light' | 'dark';
 
 const form = reactive({
   key: 'provider.defaultModel',
   value: 'gpt-5.3-codex'
 });
 
+const themePreference = ref<ThemePreference>('system');
+const themeSaving = ref(false);
+const feedback = ref<string | null>(null);
+
+const parseThemePreference = (value: unknown): ThemePreference | null => {
+  if (value === 'system' || value === 'light' || value === 'dark') {
+    return value;
+  }
+
+  return null;
+};
+
+const applyThemePreference = (preference: ThemePreference): void => {
+  const systemPrefersDark =
+    typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  uiRuntime.stores.app.applyThemePreference(preference, systemPrefersDark);
+  applyRuntimeTheme();
+};
+
 const reload = async () => {
+  feedback.value = null;
   await uiRuntime.stores.settings.load();
+  const stored = uiRuntime.stores.settings.state.data.find((item) => item.key === 'ui.theme.preference');
+  themePreference.value = parseThemePreference(stored?.value) ?? 'system';
+  applyThemePreference(themePreference.value);
 };
 
 const save = async () => {
@@ -17,6 +42,23 @@ const save = async () => {
     key: form.key,
     value: form.value
   });
+  feedback.value = 'Setting saved';
+};
+
+const saveThemePreference = async (): Promise<void> => {
+  themeSaving.value = true;
+  feedback.value = null;
+
+  try {
+    applyThemePreference(themePreference.value);
+    await uiRuntime.stores.settings.upsert({
+      key: 'ui.theme.preference',
+      value: themePreference.value
+    });
+    feedback.value = 'Theme preference saved';
+  } finally {
+    themeSaving.value = false;
+  }
 };
 
 onMounted(async () => {
@@ -33,6 +75,29 @@ onMounted(async () => {
       </div>
       <button class="fc-btn-secondary" @click="reload">Refresh</button>
     </div>
+
+    <article class="fc-card" style="margin-bottom: 12px">
+      <h4 style="margin-top: 0">Appearance</h4>
+      <p class="fc-list-meta" style="margin-top: 0">Follow system theme by default, or override manually.</p>
+      <div class="fc-inline-actions" role="radiogroup" aria-label="Theme preference">
+        <label>
+          <input v-model="themePreference" type="radio" value="system" /> System
+        </label>
+        <label>
+          <input v-model="themePreference" type="radio" value="light" /> Light
+        </label>
+        <label>
+          <input v-model="themePreference" type="radio" value="dark" /> Dark
+        </label>
+      </div>
+      <div class="fc-toolbar" style="margin-top: 10px">
+        <button class="fc-btn-primary" :disabled="themeSaving" @click="saveThemePreference">
+          {{ themeSaving ? 'Saving...' : 'Save appearance' }}
+        </button>
+      </div>
+    </article>
+
+    <div v-if="feedback" class="fc-banner-success">{{ feedback }}</div>
 
     <article class="fc-card" style="margin-bottom: 12px">
       <h4 style="margin-top: 0">Upsert setting</h4>

@@ -1,4 +1,5 @@
 import { bootstrapFamilyCoUI, type UIBootstrap } from '@familyco/ui';
+import { buildFamilyCoCssVariables } from '@familyco/ui';
 
 const isDesktopRuntime = (): boolean =>
   typeof window !== 'undefined' && typeof window.familycoDesktop?.invoke === 'function';
@@ -28,15 +29,26 @@ const apiKey =
   (isDesktopRuntime() ? window.familycoDesktopConfig?.apiKey || 'local-dev-api-key' : undefined) ||
   import.meta.env.VITE_API_KEY;
 const token = import.meta.env.VITE_BEARER_TOKEN;
+const systemPrefersDark =
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 export const uiRuntime: UIBootstrap = bootstrapFamilyCoUI({
   baseURL,
   apiKey,
-  bearerToken: token
+  bearerToken: token,
+  themePreference: 'system',
+  systemPrefersDark
 });
 
 export const applyRuntimeTheme = (): void => {
-  for (const [key, value] of Object.entries(uiRuntime.cssVariables)) {
+  const cssVariables = buildFamilyCoCssVariables(uiRuntime.stores.app.state.theme);
+
+  document.documentElement.dataset.theme = uiRuntime.stores.app.state.themeMode;
+  document.documentElement.style.colorScheme = uiRuntime.stores.app.state.themeMode;
+
+  for (const [key, value] of Object.entries(cssVariables)) {
     document.documentElement.style.setProperty(key, value);
   }
 };

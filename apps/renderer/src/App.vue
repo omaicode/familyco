@@ -4,6 +4,8 @@ import { RouterLink, RouterView, useRoute } from 'vue-router';
 
 import { uiRuntime, applyRuntimeTheme } from './runtime';
 
+type ThemePreference = 'system' | 'light' | 'dark';
+
 const route = useRoute();
 
 const serverReachable = ref(uiRuntime.stores.app.state.connection.isServerReachable);
@@ -19,6 +21,7 @@ const connectionLabel = computed(() => (serverReachable.value ? 'Connected' : 'D
 const showConnectionWarning = computed(() => !serverReachable.value);
 
 let healthCheckTimer: ReturnType<typeof setInterval> | null = null;
+let systemThemeMediaQuery: MediaQueryList | null = null;
 
 const globalErrorMessage = ref<string | null>(null);
 const isReconnecting = ref(false);
@@ -52,6 +55,42 @@ const setConnectionState = (reachable: boolean, errorMessage: string | null): vo
 const setBrowserConnection = (isOnline: boolean): void => {
   browserOnline.value = isOnline;
   uiRuntime.stores.app.setBrowserOnline(isOnline);
+};
+
+const parseThemePreference = (value: unknown): ThemePreference | null => {
+  if (value === 'system' || value === 'light' || value === 'dark') {
+    return value;
+  }
+
+  return null;
+};
+
+const applyThemePreference = (preference: ThemePreference): void => {
+  const systemPrefersDark =
+    typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  uiRuntime.stores.app.applyThemePreference(preference, systemPrefersDark);
+  applyRuntimeTheme();
+};
+
+const loadThemePreference = async (): Promise<void> => {
+  try {
+    await uiRuntime.stores.settings.load();
+    const stored = uiRuntime.stores.settings.state.data.find((item) => item.key === 'ui.theme.preference');
+    const preference = parseThemePreference(stored?.value);
+
+    applyThemePreference(preference ?? 'system');
+  } catch {
+    applyThemePreference('system');
+  }
+};
+
+const handleSystemThemeChange = (event: MediaQueryListEvent): void => {
+  if (uiRuntime.stores.app.state.themePreference !== 'system') {
+    return;
+  }
+
+  uiRuntime.stores.app.refreshThemeFromSystem(event.matches);
+  applyRuntimeTheme();
 };
 
 const checkHttpHealth = async (): Promise<void> => {
@@ -124,8 +163,13 @@ onMounted(async () => {
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 
-  applyRuntimeTheme();
+  await loadThemePreference();
   await checkHealth();
+
+  if (typeof window.matchMedia === 'function') {
+    systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    systemThemeMediaQuery.addEventListener('change', handleSystemThemeChange);
+  }
 
   healthCheckTimer = setInterval(() => {
     void checkHealth();
@@ -141,6 +185,11 @@ onUnmounted(() => {
   if (healthCheckTimer) {
     clearInterval(healthCheckTimer);
     healthCheckTimer = null;
+  }
+
+  if (systemThemeMediaQuery) {
+    systemThemeMediaQuery.removeEventListener('change', handleSystemThemeChange);
+    systemThemeMediaQuery = null;
   }
 });
 </script>
