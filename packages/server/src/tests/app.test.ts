@@ -22,6 +22,23 @@ test('GET /health returns ok', async () => {
 test('API rejects unauthorized requests and allows JWT access', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'RBAC Agent',
+      role: 'Project Manager',
+      level: 'L1',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const createdAgent = createAgentResponse.json() as { id: string };
+
   const unauthorizedResponse = await app.inject({
     method: 'GET',
     url: '/api/v1/agents'
@@ -33,7 +50,8 @@ test('API rejects unauthorized requests and allows JWT access', async () => {
     method: 'POST',
     url: '/api/v1/auth/token',
     payload: {
-      apiKey: TEST_API_KEY
+      apiKey: TEST_API_KEY,
+      agentId: createdAgent.id
     }
   });
 
@@ -49,6 +67,82 @@ test('API rejects unauthorized requests and allows JWT access', async () => {
   });
 
   assert.equal(authorizedResponse.statusCode, 200);
+
+  const revokeResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/api-keys/revoke',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      apiKey: TEST_API_KEY
+    }
+  });
+
+  assert.equal(revokeResponse.statusCode, 200);
+
+  const revokedTokenResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/token',
+    payload: {
+      apiKey: TEST_API_KEY,
+      agentId: createdAgent.id
+    }
+  });
+
+  assert.equal(revokedTokenResponse.statusCode, 401);
+
+  await app.close();
+});
+
+test('L2 JWT is blocked by RBAC on L0 route', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'L2 Specialist',
+      role: 'Specialist',
+      level: 'L2',
+      department: 'Research'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const l2Agent = createAgentResponse.json() as { id: string };
+
+  const tokenResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/token',
+    payload: {
+      apiKey: TEST_API_KEY,
+      agentId: l2Agent.id
+    }
+  });
+
+  assert.equal(tokenResponse.statusCode, 200);
+  const tokenPayload = tokenResponse.json() as { token: string };
+
+  const forbiddenResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      authorization: `Bearer ${tokenPayload.token}`
+    },
+    payload: {
+      name: 'Forbidden Create',
+      role: 'Executive',
+      level: 'L0',
+      department: 'Executive'
+    }
+  });
+
+  assert.equal(forbiddenResponse.statusCode, 403);
+  assert.equal(forbiddenResponse.json().code, 'AUTH_FORBIDDEN');
 
   await app.close();
 });

@@ -1,6 +1,7 @@
 import type { ApprovalService, AuditService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
+import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import {
   createApprovalSchema,
   decideApprovalBodySchema,
@@ -13,11 +14,13 @@ export interface ApprovalModuleDeps {
 }
 
 export function registerApprovalController(app: FastifyInstance, deps: ApprovalModuleDeps): void {
-  app.get('/approvals', async () => {
+  app.get('/approvals', async (request) => {
+    requireMinimumLevel(request, 'L1');
     return deps.approvalService.listApprovalRequests();
   });
 
   app.post('/approvals', async (request, reply) => {
+    requireMinimumLevel(request, 'L1');
     const body = createApprovalSchema.parse(request.body);
     const approvalRequest = await deps.approvalService.createApprovalRequest(body);
     await deps.auditService.write({
@@ -35,11 +38,12 @@ export function registerApprovalController(app: FastifyInstance, deps: ApprovalM
   });
 
   app.post('/approvals/:id/decision', async (request) => {
+    requireMinimumLevel(request, 'L0');
     const { id } = decideApprovalParamsSchema.parse(request.params);
     const { status } = decideApprovalBodySchema.parse(request.body);
     const approvalRequest = await deps.approvalService.decideApproval({ id, status });
     await deps.auditService.write({
-      actorId: 'system',
+      actorId: request.authContext?.subject ?? 'system',
       action: 'approval.request.decide',
       targetId: approvalRequest.id,
       payload: {

@@ -12,6 +12,15 @@ export class AgentService {
     return this.repository.list();
   }
 
+  async getAgentById(id: string): Promise<AgentProfile> {
+    const agent = await this.repository.findById(id);
+    if (!agent) {
+      throw new Error(`AGENT_NOT_FOUND:${id}`);
+    }
+
+    return agent;
+  }
+
   pauseAgent(id: string): Promise<AgentProfile> {
     return this.repository.pause(id);
   }

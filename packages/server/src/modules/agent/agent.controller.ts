@@ -1,6 +1,7 @@
 import type { AgentService, AuditService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
+import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { createAgentSchema, pauseAgentParamsSchema } from './agent.schema.js';
 
 export interface AgentModuleDeps {
@@ -9,15 +10,17 @@ export interface AgentModuleDeps {
 }
 
 export function registerAgentController(app: FastifyInstance, deps: AgentModuleDeps): void {
-  app.get('/agents', async () => {
+  app.get('/agents', async (request) => {
+    requireMinimumLevel(request, 'L1');
     return deps.agentService.listAgents();
   });
 
   app.post('/agents', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
     const body = createAgentSchema.parse(request.body);
     const agent = await deps.agentService.createAgent(body);
     await deps.auditService.write({
-      actorId: 'system',
+      actorId: request.authContext?.subject ?? 'system',
       action: 'agent.create',
       targetId: agent.id,
       payload: {
@@ -31,10 +34,11 @@ export function registerAgentController(app: FastifyInstance, deps: AgentModuleD
   });
 
   app.post('/agents/:id/pause', async (request) => {
+    requireMinimumLevel(request, 'L0');
     const { id } = pauseAgentParamsSchema.parse(request.params);
     const pausedAgent = await deps.agentService.pauseAgent(id);
     await deps.auditService.write({
-      actorId: 'system',
+      actorId: request.authContext?.subject ?? 'system',
       action: 'agent.pause',
       targetId: pausedAgent.id,
       payload: {

@@ -1,14 +1,35 @@
-import type { QueueJob, QueueService } from '@familyco/core';
+import type { AnyQueueJob, QueueService } from '@familyco/core';
+import { Queue, type Job } from 'bullmq';
+import IORedis from 'ioredis';
 
-// Placeholder queue implementation until BullMQ wiring is added.
+export interface BullMqQueueServiceOptions {
+  queueName: string;
+  redisUrl: string;
+}
+
 export class BullMqQueueService implements QueueService {
-  private readonly jobs: QueueJob[] = [];
+  private readonly queue: Queue;
 
-  async enqueue(job: QueueJob): Promise<void> {
-    this.jobs.push(job);
+  constructor(options: BullMqQueueServiceOptions) {
+    const connection = new IORedis(options.redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: null
+    });
+
+    this.queue = new Queue(options.queueName, {
+      connection
+    });
   }
 
-  async listPendingJobs(): Promise<QueueJob[]> {
-    return this.jobs;
+  async enqueue(job: AnyQueueJob): Promise<void> {
+    await this.queue.add(job.type, job.payload);
+  }
+
+  async listPendingJobs(): Promise<Array<Job>> {
+    return this.queue.getJobs(['waiting', 'delayed', 'active']);
+  }
+
+  async close(): Promise<void> {
+    await this.queue.close();
   }
 }

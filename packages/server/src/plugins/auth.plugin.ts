@@ -1,8 +1,11 @@
 import jwt from '@fastify/jwt';
 import type { FastifyReply, FastifyRequest, FastifyInstance } from 'fastify';
 
+import type { ApiKeyService } from '../modules/auth/api-key.service.js';
+import type { JwtAuthPayload } from './auth.types.js';
+
 const DEFAULT_JWT_SECRET = 'local-dev-secret';
-const DEFAULT_API_KEY = 'local-dev-api-key';
+const DEFAULT_API_KEY_SALT = 'local-dev-salt';
 
 export function registerAuthPlugin(app: FastifyInstance): void {
   app.register(jwt, {
@@ -11,13 +14,17 @@ export function registerAuthPlugin(app: FastifyInstance): void {
 }
 
 export function getAuthApiKey(): string {
-  return process.env.FAMILYCO_API_KEY ?? DEFAULT_API_KEY;
+  return process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key';
+}
+
+export function getAuthApiKeySalt(): string {
+  return process.env.API_KEY_SALT ?? DEFAULT_API_KEY_SALT;
 }
 
 export async function authenticateApiRequest(
   request: FastifyRequest,
   reply: FastifyReply,
-  expectedApiKey: string
+  apiKeyService: ApiKeyService
 ): Promise<void> {
   const routeUrl = request.routeOptions.url ?? '';
   if (routeUrl === '/auth/token' || routeUrl.endsWith('/auth/token')) {
@@ -27,12 +34,27 @@ export async function authenticateApiRequest(
   const apiKeyHeader = request.headers['x-api-key'];
   const apiKey = typeof apiKeyHeader === 'string' ? apiKeyHeader : undefined;
 
-  if (apiKey && apiKey === expectedApiKey) {
-    return;
+  if (apiKey) {
+    const apiKeyRecord = await apiKeyService.verify(apiKey);
+    if (apiKeyRecord) {
+      request.authContext = {
+        subject: 'service-account',
+        level: 'L0',
+        authMethod: 'api-key',
+        apiKeyId: apiKeyRecord.id
+      };
+      return;
+    }
   }
 
   try {
     await request.jwtVerify();
+    const payload = request.user as JwtAuthPayload;
+    request.authContext = {
+      subject: payload.sub,
+      level: payload.level,
+      authMethod: 'jwt'
+    };
   } catch {
     reply.code(401).send({
       statusCode: 401,

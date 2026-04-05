@@ -1,6 +1,7 @@
 import type { AuditService, ProjectService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
+import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { createProjectSchema } from './project.schema.js';
 
 export interface ProjectModuleDeps {
@@ -9,11 +10,13 @@ export interface ProjectModuleDeps {
 }
 
 export function registerProjectController(app: FastifyInstance, deps: ProjectModuleDeps): void {
-  app.get('/projects', async () => {
+  app.get('/projects', async (request) => {
+    requireMinimumLevel(request, 'L1');
     return deps.projectService.listProjects();
   });
 
   app.post('/projects', async (request, reply) => {
+    requireMinimumLevel(request, 'L1');
     const body = createProjectSchema.parse(request.body);
     const project = await deps.projectService.createProject(body);
     await deps.auditService.write({
