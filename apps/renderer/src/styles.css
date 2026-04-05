@@ -255,6 +255,13 @@ body {
   text-align: left;
 }
 
+.fc-warning {
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--fc-warning) 38%, var(--fc-border-subtle));
+  border-radius: var(--fc-card-radius);
+  background: color-mix(in srgb, var(--fc-warning) 10%, var(--fc-surface));
+}
+
 .fc-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

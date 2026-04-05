@@ -15,8 +15,13 @@ const resolveRendererUrl = (): string => {
 let mainWindow: BrowserWindow | null = null;
 let embeddedServer: EmbeddedServerRuntime | null = null;
 
-const createMainWindow = async (): Promise<void> => {
-  const preloadPath = path.join(dirname, 'preload.js');
+interface DesktopRuntimeConfig {
+  apiBaseUrl: string;
+  apiKey: string;
+}
+
+const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<void> => {
+  const preloadPath = path.join(dirname, 'preload.cjs');
 
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -27,7 +32,11 @@ const createMainWindow = async (): Promise<void> => {
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      additionalArguments: [
+        `--familyco-api-base-url=${runtimeConfig.apiBaseUrl}`,
+        `--familyco-api-key=${runtimeConfig.apiKey}`
+      ]
     }
   });
 
@@ -35,6 +44,8 @@ const createMainWindow = async (): Promise<void> => {
 };
 
 const startDesktop = async (): Promise<void> => {
+  const apiKey = process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key';
+
   embeddedServer = await startEmbeddedServer({
     port: Number(process.env.DESKTOP_SERVER_PORT ?? 3040),
     host: process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1'
@@ -42,10 +53,13 @@ const startDesktop = async (): Promise<void> => {
 
   registerDesktopIpcHandlers({
     apiBaseUrl: embeddedServer.baseUrl,
-    apiKey: process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key'
+    apiKey
   });
 
-  await createMainWindow();
+  await createMainWindow({
+    apiBaseUrl: embeddedServer.baseUrl,
+    apiKey
+  });
 };
 
 app.whenReady().then(startDesktop).catch((error) => {
@@ -64,7 +78,10 @@ app.on('window-all-closed', async () => {
 });
 
 app.on('activate', async () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    await createMainWindow();
+  if (BrowserWindow.getAllWindows().length === 0 && embeddedServer) {
+    await createMainWindow({
+      apiBaseUrl: embeddedServer.baseUrl,
+      apiKey: process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key'
+    });
   }
 });

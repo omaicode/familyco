@@ -8,6 +8,8 @@ export interface AppConnectionState {
   baseURL: string;
   lastHealthCheckAt: string | null;
   isServerReachable: boolean;
+  isBrowserOnline: boolean;
+  lastErrorMessage: string | null;
 }
 
 export interface AppStoreState {
@@ -31,7 +33,9 @@ export class AppStore {
         mode: 'embedded',
         baseURL,
         lastHealthCheckAt: null,
-        isServerReachable: false
+        isServerReachable: false,
+        isBrowserOnline: true,
+        lastErrorMessage: null
       }
     };
   }
@@ -44,9 +48,14 @@ export class AppStore {
     this.state.activeLevel = level;
   }
 
-  setServerReachable(reachable: boolean, checkedAtIso: string): void {
+  setServerReachable(reachable: boolean, checkedAtIso: string, lastErrorMessage: string | null = null): void {
     this.state.connection.isServerReachable = reachable;
     this.state.connection.lastHealthCheckAt = checkedAtIso;
+    this.state.connection.lastErrorMessage = lastErrorMessage;
+  }
+
+  setBrowserOnline(isOnline: boolean): void {
+    this.state.connection.isBrowserOnline = isOnline;
   }
 
   canAccess(minLevel: AccessLevel): boolean {

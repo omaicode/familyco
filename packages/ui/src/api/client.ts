@@ -5,16 +5,23 @@ export interface UIApiClientOptions {
   apiKey?: string;
   bearerToken?: string;
   timeoutMs?: number;
+  retryCount?: number;
+  retryDelayMs?: number;
 }
 
 export class UIApiClient {
   private readonly axios: AxiosInstance;
+  private readonly retryCount: number;
+  private readonly retryDelayMs: number;
 
   constructor(options: UIApiClientOptions) {
     this.axios = axios.create({
       baseURL: options.baseURL,
       timeout: options.timeoutMs ?? 10000
     });
+
+    this.retryCount = options.retryCount ?? 1;
+    this.retryDelayMs = options.retryDelayMs ?? 250;
 
     if (options.apiKey) {
       this.axios.defaults.headers.common['x-api-key'] = options.apiKey;
@@ -26,12 +33,10 @@ export class UIApiClient {
   }
 
   async get<TResponse>(path: string, config?: AxiosRequestConfig): Promise<TResponse> {
-    try {
+    return this.requestWithRetry(async () => {
       const response = await this.axios.get<TResponse>(path, config);
       return response.data;
-    } catch (error) {
-      throw normalizeApiError(error);
-    }
+    });
   }
 
   async post<TResponse, TPayload = unknown>(
@@ -59,10 +64,51 @@ export class UIApiClient {
       throw normalizeApiError(error);
     }
   }
+
+  private async requestWithRetry<TResponse>(request: () => Promise<TResponse>): Promise<TResponse> {
+    let attempt = 0;
+
+    while (true) {
+      try {
+        return await request();
+      } catch (error) {
+        if (!this.shouldRetry(error, attempt)) {
+          throw normalizeApiError(error);
+        }
+
+        attempt += 1;
+        await wait(this.retryDelayMs);
+      }
+    }
+  }
+
+  private shouldRetry(error: unknown, attempt: number): boolean {
+    if (attempt >= this.retryCount) {
+      return false;
+    }
+
+    if (!axios.isAxiosError(error)) {
+      return false;
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      return true;
+    }
+
+    if (!error.response) {
+      return true;
+    }
+
+    return error.response.status >= 500;
+  }
 }
 
 export const createUIApiClient = (options: UIApiClientOptions): UIApiClient =>
   new UIApiClient(options);
+
+const wait = async (durationMs: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, durationMs));
+};
 
 function normalizeApiError(error: unknown): Error {
   if (axios.isAxiosError(error)) {

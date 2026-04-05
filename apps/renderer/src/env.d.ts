@@ -12,5 +12,11 @@ declare global {
     familycoDesktop?: {
       invoke: (channel: string, payload: unknown) => Promise<unknown>;
     };
+    familycoDesktopConfig?: {
+      apiBaseUrl?: string;
+      apiKey?: string;
+    };
   }
 }
+
+export {};
