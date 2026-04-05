@@ -1,22 +1,27 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   AgentService,
+  ApprovalService,
   ProjectService,
   TaskService,
   type AgentRepository,
+  type ApprovalRepository,
   type ProjectRepository,
   type TaskRepository
 } from '@familyco/core';
 
 import { prismaClient } from './db/prisma-client.js';
 import { registerAgentController } from './modules/agent/index.js';
+import { registerApprovalController } from './modules/approval/index.js';
 import { registerProjectController } from './modules/project/index.js';
 import { registerTaskController } from './modules/task/index.js';
 import {
   InMemoryAgentRepository,
+  InMemoryApprovalRepository,
   InMemoryProjectRepository,
   InMemoryTaskRepository,
   PrismaAgentRepository,
+  PrismaApprovalRepository,
   PrismaProjectRepository,
   PrismaTaskRepository
 } from './repositories/index.js';
@@ -35,8 +40,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     (process.env.FAMILYCO_REPOSITORY_DRIVER as RepositoryDriver | undefined) ??
     'memory';
 
-  const { agentRepository, projectRepository, taskRepository } = createRepositories(repositoryDriver);
+  const { agentRepository, approvalRepository, projectRepository, taskRepository } =
+    createRepositories(repositoryDriver);
   const agentService = new AgentService(agentRepository);
+  const approvalService = new ApprovalService(approvalRepository);
   const projectService = new ProjectService(projectRepository);
   const taskService = new TaskService(taskRepository);
 
@@ -48,6 +55,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
 
   app.register(async (api) => {
     registerAgentController(api, { agentService });
+    registerApprovalController(api, { approvalService });
     registerProjectController(api, { projectService });
     registerTaskController(api, { taskService });
   }, { prefix: '/api/v1' });
@@ -70,12 +78,14 @@ function createRepositories(
   repositoryDriver: RepositoryDriver
 ): {
   agentRepository: AgentRepository;
+  approvalRepository: ApprovalRepository;
   projectRepository: ProjectRepository;
   taskRepository: TaskRepository;
 } {
   if (repositoryDriver === 'prisma') {
     return {
       agentRepository: new PrismaAgentRepository(prismaClient),
+      approvalRepository: new PrismaApprovalRepository(prismaClient),
       projectRepository: new PrismaProjectRepository(prismaClient),
       taskRepository: new PrismaTaskRepository(prismaClient)
     };
@@ -83,6 +93,7 @@ function createRepositories(
 
   return {
     agentRepository: new InMemoryAgentRepository(),
+    approvalRepository: new InMemoryApprovalRepository(),
     projectRepository: new InMemoryProjectRepository(),
     taskRepository: new InMemoryTaskRepository()
   };

@@ -83,5 +83,45 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const invalidTransitionBody = invalidTransitionResponse.json();
   assert.equal(invalidTransitionBody.code, 'TASK_INVALID_STATUS');
 
+  const createApprovalResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/approvals',
+    payload: {
+      actorId: agent.id,
+      action: 'task.publish',
+      targetId: task.id,
+      payload: {
+        note: 'Need founder approval before publish'
+      }
+    }
+  });
+
+  assert.equal(createApprovalResponse.statusCode, 201);
+  const approvalRequest = createApprovalResponse.json();
+  assert.equal(approvalRequest.status, 'pending');
+
+  const decideApprovalResponse = await app.inject({
+    method: 'POST',
+    url: `/api/v1/approvals/${approvalRequest.id}/decision`,
+    payload: {
+      status: 'approved'
+    }
+  });
+
+  assert.equal(decideApprovalResponse.statusCode, 200);
+  const decidedApproval = decideApprovalResponse.json();
+  assert.equal(decidedApproval.status, 'approved');
+
+  const duplicateDecisionResponse = await app.inject({
+    method: 'POST',
+    url: `/api/v1/approvals/${approvalRequest.id}/decision`,
+    payload: {
+      status: 'rejected'
+    }
+  });
+
+  assert.equal(duplicateDecisionResponse.statusCode, 400);
+  assert.equal(duplicateDecisionResponse.json().code, 'APPROVAL_ALREADY_DECIDED');
+
   await app.close();
 });
