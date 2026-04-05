@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
+import {
+  Bot, AlertOctagon, Clock, Zap, CheckCircle2, TrendingUp,
+  BarChart2, RefreshCw, ChevronRight, Inbox, ShieldCheck,
+  Activity, ListChecks
+} from 'lucide-vue-next';
 
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
 
 const projectId = ref(import.meta.env.VITE_DEFAULT_PROJECT_ID || 'demo-project');
+const isRefreshing = ref(false);
 
 const refresh = async () => {
-  await uiRuntime.stores.dashboard.load(projectId.value);
+  isRefreshing.value = true;
+  try { await uiRuntime.stores.dashboard.load(projectId.value); }
+  finally { isRefreshing.value = false; }
 };
 
 const dashboardState = computed(() => uiRuntime.stores.dashboard.state);
@@ -18,143 +26,247 @@ const pendingApprovals = computed(() => dashboardState.value.data.pendingApprova
 const latestAudit = computed(() => dashboardState.value.data.latestAudit);
 
 const blockedRatioPercent = computed(() => `${Math.round(metrics.value.blockedRatio * 100)}%`);
+
 const approvalQueueHealth = computed(() => {
-  if (metrics.value.pendingApprovals >= 10) {
-    return 'High queue pressure';
-  }
-
-  if (metrics.value.pendingApprovals >= 4) {
-    return 'Moderate queue pressure';
-  }
-
-  return 'Queue healthy';
+  const n = metrics.value.pendingApprovals;
+  if (n >= 10) return { label: 'High pressure', highlight: 'error' };
+  if (n >= 4)  return { label: 'Moderate pressure', highlight: 'warning' };
+  return { label: 'Healthy', highlight: 'success' };
 });
 
 const priorityApprovals = computed(() => pendingApprovals.value.slice(0, 4));
 
-const formatTimestamp = (iso: string): string => {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
-
-  return date.toLocaleString();
+const inferRisk = (action: string): 'low' | 'medium' | 'high' => {
+  const n = action.toLowerCase();
+  if (n.includes('delete') || n.includes('archive') || n.includes('revoke')) return 'high';
+  if (n.includes('update') || n.includes('move') || n.includes('assign')) return 'medium';
+  return 'low';
 };
 
-onMounted(async () => {
-  await refresh();
-});
+const formatRelative = (iso: string): string => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const diff = Date.now() - date.getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+};
+
+onMounted(async () => { await refresh(); });
 </script>
 
 <template>
   <section>
+    <!-- ── Header ─────────────────────────────────────── -->
     <div class="fc-page-header">
       <div>
         <h3>Company Dashboard</h3>
         <p>Focus on decisions first, then monitor throughput and operational risk.</p>
       </div>
       <div class="fc-inline-actions">
-        <RouterLink class="fc-btn-secondary" to="/inbox">Review inbox</RouterLink>
-        <button class="fc-btn-primary" @click="refresh">Refresh dashboard</button>
+        <RouterLink class="fc-btn-secondary" to="/inbox">
+          <Inbox :size="14" /> Review inbox
+        </RouterLink>
+        <button class="fc-btn-primary" :disabled="isRefreshing" @click="refresh">
+          <RefreshCw :size="14" :class="{ 'fc-spin': isRefreshing }" />
+          {{ isRefreshing ? 'Refreshing…' : 'Refresh' }}
+        </button>
       </div>
     </div>
 
+    <!-- ── Loading ─────────────────────────────────────── -->
     <div v-if="dashboardState.isLoading" class="fc-loading">
-      <p style="margin: 0 0 10px">Loading dashboard priorities...</p>
+      <p style="margin:0 0 10px;font-size:0.875rem;color:var(--fc-text-muted);">Loading dashboard…</p>
       <SkeletonList />
     </div>
 
+    <!-- ── Error ───────────────────────────────────────── -->
     <div v-else-if="dashboardState.errorMessage" class="fc-error">
       <p>{{ dashboardState.errorMessage }}</p>
-      <button class="fc-btn-secondary" @click="refresh">Retry</button>
+      <button class="fc-btn-secondary fc-btn-sm" @click="refresh">
+        <RefreshCw :size="13" /> Retry
+      </button>
     </div>
 
     <template v-else>
-      <article class="fc-card" style="margin-bottom: 12px">
-        <div class="fc-page-header" style="margin-bottom: 10px">
-          <div>
-            <h4 style="margin: 0">Decision queue</h4>
-            <p class="fc-list-meta" style="margin: 4px 0 0">{{ approvalQueueHealth }}</p>
+      <!-- ── Decision queue ───────────────────────────── -->
+      <article class="fc-card" style="margin-bottom:14px;">
+        <div class="fc-section-header" style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--fc-primary) 12%,var(--fc-surface));border:1px solid color-mix(in srgb,var(--fc-primary) 25%,var(--fc-border-subtle));">
+              <AlertOctagon :size="15" style="color:var(--fc-primary);" />
+            </div>
+            <div>
+              <h4 style="margin:0;">Decision queue</h4>
+              <p class="fc-list-meta" style="margin:0;">{{ metrics.pendingApprovals }} pending</p>
+            </div>
           </div>
-          <span class="fc-status">{{ metrics.pendingApprovals }} pending</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="fc-risk-tag" :data-risk="approvalQueueHealth.highlight === 'error' ? 'high' : approvalQueueHealth.highlight === 'warning' ? 'medium' : 'low'">
+              {{ approvalQueueHealth.label }}
+            </span>
+            <RouterLink class="fc-btn-ghost fc-btn-sm" to="/inbox">
+              All <ChevronRight :size="12" />
+            </RouterLink>
+          </div>
         </div>
 
         <ul v-if="priorityApprovals.length > 0" class="fc-list">
           <li v-for="approval in priorityApprovals" :key="approval.id" class="fc-list-item">
-            <div>
+            <div style="flex:1;min-width:0;">
               <strong>{{ approval.action }}</strong>
               <p class="fc-list-meta">{{ approval.actorId }} · {{ approval.targetType || 'operation' }}</p>
             </div>
-            <RouterLink class="fc-btn-secondary" to="/inbox">Review</RouterLink>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+              <span class="fc-risk-tag" :data-risk="inferRisk(approval.action)">
+                {{ inferRisk(approval.action) }}
+              </span>
+              <RouterLink class="fc-btn-secondary fc-btn-sm" to="/inbox">Review →</RouterLink>
+            </div>
           </li>
         </ul>
-        <p v-else class="fc-list-meta" style="margin: 0">No approvals waiting. Team can continue executing.</p>
+        <p v-else class="fc-list-meta" style="margin:0;display:flex;align-items:center;gap:6px;">
+          <CheckCircle2 :size="14" style="color:var(--fc-success);" />
+          No approvals waiting — team can continue executing.
+        </p>
       </article>
 
-      <div class="fc-grid-kpi">
-        <article class="fc-card">
-          <p class="fc-kpi-label">Active agents</p>
+      <!-- ── KPIs ─────────────────────────────────────── -->
+      <div class="fc-grid-kpi" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+        <article class="fc-kpi-card" data-highlight="primary">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+            <p class="fc-kpi-label" style="margin:0;">Active agents</p>
+            <Bot :size="16" style="color:var(--fc-primary);opacity:0.7;" />
+          </div>
           <p class="fc-kpi-value">{{ metrics.activeAgents }}</p>
+          <p class="fc-kpi-sub">Agents running</p>
         </article>
-        <article class="fc-card">
-          <p class="fc-kpi-label">Pending approvals</p>
+
+        <article class="fc-kpi-card" :data-highlight="metrics.pendingApprovals >= 10 ? 'error' : metrics.pendingApprovals >= 4 ? 'warning' : 'success'">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+            <p class="fc-kpi-label" style="margin:0;">Pending approvals</p>
+            <AlertOctagon :size="16" style="opacity:0.7;" :style="{ color: metrics.pendingApprovals >= 10 ? 'var(--fc-error)' : metrics.pendingApprovals >= 4 ? 'var(--fc-warning)' : 'var(--fc-success)' }" />
+          </div>
           <p class="fc-kpi-value">{{ metrics.pendingApprovals }}</p>
+          <p class="fc-kpi-sub">{{ approvalQueueHealth.label }}</p>
         </article>
-        <article class="fc-card">
-          <p class="fc-kpi-label">Blocked tasks</p>
+
+        <article class="fc-kpi-card" :data-highlight="metrics.blockedTasks > 5 ? 'error' : metrics.blockedTasks > 0 ? 'warning' : 'success'">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+            <p class="fc-kpi-label" style="margin:0;">Blocked tasks</p>
+            <ListChecks :size="16" style="opacity:0.7;" :style="{ color: metrics.blockedTasks > 5 ? 'var(--fc-error)' : 'var(--fc-warning)' }" />
+          </div>
           <p class="fc-kpi-value">{{ metrics.blockedTasks }}</p>
+          <p class="fc-kpi-sub">{{ blockedRatioPercent }} of total</p>
         </article>
-        <article class="fc-card">
-          <p class="fc-kpi-label">Blocked ratio</p>
-          <p class="fc-kpi-value">{{ blockedRatioPercent }}</p>
-        </article>
-        <article class="fc-card">
-          <p class="fc-kpi-label">Approval latency (min)</p>
+
+        <article class="fc-kpi-card" data-highlight="info">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+            <p class="fc-kpi-label" style="margin:0;">Approval latency</p>
+            <Clock :size="16" style="color:var(--fc-info);opacity:0.7;" />
+          </div>
           <p class="fc-kpi-value">{{ metrics.approvalLatencyMinutes }}</p>
+          <p class="fc-kpi-sub">min average</p>
         </article>
-        <article class="fc-card">
-          <p class="fc-kpi-label">Done in 24h</p>
+
+        <article class="fc-kpi-card" data-highlight="success">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+            <p class="fc-kpi-label" style="margin:0;">Done in 24h</p>
+            <CheckCircle2 :size="16" style="color:var(--fc-success);opacity:0.7;" />
+          </div>
           <p class="fc-kpi-value">{{ metrics.throughputDoneLast24h }}</p>
+          <p class="fc-kpi-sub">tasks completed</p>
         </article>
-        <article class="fc-card">
-          <p class="fc-kpi-label">Tasks today</p>
+
+        <article class="fc-kpi-card" data-highlight="primary">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+            <p class="fc-kpi-label" style="margin:0;">Tasks today</p>
+            <TrendingUp :size="16" style="color:var(--fc-primary);opacity:0.7;" />
+          </div>
           <p class="fc-kpi-value">{{ metrics.tasksToday }}</p>
+          <p class="fc-kpi-sub">created today</p>
         </article>
-        <article class="fc-card">
-          <p class="fc-kpi-label">Token usage</p>
+
+        <article class="fc-kpi-card" data-highlight="info">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+            <p class="fc-kpi-label" style="margin:0;">Token usage</p>
+            <Zap :size="16" style="color:var(--fc-info);opacity:0.7;" />
+          </div>
           <p class="fc-kpi-value">{{ metrics.tokenUsageToday }}</p>
+          <p class="fc-kpi-sub">tokens today</p>
+        </article>
+
+        <article class="fc-kpi-card" data-highlight="success">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
+            <p class="fc-kpi-label" style="margin:0;">Throughput</p>
+            <BarChart2 :size="16" style="color:var(--fc-success);opacity:0.7;" />
+          </div>
+          <p class="fc-kpi-value">{{ Math.round(metrics.blockedRatio * 100) }}%</p>
+          <p class="fc-kpi-sub">blocked ratio</p>
         </article>
       </div>
 
+      <!-- ── Two-col ──────────────────────────────────── -->
       <div class="fc-content-two-col">
+        <!-- Recent tasks -->
         <article class="fc-card">
-          <h4>Recent tasks</h4>
+          <div class="fc-section-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <Activity :size="14" style="color:var(--fc-text-muted);" />
+              <h4 style="margin:0;">Recent tasks</h4>
+            </div>
+            <RouterLink class="fc-btn-ghost fc-btn-sm" to="/tasks">
+              All <ChevronRight :size="12" />
+            </RouterLink>
+          </div>
           <ul v-if="recentTasks.length > 0" class="fc-list">
             <li v-for="task in recentTasks" :key="task.id" class="fc-list-item">
-              <div>
+              <div class="fc-list-item-content">
                 <strong>{{ task.title }}</strong>
-                <p class="fc-list-meta">{{ task.projectId }} · {{ formatTimestamp(task.updatedAt) }}</p>
+                <p class="fc-list-meta">{{ task.projectId }} · {{ formatRelative(task.updatedAt) }}</p>
               </div>
-              <span class="fc-status">{{ task.status }}</span>
+              <span class="fc-badge" :data-status="task.status">{{ task.status }}</span>
             </li>
           </ul>
-          <p v-else class="fc-list-meta" style="margin: 0">No tasks recorded for this view yet.</p>
+          <div v-else class="fc-empty" style="padding:24px;border:none;">
+            <p style="margin:0;font-size:0.8125rem;">No tasks recorded yet.</p>
+          </div>
         </article>
 
+        <!-- Governance events -->
         <article class="fc-card">
-          <h4>Latest governance events</h4>
+          <div class="fc-section-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <ShieldCheck :size="14" style="color:var(--fc-text-muted);" />
+              <h4 style="margin:0;">Governance events</h4>
+            </div>
+            <RouterLink class="fc-btn-ghost fc-btn-sm" to="/audit">
+              Audit log <ChevronRight :size="12" />
+            </RouterLink>
+          </div>
           <ul v-if="latestAudit.length > 0" class="fc-list">
             <li v-for="event in latestAudit" :key="event.id" class="fc-list-item">
-              <div>
+              <div class="fc-list-item-content">
                 <strong>{{ event.action }}</strong>
-                <p class="fc-list-meta">{{ event.actorId }} · {{ formatTimestamp(event.createdAt) }}</p>
+                <p class="fc-list-meta">{{ event.actorId }} · {{ formatRelative(event.createdAt) }}</p>
               </div>
-              <span class="fc-status">audit</span>
+              <span class="fc-badge fc-badge-info">audit</span>
             </li>
           </ul>
-          <p v-else class="fc-list-meta" style="margin: 0">No governance events captured yet.</p>
+          <div v-else class="fc-empty" style="padding:24px;border:none;">
+            <p style="margin:0;font-size:0.8125rem;">No governance events yet.</p>
+          </div>
         </article>
       </div>
     </template>
   </section>
 </template>
+
+<style scoped>
+@keyframes spin { to { transform: rotate(360deg); } }
+.fc-spin { animation: spin 1s linear infinite; }
+.fc-badge-info { background: color-mix(in srgb,var(--fc-info) 10%,var(--fc-surface)); border-color: color-mix(in srgb,var(--fc-info) 30%,var(--fc-border-subtle)); color: var(--fc-info); }
+</style>

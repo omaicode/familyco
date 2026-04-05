@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Construction } from 'lucide-vue-next';
+
 defineProps<{
   title: string;
   description: string;
@@ -15,7 +17,9 @@ defineProps<{
     </div>
 
     <div class="fc-empty">
-      <p>This page skeleton is ready. Next step is wiring dedicated components and actions.</p>
+      <Construction :size="36" class="fc-empty-icon" />
+      <h4>Coming soon</h4>
+      <p>This section is being built. Check back soon.</p>
     </div>
   </section>
 </template>

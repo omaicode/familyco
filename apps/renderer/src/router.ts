@@ -10,6 +10,7 @@ import SetupPage from './views/SetupPage.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
+  scrollBehavior: () => ({ top: 0, behavior: 'smooth' }),
   routes: [
     {
       path: '/',
