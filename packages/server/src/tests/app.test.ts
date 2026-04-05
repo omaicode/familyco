@@ -205,6 +205,77 @@ test('L2 JWT is blocked by RBAC on L0 route', async () => {
   await app.close();
 });
 
+test('L1 mutation creates approval request when approval is required', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const createL1AgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'L1 PM',
+      role: 'Project Manager',
+      level: 'L1',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createL1AgentResponse.statusCode, 201);
+  const l1Agent = createL1AgentResponse.json() as { id: string };
+
+  const tokenResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/token',
+    payload: {
+      apiKey: TEST_API_KEY,
+      agentId: l1Agent.id
+    }
+  });
+
+  assert.equal(tokenResponse.statusCode, 200);
+  const token = (tokenResponse.json() as { token: string }).token;
+
+  const createProjectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      authorization: `Bearer ${token}`
+    },
+    payload: {
+      name: 'Needs Approval',
+      description: 'L1 create project should require approval',
+      ownerAgentId: l1Agent.id
+    }
+  });
+
+  assert.equal(createProjectResponse.statusCode, 202);
+  const approvalPayload = createProjectResponse.json() as {
+    approvalRequired: boolean;
+    approvalRequestId?: string;
+  };
+  assert.equal(approvalPayload.approvalRequired, true);
+  assert.equal(typeof approvalPayload.approvalRequestId, 'string');
+
+  const approvalsResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/approvals',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(approvalsResponse.statusCode, 200);
+  const approvals = approvalsResponse.json() as Array<{ action: string; status: string }>;
+  assert.equal(
+    approvals.some((approval) => approval.action === 'project.create' && approval.status === 'pending'),
+    true
+  );
+
+  await app.close();
+});
+
 test('agent + project + task flow works with in-memory repositories', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 

@@ -22,7 +22,15 @@ export class BullMqQueueService implements QueueService {
   }
 
   async enqueue(job: AnyQueueJob): Promise<void> {
-    await this.queue.add(job.type, job.payload);
+    await this.queue.add(job.type, job.payload, {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 1_000
+      },
+      removeOnComplete: 100,
+      removeOnFail: 200
+    });
   }
 
   async listPendingJobs(): Promise<Array<Job>> {

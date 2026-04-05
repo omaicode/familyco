@@ -1,5 +1,6 @@
 import type { ApprovalMode, ApprovalGuard } from '../approval/index.js';
-import type { ToolExecutor } from './tool-executor.js';
+import { InMemoryMemoryService, type MemoryEntry, type MemoryService } from '../memory/index.js';
+import type { ToolExecutionResult, ToolExecutor } from './tool-executor.js';
 
 export interface AgentRunRequest {
   agentId: string;
@@ -11,13 +12,35 @@ export interface AgentRunRequest {
   input: string;
 }
 
+export interface AgentRunResult {
+  status: 'completed' | 'blocked';
+  agentId: string;
+  action: string;
+  toolName: string;
+  output?: ToolExecutionResult;
+  reason?: string;
+  memorySnapshot?: MemoryEntry[];
+}
+
 export class AgentRunner {
   constructor(
     private readonly approvalGuard: ApprovalGuard,
-    private readonly toolExecutor: ToolExecutor
+    private readonly toolExecutor: ToolExecutor,
+    private readonly memoryService: MemoryService = new InMemoryMemoryService()
   ) {}
 
-  async run(request: AgentRunRequest): Promise<unknown> {
+  async run(request: AgentRunRequest): Promise<AgentRunResult> {
+    await this.memoryService.add({
+      agentId: request.agentId,
+      role: 'input',
+      content: request.input,
+      metadata: {
+        action: request.action,
+        toolName: request.toolName,
+        toolArguments: request.toolArguments
+      }
+    });
+
     const decision = this.approvalGuard.check(request.approvalMode, {
       actorId: request.agentId,
       action: request.action,
@@ -29,12 +52,48 @@ export class AgentRunner {
     });
 
     if (!decision.allowed) {
-      throw new Error(`APPROVAL_REQUIRED:${decision.reason ?? request.action}`);
+      await this.memoryService.add({
+        agentId: request.agentId,
+        role: 'system',
+        content: decision.reason ?? request.action,
+        metadata: {
+          status: 'blocked'
+        }
+      });
+
+      return {
+        status: 'blocked',
+        agentId: request.agentId,
+        action: request.action,
+        toolName: request.toolName,
+        reason: decision.reason ?? request.action,
+        memorySnapshot: await this.memoryService.listRecent(request.agentId, 20)
+      };
     }
 
-    return this.toolExecutor.execute({
+    const output = await this.toolExecutor.execute({
       toolName: request.toolName,
       arguments: request.toolArguments
     });
+
+    await this.memoryService.add({
+      agentId: request.agentId,
+      role: 'tool_output',
+      content: output.ok ? 'Tool execution completed' : 'Tool execution failed',
+      metadata: {
+        toolName: output.toolName,
+        ok: output.ok,
+        error: output.error
+      }
+    });
+
+    return {
+      status: 'completed',
+      agentId: request.agentId,
+      action: request.action,
+      toolName: request.toolName,
+      output,
+      memorySnapshot: await this.memoryService.listRecent(request.agentId, 20)
+    };
   }
 }

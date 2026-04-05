@@ -1,7 +1,8 @@
-import type { AuditService, TaskService } from '@familyco/core';
+import { ApprovalGuard, type ApprovalService, type AuditService, type TaskService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
+import { ensureApproval } from '../shared/approval-flow.js';
 import {
   createTaskSchema,
   listTasksQuerySchema,
@@ -11,7 +12,9 @@ import {
 
 export interface TaskModuleDeps {
   taskService: TaskService;
+  approvalService: ApprovalService;
   auditService: AuditService;
+  approvalGuard: ApprovalGuard;
 }
 
 export function registerTaskController(app: FastifyInstance, deps: TaskModuleDeps): void {
@@ -24,6 +27,38 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
   app.post('/tasks', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = createTaskSchema.parse(request.body);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'task.create',
+      targetId: body.projectId,
+      payload: {
+        assigneeAgentId: body.assigneeAgentId,
+        createdBy: body.createdBy,
+        title: body.title
+      }
+    });
+
+    if (!approval.allowed) {
+      await deps.auditService.write({
+        actorId: request.authContext?.subject ?? body.createdBy,
+        action: 'approval.request.create',
+        targetId: approval.request.id,
+        payload: {
+          approvalAction: 'task.create'
+        }
+      });
+
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
+
     const task = await deps.taskService.createTask(body);
     await deps.auditService.write({
       actorId: body.createdBy,
@@ -38,10 +73,31 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     return task;
   });
 
-  app.post('/tasks/:id/status', async (request) => {
+  app.post('/tasks/:id/status', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const { id } = updateTaskStatusParamsSchema.parse(request.params);
     const { status } = updateTaskStatusBodySchema.parse(request.body);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'task.status.update',
+      targetId: id,
+      payload: {
+        status
+      }
+    });
+
+    if (!approval.allowed) {
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
+
     const updatedTask = await deps.taskService.updateTaskStatus(id, status);
     await deps.auditService.write({
       actorId: request.authContext?.subject ?? 'system',

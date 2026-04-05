@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import websocket from '@fastify/websocket';
 import {
   AgentRunner,
   AgentService,
@@ -24,6 +25,7 @@ import { registerAuditController } from './modules/audit/index.js';
 import { registerEngineController } from './modules/engine/index.js';
 import { registerProjectController } from './modules/project/index.js';
 import { registerTaskController } from './modules/task/index.js';
+import { registerEventGateway } from './ws/ws-gateway.js';
 import { ApiKeyService } from './modules/auth/api-key.service.js';
 import {
   authenticateApiRequest,
@@ -75,6 +77,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
 
   registerAuthPlugin(app);
+  app.register(websocket);
 
   const repositoryDriver =
     options.repositoryDriver ??
@@ -134,12 +137,54 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         createAgentRunWorker({
           queueName,
           redisUrl,
-          agentRunner
+          agentRunner,
+          onCompleted: async (job, result) => {
+            await auditService.write({
+              actorId: job.data.request.agentId,
+              action: 'engine.agent.run.completed',
+              targetId: job.data.request.agentId,
+              payload: {
+                status: result?.status,
+                toolName: job.data.request.toolName
+              }
+            });
+          },
+          onFailed: async (job, error) => {
+            await auditService.write({
+              actorId: job.data.request.agentId,
+              action: 'engine.agent.run.failed',
+              targetId: job.data.request.agentId,
+              payload: {
+                toolName: job.data.request.toolName,
+                message: error.message
+              }
+            });
+          }
         }),
         createToolCallWorker({
           queueName,
           redisUrl,
-          toolExecutor
+          toolExecutor,
+          onCompleted: async (job, result) => {
+            await auditService.write({
+              actorId: 'system',
+              action: 'engine.tool.run.completed',
+              payload: {
+                toolName: job.data.input.toolName,
+                result
+              }
+            });
+          },
+          onFailed: async (job, error) => {
+            await auditService.write({
+              actorId: 'system',
+              action: 'engine.tool.run.failed',
+              payload: {
+                toolName: job.data.input.toolName,
+                message: error.message
+              }
+            });
+          }
         })
       );
     }
@@ -168,12 +213,33 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       await authenticateApiRequest(request, reply, apiKeyService);
     });
 
-    registerAgentController(api, { agentService, auditService });
     registerApprovalController(api, { approvalService, auditService });
     registerAuditController(api, { auditService });
-    registerEngineController(api, { queueService, auditService });
-    registerProjectController(api, { projectService, auditService });
-    registerTaskController(api, { taskService, auditService });
+    registerEngineController(api, {
+      queueService,
+      auditService,
+      approvalService,
+      approvalGuard
+    });
+    registerProjectController(api, {
+      projectService,
+      approvalService,
+      auditService,
+      approvalGuard
+    });
+    registerTaskController(api, {
+      taskService,
+      approvalService,
+      auditService,
+      approvalGuard
+    });
+    registerAgentController(api, {
+      agentService,
+      approvalService,
+      auditService,
+      approvalGuard
+    });
+    registerEventGateway(api, { eventBus });
   }, { prefix: '/api/v1' });
 
   app.setErrorHandler((error, _request, reply) => {

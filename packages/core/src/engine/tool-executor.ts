@@ -3,6 +3,16 @@ export interface ToolExecutionInput {
   arguments: Record<string, unknown>;
 }
 
+export interface ToolExecutionResult {
+  ok: boolean;
+  toolName: string;
+  output?: unknown;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
 export interface ToolExecutor {
-  execute(input: ToolExecutionInput): Promise<unknown>;
+  execute(input: ToolExecutionInput): Promise<ToolExecutionResult>;
 }

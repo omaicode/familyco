@@ -1,12 +1,15 @@
-import type { AuditService, QueueService } from '@familyco/core';
+import { ApprovalGuard, type ApprovalService, type AuditService, type QueueService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
+import { ensureApproval } from '../shared/approval-flow.js';
 import { enqueueAgentRunSchema, enqueueToolRunSchema } from './engine.schema.js';
 
 export interface EngineModuleDeps {
   queueService: QueueService;
   auditService: AuditService;
+  approvalService: ApprovalService;
+  approvalGuard: ApprovalGuard;
 }
 
 export function registerEngineController(app: FastifyInstance, deps: EngineModuleDeps): void {
@@ -23,6 +26,36 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
   app.post('/engine/agent-runs', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = enqueueAgentRunSchema.parse(request.body);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'engine.agent.run.enqueue',
+      targetId: body.agentId,
+      payload: {
+        toolName: body.toolName,
+        action: body.action
+      }
+    });
+
+    if (!approval.allowed) {
+      await deps.auditService.write({
+        actorId: request.authContext?.subject ?? body.agentId,
+        action: 'approval.request.create',
+        targetId: approval.request.id,
+        payload: {
+          approvalAction: 'engine.agent.run.enqueue'
+        }
+      });
+
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
 
     await deps.queueService.enqueue({
       type: 'agent.run',
@@ -51,6 +84,34 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
   app.post('/engine/tool-runs', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = enqueueToolRunSchema.parse(request.body);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'engine.tool.run.enqueue',
+      payload: {
+        toolName: body.toolName
+      }
+    });
+
+    if (!approval.allowed) {
+      await deps.auditService.write({
+        actorId: request.authContext?.subject ?? 'system',
+        action: 'approval.request.create',
+        targetId: approval.request.id,
+        payload: {
+          approvalAction: 'engine.tool.run.enqueue'
+        }
+      });
+
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
 
     await deps.queueService.enqueue({
       type: 'tool.execute',
