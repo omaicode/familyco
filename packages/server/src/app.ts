@@ -15,9 +15,15 @@ import {
 import { prismaClient } from './db/prisma-client.js';
 import { registerAgentController } from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
+import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
 import { registerProjectController } from './modules/project/index.js';
 import { registerTaskController } from './modules/task/index.js';
+import {
+  authenticateApiRequest,
+  getAuthApiKey,
+  registerAuthPlugin
+} from './plugins/auth.plugin.js';
 import {
   InMemoryAgentRepository,
   InMemoryApprovalRepository,
@@ -36,14 +42,18 @@ export type RepositoryDriver = 'memory' | 'prisma';
 export interface CreateAppOptions {
   logger?: boolean;
   repositoryDriver?: RepositoryDriver;
+  authApiKey?: string;
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const app = Fastify({ logger: options.logger ?? true });
+  registerAuthPlugin(app);
+
   const repositoryDriver =
     options.repositoryDriver ??
     (process.env.FAMILYCO_REPOSITORY_DRIVER as RepositoryDriver | undefined) ??
     'memory';
+  const authApiKey = options.authApiKey ?? getAuthApiKey();
 
   const { agentRepository, approvalRepository, auditRepository, projectRepository, taskRepository } =
     createRepositories(repositoryDriver);
@@ -60,6 +70,15 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
 
   app.register(async (api) => {
+    registerAuthController(api, {
+      expectedApiKey: authApiKey,
+      signToken: (subject) => api.jwt.sign({ sub: subject })
+    });
+
+    api.addHook('preHandler', async (request, reply) => {
+      await authenticateApiRequest(request, reply, authApiKey);
+    });
+
     registerAgentController(api, { agentService, auditService });
     registerApprovalController(api, { approvalService, auditService });
     registerAuditController(api, { auditService });
@@ -70,9 +89,13 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   app.setErrorHandler((error, _request, reply) => {
     const message = error instanceof Error ? error.message : 'Internal server error';
     const [code] = message.split(':');
+    const statusCode =
+      typeof (error as { statusCode?: number }).statusCode === 'number'
+        ? (error as { statusCode: number }).statusCode
+        : 400;
 
-    reply.code(400).send({
-      statusCode: 400,
+    reply.code(statusCode).send({
+      statusCode,
       code,
       message
     });

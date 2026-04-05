@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 
 import { createApp } from '../app.js';
 
+const TEST_API_KEY = 'test-api-key';
+
 test('GET /health returns ok', async () => {
-  const app = createApp({ logger: false, repositoryDriver: 'memory' });
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 
   const response = await app.inject({
     method: 'GET',
@@ -17,12 +19,49 @@ test('GET /health returns ok', async () => {
   await app.close();
 });
 
+test('API rejects unauthorized requests and allows JWT access', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const unauthorizedResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/agents'
+  });
+
+  assert.equal(unauthorizedResponse.statusCode, 401);
+
+  const tokenResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/token',
+    payload: {
+      apiKey: TEST_API_KEY
+    }
+  });
+
+  assert.equal(tokenResponse.statusCode, 200);
+  const tokenPayload = tokenResponse.json() as { token: string };
+
+  const authorizedResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/agents',
+    headers: {
+      authorization: `Bearer ${tokenPayload.token}`
+    }
+  });
+
+  assert.equal(authorizedResponse.statusCode, 200);
+
+  await app.close();
+});
+
 test('agent + project + task flow works with in-memory repositories', async () => {
-  const app = createApp({ logger: false, repositoryDriver: 'memory' });
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 
   const createAgentResponse = await app.inject({
     method: 'POST',
     url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
     payload: {
       name: 'Chief of Staff',
       role: 'Executive',
@@ -37,6 +76,9 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const createProjectResponse = await app.inject({
     method: 'POST',
     url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
     payload: {
       name: 'Project One',
       description: 'Testing vertical slice',
@@ -50,6 +92,9 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const createTaskResponse = await app.inject({
     method: 'POST',
     url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
     payload: {
       title: 'Create first task',
       description: 'Task for integration test',
@@ -64,6 +109,9 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const updateToInProgressResponse = await app.inject({
     method: 'POST',
     url: `/api/v1/tasks/${task.id}/status`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
     payload: {
       status: 'in_progress'
     }
@@ -74,6 +122,9 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const invalidTransitionResponse = await app.inject({
     method: 'POST',
     url: `/api/v1/tasks/${task.id}/status`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
     payload: {
       status: 'done'
     }
@@ -86,6 +137,9 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const createApprovalResponse = await app.inject({
     method: 'POST',
     url: '/api/v1/approvals',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
     payload: {
       actorId: agent.id,
       action: 'task.publish',
@@ -103,6 +157,9 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const decideApprovalResponse = await app.inject({
     method: 'POST',
     url: `/api/v1/approvals/${approvalRequest.id}/decision`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
     payload: {
       status: 'approved'
     }
@@ -115,6 +172,9 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const duplicateDecisionResponse = await app.inject({
     method: 'POST',
     url: `/api/v1/approvals/${approvalRequest.id}/decision`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
     payload: {
       status: 'rejected'
     }
@@ -125,7 +185,10 @@ test('agent + project + task flow works with in-memory repositories', async () =
 
   const listAuditResponse = await app.inject({
     method: 'GET',
-    url: '/api/v1/audit'
+    url: '/api/v1/audit',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
   });
 
   assert.equal(listAuditResponse.statusCode, 200);
@@ -149,7 +212,10 @@ test('agent + project + task flow works with in-memory repositories', async () =
 
   const filteredAuditResponse = await app.inject({
     method: 'GET',
-    url: '/api/v1/audit?action=task.create'
+    url: '/api/v1/audit?action=task.create',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
   });
 
   assert.equal(filteredAuditResponse.statusCode, 200);
@@ -159,7 +225,10 @@ test('agent + project + task flow works with in-memory repositories', async () =
 
   const paginatedAuditResponse = await app.inject({
     method: 'GET',
-    url: '/api/v1/audit?offset=2&limit=2'
+    url: '/api/v1/audit?offset=2&limit=2',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
   });
 
   assert.equal(paginatedAuditResponse.statusCode, 200);
@@ -169,6 +238,41 @@ test('agent + project + task flow works with in-memory repositories', async () =
     paginatedAuditRecords.map((record) => record.action),
     ['task.create', 'task.status.update']
   );
+
+  await app.close();
+});
+
+test('prisma driver creates agent and audit records when enabled', { skip: process.env.RUN_PRISMA_TESTS !== '1' }, async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'prisma', authApiKey: TEST_API_KEY });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: `Prisma Test Agent ${Date.now()}`,
+      role: 'Ops',
+      level: 'L1',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const createdAgent = createAgentResponse.json() as { id: string };
+
+  const listAuditResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/audit?action=agent.create&limit=20',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(listAuditResponse.statusCode, 200);
+  const auditRecords = listAuditResponse.json() as Array<{ targetId?: string }>;
+  assert.equal(auditRecords.some((record) => record.targetId === createdAgent.id), true);
 
   await app.close();
 });

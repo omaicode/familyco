@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
 	provider = "sqlite"
+	url      = env("DATABASE_URL")
 }
 
 model Agent {
@@ -24,7 +25,6 @@ model Agent {
 	assignedTasks    Task[]            @relation("TaskAssignee")
 	createdTasks     Task[]            @relation("TaskCreator")
 	approvalRequests ApprovalRequest[] @relation("ApprovalActor")
-	auditLogs        AuditLog[]        @relation("AuditActor")
 }
 
 model Project {
@@ -78,8 +78,6 @@ model AuditLog {
 	targetId  String?
 	payload   Json?
 	createdAt DateTime @default(now())
-
-	actor Agent @relation("AuditActor", fields: [actorId], references: [id])
 }
 
 model Settings {
