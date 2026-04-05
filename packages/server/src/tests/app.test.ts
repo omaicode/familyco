@@ -123,5 +123,52 @@ test('agent + project + task flow works with in-memory repositories', async () =
   assert.equal(duplicateDecisionResponse.statusCode, 400);
   assert.equal(duplicateDecisionResponse.json().code, 'APPROVAL_ALREADY_DECIDED');
 
+  const listAuditResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/audit'
+  });
+
+  assert.equal(listAuditResponse.statusCode, 200);
+  const auditRecords = listAuditResponse.json() as Array<{
+    action: string;
+    targetId?: string;
+  }>;
+
+  assert.equal(auditRecords.length, 6);
+  assert.deepEqual(auditRecords.map((record) => record.action), [
+    'agent.create',
+    'project.create',
+    'task.create',
+    'task.status.update',
+    'approval.request.create',
+    'approval.request.decide'
+  ]);
+
+  const approvedAudit = auditRecords.find((record) => record.action === 'approval.request.decide');
+  assert.equal(approvedAudit?.targetId, approvalRequest.id);
+
+  const filteredAuditResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/audit?action=task.create'
+  });
+
+  assert.equal(filteredAuditResponse.statusCode, 200);
+  const filteredAuditRecords = filteredAuditResponse.json() as Array<{ action: string }>;
+  assert.equal(filteredAuditRecords.length, 1);
+  assert.equal(filteredAuditRecords[0]?.action, 'task.create');
+
+  const paginatedAuditResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/audit?offset=2&limit=2'
+  });
+
+  assert.equal(paginatedAuditResponse.statusCode, 200);
+  const paginatedAuditRecords = paginatedAuditResponse.json() as Array<{ action: string }>;
+  assert.equal(paginatedAuditRecords.length, 2);
+  assert.deepEqual(
+    paginatedAuditRecords.map((record) => record.action),
+    ['task.create', 'task.status.update']
+  );
+
   await app.close();
 });

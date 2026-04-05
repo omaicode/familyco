@@ -1,4 +1,4 @@
-import type { TaskService } from '@familyco/core';
+import type { AuditService, TaskService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import {
@@ -10,6 +10,7 @@ import {
 
 export interface TaskModuleDeps {
   taskService: TaskService;
+  auditService: AuditService;
 }
 
 export function registerTaskController(app: FastifyInstance, deps: TaskModuleDeps): void {
@@ -21,6 +22,14 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
   app.post('/tasks', async (request, reply) => {
     const body = createTaskSchema.parse(request.body);
     const task = await deps.taskService.createTask(body);
+    await deps.auditService.write({
+      actorId: body.createdBy,
+      action: 'task.create',
+      targetId: task.id,
+      payload: {
+        projectId: task.projectId
+      }
+    });
 
     reply.code(201);
     return task;
@@ -29,7 +38,16 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
   app.post('/tasks/:id/status', async (request) => {
     const { id } = updateTaskStatusParamsSchema.parse(request.params);
     const { status } = updateTaskStatusBodySchema.parse(request.body);
+    const updatedTask = await deps.taskService.updateTaskStatus(id, status);
+    await deps.auditService.write({
+      actorId: 'system',
+      action: 'task.status.update',
+      targetId: updatedTask.id,
+      payload: {
+        status: updatedTask.status
+      }
+    });
 
-    return deps.taskService.updateTaskStatus(id, status);
+    return updatedTask;
   });
 }
