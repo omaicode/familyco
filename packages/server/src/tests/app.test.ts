@@ -276,6 +276,124 @@ test('L1 mutation creates approval request when approval is required', async () 
   await app.close();
 });
 
+test('P1 routes: setup, hierarchy, settings, inbox flow works', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const setupResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/setup/initialize',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      companyName: 'FamilyCo Test',
+      departments: ['Operations', 'Research']
+    }
+  });
+
+  assert.equal(setupResponse.statusCode, 201);
+  const setupPayload = setupResponse.json() as {
+    executiveAgent: { id: string };
+    departmentAgents: Array<{ id: string; parentAgentId: string | null }>;
+  };
+  assert.equal(setupPayload.departmentAgents.length, 2);
+
+  const l0Id = setupPayload.executiveAgent.id;
+  const firstL1Id = setupPayload.departmentAgents[0]?.id as string;
+
+  const childrenResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/agents/${l0Id}/children`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(childrenResponse.statusCode, 200);
+  const children = childrenResponse.json() as Array<{ id: string }>;
+  assert.equal(children.length >= 2, true);
+
+  const pathResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/agents/${firstL1Id}/path`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(pathResponse.statusCode, 200);
+  const path = pathResponse.json() as Array<{ id: string }>;
+  assert.equal(path.length, 2);
+  assert.equal(path[0]?.id, l0Id);
+
+  const settingsUpsertResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/settings',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      key: 'provider.defaultModel',
+      value: 'gpt-5.3-codex'
+    }
+  });
+
+  assert.equal(settingsUpsertResponse.statusCode, 201);
+
+  const settingsListResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/settings',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(settingsListResponse.statusCode, 200);
+  const settingsList = settingsListResponse.json() as Array<{ key: string }>;
+  assert.equal(settingsList.some((setting) => setting.key === 'provider.defaultModel'), true);
+
+  const createApprovalResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/approvals',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      actorId: firstL1Id,
+      action: 'task.publish',
+      targetId: 'task-1'
+    }
+  });
+
+  assert.equal(createApprovalResponse.statusCode, 201);
+
+  const inboxResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/inbox?recipientId=founder',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(inboxResponse.statusCode, 200);
+  const inboxItems = inboxResponse.json() as Array<{ id: string; type: string; status: string }>;
+  assert.equal(inboxItems.length > 0, true);
+  const firstInboxItem = inboxItems[0];
+
+  const readResponse = await app.inject({
+    method: 'POST',
+    url: `/api/v1/inbox/${firstInboxItem?.id}/read`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(readResponse.statusCode, 200);
+  assert.equal(readResponse.json().status, 'read');
+
+  await app.close();
+});
+
 test('agent + project + task flow works with in-memory repositories', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 

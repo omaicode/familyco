@@ -68,6 +68,10 @@ class InMemoryAgentRepositoryStub implements AgentRepository {
     return Array.from(this.agents.values());
   }
 
+  async findChildren(parentAgentId: string): Promise<AgentProfile[]> {
+    return Array.from(this.agents.values()).filter((agent) => agent.parentAgentId === parentAgentId);
+  }
+
   async pause(id: string): Promise<AgentProfile> {
     const existing = this.agents.get(id);
     if (!existing) {
@@ -82,5 +86,20 @@ class InMemoryAgentRepositoryStub implements AgentRepository {
 
     this.agents.set(id, paused);
     return paused;
+  }
+
+  async updateParent(id: string, parentAgentId: string | null): Promise<AgentProfile> {
+    const existing = this.agents.get(id);
+    if (!existing) {
+      throw new Error(`AGENT_NOT_FOUND:${id}`);
+    }
+
+    const updated: AgentProfile = {
+      ...existing,
+      parentAgentId,
+      updatedAt: new Date('2026-01-03T00:00:00.000Z')
+    };
+    this.agents.set(id, updated);
+    return updated;
   }
 }

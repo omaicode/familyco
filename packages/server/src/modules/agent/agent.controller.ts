@@ -3,7 +3,12 @@ import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { ensureApproval } from '../shared/approval-flow.js';
-import { createAgentSchema, pauseAgentParamsSchema } from './agent.schema.js';
+import {
+  createAgentSchema,
+  pauseAgentParamsSchema,
+  updateParentBodySchema,
+  updateParentParamsSchema
+} from './agent.schema.js';
 
 export interface AgentModuleDeps {
   agentService: AgentService;
@@ -102,5 +107,34 @@ export function registerAgentController(app: FastifyInstance, deps: AgentModuleD
     });
 
     return pausedAgent;
+  });
+
+  app.get('/agents/:id/children', async (request) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+    return deps.agentService.getChildren(id);
+  });
+
+  app.get('/agents/:id/path', async (request) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+    return deps.agentService.getPath(id);
+  });
+
+  app.patch('/agents/:id/parent', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = updateParentParamsSchema.parse(request.params);
+    const body = updateParentBodySchema.parse(request.body);
+    const updated = await deps.agentService.updateParent(id, body.parentAgentId);
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'agent.parent.update',
+      targetId: updated.id,
+      payload: {
+        parentAgentId: updated.parentAgentId
+      }
+    });
+
+    return updated;
   });
 }

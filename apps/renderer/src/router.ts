@@ -4,6 +4,8 @@ import AgentsPage from './views/AgentsPage.vue';
 import DashboardPage from './views/DashboardPage.vue';
 import InboxPage from './views/InboxPage.vue';
 import PlaceholderPage from './views/PlaceholderPage.vue';
+import SettingsPage from './views/SettingsPage.vue';
+import SetupPage from './views/SetupPage.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -19,11 +21,8 @@ export const router = createRouter({
     },
     {
       path: '/command',
-      component: PlaceholderPage,
-      props: {
-        title: 'Command Center',
-        description: 'Send high-level instructions to the executive agent.'
-      }
+      component: SetupPage,
+      meta: { title: 'Setup' }
     },
     {
       path: '/agents',
@@ -61,11 +60,8 @@ export const router = createRouter({
     },
     {
       path: '/settings',
-      component: PlaceholderPage,
-      props: {
-        title: 'Settings',
-        description: 'Manage provider, connection, and notification preferences.'
-      }
+      component: SettingsPage,
+      meta: { title: 'Settings' }
     }
   ]
 });

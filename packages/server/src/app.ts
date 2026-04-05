@@ -8,12 +8,16 @@ import {
   ApprovalService,
   AuditService,
   EventBus,
+  InboxService,
   ProjectService,
+  SettingsService,
   TaskService,
   type AgentRepository,
   type ApprovalRepository,
   type AuditRepository,
+  type InboxRepository,
   type ProjectRepository,
+  type SettingsRepository,
   type TaskRepository
 } from '@familyco/core';
 
@@ -23,9 +27,11 @@ import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
 import { registerEngineController } from './modules/engine/index.js';
+import { registerInboxController } from './modules/inbox/index.js';
 import { registerProjectController } from './modules/project/index.js';
+import { registerSettingsController } from './modules/settings/index.js';
+import { registerSetupController } from './modules/setup/index.js';
 import { registerTaskController } from './modules/task/index.js';
-import { registerEventGateway } from './ws/ws-gateway.js';
 import { ApiKeyService } from './modules/auth/api-key.service.js';
 import {
   authenticateApiRequest,
@@ -38,13 +44,16 @@ import {
   InMemoryApiKeyRepository,
   InMemoryApprovalRepository,
   InMemoryAuditRepository,
+  InMemoryInboxRepository,
   InMemoryProjectRepository,
+  InMemorySettingsRepository,
   InMemoryTaskRepository,
   PrismaAgentRepository,
   PrismaApiKeyRepository,
   PrismaApprovalRepository,
   PrismaAuditRepository,
   PrismaProjectRepository,
+  PrismaSettingsRepository,
   PrismaTaskRepository
 } from './repositories/index.js';
 import {
@@ -54,6 +63,7 @@ import {
   createToolCallWorker
 } from './queue/index.js';
 import { DefaultToolExecutor } from './tools/index.js';
+import { registerEventGateway } from './ws/ws-gateway.js';
 
 export type RepositoryDriver = 'memory' | 'prisma';
 export type QueueDriver = 'memory' | 'bullmq';
@@ -98,20 +108,25 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     apiKeyRepository,
     approvalRepository,
     auditRepository,
+    inboxRepository,
     projectRepository,
+    settingsRepository,
     taskRepository
-  } =
-    createRepositories(repositoryDriver);
+  } = createRepositories(repositoryDriver);
+
   const eventBus = new EventBus();
   const agentService = new AgentService(agentRepository, eventBus);
   const apiKeyService = new ApiKeyService(apiKeyRepository, authApiKeySalt);
   const approvalService = new ApprovalService(approvalRepository, eventBus);
   const auditService = new AuditService(auditRepository);
+  const inboxService = new InboxService(inboxRepository);
   const projectService = new ProjectService(projectRepository);
+  const settingsService = new SettingsService(settingsRepository);
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const toolExecutor = new DefaultToolExecutor();
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor);
+
   const queueService =
     queueDriver === 'bullmq'
       ? new BullMqQueueService({
@@ -148,6 +163,17 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
                 toolName: job.data.request.toolName
               }
             });
+
+            await inboxService.createMessage({
+              recipientId: 'founder',
+              senderId: job.data.request.agentId,
+              type: 'report',
+              title: `Agent run ${result?.status ?? 'completed'}`,
+              body: `Action ${job.data.request.action} processed by ${job.data.request.toolName}`,
+              payload: {
+                result
+              }
+            });
           },
           onFailed: async (job, error) => {
             await auditService.write({
@@ -157,6 +183,18 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
               payload: {
                 toolName: job.data.request.toolName,
                 message: error.message
+              }
+            });
+
+            await inboxService.createMessage({
+              recipientId: 'founder',
+              senderId: job.data.request.agentId,
+              type: 'alert',
+              title: 'Agent run failed',
+              body: error.message,
+              payload: {
+                action: job.data.request.action,
+                toolName: job.data.request.toolName
               }
             });
           }
@@ -195,52 +233,65 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     await queueService.close();
   });
 
-  app.get('/health', async () => {
-    return {
-      status: 'ok'
-    };
-  });
+  app.get('/health', async () => ({ status: 'ok' }));
 
-  app.register(async (api) => {
-    registerAuthController(api, {
-      apiKeyService,
-      agentService,
-      auditService,
-      signToken: (payload) => api.jwt.sign(payload)
-    });
+  app.register(
+    async (api) => {
+      registerAuthController(api, {
+        apiKeyService,
+        agentService,
+        auditService,
+        signToken: (payload) => api.jwt.sign(payload)
+      });
 
-    api.addHook('preHandler', async (request, reply) => {
-      await authenticateApiRequest(request, reply, apiKeyService);
-    });
+      api.addHook('preHandler', async (request, reply) => {
+        await authenticateApiRequest(request, reply, apiKeyService);
+      });
 
-    registerApprovalController(api, { approvalService, auditService });
-    registerAuditController(api, { auditService });
-    registerEngineController(api, {
-      queueService,
-      auditService,
-      approvalService,
-      approvalGuard
-    });
-    registerProjectController(api, {
-      projectService,
-      approvalService,
-      auditService,
-      approvalGuard
-    });
-    registerTaskController(api, {
-      taskService,
-      approvalService,
-      auditService,
-      approvalGuard
-    });
-    registerAgentController(api, {
-      agentService,
-      approvalService,
-      auditService,
-      approvalGuard
-    });
-    registerEventGateway(api, { eventBus });
-  }, { prefix: '/api/v1' });
+      registerAgentController(api, {
+        agentService,
+        approvalService,
+        auditService,
+        approvalGuard
+      });
+      registerApprovalController(api, {
+        approvalService,
+        auditService,
+        inboxService
+      });
+      registerAuditController(api, { auditService });
+      registerEngineController(api, {
+        queueService,
+        auditService,
+        approvalService,
+        approvalGuard
+      });
+      registerInboxController(api, { inboxService, auditService });
+      registerProjectController(api, {
+        projectService,
+        approvalService,
+        auditService,
+        approvalGuard
+      });
+      registerSettingsController(api, {
+        settingsService,
+        auditService
+      });
+      registerSetupController(api, {
+        agentService,
+        settingsService,
+        auditService
+      });
+      registerTaskController(api, {
+        taskService,
+        approvalService,
+        auditService,
+        approvalGuard
+      });
+      registerEventGateway(api, { eventBus });
+    },
+    { prefix: '/api/v1' }
+  );
 
   app.setErrorHandler((error, _request, reply) => {
     const message = error instanceof Error ? error.message : 'Internal server error';
@@ -260,7 +311,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   return app;
 }
 
-function createCorsOriginMatcher(): (origin: string | undefined, callback: (error: Error | null, allow: boolean) => void) => void {
+function createCorsOriginMatcher(): (
+  origin: string | undefined,
+  callback: (error: Error | null, allow: boolean) => void
+) => void {
   const configuredOrigins =
     process.env.CORS_ORIGINS?.split(',')
       .map((value) => value.trim())
@@ -286,7 +340,9 @@ function createRepositories(
   apiKeyRepository: import('./modules/auth/api-key.service.js').ApiKeyRepository;
   approvalRepository: ApprovalRepository;
   auditRepository: AuditRepository;
+  inboxRepository: InboxRepository;
   projectRepository: ProjectRepository;
+  settingsRepository: SettingsRepository;
   taskRepository: TaskRepository;
 } {
   if (repositoryDriver === 'prisma') {
@@ -295,7 +351,9 @@ function createRepositories(
       apiKeyRepository: new PrismaApiKeyRepository(prismaClient),
       approvalRepository: new PrismaApprovalRepository(prismaClient),
       auditRepository: new PrismaAuditRepository(prismaClient),
+      inboxRepository: new InMemoryInboxRepository(),
       projectRepository: new PrismaProjectRepository(prismaClient),
+      settingsRepository: new PrismaSettingsRepository(prismaClient),
       taskRepository: new PrismaTaskRepository(prismaClient)
     };
   }
@@ -305,7 +363,9 @@ function createRepositories(
     apiKeyRepository: new InMemoryApiKeyRepository(),
     approvalRepository: new InMemoryApprovalRepository(),
     auditRepository: new InMemoryAuditRepository(),
+    inboxRepository: new InMemoryInboxRepository(),
     projectRepository: new InMemoryProjectRepository(),
+    settingsRepository: new InMemorySettingsRepository(),
     taskRepository: new InMemoryTaskRepository()
   };
 }

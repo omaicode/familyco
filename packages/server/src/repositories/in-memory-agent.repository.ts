@@ -27,6 +27,10 @@ export class InMemoryAgentRepository implements AgentRepository {
     return this.agents.get(id) ?? null;
   }
 
+  async findChildren(parentAgentId: string): Promise<AgentProfile[]> {
+    return Array.from(this.agents.values()).filter((agent) => agent.parentAgentId === parentAgentId);
+  }
+
   async list(): Promise<AgentProfile[]> {
     return Array.from(this.agents.values());
   }
@@ -45,5 +49,21 @@ export class InMemoryAgentRepository implements AgentRepository {
 
     this.agents.set(id, updatedAgent);
     return updatedAgent;
+  }
+
+  async updateParent(id: string, parentAgentId: string | null): Promise<AgentProfile> {
+    const existing = this.agents.get(id);
+    if (!existing) {
+      throw new Error(`AGENT_NOT_FOUND:${id}`);
+    }
+
+    const updated: AgentProfile = {
+      ...existing,
+      parentAgentId,
+      updatedAt: new Date()
+    };
+
+    this.agents.set(id, updated);
+    return updated;
   }
 }

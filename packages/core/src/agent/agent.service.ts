@@ -32,4 +32,30 @@ export class AgentService {
     this.eventBus?.emit('agent.paused', { agentId: agent.id });
     return agent;
   }
+
+  getChildren(id: string): Promise<AgentProfile[]> {
+    return this.repository.findChildren(id);
+  }
+
+  async getPath(id: string): Promise<AgentProfile[]> {
+    const path: AgentProfile[] = [];
+    let current = await this.getAgentById(id);
+    path.unshift(current);
+
+    while (current.parentAgentId) {
+      const parent = await this.repository.findById(current.parentAgentId);
+      if (!parent) {
+        break;
+      }
+
+      path.unshift(parent);
+      current = parent;
+    }
+
+    return path;
+  }
+
+  updateParent(id: string, parentAgentId: string | null): Promise<AgentProfile> {
+    return this.repository.updateParent(id, parentAgentId);
+  }
 }

@@ -14,6 +14,14 @@ const decide = async (approvalId: string, status: 'approved' | 'rejected') => {
   });
 };
 
+const markRead = async (id: string) => {
+  await uiRuntime.stores.inbox.markRead(id);
+};
+
+const archive = async (id: string) => {
+  await uiRuntime.stores.inbox.archive({ id });
+};
+
 onMounted(async () => {
   await reload();
 });
@@ -41,6 +49,27 @@ onMounted(async () => {
     </div>
 
     <div v-else class="fc-content-two-col" style="margin-top: 0">
+      <article class="fc-card">
+        <h4>Messages</h4>
+        <ul class="fc-list" style="margin-bottom: 12px">
+          <li
+            v-for="message in uiRuntime.stores.inbox.state.data.messages"
+            :key="message.id"
+            class="fc-list-item"
+          >
+            <div>
+              <strong>{{ message.title }}</strong>
+              <p class="fc-list-meta">{{ message.type }} · {{ message.status }}</p>
+              <p class="fc-list-meta">{{ message.body }}</p>
+            </div>
+            <div style="display: flex; gap: 6px">
+              <button class="fc-btn-secondary" @click="markRead(message.id)">Read</button>
+              <button class="fc-btn-secondary" @click="archive(message.id)">Archive</button>
+            </div>
+          </li>
+        </ul>
+      </article>
+
       <article class="fc-card">
         <h4>Approvals</h4>
         <ul class="fc-list">

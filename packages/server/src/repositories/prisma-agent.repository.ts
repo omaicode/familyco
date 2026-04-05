@@ -36,6 +36,17 @@ export class PrismaAgentRepository implements AgentRepository {
     return agent ? toAgentProfile(agent) : null;
   }
 
+  async findChildren(parentAgentId: string): Promise<AgentProfile[]> {
+    const agents = await this.prisma.agent.findMany({
+      where: {
+        parentAgentId
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return agents.map(toAgentProfile);
+  }
+
   async list(): Promise<AgentProfile[]> {
     const agents = await this.prisma.agent.findMany({
       orderBy: { createdAt: 'asc' }
@@ -49,6 +60,17 @@ export class PrismaAgentRepository implements AgentRepository {
       where: { id },
       data: {
         status: 'paused'
+      }
+    });
+
+    return toAgentProfile(agent);
+  }
+
+  async updateParent(id: string, parentAgentId: string | null): Promise<AgentProfile> {
+    const agent = await this.prisma.agent.update({
+      where: { id },
+      data: {
+        parentAgentId
       }
     });
 

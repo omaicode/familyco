@@ -1,4 +1,4 @@
-import type { ApprovalService, AuditService } from '@familyco/core';
+import type { ApprovalService, AuditService, InboxService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
@@ -11,6 +11,7 @@ import {
 export interface ApprovalModuleDeps {
   approvalService: ApprovalService;
   auditService: AuditService;
+  inboxService: InboxService;
 }
 
 export function registerApprovalController(app: FastifyInstance, deps: ApprovalModuleDeps): void {
@@ -33,6 +34,19 @@ export function registerApprovalController(app: FastifyInstance, deps: ApprovalM
       }
     });
 
+    await deps.inboxService.createMessage({
+      recipientId: 'founder',
+      senderId: body.actorId,
+      type: 'approval',
+      title: `Approval requested: ${body.action}`,
+      body: `Approval requested for target ${body.targetId ?? 'n/a'}`,
+      payload: {
+        approvalId: approvalRequest.id,
+        action: body.action,
+        targetId: body.targetId
+      }
+    });
+
     reply.code(201);
     return approvalRequest;
   });
@@ -47,6 +61,18 @@ export function registerApprovalController(app: FastifyInstance, deps: ApprovalM
       action: 'approval.request.decide',
       targetId: approvalRequest.id,
       payload: {
+        status: approvalRequest.status
+      }
+    });
+
+    await deps.inboxService.createMessage({
+      recipientId: approvalRequest.actorId,
+      senderId: request.authContext?.subject ?? 'founder',
+      type: 'info',
+      title: `Approval ${approvalRequest.status}`,
+      body: `Your approval request ${approvalRequest.id} is ${approvalRequest.status}.`,
+      payload: {
+        approvalId: approvalRequest.id,
         status: approvalRequest.status
       }
     });
