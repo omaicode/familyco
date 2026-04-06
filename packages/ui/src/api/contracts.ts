@@ -262,11 +262,16 @@ export interface UpsertSettingPayload {
   value: unknown;
 }
 
+export interface GetAgentChatQuery {
+  limit?: number;
+  before?: string;
+}
+
 export interface FamilyCoApiContracts {
   listAgents: () => Promise<AgentListItem[]>;
   listAgentChildren: (agentId: string) => Promise<AgentListItem[]>;
   getAgentPath: (agentId: string) => Promise<AgentListItem[]>;
-  getAgentChat: (agentId: string) => Promise<AgentChatMessage[]>;
+  getAgentChat: (agentId: string, query?: GetAgentChatQuery) => Promise<AgentChatMessage[]>;
   sendAgentChat: (payload: SendAgentChatPayload) => Promise<SendAgentChatResult>;
   createAgent: (payload: CreateAgentPayload) => Promise<CreateAgentResult>;
   pauseAgent: (payload: PauseAgentPayload) => Promise<PauseAgentResult>;
@@ -299,7 +304,18 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   listAgents: () => client.get<AgentListItem[]>('/api/v1/agents'),
   listAgentChildren: (agentId) => client.get<AgentListItem[]>(`/api/v1/agents/${agentId}/children`),
   getAgentPath: (agentId) => client.get<AgentListItem[]>(`/api/v1/agents/${agentId}/path`),
-  getAgentChat: (agentId) => client.get<AgentChatMessage[]>(`/api/v1/agents/${agentId}/chat`),
+  getAgentChat: (agentId, query = {}) => {
+    const params = new URLSearchParams();
+    if (typeof query.limit === 'number') {
+      params.set('limit', String(query.limit));
+    }
+    if (query.before) {
+      params.set('before', query.before);
+    }
+
+    const suffix = params.size > 0 ? `?${params.toString()}` : '';
+    return client.get<AgentChatMessage[]>(`/api/v1/agents/${agentId}/chat${suffix}`);
+  },
   sendAgentChat: (payload) =>
     client.post<SendAgentChatResult, Omit<SendAgentChatPayload, 'agentId'>>(
       `/api/v1/agents/${payload.agentId}/chat`,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue';
 import { AlertTriangle, CircleCheckBig, LoaderCircle, MessagesSquare } from 'lucide-vue-next';
 
 import type { ChatToolCallDetails, ThreadMessage } from '../../composables/executiveChat.shared';
@@ -7,7 +8,19 @@ const props = defineProps<{
   thread: ThreadMessage[];
   selectedAgentName: string;
   isStreaming?: boolean;
+  isLoadingOlder?: boolean;
+  hasMoreHistory?: boolean;
 }>();
+
+const emit = defineEmits<{
+  (event: 'loadOlder'): void;
+}>();
+
+const scrollRef = ref<HTMLDivElement | null>(null);
+let pendingRestoreFromTop = false;
+let previousScrollHeight = 0;
+let previousScrollTop = 0;
+let stickToBottom = true;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -39,6 +52,48 @@ const isStreamingMessage = (message: ThreadMessage): boolean => {
   const lastAgentMessage = [...props.thread].reverse().find((entry) => entry.direction === 'agent_to_founder');
   return lastAgentMessage?.id === message.id;
 };
+
+const handleScroll = (): void => {
+  const scroller = scrollRef.value;
+  if (!scroller) {
+    return;
+  }
+
+  stickToBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 72;
+
+  if (scroller.scrollTop > 40 || props.isLoadingOlder || !props.hasMoreHistory) {
+    return;
+  }
+
+  pendingRestoreFromTop = true;
+  previousScrollHeight = scroller.scrollHeight;
+  previousScrollTop = scroller.scrollTop;
+  emit('loadOlder');
+};
+
+watch(
+  () => [props.thread.length, props.isStreaming],
+  async () => {
+    await nextTick();
+
+    const scroller = scrollRef.value;
+    if (!scroller) {
+      return;
+    }
+
+    if (pendingRestoreFromTop) {
+      const delta = scroller.scrollHeight - previousScrollHeight;
+      scroller.scrollTop = previousScrollTop + delta;
+      pendingRestoreFromTop = false;
+      return;
+    }
+
+    if (stickToBottom || props.isStreaming) {
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -53,53 +108,65 @@ const isStreamingMessage = (message: ThreadMessage): boolean => {
       </div>
     </div>
 
-    <TransitionGroup v-else tag="div" name="chat-bubble-list" class="chat-thread-list">
-      <article
-        v-for="message in props.thread"
-        :key="message.id"
-        class="chat-bubble"
-        :class="[
-          message.direction,
-          {
-            'chat-bubble-alert': hasToolError(message),
-            'chat-bubble-streaming': isStreamingMessage(message)
-          }
-        ]"
-      >
-        <div class="chat-bubble-meta">
-          <span>{{ message.direction === 'founder_to_agent' ? 'Founder' : props.selectedAgentName }}</span>
-          <span>{{ new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
-        </div>
-        <p class="chat-bubble-body">{{ message.body }}</p>
-
-        <div v-if="isStreamingMessage(message)" class="chat-streaming-indicator">
+    <div v-else ref="scrollRef" class="chat-thread-scroll" @scroll.passive="handleScroll">
+      <div class="chat-history-status" :data-loading="props.isLoadingOlder ? 'true' : 'false'">
+        <template v-if="props.isLoadingOlder">
           <LoaderCircle :size="12" class="chat-streaming-spinner" />
-          <span>Agent is responding…</span>
-        </div>
+          <span>Loading earlier messages…</span>
+        </template>
+        <template v-else-if="props.hasMoreHistory">
+          <span>Scroll up to load earlier messages</span>
+        </template>
+      </div>
 
-        <div v-if="message.direction === 'agent_to_founder' && getMessageToolCalls(message).length > 0" class="chat-tool-results">
-          <div
-            v-for="(toolCall, index) in getMessageToolCalls(message)"
-            :key="`${message.id}-${toolCall.toolName}-${index}`"
-            class="chat-tool-item"
-            :data-ok="toolCall.ok"
-          >
-            <div class="chat-tool-header">
-              <span class="chat-tool-status">
-                <component :is="toolCall.ok ? CircleCheckBig : AlertTriangle" :size="13" />
-                {{ toolCall.ok ? 'Tool completed' : 'Tool failed' }}
-              </span>
-              <code>{{ toolCall.toolName }}</code>
-            </div>
-            <p class="chat-tool-summary">{{ toolCall.summary }}</p>
-            <p v-if="toolCall.error?.message" class="chat-tool-error">
-              {{ toolCall.error.message }}
-              <span v-if="toolCall.error.code">({{ toolCall.error.code }})</span>
-            </p>
+      <TransitionGroup tag="div" name="chat-bubble-list" class="chat-thread-list">
+        <article
+          v-for="message in props.thread"
+          :key="message.id"
+          class="chat-bubble"
+          :class="[
+            message.direction,
+            {
+              'chat-bubble-alert': hasToolError(message),
+              'chat-bubble-streaming': isStreamingMessage(message)
+            }
+          ]"
+        >
+          <div class="chat-bubble-meta">
+            <span>{{ message.direction === 'founder_to_agent' ? 'Founder' : props.selectedAgentName }}</span>
+            <span>{{ new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
           </div>
-        </div>
-      </article>
-    </TransitionGroup>
+          <p class="chat-bubble-body">{{ message.body }}</p>
+
+          <div v-if="isStreamingMessage(message)" class="chat-streaming-indicator">
+            <LoaderCircle :size="12" class="chat-streaming-spinner" />
+            <span>Agent is responding…</span>
+          </div>
+
+          <div v-if="message.direction === 'agent_to_founder' && getMessageToolCalls(message).length > 0" class="chat-tool-results">
+            <div
+              v-for="(toolCall, index) in getMessageToolCalls(message)"
+              :key="`${message.id}-${toolCall.toolName}-${index}`"
+              class="chat-tool-item"
+              :data-ok="toolCall.ok"
+            >
+              <div class="chat-tool-header">
+                <span class="chat-tool-status">
+                  <component :is="toolCall.ok ? CircleCheckBig : AlertTriangle" :size="13" />
+                  {{ toolCall.ok ? 'Tool completed' : 'Tool failed' }}
+                </span>
+                <code>{{ toolCall.toolName }}</code>
+              </div>
+              <p class="chat-tool-summary">{{ toolCall.summary }}</p>
+              <p v-if="toolCall.error?.message" class="chat-tool-error">
+                {{ toolCall.error.message }}
+                <span v-if="toolCall.error.code">({{ toolCall.error.code }})</span>
+              </p>
+            </div>
+          </div>
+        </article>
+      </TransitionGroup>
+    </div>
   </div>
 </template>
 
@@ -112,10 +179,34 @@ const isStreamingMessage = (message: ThreadMessage): boolean => {
   min-height: 220px;
 }
 
+.chat-thread-scroll {
+  max-height: min(62vh, 680px);
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+}
+
 .chat-thread-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.chat-history-status {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fc-surface) 88%, white 12%);
+  color: var(--fc-text-muted);
+  font-size: 0.72rem;
+  box-shadow: 0 8px 18px -16px rgba(15, 23, 42, 0.5);
 }
 
 .chat-empty-state {

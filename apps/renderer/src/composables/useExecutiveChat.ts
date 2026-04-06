@@ -5,12 +5,17 @@ import { type ChatFeedback, type ThreadMessage, sortThread } from './executiveCh
 import { useAutoReload } from './useAutoReload';
 import { useExecutiveChatStream } from './useExecutiveChatStream';
 
+const INITIAL_CHAT_PAGE_SIZE = 40;
+const OLDER_CHAT_PAGE_SIZE = 30;
+
 export function useExecutiveChat() {
   const thread = ref<ThreadMessage[]>([]);
   const selectedAgentId = ref('');
   const draftMessage = ref('');
   const isLoading = ref(false);
   const isRefreshing = ref(false);
+  const isLoadingOlder = ref(false);
+  const hasMoreHistory = ref(true);
   const feedback = ref<ChatFeedback>(null);
 
   const agentState = computed(() => uiRuntime.stores.agents.state.agents);
@@ -33,10 +38,54 @@ export function useExecutiveChat() {
   const refreshThread = async (): Promise<void> => {
     if (!selectedAgentId.value) {
       thread.value = [];
+      hasMoreHistory.value = false;
       return;
     }
 
-    thread.value = sortThread(await uiRuntime.api.getAgentChat(selectedAgentId.value));
+    const recentMessages = sortThread(
+      await uiRuntime.api.getAgentChat(selectedAgentId.value, { limit: INITIAL_CHAT_PAGE_SIZE })
+    );
+
+    thread.value = recentMessages;
+    hasMoreHistory.value = recentMessages.length >= INITIAL_CHAT_PAGE_SIZE;
+  };
+
+  const loadOlderMessages = async (): Promise<void> => {
+    if (!selectedAgentId.value || isLoadingOlder.value || !hasMoreHistory.value || thread.value.length === 0) {
+      return;
+    }
+
+    const oldestMessage = thread.value[0];
+    isLoadingOlder.value = true;
+
+    try {
+      const olderMessages = sortThread(
+        await uiRuntime.api.getAgentChat(selectedAgentId.value, {
+          limit: OLDER_CHAT_PAGE_SIZE,
+          before: oldestMessage.createdAt
+        })
+      );
+
+      if (olderMessages.length === 0) {
+        hasMoreHistory.value = false;
+        return;
+      }
+
+      const existingIds = new Set(thread.value.map((message) => message.id));
+      const uniqueOlderMessages = olderMessages.filter((message) => !existingIds.has(message.id));
+
+      if (uniqueOlderMessages.length === 0) {
+        hasMoreHistory.value = false;
+        return;
+      }
+
+      thread.value = sortThread([...uniqueOlderMessages, ...thread.value]);
+      hasMoreHistory.value = olderMessages.length >= OLDER_CHAT_PAGE_SIZE;
+    } catch (error) {
+      setFeedback('error', error instanceof Error ? error.message : 'Failed to load older messages');
+    } finally {
+      isLoadingOlder.value = false;
+    }
   };
 
   const { isSending, isStreaming, connectionState, connectSocket, sendMessage } = useExecutiveChatStream({
@@ -75,7 +124,10 @@ export function useExecutiveChat() {
   );
 
   watch(selectedAgentId, () => {
+    hasMoreHistory.value = true;
+
     if (!isLoading.value) {
+      void refreshThread();
       connectSocket();
     }
   });
@@ -104,6 +156,8 @@ export function useExecutiveChat() {
     draftMessage,
     isLoading,
     isRefreshing,
+    isLoadingOlder,
+    hasMoreHistory,
     isSending,
     isStreaming,
     connectionState,
@@ -112,6 +166,7 @@ export function useExecutiveChat() {
     executiveAgents,
     selectedAgent,
     reload,
+    loadOlderMessages,
     sendMessage
   };
 }

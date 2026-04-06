@@ -24,14 +24,22 @@ export class InboxService {
     return this.repository.list(query);
   }
 
-  async listConversation(agentId: string, limit = 200, founderId = 'founder'): Promise<InboxMessage[]> {
+  async listConversation(
+    agentId: string,
+    limit = 200,
+    founderId = 'founder',
+    before?: Date
+  ): Promise<InboxMessage[]> {
     const [inboundToAgent, founderInbox] = await Promise.all([
       this.repository.list({ recipientId: agentId }),
       this.repository.list({ recipientId: founderId, senderId: agentId })
     ]);
 
+    const beforeTimestamp = before?.getTime();
+
     return [...inboundToAgent, ...founderInbox]
       .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+      .filter((message) => beforeTimestamp === undefined || message.createdAt.getTime() < beforeTimestamp)
       .slice(-Math.max(limit, 0));
   }
 

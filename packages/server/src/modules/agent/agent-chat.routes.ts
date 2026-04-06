@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
-import { agentChatBodySchema, pauseAgentParamsSchema } from './agent.schema.js';
+import { agentChatBodySchema, agentChatQuerySchema, pauseAgentParamsSchema } from './agent.schema.js';
 import { handleSocketChatMessage, processAgentChat, resolveSocketClient, sendSocketEvent, toErrorMessage } from './agent-chat.service.js';
 import type { AgentModuleDeps } from './agent.types.js';
 
@@ -9,9 +9,16 @@ export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleD
   app.get('/agents/:id/chat', async (request) => {
     requireMinimumLevel(request, 'L0');
     const { id } = pauseAgentParamsSchema.parse(request.params);
+    const { limit, before } = agentChatQuerySchema.parse(request.query);
     await deps.agentService.getAgentById(id);
 
-    const conversation = await deps.inboxService.listConversation(id, 200);
+    const conversation = await deps.inboxService.listConversation(
+      id,
+      limit,
+      'founder',
+      before ? new Date(before) : undefined
+    );
+
     return conversation.map((message) => ({
       ...message,
       direction: message.senderId === id ? 'agent_to_founder' : 'founder_to_agent'

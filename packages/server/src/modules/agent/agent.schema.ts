@@ -37,5 +37,10 @@ export const agentChatBodySchema = z.object({
     .optional()
 });
 
+export const agentChatQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(200),
+  before: z.string().datetime().optional()
+});
+
 export type CreateAgentDto = z.infer<typeof createAgentSchema>;
 export type PauseAgentParamsDto = z.infer<typeof pauseAgentParamsSchema>;

@@ -16,6 +16,8 @@ const {
   draftMessage,
   isLoading,
   isRefreshing,
+  isLoadingOlder,
+  hasMoreHistory,
   isSending,
   isStreaming,
   connectionState,
@@ -24,6 +26,7 @@ const {
   executiveAgents,
   selectedAgent,
   reload,
+  loadOlderMessages,
   sendMessage
 } = useExecutiveChat();
 </script>
@@ -90,7 +93,14 @@ const {
           </div>
 
           <template v-else>
-            <ExecutiveChatThread :thread="thread" :selected-agent-name="selectedAgent.name" :is-streaming="isStreaming" />
+            <ExecutiveChatThread
+              :thread="thread"
+              :selected-agent-name="selectedAgent.name"
+              :is-streaming="isStreaming"
+              :is-loading-older="isLoadingOlder"
+              :has-more-history="hasMoreHistory"
+              @load-older="loadOlderMessages"
+            />
             <ExecutiveChatComposer
               v-model="draftMessage"
               :connection-state="connectionState"
@@ -106,23 +116,23 @@ const {
         <FcCard>
           <div class="fc-section-header">
             <div>
-              <h4>How this lane works</h4>
-              <p class="fc-card-desc">One L0 executive is the default operating model. This lane streams live and only creates work when tools are explicitly called.</p>
+              <h4>Lane rules</h4>
+              <p class="fc-card-desc">Một L0 executive xử lý lane chính. Chat để điều phối, slash command để mở việc rõ ràng.</p>
             </div>
           </div>
 
           <div class="chat-side-list">
             <div class="chat-side-item">
               <ArrowRight :size="15" />
-              <span>Use <strong>Chat</strong> for discussion, planning, and setting direction for the executive agent.</span>
+              <span><strong>Chat</strong> để trao đổi và chốt hướng xử lý.</span>
             </div>
             <div class="chat-side-item">
               <Wrench :size="15" />
-              <span>Use slash commands like <code>/create-task</code>, <code>/create-project</code>, <code>/reset</code>, and <code>/help</code> for explicit chat actions.</span>
+              <span>Dùng <code>/create-task</code>, <code>/create-project</code>, <code>/reset</code>, <code>/help</code> khi cần hành động cụ thể.</span>
             </div>
             <div class="chat-side-item">
               <ShieldCheck :size="15" />
-              <span>Use <strong>Inbox</strong> whenever a separate approval needs founder review.</span>
+              <span><strong>Inbox</strong> dành cho approval cần Founder duyệt.</span>
             </div>
           </div>
         </FcCard>
@@ -143,7 +153,7 @@ const {
 
 .chat-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
   gap: 14px;
   align-items: start;
 }
@@ -192,7 +202,9 @@ const {
 .chat-side-column {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  max-width: 300px;
+  justify-self: end;
 }
 
 .chat-side-list {
@@ -206,7 +218,8 @@ const {
   gap: 8px;
   align-items: flex-start;
   color: var(--fc-text-muted);
-  line-height: 1.5;
+  line-height: 1.45;
+  font-size: 0.82rem;
 }
 
 @media (max-width: 980px) {
@@ -221,6 +234,11 @@ const {
 
   .chat-select-wrap {
     min-width: 0;
+  }
+
+  .chat-side-column {
+    max-width: none;
+    justify-self: stretch;
   }
 }
 </style>
