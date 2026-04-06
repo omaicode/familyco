@@ -1,6 +1,9 @@
 import 'dotenv/config';
 
-import { createApp } from './app.js';
+import { type PrismaClient } from '@prisma/client';
+
+import { createApp, type RepositoryDriver } from './app.js';
+import { createPgliteClient } from './db/pglite-client.js';
 
 const DEFAULT_JWT_SECRET = 'local-dev-secret';
 const DEFAULT_API_KEY_SALT = 'local-dev-salt';
@@ -44,16 +47,37 @@ function validateProductionEnvironment(): void {
   }
 }
 
-validateProductionEnvironment();
+async function start(): Promise<void> {
+  validateProductionEnvironment();
 
-const port = Number(process.env.PORT ?? 4000);
-const host = process.env.HOST ?? '0.0.0.0';
+  const repositoryDriver = (process.env.FAMILYCO_REPOSITORY_DRIVER ?? 'memory') as RepositoryDriver;
+  const port = Number(process.env.PORT ?? 4000);
+  const host = process.env.HOST ?? '0.0.0.0';
 
-const app = createApp();
+  let prismaClient: PrismaClient | undefined;
 
-app
-  .listen({ host, port })
-  .catch((error: unknown) => {
-    app.log.error(error);
-    process.exit(1);
-  });
+  if (repositoryDriver === 'pglite') {
+    // PGLITE_DATA_DIR controls where data is persisted:
+    //   - unset / empty → in-memory (fast, data lost on restart — good for quick dev runs)
+    //   - './dev.pgdata' → file system local directory (persistent dev)
+    //   - 'file:///abs/path' → absolute filesystem path (production)
+    const rawDataDir = process.env.PGLITE_DATA_DIR;
+    const dataDir = rawDataDir?.trim() || undefined;
+    prismaClient = await createPgliteClient({ dataDir });
+  }
+
+  const app = createApp({ repositoryDriver, prismaClient });
+
+  app
+    .listen({ host, port })
+    .catch((error: unknown) => {
+      app.log.error(error);
+      process.exit(1);
+    });
+}
+
+start().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});
+

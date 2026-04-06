@@ -2,7 +2,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { app, BrowserWindow } from 'electron';
-
 import { registerDesktopIpcHandlers } from './ipc/ipc-handlers.js';
 import { startEmbeddedServer, type EmbeddedServerRuntime } from './server-bootstrap.js';
 
@@ -46,9 +45,16 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
 const startDesktop = async (): Promise<void> => {
   const apiKey = process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key';
 
+  // Store PGlite data in the OS user-data folder for this app.
+  // Mac:     ~/Library/Application Support/FamilyCo/pgdata
+  // Windows: C:\Users\<user>\AppData\Roaming\FamilyCo\pgdata
+  // Linux:   ~/.config/FamilyCo/pgdata
+  const pgliteDataDir = path.join(app.getPath('userData'), 'pgdata');
+
   embeddedServer = await startEmbeddedServer({
     port: Number(process.env.DESKTOP_SERVER_PORT ?? 3040),
-    host: process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1'
+    host: process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1',
+    dataDir: pgliteDataDir
   });
 
   registerDesktopIpcHandlers({

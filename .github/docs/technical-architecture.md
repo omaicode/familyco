@@ -268,7 +268,7 @@ generator client {
 }
 
 datasource db {
-  provider = env("DB_PROVIDER")   // "sqlite" | "postgresql" | "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -645,8 +645,8 @@ APP_VERSION=1.0.0
 PORT=3000
 HOST=0.0.0.0
 
-# Database
-DB_PROVIDER=sqlite          # sqlite | postgresql | mysql
+# DATABASE_URL is only required for: prisma CLI tools (migrate diff, db push) and the 'prisma' driver.
+# Not used at runtime when FAMILYCO_REPOSITORY_DRIVER=pglite.
 DATABASE_URL=file:./data/familyco.db
 
 # Redis (cần cho BullMQ — Server Only)

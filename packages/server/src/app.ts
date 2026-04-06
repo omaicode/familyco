@@ -67,7 +67,7 @@ import { DefaultToolExecutor } from './tools/index.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
 
-export type RepositoryDriver = 'memory' | 'prisma';
+export type RepositoryDriver = 'memory' | 'prisma' | 'pglite';
 export type QueueDriver = 'memory' | 'bullmq';
 
 export interface CreateAppOptions {
@@ -77,6 +77,8 @@ export interface CreateAppOptions {
   authApiKey?: string;
   authApiKeySalt?: string;
   dailyQuotaLimit?: number;
+  /** Pre-created PrismaClient instance — required when repositoryDriver is 'pglite'. */
+  prismaClient?: import('@prisma/client').PrismaClient;
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
@@ -98,6 +100,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     'memory';
   const authApiKey = options.authApiKey ?? getAuthApiKey();
   const authApiKeySalt = options.authApiKeySalt ?? getAuthApiKeySalt();
+  const injectedPrismaClient = options.prismaClient;
   const queueDriver =
     options.queueDriver ??
     (process.env.FAMILYCO_QUEUE_DRIVER as QueueDriver | undefined) ??
@@ -116,7 +119,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     projectRepository,
     settingsRepository,
     taskRepository
-  } = createRepositories(repositoryDriver);
+  } = createRepositories(repositoryDriver, injectedPrismaClient);
 
   const eventBus = new EventBus();
   const agentService = new AgentService(agentRepository, eventBus);
@@ -347,7 +350,8 @@ function createCorsOriginMatcher(): (
 }
 
 function createRepositories(
-  repositoryDriver: RepositoryDriver
+  repositoryDriver: RepositoryDriver,
+  injectedPrismaClient?: import('@prisma/client').PrismaClient
 ): {
   agentRepository: AgentRepository;
   apiKeyRepository: import('./modules/auth/api-key.service.js').ApiKeyRepository;
@@ -358,16 +362,17 @@ function createRepositories(
   settingsRepository: SettingsRepository;
   taskRepository: TaskRepository;
 } {
-  if (repositoryDriver === 'prisma') {
+  if (repositoryDriver === 'prisma' || repositoryDriver === 'pglite') {
+    const client = injectedPrismaClient ?? prismaClient;
     return {
-      agentRepository: new PrismaAgentRepository(prismaClient),
-      apiKeyRepository: new PrismaApiKeyRepository(prismaClient),
-      approvalRepository: new PrismaApprovalRepository(prismaClient),
-      auditRepository: new PrismaAuditRepository(prismaClient),
+      agentRepository: new PrismaAgentRepository(client),
+      apiKeyRepository: new PrismaApiKeyRepository(client),
+      approvalRepository: new PrismaApprovalRepository(client),
+      auditRepository: new PrismaAuditRepository(client),
       inboxRepository: new InMemoryInboxRepository(),
-      projectRepository: new PrismaProjectRepository(prismaClient),
-      settingsRepository: new PrismaSettingsRepository(prismaClient),
-      taskRepository: new PrismaTaskRepository(prismaClient)
+      projectRepository: new PrismaProjectRepository(client),
+      settingsRepository: new PrismaSettingsRepository(client),
+      taskRepository: new PrismaTaskRepository(client)
     };
   }
 

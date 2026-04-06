@@ -93,6 +93,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.4.3
+        version: 0.4.3
       '@familyco/core':
         specifier: workspace:*
         version: link:../core
@@ -117,6 +120,9 @@ importers:
       ioredis:
         specifier: ^5.10.1
         version: 5.10.1
+      pglite-prisma-adapter:
+        specifier: ^0.7.2
+        version: 0.7.2(@electric-sql/pglite@0.4.3)(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))
       tslib:
         specifier: ^2.8.1
         version: 2.8.1
@@ -156,6 +162,9 @@ packages:
   '@babel/types@7.29.0':
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
+
+  '@electric-sql/pglite@0.4.3':
+    resolution: {integrity: sha512-ichuWTgtd4mOM1G4SpyGJa5trT03lWbMypDV0fUXUCXg5hiHqVAz/bZyV68NqmkLB7WcYmj1RMJVSp8HV/v/ZQ==}
 
   '@electron/get@2.0.3':
     resolution: {integrity: sha512-Qkzpg2s9GnVV2I2BjRksUi43U5e6+zaQMcjoJy0C+C5oxaKl+fmckGDQFtRpZpZV0NQekuZZ+tGz7EA9TVnQtQ==}
@@ -464,6 +473,12 @@ packages:
 
   '@prisma/debug@6.19.3':
     resolution: {integrity: sha512-ljkJ+SgpXNktLG0Q/n4JGYCkKf0f8oYLyjImS2I8e2q2WCfdRRtWER062ZV/ixaNP2M2VKlWXVJiGzZaUgbKZw==}
+
+  '@prisma/debug@7.2.0':
+    resolution: {integrity: sha512-YSGTiSlBAVJPzX4ONZmMotL+ozJwQjRmZweQNIq/ER0tQJKJynNkRB3kyvt37eOfsbMCXk3gnLF6J9OJ4QWftw==}
+
+  '@prisma/driver-adapter-utils@7.2.0':
+    resolution: {integrity: sha512-gzrUcbI9VmHS24Uf+0+7DNzdIw7keglJsD5m/MHxQOU68OhGVzlphQRobLiDMn8CHNA2XN8uugwKjudVtnfMVQ==}
 
   '@prisma/engines-version@7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7':
     resolution: {integrity: sha512-03bgb1VD5gvuumNf+7fVGBzfpJPjmqV423l/WxsWk2cNQ42JD0/SsFBPhN6z8iAvdHs07/7ei77SKu7aZfq8bA==}
@@ -1706,6 +1721,12 @@ packages:
   perfect-debounce@2.1.0:
     resolution: {integrity: sha512-LjgdTytVFXeUgtHZr9WYViYSM/g8MkcTPYDlPa3cDqMirHjKiSZPYd6DoL7pK8AJQr+uWkQvCjHNdiMqsrJs+g==}
 
+  pglite-prisma-adapter@0.7.2:
+    resolution: {integrity: sha512-NqLXIUguFbgEHpIoyCvAbpEurbK+AUukiv96gIogVnNYWBdhAU0idfTXcJrsS7OdWenYa8QxEQM2ND1cTQrU4g==}
+    peerDependencies:
+      '@electric-sql/pglite': '>=0.2.0'
+      '@prisma/client': '>= 7.1.0'
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -1799,6 +1820,10 @@ packages:
   postcss@8.5.8:
     resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
     engines: {node: ^10 || ^12 || >=14}
+
+  postgres-array@3.0.4:
+    resolution: {integrity: sha512-nAUSGfSDGOaOAEGwqsRY27GPOea7CNipJPOA7lPbdEpx5Kg3qzdP0AaWC5MlhTWV9s4hFX39nomVZ+C4tnGOJQ==}
+    engines: {node: '>=12'}
 
   prisma@6.19.3:
     resolution: {integrity: sha512-++ZJ0ijLrDJF6hNB4t4uxg2br3fC4H9Yc9tcbjr2fcNFP3rh/SBNrAgjhsqBU4Ght8JPrVofG/ZkXfnSfnYsFg==}
@@ -2256,6 +2281,8 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
+  '@electric-sql/pglite@0.4.3': {}
+
   '@electron/get@2.0.3':
     dependencies:
       debug: 4.4.3
@@ -2552,6 +2579,12 @@ snapshots:
       - magicast
 
   '@prisma/debug@6.19.3': {}
+
+  '@prisma/debug@7.2.0': {}
+
+  '@prisma/driver-adapter-utils@7.2.0':
+    dependencies:
+      '@prisma/debug': 7.2.0
 
   '@prisma/engines-version@7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7': {}
 
@@ -3830,6 +3863,13 @@ snapshots:
   perfect-debounce@2.1.0:
     optional: true
 
+  pglite-prisma-adapter@0.7.2(@electric-sql/pglite@0.4.3)(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)):
+    dependencies:
+      '@electric-sql/pglite': 0.4.3
+      '@prisma/client': 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@prisma/driver-adapter-utils': 7.2.0
+      postgres-array: 3.0.4
+
   picocolors@1.1.1: {}
 
   picomatch@2.3.2: {}
@@ -3923,6 +3963,8 @@ snapshots:
       nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  postgres-array@3.0.4: {}
 
   prisma@6.19.3(typescript@5.9.3):
     dependencies:
