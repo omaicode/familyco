@@ -12,6 +12,7 @@ import { useAutoReload } from '../composables/useAutoReload';
 const showCreateForm = ref(false);
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
 const isCreating = ref(false);
+const isLoading = ref(false);
 const busy = ref<Record<string, boolean>>({});
 
 const draft = reactive({
@@ -28,7 +29,9 @@ const setFeedback = (type: 'success' | 'error', text: string) => {
 
 const reload = async () => {
   feedback.value = null;
+  isLoading.value = true;
   await uiRuntime.stores.agents.loadAgents();
+  isLoading.value = false;
 };
 
 const createAgent = async () => {
@@ -147,7 +150,7 @@ useAutoReload(reload);
     </Transition>
 
     <!-- ── Loading ──────────────────────────────────── -->
-    <div v-if="uiRuntime.stores.agents.state.agents.isLoading" class="fc-loading">
+    <div v-if="isLoading" class="fc-loading">
       <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">Loading agents…</p>
       <SkeletonList />
     </div>

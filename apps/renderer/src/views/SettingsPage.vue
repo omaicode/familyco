@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   CheckCircle2, AlertTriangle, X, Key, Palette,
@@ -24,6 +24,13 @@ const providerName = ref<Provider>('openai');
 const providerApiKey = ref('');
 const providerModel = ref('gpt-4o');
 const providerSaving = ref(false);
+
+// Per-provider form cache (so switching back restores entered data)
+const providerDraft = reactive<Record<Provider, { apiKey: string; model: string }>>({  
+  openai:    { apiKey: '', model: 'gpt-4o' },
+  anthropic: { apiKey: '', model: 'claude-sonnet-4-5' },
+  google:    { apiKey: '', model: 'gemini-2.5-pro' },
+});
 
 // ── Appearance ────────────────────────────────────────────
 const themePreference = ref<ThemePreference>('system');
@@ -55,11 +62,20 @@ const reload = async () => {
   await uiRuntime.stores.settings.load();
 
   const storedProvider = getSetting('provider.name');
-  if (storedProvider === 'openai' || storedProvider === 'anthropic' || storedProvider === 'google') {
-    providerName.value = storedProvider;
-  }
-  providerApiKey.value = typeof getSetting('provider.apiKey') === 'string' ? getSetting('provider.apiKey') as string : '';
-  providerModel.value = typeof getSetting('provider.defaultModel') === 'string' ? getSetting('provider.defaultModel') as string : selectedProvider.value.models[0];
+  const activeProvider: Provider =
+    (storedProvider === 'openai' || storedProvider === 'anthropic' || storedProvider === 'google')
+      ? storedProvider
+      : 'openai';
+
+  const loadedApiKey = typeof getSetting('provider.apiKey') === 'string' ? getSetting('provider.apiKey') as string : '';
+  const loadedModel  = typeof getSetting('provider.defaultModel') === 'string' ? getSetting('provider.defaultModel') as string : providerOptions.find(p => p.value === activeProvider)!.models[0];
+
+  // Persist loaded values into the per-provider draft so switching away and back doesn't lose them
+  providerDraft[activeProvider] = { apiKey: loadedApiKey, model: loadedModel };
+
+  providerName.value    = activeProvider;
+  providerApiKey.value  = loadedApiKey;
+  providerModel.value   = loadedModel;
 
   themePreference.value = parseThemePreference(getSetting('ui.theme.preference')) ?? 'system';
   applyTheme(themePreference.value);
@@ -106,10 +122,17 @@ const saveTheme = async () => {
 };
 
 // ── Provider change ───────────────────────────────────────
-const onProviderChange = () => {
-  providerModel.value = selectedProvider.value.models[0];
-  providerApiKey.value = '';
-  showApiKey.value = false;
+const onProviderChange = (newProvider: Provider) => {
+  // Save current values into the draft cache before switching
+  providerDraft[providerName.value] = {
+    apiKey: providerApiKey.value,
+    model:  providerModel.value,
+  };
+  // Restore draft for the new provider
+  providerName.value   = newProvider;
+  providerApiKey.value = providerDraft[newProvider].apiKey;
+  providerModel.value  = providerDraft[newProvider].model;
+  showApiKey.value     = false;
 };
 
 // ── Masked key display ────────────────────────────────────
@@ -215,7 +238,7 @@ useAutoReload(reload);
                   :key="opt.value"
                   class="st-provider-btn"
                   :class="{ 'st-provider-selected': providerName === opt.value }"
-                  @click="providerName = opt.value; onProviderChange()"
+                  @click="onProviderChange(opt.value)"
                 >
                   <span class="st-provider-name">{{ opt.label }}</span>
                   <span class="st-provider-hint">{{ opt.keyHint }}</span>
