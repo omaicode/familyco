@@ -18,7 +18,7 @@ const html = computed(() => renderMarkdown(props.source));
 <template>
   <div
     v-if="html"
-    class="fc-markdown"
+    class="fc-markdown prose prose-sm max-w-none prose-headings:text-[color:var(--fc-text-main)] prose-p:text-[color:var(--fc-text-main)] prose-strong:text-[color:var(--fc-text-main)] prose-a:text-[color:var(--fc-primary)] prose-code:text-[color:var(--fc-text-main)] prose-pre:border prose-pre:border-[color:var(--fc-border-subtle)] prose-pre:bg-[color:color-mix(in_srgb,var(--fc-surface-muted)_80%,var(--fc-surface))] prose-th:text-[color:var(--fc-text-main)] prose-td:text-[color:var(--fc-text-main)] prose-blockquote:text-[color:var(--fc-text-muted)] prose-blockquote:border-[color:var(--fc-primary)]"
     :class="{ 'fc-markdown-compact': props.compact }"
     v-html="html"
   />
@@ -43,56 +43,24 @@ const html = computed(() => renderMarkdown(props.source));
   font-size: 0.82rem;
 }
 
-.fc-markdown :deep(*) {
-  margin-top: 0;
-}
-
-.fc-markdown :deep(p),
-.fc-markdown :deep(ul),
-.fc-markdown :deep(ol),
-.fc-markdown :deep(blockquote),
-.fc-markdown :deep(pre) {
-  margin: 0 0 0.75rem;
-}
-
-.fc-markdown :deep(ul),
-.fc-markdown :deep(ol) {
-  padding-left: 1.1rem;
-}
-
-.fc-markdown :deep(li + li) {
-  margin-top: 0.2rem;
-}
-
-.fc-markdown :deep(code) {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-  font-size: 0.85em;
-  background: color-mix(in srgb, var(--fc-surface-muted) 70%, var(--fc-surface));
-  border-radius: 6px;
-  padding: 0.1rem 0.35rem;
-}
-
-.fc-markdown :deep(pre) {
-  overflow-x: auto;
-  padding: 0.75rem;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--fc-surface-muted) 80%, var(--fc-surface));
+.fc-markdown :deep(img) {
+  border-radius: 10px;
   border: 1px solid var(--fc-border-subtle);
 }
 
-.fc-markdown :deep(pre code) {
-  background: transparent;
-  padding: 0;
+.fc-markdown :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
 }
 
-.fc-markdown :deep(blockquote) {
-  border-left: 3px solid var(--fc-primary);
-  padding-left: 0.75rem;
-  color: var(--fc-text-muted);
+.fc-markdown :deep(th),
+.fc-markdown :deep(td) {
+  border: 1px solid var(--fc-border-subtle);
+  padding: 0.5rem 0.65rem;
 }
 
-.fc-markdown :deep(a) {
-  color: var(--fc-primary);
-  text-decoration: underline;
+.fc-markdown :deep(th) {
+  background: color-mix(in srgb, var(--fc-surface-muted) 50%, var(--fc-surface));
 }
 </style>
