@@ -19,6 +19,12 @@ export interface AgentChatMessage {
   body: string;
   createdAt: string;
   direction: 'founder_to_agent' | 'agent_to_founder';
+  payload?: {
+    taskId?: string;
+    projectId?: string;
+    toolCalls?: ChatToolCallItem[];
+    [key: string]: unknown;
+  };
 }
 
 export interface ProjectListItem {
@@ -227,6 +233,11 @@ export interface ChatToolCallItem {
   toolName: string;
   ok: boolean;
   summary: string;
+  error?: {
+    code?: string;
+    message?: string;
+  };
+  output?: unknown;
 }
 
 export interface SendAgentChatResult {

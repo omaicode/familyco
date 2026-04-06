@@ -2,8 +2,10 @@
 import type { AgentChatMessage } from '@familyco/ui';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import {
+  AlertTriangle,
   ArrowRight,
   Bot,
+  CircleCheckBig,
   LoaderCircle,
   MessagesSquare,
   PlugZap,
@@ -27,6 +29,16 @@ interface ChatSocketEvent {
   payload?: Record<string, unknown>;
 }
 
+interface ChatToolCallDetails {
+  toolName: string;
+  ok: boolean;
+  summary: string;
+  error?: {
+    code?: string;
+    message?: string;
+  };
+}
+
 const thread = ref<AgentChatMessage[]>([]);
 const selectedAgentId = ref('');
 const draftMessage = ref('');
@@ -38,6 +50,7 @@ const connectionState = ref<'connecting' | 'connected' | 'disconnected'>('discon
 const feedback = ref<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 const socket = ref<WebSocket | null>(null);
 const activeStreamId = ref<string | null>(null);
+const streamToolCalls = ref<Record<string, ChatToolCallDetails[]>>({});
 
 const promptSuggestions = [
   'Review the current backlog and outline the next steps for the company this week.',
@@ -96,6 +109,61 @@ const setFeedback = (type: 'success' | 'error' | 'info', text: string): void => 
 
 const sortThread = (messages: AgentChatMessage[]): AgentChatMessage[] =>
   [...messages].sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isToolCallDetails = (value: unknown): value is ChatToolCallDetails =>
+  isRecord(value)
+  && typeof value.toolName === 'string'
+  && typeof value.ok === 'boolean'
+  && typeof value.summary === 'string';
+
+const getMessageToolCalls = (message: AgentChatMessage): ChatToolCallDetails[] => {
+  if (!isRecord(message.payload) || !Array.isArray(message.payload.toolCalls)) {
+    return [];
+  }
+
+  return message.payload.toolCalls.filter(isToolCallDetails);
+};
+
+const hasToolError = (message: AgentChatMessage): boolean =>
+  message.type === 'alert' || getMessageToolCalls(message).some((toolCall) => !toolCall.ok);
+
+const formatToolFeedback = (toolCall: ChatToolCallDetails): string => {
+  if (toolCall.ok) {
+    return `Tool ${toolCall.toolName}: ${toolCall.summary}`;
+  }
+
+  const errorMessage = typeof toolCall.error?.message === 'string' && toolCall.error.message.trim().length > 0
+    ? toolCall.error.message.trim()
+    : toolCall.summary;
+  const errorCode = typeof toolCall.error?.code === 'string' && toolCall.error.code.trim().length > 0
+    ? ` (${toolCall.error.code.trim()})`
+    : '';
+
+  return `Tool ${toolCall.toolName} failed${errorCode}: ${errorMessage}`;
+};
+
+const appendLocalIssueMessage = (message: string): void => {
+  if (!selectedAgent.value) {
+    return;
+  }
+
+  thread.value = sortThread([
+    ...thread.value,
+    {
+      id: `local-issue-${Date.now()}`,
+      senderId: selectedAgent.value.id,
+      recipientId: 'founder',
+      type: 'alert',
+      title: `Issue from ${selectedAgent.value.name}`,
+      body: message,
+      createdAt: new Date().toISOString(),
+      direction: 'agent_to_founder'
+    }
+  ]);
+};
 
 const reload = async (): Promise<void> => {
   isLoading.value = true;
@@ -225,6 +293,10 @@ const handleSocketEvent = (event: ChatSocketEvent): void => {
   if (event.type === 'chat.started') {
     const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : `stream-${Date.now()}`;
     activeStreamId.value = requestId;
+    streamToolCalls.value = {
+      ...streamToolCalls.value,
+      [requestId]: []
+    };
     isSending.value = false;
     isStreaming.value = true;
     upsertStreamingReply(requestId, '');
@@ -244,28 +316,69 @@ const handleSocketEvent = (event: ChatSocketEvent): void => {
   }
 
   if (event.type === 'chat.tool.used') {
-    const summary = typeof event.payload?.summary === 'string' ? event.payload.summary : 'A tool was used from the executive lane.';
-    setFeedback(event.payload?.ok === false ? 'error' : 'info', summary);
+    const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
+    const toolCall = isToolCallDetails(event.payload) ? event.payload : null;
+
+    if (requestId && toolCall) {
+      streamToolCalls.value = {
+        ...streamToolCalls.value,
+        [requestId]: [...(streamToolCalls.value[requestId] ?? []), toolCall]
+      };
+      const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
+      upsertStreamingReply(requestId, existingBody);
+    }
+
+    setFeedback(
+      toolCall?.ok === false ? 'error' : 'info',
+      toolCall ? formatToolFeedback(toolCall) : 'A tool was used from the executive lane.'
+    );
     return;
   }
 
   if (event.type === 'chat.completed') {
+    const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
+    const completedToolCalls = Array.isArray(event.payload?.toolCalls)
+      ? event.payload.toolCalls.filter(isToolCallDetails)
+      : [];
+    const failedToolCalls = completedToolCalls.filter((toolCall) => !toolCall.ok);
+
+    if (requestId) {
+      if (completedToolCalls.length > 0) {
+        streamToolCalls.value = {
+          ...streamToolCalls.value,
+          [requestId]: completedToolCalls
+        };
+        const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
+        upsertStreamingReply(requestId, existingBody);
+      }
+
+      const nextToolCalls = { ...streamToolCalls.value };
+      delete nextToolCalls[requestId];
+      streamToolCalls.value = nextToolCalls;
+    }
+
     isSending.value = false;
     isStreaming.value = false;
     activeStreamId.value = null;
     void refreshThread();
-    setFeedback('success', 'Streaming response completed.');
+    setFeedback(
+      failedToolCalls.length > 0 ? 'error' : 'success',
+      failedToolCalls.length > 0
+        ? failedToolCalls.map((toolCall) => formatToolFeedback(toolCall)).join(' • ')
+        : 'Streaming response completed.'
+    );
     return;
   }
 
   if (event.type === 'chat.error') {
+    const message = typeof event.payload?.message === 'string'
+      ? event.payload.message
+      : 'Failed to stream the executive reply';
     isSending.value = false;
     isStreaming.value = false;
     activeStreamId.value = null;
-    setFeedback(
-      'error',
-      typeof event.payload?.message === 'string' ? event.payload.message : 'Failed to stream the executive reply'
-    );
+    appendLocalIssueMessage(message);
+    setFeedback('error', message);
   }
 };
 
@@ -274,15 +387,18 @@ const upsertStreamingReply = (requestId: string, body: string): void => {
     return;
   }
 
+  const existingMessage = thread.value.find((message) => message.id === requestId);
+  const toolCalls = streamToolCalls.value[requestId] ?? [];
   const streamingMessage: AgentChatMessage = {
     id: requestId,
     senderId: selectedAgent.value.id,
     recipientId: 'founder',
-    type: 'info',
+    type: toolCalls.some((toolCall) => !toolCall.ok) ? 'alert' : toolCalls.length > 0 ? 'report' : 'info',
     title: `Reply from ${selectedAgent.value.name}`,
     body,
-    createdAt: new Date().toISOString(),
-    direction: 'agent_to_founder'
+    createdAt: existingMessage?.createdAt ?? new Date().toISOString(),
+    direction: 'agent_to_founder',
+    payload: toolCalls.length > 0 ? { ...(existingMessage?.payload ?? {}), toolCalls } : existingMessage?.payload
   };
 
   const remainingMessages = thread.value.filter((message) => message.id !== requestId);
@@ -378,7 +494,7 @@ onBeforeUnmount(() => closeSocket());
                 v-for="message in thread"
                 :key="message.id"
                 class="chat-bubble"
-                :class="message.direction"
+                :class="[message.direction, { 'chat-bubble-alert': hasToolError(message) }]"
               >
                 <div class="chat-bubble-meta">
                   <span>{{ message.direction === 'founder_to_agent' ? 'Founder' : selectedAgent.name }}</span>
@@ -386,6 +502,28 @@ onBeforeUnmount(() => closeSocket());
                 </div>
                 <p class="chat-bubble-title">{{ message.title }}</p>
                 <p class="chat-bubble-body">{{ message.body }}</p>
+
+                <div v-if="message.direction === 'agent_to_founder' && getMessageToolCalls(message).length > 0" class="chat-tool-results">
+                  <div
+                    v-for="(toolCall, index) in getMessageToolCalls(message)"
+                    :key="`${message.id}-${toolCall.toolName}-${index}`"
+                    class="chat-tool-item"
+                    :data-ok="toolCall.ok"
+                  >
+                    <div class="chat-tool-header">
+                      <span class="chat-tool-status">
+                        <component :is="toolCall.ok ? CircleCheckBig : AlertTriangle" :size="13" />
+                        {{ toolCall.ok ? 'Tool completed' : 'Tool failed' }}
+                      </span>
+                      <code>{{ toolCall.toolName }}</code>
+                    </div>
+                    <p class="chat-tool-summary">{{ toolCall.summary }}</p>
+                    <p v-if="toolCall.error?.message" class="chat-tool-error">
+                      {{ toolCall.error.message }}
+                      <span v-if="toolCall.error.code">({{ toolCall.error.code }})</span>
+                    </p>
+                  </div>
+                </div>
               </article>
             </div>
 
@@ -555,6 +693,11 @@ onBeforeUnmount(() => closeSocket());
   background: color-mix(in srgb, var(--fc-primary) 6%, var(--fc-surface));
 }
 
+.chat-bubble-alert {
+  border-color: color-mix(in srgb, var(--fc-danger) 35%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-danger) 5%, var(--fc-surface));
+}
+
 .chat-bubble-meta {
   display: flex;
   justify-content: space-between;
@@ -574,6 +717,53 @@ onBeforeUnmount(() => closeSocket());
   margin: 0;
   line-height: 1.55;
   white-space: pre-wrap;
+}
+
+.chat-tool-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chat-tool-item {
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--fc-surface-muted) 75%, var(--fc-surface));
+}
+
+.chat-tool-item[data-ok='false'] {
+  border-color: color-mix(in srgb, var(--fc-danger) 35%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-danger) 5%, var(--fc-surface));
+}
+
+.chat-tool-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.chat-tool-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.chat-tool-summary,
+.chat-tool-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.chat-tool-error {
+  color: var(--fc-danger);
+  margin-top: 4px;
 }
 
 .chat-compose {
