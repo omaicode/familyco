@@ -8,6 +8,7 @@ import { createAgentStore, type AgentStore } from '../stores/agent.store.js';
 import { createAppStore, type AppStore } from '../stores/app.store.js';
 import { createDashboardStore, type DashboardStore } from '../stores/dashboard.store.js';
 import { createInboxStore, type InboxStore } from '../stores/inbox.store.js';
+import { createProjectStore, type ProjectStore } from '../stores/project.store.js';
 import { createSettingsStore, type SettingsStore } from '../stores/settings.store.js';
 import { buildFamilyCoCssVariables } from '../theme/css-variables.js';
 import { familyCoUITheme, type ThemePreference } from '../theme/familyco-theme.js';
@@ -24,6 +25,7 @@ export interface UIBootstrap {
     agents: AgentStore;
     dashboard: DashboardStore;
     inbox: InboxStore;
+    projects: ProjectStore;
     settings: SettingsStore;
   };
   navigation: typeof appNavigationSections;
@@ -47,6 +49,7 @@ export const bootstrapFamilyCoUI = (options: UIBootstrapOptions): UIBootstrap =>
       agents: createAgentStore(api),
       dashboard: createDashboardStore(api),
       inbox: createInboxStore(api),
+      projects: createProjectStore(api),
       settings: createSettingsStore(api)
     },
     navigation: appNavigationSections,

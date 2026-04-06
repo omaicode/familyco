@@ -10,6 +10,16 @@ export interface AgentListItem {
   parentAgentId: string | null;
 }
 
+export interface ProjectListItem {
+  id: string;
+  name: string;
+  description: string;
+  ownerAgentId: string;
+  parentProjectId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TaskListItem {
   id: string;
   title: string;
@@ -92,6 +102,21 @@ export interface CreateAgentPayload {
   parentAgentId?: string | null;
 }
 
+export interface CreateProjectPayload {
+  name: string;
+  description: string;
+  ownerAgentId: string;
+  parentProjectId?: string | null;
+}
+
+export interface CreateProjectApprovalResponse {
+  approvalRequired: true;
+  approvalRequestId: string;
+  reason?: string;
+}
+
+export type CreateProjectResult = ProjectListItem | CreateProjectApprovalResponse;
+
 export interface CreateTaskPayload {
   title: string;
   description: string;
@@ -145,6 +170,8 @@ export interface FamilyCoApiContracts {
   createAgent: (payload: CreateAgentPayload) => Promise<AgentListItem>;
   pauseAgent: (payload: PauseAgentPayload) => Promise<AgentListItem>;
   updateAgentParent: (payload: UpdateAgentParentPayload) => Promise<AgentListItem>;
+  listProjects: () => Promise<ProjectListItem[]>;
+  createProject: (payload: CreateProjectPayload) => Promise<CreateProjectResult>;
   listTasks: (projectId: string) => Promise<TaskListItem[]>;
   createTask: (payload: CreateTaskPayload) => Promise<TaskListItem>;
   updateTaskStatus: (payload: UpdateTaskStatusPayload) => Promise<TaskListItem>;
@@ -177,6 +204,8 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
         parentAgentId: payload.parentAgentId
       }
     ),
+  listProjects: () => client.get<ProjectListItem[]>('/api/v1/projects'),
+  createProject: (payload) => client.post<CreateProjectResult, CreateProjectPayload>('/api/v1/projects', payload),
   listTasks: (projectId) => client.get<TaskListItem[]>(`/api/v1/tasks?projectId=${projectId}`),
   createTask: (payload) => client.post<TaskListItem, CreateTaskPayload>('/api/v1/tasks', payload),
   updateTaskStatus: (payload) =>

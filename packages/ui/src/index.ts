@@ -13,6 +13,7 @@ export * from './stores/app.store.js';
 export * from './stores/agent.store.js';
 export * from './stores/dashboard.store.js';
 export * from './stores/inbox.store.js';
+export * from './stores/project.store.js';
 export * from './stores/settings.store.js';
 export * from './pages/page-blueprints.js';
 export * from './bootstrap/ui-bootstrap.js';

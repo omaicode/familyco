@@ -3,6 +3,7 @@ import { createRouter, createWebHashHistory } from 'vue-router';
 import AgentsPage from './views/AgentsPage.vue';
 import DashboardPage from './views/DashboardPage.vue';
 import InboxPage from './views/InboxPage.vue';
+import ProjectsPage from './views/ProjectsPage.vue';
 import PlaceholderPage from './views/PlaceholderPage.vue';
 import AuditPage from './views/AuditPage.vue';
 import SettingsPage from './views/SettingsPage.vue';
@@ -34,11 +35,8 @@ export const router = createRouter({
     },
     {
       path: '/projects',
-      component: PlaceholderPage,
-      props: {
-        title: 'Projects',
-        description: 'Track project owners, scope, and outcomes.'
-      }
+      component: ProjectsPage,
+      meta: { title: 'Projects' }
     },
     {
       path: '/tasks',
