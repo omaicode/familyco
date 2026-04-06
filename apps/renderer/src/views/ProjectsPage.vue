@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { AgentListItem, ProjectListItem, TaskListItem } from '@familyco/ui';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
   AlertTriangle,
-  CheckCircle2,
   Clock3,
   FileText,
   FolderKanban,
@@ -28,6 +27,7 @@ import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import MarkdownPreview from '../components/MarkdownPreview.vue';
+import ProjectPortfolioTable from '../components/projects/ProjectPortfolioTable.vue';
 import { markdownToPlainText } from '../utils/markdown';
 
 type PortfolioFilter = 'all' | 'attention' | 'healthy' | 'roots';
@@ -58,7 +58,10 @@ const isRefreshing = ref(false);
 const selectedProjectId = ref<string | null>(null);
 const filterMode = ref<PortfolioFilter>('all');
 const searchQuery = ref('');
+const currentPage = ref(1);
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
+
+const PROJECTS_PER_PAGE = 8;
 
 const draft = reactive({
   name: '',
@@ -214,12 +217,53 @@ const filteredProjects = computed(() => {
   });
 });
 
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredProjects.value.length / PROJECTS_PER_PAGE)));
+
+const paginatedProjects = computed(() => {
+  const start = (currentPage.value - 1) * PROJECTS_PER_PAGE;
+  return filteredProjects.value.slice(start, start + PROJECTS_PER_PAGE);
+});
+
+const paginationRange = computed(() => {
+  const total = filteredProjects.value.length;
+  if (total === 0) {
+    return { start: 0, end: 0, total };
+  }
+
+  const start = (currentPage.value - 1) * PROJECTS_PER_PAGE + 1;
+  return {
+    start,
+    end: Math.min(start + PROJECTS_PER_PAGE - 1, total),
+    total
+  };
+});
+
+watch([searchQuery, filterMode], () => {
+  currentPage.value = 1;
+});
+
+watch(
+  [filteredProjects, currentPage],
+  ([nextProjects]) => {
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value;
+      return;
+    }
+
+    const visibleIds = paginatedProjects.value.map((project) => project.id);
+    if (!selectedProjectId.value || !visibleIds.includes(selectedProjectId.value)) {
+      selectedProjectId.value = visibleIds[0] ?? nextProjects[0]?.id ?? null;
+    }
+  },
+  { immediate: true }
+);
+
 const selectedProject = computed(() => {
-  if (filteredProjects.value.length === 0) {
+  if (paginatedProjects.value.length === 0) {
     return null;
   }
 
-  return filteredProjects.value.find((project) => project.id === selectedProjectId.value) ?? filteredProjects.value[0];
+  return paginatedProjects.value.find((project) => project.id === selectedProjectId.value) ?? paginatedProjects.value[0];
 });
 
 const selectedTasks = computed(() => {
@@ -284,9 +328,9 @@ const reload = async (): Promise<void> => {
       draft.ownerAgentId = ownerOptions.value[0].id;
     }
 
-    const availableIds = filteredProjects.value.map((project) => project.id);
+    const availableIds = paginatedProjects.value.map((project) => project.id);
     if (!selectedProjectId.value || !availableIds.includes(selectedProjectId.value)) {
-      selectedProjectId.value = availableIds[0] ?? null;
+      selectedProjectId.value = availableIds[0] ?? filteredProjects.value[0]?.id ?? null;
     }
   } finally {
     isRefreshing.value = false;
@@ -507,67 +551,34 @@ useAutoReload(reload);
         </div>
       </FcCard>
 
-      <div class="fc-project-layout">
-        <div class="fc-stack">
+      <div class="fc-stack">
+        <FcCard>
+          <div class="fc-section-header" style="align-items:flex-start;">
+            <div>
+              <h4 style="margin:0;">Project registry</h4>
+              <p class="fc-list-meta" style="margin:4px 0 0;">A simpler table view with pagination for scanning and selecting project briefs.</p>
+            </div>
+            <span class="fc-badge">{{ filteredProjects.length }} total</span>
+          </div>
+
+          <ProjectPortfolioTable
+            :projects="paginatedProjects"
+            :selected-project-id="selectedProject?.id ?? null"
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="paginationRange.total"
+            :range-start="paginationRange.start"
+            :range-end="paginationRange.end"
+            :format-relative="formatRelative"
+            :risk-label="riskLabel"
+            :risk-tone="riskTone"
+            @select="selectedProjectId = $event"
+            @change-page="currentPage = $event"
+          />
+        </FcCard>
+
+        <div v-if="selectedProject" class="fc-project-detail-layout">
           <FcCard>
-            <div class="fc-section-header" style="align-items:flex-start;">
-              <div>
-                <h4 style="margin:0;">Project portfolio</h4>
-                <p class="fc-list-meta" style="margin:4px 0 0;">Choose a project to inspect its context, owner, and operating rhythm.</p>
-              </div>
-              <span class="fc-badge">{{ filteredProjects.length }} visible</span>
-            </div>
-
-            <div v-if="filteredProjects.length === 0" class="fc-empty" style="padding:24px;border:none;">
-              <p style="margin:0;">No projects match the current filter.</p>
-            </div>
-
-            <div v-else class="fc-stack">
-              <button
-                v-for="project in filteredProjects"
-                :key="project.id"
-                type="button"
-                class="fc-project-card"
-                :class="{ 'is-selected': selectedProject?.id === project.id }"
-                @click="selectedProjectId = project.id"
-              >
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-                  <div style="flex:1;min-width:0;text-align:left;">
-                    <strong style="font-size:0.9375rem;display:block;">{{ project.name }}</strong>
-                    <p class="fc-list-meta" style="margin:4px 0 0;">
-                      {{ project.owner?.name || 'Unassigned owner' }} · updated {{ formatRelative(project.updatedAt) }}
-                    </p>
-                  </div>
-                  <span class="fc-risk-tag" :data-risk="riskTone(project.risk)">
-                    {{ riskLabel(project.risk) }}
-                  </span>
-                </div>
-
-                <p class="fc-project-preview">{{ project.preview }}</p>
-
-                <div class="fc-project-chip-row">
-                  <span class="fc-badge">{{ project.openTasks }} open</span>
-                  <span v-if="project.counts.blocked > 0" class="fc-badge" data-status="blocked">
-                    {{ project.counts.blocked }} blocked
-                  </span>
-                  <span v-if="project.counts.done > 0" class="fc-badge" data-status="done">
-                    {{ project.counts.done }} done
-                  </span>
-                  <span v-if="project.childCount > 0" class="fc-badge">
-                    {{ project.childCount }} subproject{{ project.childCount === 1 ? '' : 's' }}
-                  </span>
-                </div>
-
-                <p class="fc-list-meta" style="margin:8px 0 0;color:var(--fc-text-main);">
-                  {{ project.healthText }}
-                </p>
-              </button>
-            </div>
-          </FcCard>
-        </div>
-
-        <div class="fc-stack">
-          <FcCard v-if="selectedProject">
             <div class="fc-section-header" style="align-items:flex-start;">
               <div>
                 <h4 style="margin:0;">{{ selectedProject.name }}</h4>
@@ -630,93 +641,95 @@ useAutoReload(reload);
             </div>
           </FcCard>
 
-          <FcCard v-if="selectedProject">
-            <div class="fc-section-header" style="align-items:flex-start;">
-              <div>
-                <h4 style="margin:0;">Current execution lane</h4>
-                <p class="fc-list-meta" style="margin:4px 0 0;">What agents are actively doing inside this project right now.</p>
+          <div class="fc-stack">
+            <FcCard>
+              <div class="fc-section-header" style="align-items:flex-start;">
+                <div>
+                  <h4 style="margin:0;">Current execution lane</h4>
+                  <p class="fc-list-meta" style="margin:4px 0 0;">What agents are actively doing inside this project right now.</p>
+                </div>
+                <span class="fc-badge">{{ selectedTasks.length }} tasks</span>
               </div>
-              <span class="fc-badge">{{ selectedTasks.length }} tasks</span>
-            </div>
 
-            <ul v-if="selectedTasks.length > 0" class="fc-list">
-              <li v-for="task in selectedTasks.slice(0, 6)" :key="task.id" class="fc-list-item">
-                <div class="fc-list-item-content">
-                  <strong>{{ task.title }}</strong>
-                  <p class="fc-list-meta">{{ getAgentLabel(task.assigneeAgentId) }} · created by {{ getAgentLabel(task.createdBy) }}</p>
-                </div>
-                <span class="fc-badge" :data-status="task.status">{{ task.status }}</span>
-              </li>
-            </ul>
+              <ul v-if="selectedTasks.length > 0" class="fc-list">
+                <li v-for="task in selectedTasks.slice(0, 6)" :key="task.id" class="fc-list-item">
+                  <div class="fc-list-item-content">
+                    <strong>{{ task.title }}</strong>
+                    <p class="fc-list-meta">{{ getAgentLabel(task.assigneeAgentId) }} · created by {{ getAgentLabel(task.createdBy) }}</p>
+                  </div>
+                  <span class="fc-badge" :data-status="task.status">{{ task.status }}</span>
+                </li>
+              </ul>
 
-            <div v-else class="fc-empty" style="padding:24px;border:none;">
-              <p style="margin:0;">No tasks yet. Once the owner decomposes the project, delivery work will appear here.</p>
-            </div>
-          </FcCard>
-
-          <FcCard v-if="selectedProject">
-            <div class="fc-section-header" style="align-items:flex-start;">
-              <div>
-                <h4 style="margin:0;">How delivery runs</h4>
-                <p class="fc-list-meta" style="margin:4px 0 0;">A quick operational guide so every agent follows the same rhythm.</p>
+              <div v-else class="fc-empty" style="padding:24px;border:none;">
+                <p style="margin:0;">No tasks yet. Once the owner decomposes the project, delivery work will appear here.</p>
               </div>
-            </div>
+            </FcCard>
 
-            <ul class="fc-list">
-              <li class="fc-list-item">
-                <div class="fc-list-item-content">
-                  <strong style="display:flex;align-items:center;gap:8px;">
-                    <Target :size="14" style="color:var(--fc-primary);" />
-                    Outcome & scope
-                  </strong>
-                  <p class="fc-list-meta">Use this brief as the single source of truth for goals, constraints, and expected handoffs.</p>
+            <FcCard>
+              <div class="fc-section-header" style="align-items:flex-start;">
+                <div>
+                  <h4 style="margin:0;">How delivery runs</h4>
+                  <p class="fc-list-meta" style="margin:4px 0 0;">A quick operational guide so every agent follows the same rhythm.</p>
                 </div>
-              </li>
-              <li class="fc-list-item">
-                <div class="fc-list-item-content">
-                  <strong style="display:flex;align-items:center;gap:8px;">
-                    <Users :size="14" style="color:var(--fc-info);" />
-                    Owner accountability
-                  </strong>
-                  <p class="fc-list-meta">{{ selectedProject.owner?.name || 'An owner' }} should keep the plan current, assign work, and surface decisions when scope changes.</p>
-                </div>
-              </li>
-              <li class="fc-list-item">
-                <div class="fc-list-item-content">
-                  <strong style="display:flex;align-items:center;gap:8px;">
-                    <Workflow :size="14" style="color:var(--fc-success);" />
-                    Execution flow
-                  </strong>
-                  <p class="fc-list-meta">Move work through <code>pending → in_progress → review → done</code> so the whole hierarchy can read progress at a glance.</p>
-                </div>
-              </li>
-              <li class="fc-list-item">
-                <div class="fc-list-item-content">
-                  <strong style="display:flex;align-items:center;gap:8px;">
-                    <GitBranch :size="14" style="color:var(--fc-warning);" />
-                    Escalation & approvals
-                  </strong>
-                  <p class="fc-list-meta">
-                    <template v-if="selectedProject.counts.blocked > 0">
-                      {{ selectedProject.counts.blocked }} blocked item{{ selectedProject.counts.blocked === 1 ? '' : 's' }} should be escalated through Inbox before anyone changes scope or executes side effects.
-                    </template>
-                    <template v-else>
-                      No current blockers — approvals should still route through Inbox whenever the work needs founder review.
-                    </template>
-                  </p>
-                </div>
-              </li>
-              <li class="fc-list-item">
-                <div class="fc-list-item-content">
-                  <strong style="display:flex;align-items:center;gap:8px;">
-                    <Clock3 :size="14" style="color:var(--fc-text-muted);" />
-                    Cadence
-                  </strong>
-                  <p class="fc-list-meta">Review this project whenever the owner updates the brief, a task becomes blocked, or a new sub-project is created.</p>
-                </div>
-              </li>
-            </ul>
-          </FcCard>
+              </div>
+
+              <ul class="fc-list">
+                <li class="fc-list-item">
+                  <div class="fc-list-item-content">
+                    <strong style="display:flex;align-items:center;gap:8px;">
+                      <Target :size="14" style="color:var(--fc-primary);" />
+                      Outcome & scope
+                    </strong>
+                    <p class="fc-list-meta">Use this brief as the single source of truth for goals, constraints, and expected handoffs.</p>
+                  </div>
+                </li>
+                <li class="fc-list-item">
+                  <div class="fc-list-item-content">
+                    <strong style="display:flex;align-items:center;gap:8px;">
+                      <Users :size="14" style="color:var(--fc-info);" />
+                      Owner accountability
+                    </strong>
+                    <p class="fc-list-meta">{{ selectedProject.owner?.name || 'An owner' }} should keep the plan current, assign work, and surface decisions when scope changes.</p>
+                  </div>
+                </li>
+                <li class="fc-list-item">
+                  <div class="fc-list-item-content">
+                    <strong style="display:flex;align-items:center;gap:8px;">
+                      <Workflow :size="14" style="color:var(--fc-success);" />
+                      Execution flow
+                    </strong>
+                    <p class="fc-list-meta">Move work through <code>pending → in_progress → review → done</code> so the whole hierarchy can read progress at a glance.</p>
+                  </div>
+                </li>
+                <li class="fc-list-item">
+                  <div class="fc-list-item-content">
+                    <strong style="display:flex;align-items:center;gap:8px;">
+                      <GitBranch :size="14" style="color:var(--fc-warning);" />
+                      Escalation & approvals
+                    </strong>
+                    <p class="fc-list-meta">
+                      <template v-if="selectedProject.counts.blocked > 0">
+                        {{ selectedProject.counts.blocked }} blocked item{{ selectedProject.counts.blocked === 1 ? '' : 's' }} should be escalated through Inbox before anyone changes scope or executes side effects.
+                      </template>
+                      <template v-else>
+                        No current blockers — approvals should still route through Inbox whenever the work needs founder review.
+                      </template>
+                    </p>
+                  </div>
+                </li>
+                <li class="fc-list-item">
+                  <div class="fc-list-item-content">
+                    <strong style="display:flex;align-items:center;gap:8px;">
+                      <Clock3 :size="14" style="color:var(--fc-text-muted);" />
+                      Cadence
+                    </strong>
+                    <p class="fc-list-meta">Review this project whenever the owner updates the brief, a task becomes blocked, or a new sub-project is created.</p>
+                  </div>
+                </li>
+              </ul>
+            </FcCard>
+          </div>
         </div>
       </div>
     </template>
@@ -727,7 +740,7 @@ useAutoReload(reload);
 @keyframes spin { to { transform: rotate(360deg); } }
 .fc-spin { animation: spin 1s linear infinite; }
 
-.fc-project-layout {
+.fc-project-detail-layout {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 12px;
@@ -738,46 +751,6 @@ useAutoReload(reload);
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.fc-project-card {
-  width: 100%;
-  border: 1px solid var(--fc-border-subtle);
-  border-radius: var(--fc-card-radius);
-  background: var(--fc-surface);
-  padding: 14px;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
-}
-
-.fc-project-card:hover {
-  border-color: color-mix(in srgb, var(--fc-primary) 28%, var(--fc-border-subtle));
-  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
-}
-
-.fc-project-card:active {
-  transform: scale(0.99);
-}
-
-.fc-project-card.is-selected {
-  border-color: color-mix(in srgb, var(--fc-primary) 38%, var(--fc-border-subtle));
-  background: color-mix(in srgb, var(--fc-primary) 6%, var(--fc-surface));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fc-primary) 16%, transparent);
-}
-
-.fc-project-preview {
-  margin: 10px 0 0;
-  color: var(--fc-text-muted);
-  font-size: 0.8125rem;
-  line-height: 1.55;
-}
-
-.fc-project-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
 }
 
 .fc-project-meta-grid {
@@ -827,7 +800,7 @@ useAutoReload(reload);
 }
 
 @media (max-width: 1080px) {
-  .fc-project-layout {
+  .fc-project-detail-layout {
     grid-template-columns: 1fr;
   }
 }
