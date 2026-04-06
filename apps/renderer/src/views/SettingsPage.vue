@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
+  Building2, Wallet, Cpu,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -15,11 +16,28 @@ import FcSelect from '../components/FcSelect.vue';
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
 type Provider = 'openai' | 'anthropic' | 'google';
-type Section = 'provider' | 'appearance' | 'advanced';
+type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'advanced';
 
 // ── State ─────────────────────────────────────────────────
-const activeSection = ref<Section>('provider');
+const activeSection = ref<Section>('company');
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
+
+// ── Company form ─────────────────────────────────────
+const companyName = ref('');
+const companyGoal = ref('');
+const companyTimezone = ref('Asia/Ho_Chi_Minh');
+const companySaving = ref(false);
+
+// ── Budget form ──────────────────────────────────────
+const budgetMonthlyLimitUSD = ref(0);
+const budgetEnforceMode = ref<'warn' | 'block'>('warn');
+const budgetAlertThreshold = ref(80);
+const budgetSaving = ref(false);
+
+// ── Agents defaults form ──────────────────────────────
+const agentHeartbeatMinutes = ref('60');
+const agentDefaultApprovalMode = ref<'auto' | 'suggest' | 'review'>('suggest');
+const agentsSaving = ref(false);
 
 
 // ── Provider form ─────────────────────────────────────────
@@ -82,6 +100,25 @@ const reload = async () => {
 
   themePreference.value = parseThemePreference(getSetting('ui.theme.preference')) ?? 'system';
   applyTheme(themePreference.value);
+
+  // Company
+  companyName.value     = typeof getSetting('company.name') === 'string' ? getSetting('company.name') as string : '';
+  companyGoal.value     = typeof getSetting('company.goal') === 'string' ? getSetting('company.goal') as string : '';
+  companyTimezone.value = typeof getSetting('company.timezone') === 'string' ? getSetting('company.timezone') as string : 'Asia/Ho_Chi_Minh';
+
+  // Budget
+  const rawLimit = getSetting('budget.monthlyLimitUSD');
+  budgetMonthlyLimitUSD.value = typeof rawLimit === 'number' ? rawLimit : (rawLimit ? Number(rawLimit) : 0);
+  const rawMode = getSetting('budget.enforceMode');
+  budgetEnforceMode.value = (rawMode === 'block') ? 'block' : 'warn';
+  const rawThresh = getSetting('budget.alertThresholdPercent');
+  budgetAlertThreshold.value = typeof rawThresh === 'number' ? rawThresh : (rawThresh ? Number(rawThresh) : 80);
+
+  // Agent defaults
+  const rawHb = getSetting('agent.defaultHeartbeatMinutes');
+  agentHeartbeatMinutes.value = String(typeof rawHb === 'number' ? rawHb : (rawHb ? Number(rawHb) : 60));
+  const rawMode2 = getSetting('agent.defaultApprovalMode');
+  agentDefaultApprovalMode.value = (rawMode2 === 'auto' || rawMode2 === 'review') ? rawMode2 : 'suggest';
 };
 
 // ── Apply theme ───────────────────────────────────────────
@@ -121,6 +158,56 @@ const saveTheme = async () => {
     setFeedback('error', err instanceof Error ? err.message : 'Failed to save appearance');
   } finally {
     themeSaving.value = false;
+  }
+};
+
+// ── Save: company ─────────────────────────────────────────
+const saveCompany = async () => {
+  companySaving.value = true;
+  feedback.value = null;
+  try {
+    await uiRuntime.api.upsertSetting({ key: 'company.name',     value: companyName.value.trim() });
+    await uiRuntime.api.upsertSetting({ key: 'company.goal',     value: companyGoal.value.trim() });
+    await uiRuntime.api.upsertSetting({ key: 'company.timezone', value: companyTimezone.value });
+    await uiRuntime.stores.settings.load();
+    setFeedback('success', 'Company settings saved');
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to save company settings');
+  } finally {
+    companySaving.value = false;
+  }
+};
+
+// ── Save: budget ──────────────────────────────────────────
+const saveBudget = async () => {
+  budgetSaving.value = true;
+  feedback.value = null;
+  try {
+    await uiRuntime.api.upsertSetting({ key: 'budget.monthlyLimitUSD',      value: budgetMonthlyLimitUSD.value });
+    await uiRuntime.api.upsertSetting({ key: 'budget.enforceMode',          value: budgetEnforceMode.value });
+    await uiRuntime.api.upsertSetting({ key: 'budget.alertThresholdPercent', value: budgetAlertThreshold.value });
+    await uiRuntime.stores.settings.load();
+    setFeedback('success', 'Budget settings saved');
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to save budget settings');
+  } finally {
+    budgetSaving.value = false;
+  }
+};
+
+// ── Save: agents defaults ─────────────────────────────────
+const saveAgents = async () => {
+  agentsSaving.value = true;
+  feedback.value = null;
+  try {
+    await uiRuntime.api.upsertSetting({ key: 'agent.defaultHeartbeatMinutes', value: Number(agentHeartbeatMinutes.value) });
+    await uiRuntime.api.upsertSetting({ key: 'agent.defaultApprovalMode',     value: agentDefaultApprovalMode.value });
+    await uiRuntime.stores.settings.load();
+    setFeedback('success', 'Agent defaults saved');
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to save agent defaults');
+  } finally {
+    agentsSaving.value = false;
   }
 };
 
@@ -187,6 +274,33 @@ useAutoReload(reload);
       <nav class="st-nav" aria-label="Settings categories">
         <button
           class="st-nav-item"
+          :class="{ 'st-nav-item-active': activeSection === 'company' }"
+          @click="activeSection = 'company'"
+        >
+          <Building2 :size="15" class="st-nav-icon" />
+          <span>Company</span>
+          <ChevronRight :size="13" class="st-nav-chevron" />
+        </button>
+        <button
+          class="st-nav-item"
+          :class="{ 'st-nav-item-active': activeSection === 'budget' }"
+          @click="activeSection = 'budget'"
+        >
+          <Wallet :size="15" class="st-nav-icon" />
+          <span>Budget</span>
+          <ChevronRight :size="13" class="st-nav-chevron" />
+        </button>
+        <button
+          class="st-nav-item"
+          :class="{ 'st-nav-item-active': activeSection === 'agents' }"
+          @click="activeSection = 'agents'"
+        >
+          <Cpu :size="15" class="st-nav-icon" />
+          <span>Agent Defaults</span>
+          <ChevronRight :size="13" class="st-nav-chevron" />
+        </button>
+        <button
+          class="st-nav-item"
           :class="{ 'st-nav-item-active': activeSection === 'provider' }"
           @click="activeSection = 'provider'"
         >
@@ -218,8 +332,190 @@ useAutoReload(reload);
       <div class="st-pane">
         <Transition name="st-section" mode="out-in">
 
+          <!-- ── Company ───────────────────────────── -->
+          <div v-if="activeSection === 'company'" key="company">
+            <div class="st-pane-header">
+              <Building2 :size="16" class="st-pane-icon" />
+              <div>
+                <h4>Company</h4>
+                <p>Define your company's identity and mission. Agents use this as their north star when reasoning about work.</p>
+              </div>
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label" for="st-company-name">Company name</label>
+              <FcInput id="st-company-name" v-model="companyName" placeholder="e.g. Acme Corp" />
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label" for="st-company-goal">Company goal</label>
+              <textarea
+                id="st-company-goal"
+                v-model="companyGoal"
+                class="fc-textarea"
+                rows="4"
+                placeholder="e.g. Build the #1 AI-powered accounting platform with $1M ARR by Q4 2026."
+              />
+              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">The reason the company exists. Injected into every agent's context as mission context.</p>
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label" for="st-company-tz">Timezone</label>
+              <FcSelect id="st-company-tz" v-model="companyTimezone">
+                <option value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh (UTC+7)</option>
+                <option value="Asia/Bangkok">Asia/Bangkok (UTC+7)</option>
+                <option value="Asia/Singapore">Asia/Singapore (UTC+8)</option>
+                <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+                <option value="America/New_York">America/New_York (EST)</option>
+                <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                <option value="Europe/London">Europe/London (GMT)</option>
+                <option value="Europe/Berlin">Europe/Berlin (CET)</option>
+                <option value="UTC">UTC</option>
+              </FcSelect>
+              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">Used for scheduling heartbeats and displaying timestamps.</p>
+            </div>
+
+            <div class="st-actions">
+              <FcButton variant="primary" size="sm" :disabled="companySaving" @click="saveCompany">
+                <Save :size="13" />
+                {{ companySaving ? 'Saving…' : 'Save company settings' }}
+              </FcButton>
+            </div>
+          </div>
+
+          <!-- ── Budget ────────────────────────────── -->
+          <div v-else-if="activeSection === 'budget'" key="budget">
+            <div class="st-pane-header">
+              <Wallet :size="16" class="st-pane-icon" />
+              <div>
+                <h4>Budget</h4>
+                <p>Control AI spend across all agents. Set monthly limits and decide what happens when the budget is exhausted.</p>
+              </div>
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label" for="st-budget-limit">Monthly limit (USD)</label>
+              <div class="st-currency-wrap">
+                <span class="st-currency-prefix">$</span>
+                <input
+                  id="st-budget-limit"
+                  v-model.number="budgetMonthlyLimitUSD"
+                  type="number"
+                  min="0"
+                  step="10"
+                  class="fc-input st-currency-input"
+                  placeholder="0"
+                />
+              </div>
+              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">Set to 0 to disable budget enforcement. Applied company-wide across all agents.</p>
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label">Alert threshold</label>
+              <div class="st-radio-row">
+                <label
+                  v-for="pct in [50, 75, 90]"
+                  :key="pct"
+                  class="st-radio-opt"
+                  :class="{ 'st-radio-opt-active': budgetAlertThreshold === pct }"
+                >
+                  <input v-model.number="budgetAlertThreshold" type="radio" :value="pct" class="sr-only" />
+                  {{ pct }}%
+                </label>
+              </div>
+              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">Send an alert notification when this percentage of the monthly budget is consumed.</p>
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label">Enforcement mode</label>
+              <div class="st-radio-row">
+                <label class="st-radio-opt" :class="{ 'st-radio-opt-active': budgetEnforceMode === 'warn' }">
+                  <input v-model="budgetEnforceMode" type="radio" value="warn" class="sr-only" />
+                  Warn only
+                </label>
+                <label class="st-radio-opt" :class="{ 'st-radio-opt-active': budgetEnforceMode === 'block' }">
+                  <input v-model="budgetEnforceMode" type="radio" value="block" class="sr-only" />
+                  Block agents
+                </label>
+              </div>
+              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">
+                <strong>Warn only</strong> — agents keep running, an alert is sent to the inbox.<br />
+                <strong>Block agents</strong> — all agent heartbeats are paused until reset.
+              </p>
+            </div>
+
+            <div class="st-actions">
+              <FcButton variant="primary" size="sm" :disabled="budgetSaving" @click="saveBudget">
+                <Save :size="13" />
+                {{ budgetSaving ? 'Saving…' : 'Save budget settings' }}
+              </FcButton>
+            </div>
+          </div>
+
+          <!-- ── Agent Defaults ────────────────────── -->
+          <div v-else-if="activeSection === 'agents'" key="agents">
+            <div class="st-pane-header">
+              <Cpu :size="16" class="st-pane-icon" />
+              <div>
+                <h4>Agent Defaults</h4>
+                <p>Default values applied when creating new agents. Individual agents can override these.</p>
+              </div>
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label" for="st-heartbeat">Heartbeat interval</label>
+              <FcSelect id="st-heartbeat" v-model="agentHeartbeatMinutes">
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes</option>
+                <option value="60">Every hour</option>
+                <option value="120">Every 2 hours</option>
+                <option value="240">Every 4 hours</option>
+                <option value="480">Every 8 hours</option>
+                <option value="1440">Once a day</option>
+              </FcSelect>
+              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">How often agents wake up to check for tasks and do work. More frequent = higher cost.</p>
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label">Default approval mode</label>
+              <div class="st-approval-grid">
+                <label
+                  class="st-approval-opt"
+                  :class="{ 'st-approval-opt-active': agentDefaultApprovalMode === 'auto' }"
+                >
+                  <input v-model="agentDefaultApprovalMode" type="radio" value="auto" class="sr-only" />
+                  <strong>Auto</strong>
+                  <span>All actions execute immediately without review. Best for L0 executive agents.</span>
+                </label>
+                <label
+                  class="st-approval-opt"
+                  :class="{ 'st-approval-opt-active': agentDefaultApprovalMode === 'suggest' }"
+                >
+                  <input v-model="agentDefaultApprovalMode" type="radio" value="suggest" class="sr-only" />
+                  <strong>Suggest</strong>
+                  <span>Agent proposes actions, you review in the inbox before they execute.</span>
+                </label>
+                <label
+                  class="st-approval-opt"
+                  :class="{ 'st-approval-opt-active': agentDefaultApprovalMode === 'review' }"
+                >
+                  <input v-model="agentDefaultApprovalMode" type="radio" value="review" class="sr-only" />
+                  <strong>Review all</strong>
+                  <span>Every action requires explicit board approval. Highest governance, lowest speed.</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="st-actions">
+              <FcButton variant="primary" size="sm" :disabled="agentsSaving" @click="saveAgents">
+                <Save :size="13" />
+                {{ agentsSaving ? 'Saving…' : 'Save agent defaults' }}
+              </FcButton>
+            </div>
+          </div>
+
           <!-- ── AI Provider ──────────────────────── -->
-          <div v-if="activeSection === 'provider'" key="provider">
+          <div v-else-if="activeSection === 'provider'" key="provider">
             <div class="st-pane-header">
               <Key :size="16" class="st-pane-icon" />
               <div>
