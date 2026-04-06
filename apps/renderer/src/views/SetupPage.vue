@@ -6,11 +6,10 @@ import { uiRuntime } from '../runtime';
 
 const form = reactive({
   companyName: 'FamilyCo',
-  companyMission: 'Help founders operate with AI-native execution.',
-  companyDirection: 'Prioritize planning, approvals, and delivery visibility.'
+  companyDescription: 'AI-native operating system for founders who need clear execution, approval safety, and visibility.'
 });
 
-const created = ref<null | { executiveName: string; mission: string; direction: string }>(null);
+const created = ref<null | { executiveName: string; description: string }>(null);
 const errorMessage = ref<string | null>(null);
 const isSubmitting = ref(false);
 
@@ -21,14 +20,12 @@ const runSetup = async () => {
   try {
     const result = await uiRuntime.api.initializeSetup({
       companyName: form.companyName,
-      companyMission: form.companyMission,
-      companyDirection: form.companyDirection
+      companyDescription: form.companyDescription
     });
 
     created.value = {
       executiveName: result.executiveAgent.name,
-      mission: result.companyMission,
-      direction: result.companyDirection
+      description: result.companyDescription
     };
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Setup initialization failed';
@@ -43,7 +40,7 @@ const runSetup = async () => {
     <div class="fc-page-header">
       <div>
         <h3>Workspace setup</h3>
-        <p>Initialize FamilyCo with one executive agent and a clear company mission plus operating direction.</p>
+        <p>Initialize FamilyCo with one executive agent and a single company description.</p>
       </div>
     </div>
 
@@ -55,8 +52,7 @@ const runSetup = async () => {
         <h4 style="margin:0 0 8px;font-size:1.125rem;">Workspace initialized</h4>
         <p class="fc-list-meta" style="margin:0 0 16px;">
           Executive agent <strong>{{ created.executiveName }}</strong> is ready.
-          <span v-if="created.mission"> Mission: {{ created.mission }}</span>
-          <span v-if="created.direction"> Direction: {{ created.direction }}</span>
+          <span v-if="created.description"> Description: {{ created.description }}</span>
         </p>
         <div class="fc-inline-actions" style="justify-content:center;">
           <RouterLink class="fc-btn-primary" to="/chat">
@@ -84,8 +80,8 @@ const runSetup = async () => {
             <Building2 :size="16" style="color:var(--fc-info);" />
             <p class="fc-kpi-label" style="margin:0;">Step 2</p>
           </div>
-          <p style="margin:0;font-size:0.875rem;font-weight:600;">Set mission and direction</p>
-          <p class="fc-kpi-sub">Give the executive agent a clear mandate from day one.</p>
+          <p style="margin:0;font-size:0.875rem;font-weight:600;">Write one company description</p>
+          <p class="fc-kpi-sub">Give the executive agent enough business context from day one.</p>
         </article>
         <article class="fc-kpi-card" data-highlight="success">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -100,7 +96,7 @@ const runSetup = async () => {
       <div class="fc-settings-section">
         <div class="fc-settings-section-header">
           <h4>Initialize workspace</h4>
-          <p>This creates your executive (L0) and stores the mission plus direction it should follow.</p>
+          <p>This creates your executive (L0) and stores the company description it should use as context.</p>
         </div>
         <div class="fc-settings-section-body">
           <div class="fc-form-grid" style="margin-bottom:16px;">
@@ -108,24 +104,15 @@ const runSetup = async () => {
               <label class="fc-label">Company name</label>
               <input v-model="form.companyName" class="fc-input" placeholder="Your company name" />
             </div>
-            <div class="fc-form-group">
-              <label class="fc-label">Mission</label>
-              <textarea
-                v-model="form.companyMission"
-                class="fc-input"
-                rows="3"
-                placeholder="What is the company trying to achieve?"
-              ></textarea>
-            </div>
             <div class="fc-form-group" style="grid-column:1 / -1;">
-              <label class="fc-label">Operating direction</label>
+              <label class="fc-label">Company description</label>
               <textarea
-                v-model="form.companyDirection"
+                v-model="form.companyDescription"
                 class="fc-input"
-                rows="3"
-                placeholder="What priorities, constraints, or working style should the executive follow?"
+                rows="4"
+                placeholder="What does the company do, and what context should the executive keep in mind?"
               ></textarea>
-              <p class="fc-list-meta" style="margin:4px 0 0;">Example: move fast on delivery, escalate risky changes for approval, and keep the founder loop tight.</p>
+              <p class="fc-list-meta" style="margin:4px 0 0;">Example: AI-native operating system for founders focused on execution speed, approval safety, and clear visibility.</p>
             </div>
           </div>
 
@@ -136,7 +123,7 @@ const runSetup = async () => {
 
           <button
             class="fc-btn-primary"
-            :disabled="isSubmitting || !form.companyName || !form.companyMission"
+            :disabled="isSubmitting || !form.companyName || !form.companyDescription"
             @click="runSetup"
           >
             <Zap :size="15" />

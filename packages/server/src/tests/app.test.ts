@@ -10,7 +10,11 @@ interface ChatSocketEvent {
   payload?: Record<string, unknown>;
 }
 
-async function runSocketChat(url: string, message: string): Promise<ChatSocketEvent[]> {
+async function runSocketChat(
+  url: string,
+  message: string,
+  meta?: Record<string, unknown>
+): Promise<ChatSocketEvent[]> {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
     const events: ChatSocketEvent[] = [];
@@ -38,7 +42,7 @@ async function runSocketChat(url: string, message: string): Promise<ChatSocketEv
       events.push(nextEvent);
 
       if (nextEvent.type === 'chat.ready') {
-        socket.send(JSON.stringify({ message }));
+        socket.send(JSON.stringify({ message, meta }));
         return;
       }
 
@@ -364,20 +368,20 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
     },
     payload: {
       companyName: 'FamilyCo Test',
-      companyMission: 'Help founders operate with AI-native execution.',
-      companyDirection: 'Prioritize planning, approvals, and delivery visibility.'
+      companyDescription: 'Help founders operate with AI-native execution, approval safety, and delivery visibility.'
     }
   });
 
   assert.equal(setupResponse.statusCode, 201);
   const setupPayload = setupResponse.json() as {
-    companyMission: string;
-    companyDirection: string;
+    companyDescription: string;
     executiveAgent: { id: string };
     defaultProject: { id: string; ownerAgentId: string };
   };
-  assert.equal(setupPayload.companyMission, 'Help founders operate with AI-native execution.');
-  assert.equal(setupPayload.companyDirection, 'Prioritize planning, approvals, and delivery visibility.');
+  assert.equal(
+    setupPayload.companyDescription,
+    'Help founders operate with AI-native execution, approval safety, and delivery visibility.'
+  );
 
   const l0Id = setupPayload.executiveAgent.id;
   const defaultProjectId = setupPayload.defaultProject.id;
@@ -434,9 +438,35 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   assert.equal(planningTaskListResponse.statusCode, 200);
   assert.equal((planningTaskListResponse.json() as Array<{ id: string }>).length, 1);
 
-  const toolEvents = await runSocketChat(
+  const requestOnlyEvents = await runSocketChat(
     chatSocketUrl,
     'Create a task to follow up on onboarding improvements and keep it in the executive queue.'
+  );
+  assert.equal(requestOnlyEvents.some((event) => event.type === 'chat.tool.used'), false);
+
+  const taskCountAfterNaturalLanguageRequest = await app.inject({
+    method: 'GET',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(taskCountAfterNaturalLanguageRequest.statusCode, 200);
+  assert.equal((taskCountAfterNaturalLanguageRequest.json() as Array<{ id: string }>).length, 1);
+
+  const toolEvents = await runSocketChat(
+    chatSocketUrl,
+    'Please track onboarding improvements in the executive queue.',
+    {
+      toolCall: {
+        toolName: 'task.create',
+        arguments: {
+          title: 'Follow up on onboarding improvements',
+          description: 'Keep this work in the executive queue for structured tracking.'
+        }
+      }
+    }
   );
   assert.equal(toolEvents.some((event) => event.type === 'chat.tool.used'), true);
 
@@ -450,7 +480,7 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
 
   assert.equal(threadResponse.statusCode, 200);
   const thread = threadResponse.json() as Array<{ senderId: string; recipientId: string }>;
-  assert.equal(thread.length >= 4, true);
+  assert.equal(thread.length >= 6, true);
 
   const allTasksAfterToolResponse = await app.inject({
     method: 'GET',

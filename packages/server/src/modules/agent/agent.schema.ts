@@ -20,12 +20,19 @@ export const updateParentBodySchema = z.object({
   parentAgentId: z.string().min(1).nullable()
 });
 
+const chatToolRequestSchema = z.object({
+  toolName: z.string().min(1),
+  arguments: z.record(z.string(), z.unknown()).optional().default({})
+});
+
 export const agentChatBodySchema = z.object({
   message: z.string().min(1),
   meta: z
     .object({
       projectId: z.string().min(1).optional(),
-      taskId: z.string().min(1).optional()
+      taskId: z.string().min(1).optional(),
+      toolCall: chatToolRequestSchema.optional(),
+      toolCalls: z.array(chatToolRequestSchema).optional()
     })
     .optional()
 });

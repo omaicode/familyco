@@ -32,13 +32,8 @@ export function registerSetupController(app: FastifyInstance, deps: SetupModuleD
     });
 
     await deps.settingsService.upsert({
-      key: 'company.mission',
-      value: body.companyMission
-    });
-
-    await deps.settingsService.upsert({
-      key: 'company.direction',
-      value: body.companyDirection
+      key: 'company.description',
+      value: body.companyDescription
     });
 
     await deps.settingsService.upsert({
@@ -66,8 +61,7 @@ export function registerSetupController(app: FastifyInstance, deps: SetupModuleD
       targetId: executiveAgent.id,
       payload: {
         companyName: body.companyName,
-        companyMission: body.companyMission,
-        companyDirection: body.companyDirection,
+        companyDescription: body.companyDescription,
         defaultProjectId
       }
     });
@@ -75,8 +69,7 @@ export function registerSetupController(app: FastifyInstance, deps: SetupModuleD
     reply.code(201);
     return {
       companyName: body.companyName,
-      companyMission: body.companyMission,
-      companyDirection: body.companyDirection,
+      companyDescription: body.companyDescription,
       executiveAgent,
       defaultProject
     };

@@ -1,0 +1,78 @@
+import type { TaskPriority, ToolExecutionResult } from '@familyco/core';
+
+import type { ServerToolDefinition, ToolDefinitionSummary } from './tool.types.js';
+
+export function invalidArguments(toolName: string, message: string): ToolExecutionResult {
+  return {
+    ok: false,
+    toolName,
+    error: {
+      code: 'TOOL_INVALID_ARGUMENTS',
+      message
+    }
+  };
+}
+
+export function unavailableTool(toolName: string, message: string): ToolExecutionResult {
+  return {
+    ok: false,
+    toolName,
+    error: {
+      code: 'TOOL_UNAVAILABLE',
+      message
+    }
+  };
+}
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export function asNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+export function asTaskPriority(value: unknown): TaskPriority | undefined {
+  return value === 'low' || value === 'medium' || value === 'high' || value === 'urgent'
+    ? value
+    : undefined;
+}
+
+export function resolveDotPath(source: Record<string, unknown>, path: string): unknown {
+  return path.split('.').reduce<unknown>((current, key) => {
+    if (typeof current !== 'object' || current === null) {
+      return undefined;
+    }
+
+    return (current as Record<string, unknown>)[key];
+  }, source);
+}
+
+export function extractEntityId(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return asNonEmptyString(value.id);
+}
+
+export function extractEntityLabel(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return asNonEmptyString(value.title) ?? asNonEmptyString(value.name);
+}
+
+export function toToolSummary(tool: ServerToolDefinition): ToolDefinitionSummary {
+  return {
+    name: tool.name,
+    description: tool.description,
+    parameters: [...tool.parameters]
+  };
+}

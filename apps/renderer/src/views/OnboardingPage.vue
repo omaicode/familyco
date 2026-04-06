@@ -19,12 +19,11 @@ const errorMessage = ref<string | null>(null);
 const done = ref(false);
 const showApiKey = ref(false);
 
-const createdResult = ref<{ executiveName: string; mission: string; direction: string } | null>(null);
+const createdResult = ref<{ executiveName: string; description: string } | null>(null);
 
 const form = reactive({
   companyName: '',
-  companyMission: '',
-  companyDirection: '',
+  companyDescription: '',
   provider: 'openai' as Provider,
   apiKey: '',
   defaultModel: 'gpt-4o',
@@ -70,10 +69,7 @@ const selectedProvider = computed(() => providerOptions.find(p => p.value === fo
 
 const canNext = computed(() => {
   if (currentStep.value === 2) {
-    return (
-      form.companyName.trim().length > 0 &&
-      (form.companyMission.trim().length > 0 || form.companyDirection.trim().length > 0)
-    );
+    return form.companyName.trim().length > 0 && form.companyDescription.trim().length > 0;
   }
 
   if (currentStep.value === 3) return form.apiKey.trim().length > 0;
@@ -99,14 +95,12 @@ const initialize = async () => {
     await uiRuntime.api.upsertSetting({ key: 'provider.defaultModel', value: form.defaultModel });
     const result = await uiRuntime.api.initializeSetup({
       companyName: form.companyName.trim(),
-      companyMission: form.companyMission.trim(),
-      companyDirection: form.companyDirection.trim(),
+      companyDescription: form.companyDescription.trim(),
     });
     await uiRuntime.api.upsertSetting({ key: 'onboarding.complete', value: true });
     createdResult.value = {
       executiveName: result.executiveAgent.name,
-      mission: result.companyMission,
-      direction: result.companyDirection,
+      description: result.companyDescription,
     };
     done.value = true;
   } catch (err) {
@@ -136,8 +130,7 @@ const goToDashboard = () => router.replace('/chat');
         <h2 style="margin:0 0 8px;font-size:1.5rem;">You're all set!</h2>
         <p style="margin:0 0 24px;color:var(--fc-text-muted);font-size:0.9375rem;line-height:1.6;">
           Executive agent <strong>{{ createdResult.executiveName }}</strong> is ready.
-          <span v-if="createdResult.mission"> Mission: {{ createdResult.mission }}</span>
-          <span v-if="createdResult.direction"> Direction: {{ createdResult.direction }}</span>
+          <span v-if="createdResult.description"> Description: {{ createdResult.description }}</span>
         </p>
         <button class="ob-btn-primary ob-btn-lg" style="width:100%;" @click="goToDashboard">
           Open Executive Chat <ArrowRight :size="16" />
@@ -182,7 +175,7 @@ const goToDashboard = () => router.replace('/chat');
               </div>
               <div class="ob-feature-item">
                 <Users :size="16" style="color:var(--fc-primary);flex-shrink:0;" />
-                <span>Describe your mission and operating direction</span>
+                <span>Describe what your company does and how the executive should understand it</span>
               </div>
             </div>
 
@@ -199,7 +192,7 @@ const goToDashboard = () => router.replace('/chat');
               <Building2 :size="28" />
             </div>
             <h2 class="ob-title">Company details</h2>
-            <p class="ob-subtitle">Name your company and describe the mission plus the direction you want the executive agent to follow from day one.</p>
+            <p class="ob-subtitle">Name your company and add one clear description so the executive agent understands the business context from day one.</p>
 
             <div class="ob-form-group">
               <label class="ob-label">Company name <span class="ob-required">*</span></label>
@@ -213,25 +206,14 @@ const goToDashboard = () => router.replace('/chat');
             </div>
 
             <div class="ob-form-group">
-              <label class="ob-label">Mission <span class="ob-required">*</span></label>
+              <label class="ob-label">Company description <span class="ob-required">*</span></label>
               <textarea
-                v-model="form.companyMission"
+                v-model="form.companyDescription"
                 class="ob-input"
-                rows="3"
-                placeholder="e.g. Help SMB founders run operations with AI-native execution."
+                rows="4"
+                placeholder="e.g. We help founders run company operations with AI-native execution, approval safety, and fast delivery."
               ></textarea>
-              <p class="ob-hint">This gives the L0 executive a clear north star for planning and trade-offs.</p>
-            </div>
-
-            <div class="ob-form-group">
-              <label class="ob-label">Operating direction <span class="ob-optional">optional</span></label>
-              <textarea
-                v-model="form.companyDirection"
-                class="ob-input"
-                rows="3"
-                placeholder="e.g. Focus on delivery speed, approval safety, and founder visibility."
-              ></textarea>
-              <p class="ob-hint">Use this to describe priorities, constraints, or how the company should operate.</p>
+              <p class="ob-hint">Keep it concise but concrete so the executive has enough context for planning and tool use.</p>
             </div>
 
             <div class="ob-actions">
@@ -327,12 +309,8 @@ const goToDashboard = () => router.replace('/chat');
                 <span class="ob-summary-value">{{ form.companyName }}</span>
               </div>
               <div class="ob-summary-row">
-                <span class="ob-summary-label">Mission</span>
-                <span class="ob-summary-value">{{ form.companyMission || 'Not provided yet' }}</span>
-              </div>
-              <div class="ob-summary-row">
-                <span class="ob-summary-label">Direction</span>
-                <span class="ob-summary-value">{{ form.companyDirection || 'Not provided yet' }}</span>
+                <span class="ob-summary-label">Description</span>
+                <span class="ob-summary-value">{{ form.companyDescription || 'Not provided yet' }}</span>
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">AI Provider</span>
