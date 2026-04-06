@@ -20,6 +20,7 @@ const decisionBusy = ref<Record<string, boolean>>({});
 const messageBusy = ref<Record<string, boolean>>({});
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
 const activeTab = ref<'approvals' | 'messages' | 'audit'>('approvals');
+const isLoading = ref(false);
 
 const requestInfoOpen = ref(false);
 const requestInfoTargetId = ref<string | null>(null);
@@ -28,7 +29,12 @@ const requestInfoNote = ref('');
 const reload = async () => {
   feedback.value = null;
   selectedApprovalIds.value = [];
-  await uiRuntime.stores.inbox.load();
+  isLoading.value = true;
+  try {
+    await uiRuntime.stores.inbox.load();
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 // ── Computed ────────────────────────────────────────────────
@@ -168,8 +174,8 @@ useAutoReload(reload);
         <h3>Inbox</h3>
         <p>Review approvals, messages, and governance highlights.</p>
       </div>
-      <button class="fc-btn-secondary" :disabled="uiRuntime.stores.inbox.state.isLoading" @click="reload">
-        <RefreshCw :size="14" :class="{ 'fc-spin': uiRuntime.stores.inbox.state.isLoading }" />
+      <button class="fc-btn-secondary" :disabled="isLoading" @click="reload">
+        <RefreshCw :size="14" :class="{ 'fc-spin': isLoading }" />
         Refresh
       </button>
     </div>
@@ -188,7 +194,7 @@ useAutoReload(reload);
     </Transition>
 
     <!-- ── Loading ──────────────────────────────────── -->
-    <div v-if="uiRuntime.stores.inbox.state.isLoading" class="fc-loading">
+    <div v-if="isLoading" class="fc-loading">
       <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">Loading inbox…</p>
       <SkeletonList />
     </div>
