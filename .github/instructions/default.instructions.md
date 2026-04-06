@@ -148,8 +148,10 @@ Khi đang ở trong VSCode (hoặc bất kỳ editor nào) với AI assistance:
    - Nếu sửa UI: chạy ít nhất unit test component (nếu có) hoặc manual quick test.
 
 7. **Không để file phình quá dài**  
-   - Nếu file Vue/TS vượt khoảng **250–300 dòng** hoặc ôm nhiều trách nhiệm, phải chủ động tách thành component/composable/helper riêng.  
-   - Page chỉ nên giữ orchestration và state chính; phần UI lặp lại hoặc block lớn phải tách ra file riêng.
+   - Nếu file Vue/TS đã chạm khoảng **220 dòng** mà còn cần thêm logic/UI, phải **dừng và tách ngay**, không đợi Founder nhắc.  
+   - Nếu sau khi sửa file vượt khoảng **260 dòng** hoặc ôm hơn 1 trách nhiệm chính, thay đổi **chưa được xem là xong**.  
+   - Ưu tiên tách theo hướng: **page → subcomponents/composables/helpers**, **controller → routes/services**, **test lớn → helpers + spec theo domain**.  
+   - Trong phần summary/PR, phải nêu rõ file nào đã được tách hoặc lý do cụ thể nếu giữ nguyên.
 
 ---
 

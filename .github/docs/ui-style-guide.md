@@ -75,6 +75,13 @@ Pattern:
 - Mobile-first, nhưng ưu tiên desktop 1280+ vì là admin tool.  
 - Dưới 768px: sidebar thu gọn thành off-canvas, topbar vẫn giữ.
 
+### 2.4 Page decomposition
+
+- **Page/View chỉ giữ orchestration**: load data, wire actions, và layout tổng.  
+- Block UI lớn (chat thread, composer, KPI group, filter panel, table toolbar...) phải tách thành component riêng.  
+- Logic state/socket/filter phức tạp phải đưa vào composable/helper thay vì nhồi trong `.vue` page.  
+- Nếu một page SFC vượt khoảng **200–250 dòng**, phải coi đó là tín hiệu cần tách trước khi tiếp tục thêm feature.
+
 ---
 
 ## 3. Màu Sắc & Theme
