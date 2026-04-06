@@ -23,9 +23,9 @@ import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import TaskBulkActionsBar from '../components/tasks/TaskBulkActionsBar.vue';
-import TaskCard from '../components/tasks/TaskCard.vue';
 import TaskFiltersModal from '../components/tasks/TaskFiltersModal.vue';
 import TaskKanbanColumn from '../components/tasks/TaskKanbanColumn.vue';
+import TaskListTable from '../components/tasks/TaskListTable.vue';
 
 type TaskStatus = TaskListItem['status'];
 type TaskPriority = TaskListItem['priority'];
@@ -154,12 +154,6 @@ const formatRelative = (iso: string): string => {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
-};
-
-const formatTaskCode = (task: TaskListItem): string => `TASK-${task.id.slice(0, 8).toUpperCase()}`;
-const summarizeDescription = (value: string): string => {
-  const compact = normalizeText(value);
-  return compact.length > 110 ? `${compact.slice(0, 107).trimEnd()}…` : compact;
 };
 
 const formatStatus = (status: TaskStatus): string => STATUS_LABELS[status];
@@ -754,72 +748,21 @@ useAutoReload(reload);
           </div>
         </div>
 
-        <div class="task-table-wrap">
-          <table class="task-table">
-            <thead>
-              <tr>
-                <th class="task-table-select-cell">
-                  <input
-                    :checked="allVisibleSelected"
-                    type="checkbox"
-                    class="fc-checkbox"
-                    @change="toggleSelectAllVisible"
-                  />
-                </th>
-                <th>Task</th>
-                <th>Project</th>
-                <th>Assignee</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Created</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="task in listTasks" :key="task.id">
-                <td class="task-table-select-cell">
-                  <input
-                    :checked="selectedTaskIds.includes(task.id)"
-                    type="checkbox"
-                    class="fc-checkbox"
-                    @change="toggleTaskSelection(task.id)"
-                  />
-                </td>
-                <td class="task-table-main-cell">
-                  <span class="task-table-code">{{ formatTaskCode(task) }}</span>
-                  <strong class="task-table-title">{{ task.title }}</strong>
-                  <p class="task-table-brief">{{ summarizeDescription(task.description) || 'No execution brief yet.' }}</p>
-                </td>
-                <td>{{ getProjectName(task.projectId) }}</td>
-                <td>{{ getAgentName(task.assigneeAgentId) }}</td>
-                <td>
-                  <FcBadge :status="task.status">{{ formatStatus(task.status) }}</FcBadge>
-                </td>
-                <td>
-                  <span class="task-priority-pill" :data-priority="task.priority">
-                    {{ formatPriority(task.priority) }}
-                  </span>
-                </td>
-                <td>{{ formatRelative(task.createdAt) }}</td>
-                <td>
-                  <div v-if="ALLOWED_TRANSITIONS[task.status].length > 0" class="task-row-actions">
-                    <FcButton
-                      v-for="nextStatus in ALLOWED_TRANSITIONS[task.status].slice(0, 2)"
-                      :key="`${task.id}-${nextStatus}`"
-                      variant="secondary"
-                      size="sm"
-                      :disabled="busyMap[task.id] === true"
-                      @click="moveTask(task, nextStatus)"
-                    >
-                      {{ formatStatus(nextStatus) }}
-                    </FcButton>
-                  </div>
-                  <span v-else class="task-table-empty">—</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <TaskListTable
+          :tasks="listTasks"
+          :all-visible-selected="allVisibleSelected"
+          :selected-task-ids="selectedTaskIds"
+          :busy-map="busyMap"
+          :allowed-transitions="ALLOWED_TRANSITIONS"
+          :get-project-name="getProjectName"
+          :get-agent-name="getAgentName"
+          :format-priority="formatPriority"
+          :format-status="formatStatus"
+          :format-relative="formatRelative"
+          @toggle-select-all="toggleSelectAllVisible"
+          @toggle-select="toggleTaskSelection"
+          @move="moveTask"
+        />
       </FcCard>
     </div>
   </section>
@@ -912,81 +855,6 @@ useAutoReload(reload);
   padding-bottom: 6px;
 }
 
-.task-table-wrap {
-  overflow-x: auto;
-}
-
-.task-table {
-  width: 100%;
-  min-width: 980px;
-  border-collapse: collapse;
-}
-
-.task-table th,
-.task-table td {
-  text-align: left;
-  vertical-align: top;
-  padding: 10px 12px;
-}
-
-.task-table thead th {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fc-text-muted);
-  border-bottom: 1px solid var(--fc-border-subtle);
-}
-
-.task-table tbody tr + tr td {
-  border-top: 1px solid color-mix(in srgb, var(--fc-border-subtle) 90%, transparent);
-}
-
-.task-table tbody tr:hover {
-  background: color-mix(in srgb, var(--fc-primary) 4%, transparent);
-}
-
-.task-table-select-cell {
-  width: 42px;
-}
-
-.task-table-main-cell {
-  min-width: 280px;
-}
-
-.task-table-code {
-  display: inline-block;
-  margin-bottom: 4px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--fc-text-muted);
-}
-
-.task-table-title {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.task-table-brief {
-  margin: 0;
-  color: var(--fc-text-muted);
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
-.task-row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.task-table-empty {
-  color: var(--fc-text-faint);
-}
 
 @media (max-width: 1100px) {
   .task-toolbar {

@@ -193,6 +193,10 @@ const formatTaskCode = (task: TaskListItem): string => `TASK-${task.id.slice(0, 
 
 .task-title-compact {
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .task-description-markdown {
@@ -301,5 +305,15 @@ const formatTaskCode = (task: TaskListItem): string => `TASK-${task.id.slice(0, 
 .task-card-kanban {
   padding: 12px;
   gap: 8px;
+}
+
+.task-card-kanban .task-priority-pill {
+  padding: 2px 7px;
+  font-size: 0.66rem;
+}
+
+.task-card-kanban :deep(.fc-badge) {
+  padding: 2px 7px;
+  font-size: 0.66rem;
 }
 </style>

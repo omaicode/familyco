@@ -85,7 +85,7 @@ const onDrop = (): void => {
 
 <style scoped>
 .kanban-column {
-  min-width: 320px;
+  min-width: 340px;
   border: 1px solid var(--fc-border-subtle);
   border-radius: var(--fc-card-radius);
   background: var(--fc-surface);
