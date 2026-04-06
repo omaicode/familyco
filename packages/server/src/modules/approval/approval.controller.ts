@@ -180,6 +180,41 @@ async function executeApprovedAction(
       };
     }
 
+    case 'project.update': {
+      const name = readString(payload, 'name');
+      const description = readString(payload, 'description');
+      const ownerAgentId = readString(payload, 'ownerAgentId');
+      const parentProjectId = readNullableString(payload, 'parentProjectId');
+
+      if (!approvalRequest.targetId || !name || !description || !ownerAgentId) {
+        return null;
+      }
+
+      const updatedProject = await deps.projectService.updateProject(approvalRequest.targetId, {
+        name,
+        description,
+        ownerAgentId,
+        parentProjectId
+      });
+
+      return {
+        resourceId: updatedProject.id,
+        message: `Project ${updatedProject.name} has been updated.`
+      };
+    }
+
+    case 'project.delete': {
+      if (!approvalRequest.targetId) {
+        return null;
+      }
+
+      const deletedProject = await deps.projectService.deleteProject(approvalRequest.targetId);
+      return {
+        resourceId: deletedProject.id,
+        message: `Project ${deletedProject.name} has been deleted.`
+      };
+    }
+
     case 'task.create': {
       const title = readString(payload, 'title');
       const description = readString(payload, 'description');

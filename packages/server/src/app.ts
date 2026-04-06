@@ -294,6 +294,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       registerInboxController(api, { inboxService, auditService });
       registerProjectController(api, {
         projectService,
+        taskService,
         approvalService,
         auditService,
         approvalGuard

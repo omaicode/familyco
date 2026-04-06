@@ -253,6 +253,120 @@ test('POST /api/v1/tasks/bulk updates priority and status for multiple tasks', a
   await app.close();
 });
 
+test('PATCH /api/v1/projects and DELETE /api/v1/projects/:id update briefs and protect non-empty projects', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Portfolio Owner',
+      role: 'Strategy',
+      level: 'L0',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const agent = createAgentResponse.json() as { id: string };
+
+  const editableProjectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Editable Project',
+      description: 'Original brief',
+      ownerAgentId: agent.id
+    }
+  });
+
+  const emptyProjectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Disposable Project',
+      description: 'Can be deleted safely',
+      ownerAgentId: agent.id
+    }
+  });
+
+  assert.equal(editableProjectResponse.statusCode, 201);
+  assert.equal(emptyProjectResponse.statusCode, 201);
+
+  const editableProject = editableProjectResponse.json() as { id: string; name: string };
+  const emptyProject = emptyProjectResponse.json() as { id: string };
+
+  const updateProjectResponse = await app.inject({
+    method: 'PATCH',
+    url: `/api/v1/projects/${editableProject.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Updated Portfolio Project',
+      description: 'Revised operating brief',
+      ownerAgentId: agent.id,
+      parentProjectId: null
+    }
+  });
+
+  assert.equal(updateProjectResponse.statusCode, 200);
+  const updatedProject = updateProjectResponse.json() as { name: string; description: string };
+  assert.equal(updatedProject.name, 'Updated Portfolio Project');
+  assert.equal(updatedProject.description, 'Revised operating brief');
+
+  const createTaskResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Keep project active',
+      description: 'This task should block project deletion',
+      projectId: editableProject.id,
+      createdBy: agent.id
+    }
+  });
+
+  assert.equal(createTaskResponse.statusCode, 201);
+
+  const blockedDeleteResponse = await app.inject({
+    method: 'DELETE',
+    url: `/api/v1/projects/${editableProject.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(blockedDeleteResponse.statusCode, 400);
+  const blockedDeleteBody = blockedDeleteResponse.json() as { code: string };
+  assert.equal(blockedDeleteBody.code, 'PROJECT_NOT_EMPTY');
+
+  const deleteProjectResponse = await app.inject({
+    method: 'DELETE',
+    url: `/api/v1/projects/${emptyProject.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(deleteProjectResponse.statusCode, 200);
+  const deletePayload = deleteProjectResponse.json() as { id: string };
+  assert.equal(deletePayload.id, emptyProject.id);
+
+  await app.close();
+});
+
 test('agent + project + task flow works with in-memory repositories', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 

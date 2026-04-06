@@ -38,6 +38,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [projectId: string];
+  view: [projectId: string];
+  edit: [projectId: string];
+  remove: [projectId: string];
   changePage: [page: number];
 }>();
 
@@ -90,7 +93,7 @@ const goToPage = (page: number): void => {
           v-for="project in projects"
           :key="project.id"
           :class="{ 'project-row-selected': selectedProjectId === project.id }"
-          @click="emit('select', project.id)"
+          @click="emit('select', project.id); emit('view', project.id)"
         >
           <td class="project-main-cell">
             <strong class="project-name">{{ project.name }}</strong>
@@ -116,9 +119,17 @@ const goToPage = (page: number): void => {
             <strong class="project-updated">{{ formatRelative(project.updatedAt) }}</strong>
           </td>
           <td class="project-action-cell">
-            <FcButton variant="ghost" size="sm" @click.stop="emit('select', project.id)">
-              Inspect
-            </FcButton>
+            <div class="project-row-actions">
+              <FcButton variant="secondary" size="sm" @click.stop="emit('select', project.id); emit('view', project.id)">
+                View
+              </FcButton>
+              <FcButton variant="ghost" size="sm" @click.stop="emit('select', project.id); emit('edit', project.id)">
+                Edit
+              </FcButton>
+              <FcButton variant="danger" size="sm" @click.stop="emit('select', project.id); emit('remove', project.id)">
+                Delete
+              </FcButton>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -244,6 +255,12 @@ const goToPage = (page: number): void => {
 
 .project-action-cell {
   white-space: nowrap;
+}
+
+.project-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .project-empty-row {

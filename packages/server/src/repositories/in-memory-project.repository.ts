@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { CreateProjectInput, Project, ProjectRepository } from '@familyco/core';
+import type { CreateProjectInput, Project, ProjectRepository, UpdateProjectInput } from '@familyco/core';
 
 export class InMemoryProjectRepository implements ProjectRepository {
   private readonly projects = new Map<string, Project>();
@@ -19,6 +19,40 @@ export class InMemoryProjectRepository implements ProjectRepository {
 
     this.projects.set(project.id, project);
     return project;
+  }
+
+  async update(id: string, input: UpdateProjectInput): Promise<Project> {
+    const existing = this.projects.get(id);
+    if (!existing) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
+    const updated: Project = {
+      ...existing,
+      name: input.name,
+      description: input.description,
+      ownerAgentId: input.ownerAgentId,
+      parentProjectId: input.parentProjectId ?? null,
+      updatedAt: new Date()
+    };
+
+    this.projects.set(id, updated);
+    return updated;
+  }
+
+  async delete(id: string): Promise<Project> {
+    const existing = this.projects.get(id);
+    if (!existing) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
+    const hasChildren = Array.from(this.projects.values()).some((project) => project.parentProjectId === id);
+    if (hasChildren) {
+      throw new Error('PROJECT_NOT_EMPTY');
+    }
+
+    this.projects.delete(id);
+    return existing;
   }
 
   async findById(id: string): Promise<Project | null> {

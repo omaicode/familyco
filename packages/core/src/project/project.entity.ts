@@ -14,3 +14,10 @@ export interface CreateProjectInput {
   ownerAgentId: string;
   parentProjectId?: string | null;
 }
+
+export interface UpdateProjectInput {
+  name: string;
+  description: string;
+  ownerAgentId: string;
+  parentProjectId?: string | null;
+}

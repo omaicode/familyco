@@ -138,13 +138,31 @@ export interface CreateProjectPayload {
   parentProjectId?: string | null;
 }
 
-export interface CreateProjectApprovalResponse {
+export interface UpdateProjectPayload {
+  projectId: string;
+  name: string;
+  description: string;
+  ownerAgentId: string;
+  parentProjectId?: string | null;
+}
+
+export interface DeleteProjectPayload {
+  projectId: string;
+}
+
+export interface ProjectActionApprovalResponse {
   approvalRequired: true;
   approvalRequestId: string;
   reason?: string;
 }
 
-export type CreateProjectResult = ProjectListItem | CreateProjectApprovalResponse;
+export interface DeleteProjectSuccessResponse {
+  id: string;
+}
+
+export type CreateProjectResult = ProjectListItem | ProjectActionApprovalResponse;
+export type UpdateProjectResult = ProjectListItem | ProjectActionApprovalResponse;
+export type DeleteProjectResult = DeleteProjectSuccessResponse | ProjectActionApprovalResponse;
 
 export interface CreateTaskPayload {
   title: string;
@@ -278,6 +296,8 @@ export interface FamilyCoApiContracts {
   updateAgentParent: (payload: UpdateAgentParentPayload) => Promise<AgentListItem>;
   listProjects: () => Promise<ProjectListItem[]>;
   createProject: (payload: CreateProjectPayload) => Promise<CreateProjectResult>;
+  updateProject: (payload: UpdateProjectPayload) => Promise<UpdateProjectResult>;
+  deleteProject: (payload: DeleteProjectPayload) => Promise<DeleteProjectResult>;
   listTasks: (query?: ListTasksQuery) => Promise<TaskListItem[]>;
   createTask: (payload: CreateTaskPayload) => Promise<CreateTaskResult>;
   updateTaskStatus: (payload: UpdateTaskStatusPayload) => Promise<UpdateTaskStatusResult>;
@@ -335,6 +355,14 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     ),
   listProjects: () => client.get<ProjectListItem[]>('/api/v1/projects'),
   createProject: (payload) => client.post<CreateProjectResult, CreateProjectPayload>('/api/v1/projects', payload),
+  updateProject: (payload) =>
+    client.patch<UpdateProjectResult, Omit<UpdateProjectPayload, 'projectId'>>(`/api/v1/projects/${payload.projectId}`, {
+      name: payload.name,
+      description: payload.description,
+      ownerAgentId: payload.ownerAgentId,
+      parentProjectId: payload.parentProjectId ?? null
+    }),
+  deleteProject: (payload) => client.delete<DeleteProjectResult>(`/api/v1/projects/${payload.projectId}`),
   listTasks: (query = {}) => {
     const params = new URLSearchParams();
     if (query.projectId) {

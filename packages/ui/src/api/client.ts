@@ -65,6 +65,15 @@ export class UIApiClient {
     }
   }
 
+  async delete<TResponse>(path: string, config?: AxiosRequestConfig): Promise<TResponse> {
+    try {
+      const response = await this.axios.delete<TResponse>(path, config);
+      return response.data;
+    } catch (error) {
+      throw normalizeApiError(error);
+    }
+  }
+
   private async requestWithRetry<TResponse>(request: () => Promise<TResponse>): Promise<TResponse> {
     let attempt = 0;
 

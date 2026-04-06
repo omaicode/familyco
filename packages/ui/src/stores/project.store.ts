@@ -2,9 +2,13 @@ import type {
   AgentListItem,
   CreateProjectPayload,
   CreateProjectResult,
+  DeleteProjectPayload,
+  DeleteProjectResult,
   FamilyCoApiContracts,
   ProjectListItem,
-  TaskListItem
+  TaskListItem,
+  UpdateProjectPayload,
+  UpdateProjectResult
 } from '../api/contracts.js';
 import { createAsyncState, type AsyncState } from './async-state.js';
 
@@ -76,6 +80,39 @@ export class ProjectStore {
       }
     };
     this.state.isEmpty = false;
+
+    return result;
+  }
+
+  async updateProject(payload: UpdateProjectPayload): Promise<UpdateProjectResult> {
+    const result = await this.api.updateProject(payload);
+
+    if ('approvalRequired' in result) {
+      return result;
+    }
+
+    this.state.data = {
+      ...this.state.data,
+      projects: this.state.data.projects.map((project) => (project.id === result.id ? result : project))
+    };
+
+    return result;
+  }
+
+  async deleteProject(payload: DeleteProjectPayload): Promise<DeleteProjectResult> {
+    const result = await this.api.deleteProject(payload);
+
+    if ('approvalRequired' in result) {
+      return result;
+    }
+
+    const { [payload.projectId]: _, ...nextTaskMap } = this.state.data.taskMap;
+    this.state.data = {
+      ...this.state.data,
+      projects: this.state.data.projects.filter((project) => project.id !== payload.projectId),
+      taskMap: nextTaskMap
+    };
+    this.state.isEmpty = this.state.data.projects.length === 0;
 
     return result;
   }

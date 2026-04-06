@@ -1,4 +1,4 @@
-import type { CreateProjectInput, Project } from './project.entity.js';
+import type { CreateProjectInput, Project, UpdateProjectInput } from './project.entity.js';
 import type { ProjectRepository } from './project.repository.js';
 
 export class ProjectService {
@@ -6,6 +6,18 @@ export class ProjectService {
 
   createProject(input: CreateProjectInput): Promise<Project> {
     return this.repository.create(input);
+  }
+
+  updateProject(id: string, input: UpdateProjectInput): Promise<Project> {
+    if (input.parentProjectId === id) {
+      throw new Error('PROJECT_INVALID_PARENT');
+    }
+
+    return this.repository.update(id, input);
+  }
+
+  deleteProject(id: string): Promise<Project> {
+    return this.repository.delete(id);
   }
 
   listProjects(): Promise<Project[]> {

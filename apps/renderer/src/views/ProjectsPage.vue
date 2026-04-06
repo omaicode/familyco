@@ -1,17 +1,11 @@
 <script setup lang="ts">
-import type { AgentListItem, ProjectListItem, TaskListItem } from '@familyco/ui';
+import type { AgentListItem, ProjectListItem, TaskListItem, UpdateProjectPayload } from '@familyco/ui';
 import { computed, reactive, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
 import {
   AlertTriangle,
-  Clock3,
-  FileText,
   FolderKanban,
-  GitBranch,
-  Inbox,
   Plus,
   RefreshCw,
-  Target,
   TriangleAlert,
   Users,
   Workflow
@@ -26,12 +20,13 @@ import FcCard from '../components/FcCard.vue';
 import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
-import MarkdownPreview from '../components/MarkdownPreview.vue';
+import ProjectDetailModal from '../components/projects/ProjectDetailModal.vue';
 import ProjectPortfolioTable from '../components/projects/ProjectPortfolioTable.vue';
 import { markdownToPlainText } from '../utils/markdown';
 
 type PortfolioFilter = 'all' | 'attention' | 'healthy' | 'roots';
 type RiskLevel = 'healthy' | 'watch' | 'critical';
+type ProjectModalMode = 'view' | 'edit' | 'delete';
 
 interface ProjectCard extends ProjectListItem {
   owner: AgentListItem | null;
@@ -59,6 +54,9 @@ const selectedProjectId = ref<string | null>(null);
 const filterMode = ref<PortfolioFilter>('all');
 const searchQuery = ref('');
 const currentPage = ref(1);
+const projectModalOpen = ref(false);
+const projectModalMode = ref<ProjectModalMode>('view');
+const isProjectMutating = ref(false);
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
 
 const PROJECTS_PER_PAGE = 8;
@@ -259,11 +257,11 @@ watch(
 );
 
 const selectedProject = computed(() => {
-  if (paginatedProjects.value.length === 0) {
+  if (filteredProjects.value.length === 0) {
     return null;
   }
 
-  return paginatedProjects.value.find((project) => project.id === selectedProjectId.value) ?? paginatedProjects.value[0];
+  return filteredProjects.value.find((project) => project.id === selectedProjectId.value) ?? filteredProjects.value[0];
 });
 
 const selectedTasks = computed(() => {
@@ -358,6 +356,8 @@ const createProject = async (): Promise<void> => {
       setFeedback('success', result.reason || 'Project request sent for approval.');
     } else {
       selectedProjectId.value = result.id;
+      projectModalMode.value = 'view';
+      projectModalOpen.value = true;
       setFeedback('success', 'Project created successfully');
     }
 
@@ -366,6 +366,64 @@ const createProject = async (): Promise<void> => {
     setFeedback('error', error instanceof Error ? error.message : 'Failed to create project');
   } finally {
     isCreating.value = false;
+  }
+};
+
+const openProjectModal = (projectId: string, mode: ProjectModalMode): void => {
+  selectedProjectId.value = projectId;
+  projectModalMode.value = mode;
+  projectModalOpen.value = true;
+};
+
+const closeProjectModal = (): void => {
+  projectModalOpen.value = false;
+  projectModalMode.value = 'view';
+};
+
+const saveProjectChanges = async (payload: UpdateProjectPayload): Promise<void> => {
+  isProjectMutating.value = true;
+
+  try {
+    const result = await uiRuntime.stores.projects.updateProject(payload);
+
+    if ('approvalRequired' in result) {
+      setFeedback('success', result.reason || 'Project update sent for approval.');
+      closeProjectModal();
+      return;
+    }
+
+    selectedProjectId.value = result.id;
+    projectModalMode.value = 'view';
+    setFeedback('success', 'Project updated successfully.');
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : 'Failed to update project');
+  } finally {
+    isProjectMutating.value = false;
+  }
+};
+
+const deleteProject = async (projectId: string): Promise<void> => {
+  isProjectMutating.value = true;
+
+  try {
+    const result = await uiRuntime.stores.projects.deleteProject({ projectId });
+
+    if ('approvalRequired' in result) {
+      setFeedback('success', result.reason || 'Project deletion sent for approval.');
+      closeProjectModal();
+      return;
+    }
+
+    if (selectedProjectId.value === projectId) {
+      selectedProjectId.value = filteredProjects.value[0]?.id ?? null;
+    }
+
+    closeProjectModal();
+    setFeedback('success', 'Project deleted successfully.');
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : 'Failed to delete project');
+  } finally {
+    isProjectMutating.value = false;
   }
 };
 
@@ -556,7 +614,7 @@ useAutoReload(reload);
           <div class="fc-section-header" style="align-items:flex-start;">
             <div>
               <h4 style="margin:0;">Project registry</h4>
-              <p class="fc-list-meta" style="margin:4px 0 0;">A simpler table view with pagination for scanning and selecting project briefs.</p>
+              <p class="fc-list-meta" style="margin:4px 0 0;">Open a project in a dedicated modal to view, edit, or delete it.</p>
             </div>
             <span class="fc-badge">{{ filteredProjects.length }} total</span>
           </div>
@@ -573,165 +631,32 @@ useAutoReload(reload);
             :risk-label="riskLabel"
             :risk-tone="riskTone"
             @select="selectedProjectId = $event"
+            @view="openProjectModal($event, 'view')"
+            @edit="openProjectModal($event, 'edit')"
+            @remove="openProjectModal($event, 'delete')"
             @change-page="currentPage = $event"
           />
         </FcCard>
-
-        <div v-if="selectedProject" class="fc-project-detail-layout">
-          <FcCard>
-            <div class="fc-section-header" style="align-items:flex-start;">
-              <div>
-                <h4 style="margin:0;">{{ selectedProject.name }}</h4>
-                <p class="fc-list-meta" style="margin:4px 0 0;">{{ selectedProject.owner?.role || 'Assign an accountable owner' }}</p>
-              </div>
-              <div class="fc-inline-actions">
-                <span class="fc-risk-tag" :data-risk="riskTone(selectedProject.risk)">
-                  {{ riskLabel(selectedProject.risk) }}
-                </span>
-                <RouterLink class="fc-btn-secondary fc-btn-sm" to="/tasks">
-                  <Workflow :size="12" /> View tasks
-                </RouterLink>
-                <RouterLink
-                  v-if="selectedProject.counts.blocked > 0"
-                  class="fc-btn-primary fc-btn-sm"
-                  to="/inbox"
-                >
-                  <Inbox :size="12" /> Resolve blockers
-                </RouterLink>
-              </div>
-            </div>
-
-            <div class="fc-project-meta-grid">
-              <div class="fc-project-mini-card">
-                <span>Owner</span>
-                <strong>{{ selectedProject.owner?.name || 'Unassigned' }}</strong>
-                <p>{{ selectedProject.owner?.department || 'Choose an L0 or L1 owner' }}</p>
-              </div>
-              <div class="fc-project-mini-card">
-                <span>Structure</span>
-                <strong>{{ selectedProject.parentProjectId ? 'Sub-project' : 'Root project' }}</strong>
-                <p>{{ selectedProject.childCount }} child project{{ selectedProject.childCount === 1 ? '' : 's' }}</p>
-              </div>
-              <div class="fc-project-mini-card">
-                <span>Delivery state</span>
-                <strong>{{ selectedProject.healthText }}</strong>
-                <p>{{ selectedProject.counts.total }} total task{{ selectedProject.counts.total === 1 ? '' : 's' }}</p>
-              </div>
-              <div class="fc-project-mini-card">
-                <span>Updated</span>
-                <strong>{{ formatRelative(selectedProject.updatedAt) }}</strong>
-                <p>{{ formatDate(selectedProject.updatedAt) }}</p>
-              </div>
-            </div>
-
-            <hr class="fc-divider" />
-
-            <div class="fc-section-header" style="margin-bottom:10px;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <FileText :size="14" style="color:var(--fc-text-muted);" />
-                <h4 style="margin:0;">Project brief for agents</h4>
-              </div>
-            </div>
-
-            <div class="fc-project-brief-box">
-              <MarkdownPreview
-                :source="selectedProject.description"
-                empty-text="Add a Markdown brief so agents can review scope and execution details."
-              />
-            </div>
-          </FcCard>
-
-          <div class="fc-stack">
-            <FcCard>
-              <div class="fc-section-header" style="align-items:flex-start;">
-                <div>
-                  <h4 style="margin:0;">Current execution lane</h4>
-                  <p class="fc-list-meta" style="margin:4px 0 0;">What agents are actively doing inside this project right now.</p>
-                </div>
-                <span class="fc-badge">{{ selectedTasks.length }} tasks</span>
-              </div>
-
-              <ul v-if="selectedTasks.length > 0" class="fc-list">
-                <li v-for="task in selectedTasks.slice(0, 6)" :key="task.id" class="fc-list-item">
-                  <div class="fc-list-item-content">
-                    <strong>{{ task.title }}</strong>
-                    <p class="fc-list-meta">{{ getAgentLabel(task.assigneeAgentId) }} · created by {{ getAgentLabel(task.createdBy) }}</p>
-                  </div>
-                  <span class="fc-badge" :data-status="task.status">{{ task.status }}</span>
-                </li>
-              </ul>
-
-              <div v-else class="fc-empty" style="padding:24px;border:none;">
-                <p style="margin:0;">No tasks yet. Once the owner decomposes the project, delivery work will appear here.</p>
-              </div>
-            </FcCard>
-
-            <FcCard>
-              <div class="fc-section-header" style="align-items:flex-start;">
-                <div>
-                  <h4 style="margin:0;">How delivery runs</h4>
-                  <p class="fc-list-meta" style="margin:4px 0 0;">A quick operational guide so every agent follows the same rhythm.</p>
-                </div>
-              </div>
-
-              <ul class="fc-list">
-                <li class="fc-list-item">
-                  <div class="fc-list-item-content">
-                    <strong style="display:flex;align-items:center;gap:8px;">
-                      <Target :size="14" style="color:var(--fc-primary);" />
-                      Outcome & scope
-                    </strong>
-                    <p class="fc-list-meta">Use this brief as the single source of truth for goals, constraints, and expected handoffs.</p>
-                  </div>
-                </li>
-                <li class="fc-list-item">
-                  <div class="fc-list-item-content">
-                    <strong style="display:flex;align-items:center;gap:8px;">
-                      <Users :size="14" style="color:var(--fc-info);" />
-                      Owner accountability
-                    </strong>
-                    <p class="fc-list-meta">{{ selectedProject.owner?.name || 'An owner' }} should keep the plan current, assign work, and surface decisions when scope changes.</p>
-                  </div>
-                </li>
-                <li class="fc-list-item">
-                  <div class="fc-list-item-content">
-                    <strong style="display:flex;align-items:center;gap:8px;">
-                      <Workflow :size="14" style="color:var(--fc-success);" />
-                      Execution flow
-                    </strong>
-                    <p class="fc-list-meta">Move work through <code>pending → in_progress → review → done</code> so the whole hierarchy can read progress at a glance.</p>
-                  </div>
-                </li>
-                <li class="fc-list-item">
-                  <div class="fc-list-item-content">
-                    <strong style="display:flex;align-items:center;gap:8px;">
-                      <GitBranch :size="14" style="color:var(--fc-warning);" />
-                      Escalation & approvals
-                    </strong>
-                    <p class="fc-list-meta">
-                      <template v-if="selectedProject.counts.blocked > 0">
-                        {{ selectedProject.counts.blocked }} blocked item{{ selectedProject.counts.blocked === 1 ? '' : 's' }} should be escalated through Inbox before anyone changes scope or executes side effects.
-                      </template>
-                      <template v-else>
-                        No current blockers — approvals should still route through Inbox whenever the work needs founder review.
-                      </template>
-                    </p>
-                  </div>
-                </li>
-                <li class="fc-list-item">
-                  <div class="fc-list-item-content">
-                    <strong style="display:flex;align-items:center;gap:8px;">
-                      <Clock3 :size="14" style="color:var(--fc-text-muted);" />
-                      Cadence
-                    </strong>
-                    <p class="fc-list-meta">Review this project whenever the owner updates the brief, a task becomes blocked, or a new sub-project is created.</p>
-                  </div>
-                </li>
-              </ul>
-            </FcCard>
-          </div>
-        </div>
       </div>
+
+      <ProjectDetailModal
+        :open="projectModalOpen"
+        :mode="projectModalMode"
+        :project="selectedProject"
+        :tasks="selectedTasks"
+        :owner-options="ownerOptions"
+        :project-options="projectState.data.projects"
+        :busy="isProjectMutating"
+        :format-date="formatDate"
+        :format-relative="formatRelative"
+        :get-agent-label="getAgentLabel"
+        :risk-label="riskLabel"
+        :risk-tone="riskTone"
+        @close="closeProjectModal"
+        @change-mode="projectModalMode = $event"
+        @save="saveProjectChanges"
+        @remove="deleteProject"
+      />
     </template>
   </section>
 </template>
@@ -740,74 +665,9 @@ useAutoReload(reload);
 @keyframes spin { to { transform: rotate(360deg); } }
 .fc-spin { animation: spin 1s linear infinite; }
 
-.fc-project-detail-layout {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 12px;
-  align-items: start;
-}
-
 .fc-stack {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.fc-project-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.fc-project-mini-card {
-  border: 1px solid var(--fc-border-subtle);
-  border-radius: 10px;
-  padding: 12px;
-  background: color-mix(in srgb, var(--fc-surface-muted) 50%, var(--fc-surface));
-}
-
-.fc-project-mini-card span {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--fc-text-faint);
-}
-
-.fc-project-mini-card strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 0.9rem;
-  color: var(--fc-text-main);
-}
-
-.fc-project-mini-card p {
-  margin: 4px 0 0;
-  font-size: 0.75rem;
-  color: var(--fc-text-muted);
-}
-
-.fc-project-brief-box {
-  border: 1px dashed var(--fc-border-subtle);
-  border-radius: 10px;
-  padding: 12px 14px;
-  background: color-mix(in srgb, var(--fc-surface-muted) 35%, var(--fc-surface));
-}
-
-.fc-project-brief-box :deep(.fc-markdown) {
-  font-size: 0.875rem;
-}
-
-@media (max-width: 1080px) {
-  .fc-project-detail-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .fc-project-meta-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
