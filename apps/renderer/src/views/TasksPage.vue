@@ -4,37 +4,40 @@ import { computed, reactive, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
   AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  CheckSquare2,
   ClipboardList,
   Columns3,
-  Flag,
   List,
-  PauseCircle,
   Plus,
   RefreshCw,
   Search,
-  Square,
-  UserRound,
-  Workflow
+  SlidersHorizontal
 } from 'lucide-vue-next';
 
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useAutoReload } from '../composables/useAutoReload';
-import FcBadge from '../components/FcBadge.vue';
 import FcBanner from '../components/FcBanner.vue';
 import FcButton from '../components/FcButton.vue';
 import FcCard from '../components/FcCard.vue';
 import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
+import TaskBulkActionsBar from '../components/tasks/TaskBulkActionsBar.vue';
+import TaskCard from '../components/tasks/TaskCard.vue';
+import TaskFiltersModal from '../components/tasks/TaskFiltersModal.vue';
+import TaskKanbanColumn from '../components/tasks/TaskKanbanColumn.vue';
 
 type TaskStatus = TaskListItem['status'];
 type TaskPriority = TaskListItem['priority'];
 type StatusFilter = 'all' | TaskStatus;
 type PriorityFilter = 'all' | TaskPriority;
 type ViewMode = 'kanban' | 'list';
+
+interface FilterState {
+  status: StatusFilter;
+  priority: PriorityFilter;
+  projectId: string;
+  assigneeAgentId: string;
+}
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   pending: 'Pending',
@@ -69,53 +72,31 @@ const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
 };
 
 const KANBAN_COLUMNS: Array<{ key: TaskStatus; title: string; hint: string }> = [
-  {
-    key: 'pending',
-    title: 'Backlog',
-    hint: 'Ready to start when capacity opens.'
-  },
-  {
-    key: 'in_progress',
-    title: 'Doing',
-    hint: 'Active execution across the org.'
-  },
-  {
-    key: 'review',
-    title: 'Review',
-    hint: 'Waiting for QA or approval.'
-  },
-  {
-    key: 'blocked',
-    title: 'Blocked',
-    hint: 'Needs a decision or dependency cleared.'
-  },
-  {
-    key: 'done',
-    title: 'Done',
-    hint: 'Completed and ready for reporting.'
-  },
-  {
-    key: 'cancelled',
-    title: 'Cancelled',
-    hint: 'Stopped work kept for traceability.'
-  }
+  { key: 'pending', title: 'Backlog', hint: 'Ready to start when capacity opens.' },
+  { key: 'in_progress', title: 'Doing', hint: 'Active execution across the org.' },
+  { key: 'review', title: 'Review', hint: 'Waiting for QA or approval.' },
+  { key: 'blocked', title: 'Blocked', hint: 'Needs a decision or dependency cleared.' },
+  { key: 'done', title: 'Done', hint: 'Completed and ready for reporting.' },
+  { key: 'cancelled', title: 'Cancelled', hint: 'Stopped work kept for traceability.' }
 ];
 
 const showCreateForm = ref(false);
+const filterModalOpen = ref(false);
 const isRefreshing = ref(false);
 const isCreating = ref(false);
 const bulkBusy = ref(false);
 const viewMode = ref<ViewMode>('kanban');
+const searchQuery = ref('');
+const draggingTaskId = ref<string | null>(null);
 const selectedTaskIds = ref<string[]>([]);
 const feedback = ref<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 const busyMap = ref<Record<string, boolean>>({});
 const bulkStatus = ref<TaskStatus>('in_progress');
 const bulkPriority = ref<TaskPriority>('high');
 
-const filters = reactive({
-  query: '',
-  status: 'all' as StatusFilter,
-  priority: 'all' as PriorityFilter,
+const filters = reactive<FilterState>({
+  status: 'all',
+  priority: 'all',
   projectId: 'all',
   assigneeAgentId: 'all'
 });
@@ -177,6 +158,23 @@ const formatRelative = (iso: string): string => {
 const formatStatus = (status: TaskStatus): string => STATUS_LABELS[status];
 const formatPriority = (priority: TaskPriority): string => PRIORITY_LABELS[priority];
 
+const activeFilterCount = computed(
+  () =>
+    [filters.status !== 'all', filters.priority !== 'all', filters.projectId !== 'all', filters.assigneeAgentId !== 'all']
+      .filter(Boolean).length
+);
+
+const activeFilterLabels = computed(() => {
+  const labels: string[] = [];
+
+  if (filters.status !== 'all') labels.push(`Status: ${formatStatus(filters.status)}`);
+  if (filters.priority !== 'all') labels.push(`Priority: ${formatPriority(filters.priority)}`);
+  if (filters.projectId !== 'all') labels.push(`Project: ${getProjectName(filters.projectId)}`);
+  if (filters.assigneeAgentId !== 'all') labels.push(`Assignee: ${getAgentName(filters.assigneeAgentId)}`);
+
+  return labels;
+});
+
 const resetDraft = (): void => {
   draft.title = '';
   draft.description = '';
@@ -184,6 +182,23 @@ const resetDraft = (): void => {
   draft.assigneeAgentId = '';
   draft.createdBy = creatorOptions.value[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
   draft.priority = 'medium';
+};
+
+const resetFilters = (): void => {
+  searchQuery.value = '';
+  filters.status = 'all';
+  filters.priority = 'all';
+  filters.projectId = 'all';
+  filters.assigneeAgentId = 'all';
+  filterModalOpen.value = false;
+};
+
+const applyFilters = (nextFilters: { status: string; priority: string; projectId: string; assigneeAgentId: string }): void => {
+  filters.status = nextFilters.status as StatusFilter;
+  filters.priority = nextFilters.priority as PriorityFilter;
+  filters.projectId = nextFilters.projectId;
+  filters.assigneeAgentId = nextFilters.assigneeAgentId;
+  filterModalOpen.value = false;
 };
 
 const reload = async (): Promise<void> => {
@@ -223,7 +238,7 @@ const metrics = computed(() => {
 });
 
 const filteredTasks = computed(() => {
-  const query = normalizeText(filters.query).toLowerCase();
+  const query = normalizeText(searchQuery.value).toLowerCase();
 
   return [...taskState.value.data.tasks]
     .filter((task) => {
@@ -276,13 +291,15 @@ const taskGroups = computed(() =>
   }))
 );
 
+const listGroups = computed(() =>
+  taskGroups.value.filter((group) => group.tasks.length > 0 || filters.status === group.key)
+);
+
 const allVisibleSelected = computed(() =>
   filteredTasks.value.length > 0 && filteredTasks.value.every((task) => selectedTaskIds.value.includes(task.id))
 );
 
 const selectedCount = computed(() => selectedTaskIds.value.length);
-
-const isTaskBusy = (taskId: string): boolean => busyMap.value[taskId] === true;
 
 const toggleTaskSelection = (taskId: string): void => {
   selectedTaskIds.value = selectedTaskIds.value.includes(taskId)
@@ -381,10 +398,6 @@ const changePriority = async (task: TaskListItem, priority: TaskPriority): Promi
   }
 };
 
-const onTaskPriorityChange = (task: TaskListItem, value: string): void => {
-  void changePriority(task, value as TaskPriority);
-};
-
 const runBulkAction = async (payload: BulkUpdateTasksPayload, successText: string): Promise<void> => {
   if (selectedTaskIds.value.length === 0) {
     return;
@@ -431,6 +444,39 @@ const applyBulkPriority = async (): Promise<void> => {
   );
 };
 
+const onDragTask = (task: TaskListItem, event: DragEvent): void => {
+  draggingTaskId.value = task.id;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', task.id);
+  }
+};
+
+const onDragEnd = (): void => {
+  draggingTaskId.value = null;
+};
+
+const handleDropOnColumn = async (targetStatus: TaskStatus): Promise<void> => {
+  const taskId = draggingTaskId.value;
+  draggingTaskId.value = null;
+
+  if (!taskId) {
+    return;
+  }
+
+  const task = taskState.value.data.tasks.find((item) => item.id === taskId);
+  if (!task || task.status === targetStatus) {
+    return;
+  }
+
+  if (!ALLOWED_TRANSITIONS[task.status].includes(targetStatus)) {
+    setFeedback('error', `Cannot move task from ${formatStatus(task.status)} to ${formatStatus(targetStatus)}.`);
+    return;
+  }
+
+  await moveTask(task, targetStatus);
+};
+
 useAutoReload(reload);
 </script>
 
@@ -439,9 +485,20 @@ useAutoReload(reload);
     <div class="fc-page-header">
       <div>
         <h3>Tasks</h3>
-        <p>Plan work in Kanban by default, triage by priority, and update many tasks in one move.</p>
+        <p>Use a compact board-first workflow with drag-and-drop, hidden filters, and cleaner task cards.</p>
       </div>
-      <div class="fc-inline-actions">
+      <div class="task-toolbar">
+        <div class="task-search-wrap">
+          <Search :size="15" class="task-search-icon" />
+          <FcInput v-model="searchQuery" placeholder="Search tasks…" style="padding-left: 34px; min-width: 220px;" />
+        </div>
+
+        <button class="fc-btn-secondary task-filter-trigger" @click="filterModalOpen = true">
+          <SlidersHorizontal :size="14" />
+          Filters
+          <span v-if="activeFilterCount > 0" class="task-filter-count">{{ activeFilterCount }}</span>
+        </button>
+
         <div class="fc-tabs" role="tablist" aria-label="Task views">
           <button class="fc-tab" :class="{ 'fc-tab-active': viewMode === 'kanban' }" @click="viewMode = 'kanban'">
             <Columns3 :size="14" />
@@ -452,10 +509,12 @@ useAutoReload(reload);
             List
           </button>
         </div>
+
         <button class="fc-btn-secondary" :disabled="isRefreshing" @click="reload">
           <RefreshCw :size="14" :class="{ 'fc-spin': isRefreshing }" />
           Refresh
         </button>
+
         <button class="fc-btn-primary" @click="showCreateForm = !showCreateForm">
           <Plus :size="14" />
           {{ showCreateForm ? 'Hide form' : 'New task' }}
@@ -474,6 +533,21 @@ useAutoReload(reload);
         {{ feedback.text }}
       </FcBanner>
     </Transition>
+
+    <TaskFiltersModal
+      :open="filterModalOpen"
+      :filters="filters"
+      :project-options="projectOptions"
+      :assignee-options="assigneeOptions"
+      @close="filterModalOpen = false"
+      @reset="resetFilters"
+      @apply="applyFilters"
+    />
+
+    <div v-if="activeFilterLabels.length > 0" class="task-active-filters">
+      <span v-for="label in activeFilterLabels" :key="label" class="task-active-chip">{{ label }}</span>
+      <button class="fc-btn-ghost fc-btn-sm" @click="resetFilters">Clear</button>
+    </div>
 
     <div class="fc-grid-kpi">
       <div class="fc-kpi-card" data-highlight="primary">
@@ -584,101 +658,19 @@ useAutoReload(reload);
       </FcCard>
     </Transition>
 
-    <FcCard style="margin-bottom: 16px;">
-      <div class="fc-section-header">
-        <div>
-          <h4>Filter queue</h4>
-          <p class="fc-card-desc">Slice the board by status, priority, project, or owner.</p>
-        </div>
-      </div>
-
-      <div class="fc-form-grid">
-        <div class="fc-form-group">
-          <label class="fc-label">Search</label>
-          <div class="fc-search-wrap">
-            <Search :size="15" class="fc-search-icon" />
-            <FcInput v-model="filters.query" placeholder="Search title, project, assignee…" style="padding-left: 34px;" />
-          </div>
-        </div>
-        <div class="fc-form-group">
-          <label class="fc-label">Status</label>
-          <FcSelect v-model="filters.status">
-            <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In progress</option>
-            <option value="review">Review</option>
-            <option value="blocked">Blocked</option>
-            <option value="done">Done</option>
-            <option value="cancelled">Cancelled</option>
-          </FcSelect>
-        </div>
-        <div class="fc-form-group">
-          <label class="fc-label">Priority</label>
-          <FcSelect v-model="filters.priority">
-            <option value="all">All priorities</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </FcSelect>
-        </div>
-        <div class="fc-form-group">
-          <label class="fc-label">Project</label>
-          <FcSelect v-model="filters.projectId">
-            <option value="all">All projects</option>
-            <option v-for="project in projectOptions" :key="project.id" :value="project.id">
-              {{ project.name }}
-            </option>
-          </FcSelect>
-        </div>
-        <div class="fc-form-group">
-          <label class="fc-label">Assignee</label>
-          <FcSelect v-model="filters.assigneeAgentId">
-            <option value="all">All assignees</option>
-            <option v-for="agent in assigneeOptions" :key="agent.id" :value="agent.id">
-              {{ agent.name }}
-            </option>
-          </FcSelect>
-        </div>
-      </div>
-    </FcCard>
-
     <Transition name="fc-page">
       <FcCard v-if="selectedCount > 0" style="margin-bottom: 16px;">
-        <div class="bulk-toolbar">
-          <div>
-            <strong>{{ selectedCount }} task{{ selectedCount === 1 ? '' : 's' }} selected</strong>
-            <p class="fc-card-desc" style="margin-top: 4px;">Apply updates once instead of editing cards one by one.</p>
-          </div>
-
-          <div class="bulk-toolbar-actions">
-            <button class="fc-btn-ghost" @click="toggleSelectAllVisible">
-              <component :is="allVisibleSelected ? CheckSquare2 : Square" :size="14" />
-              {{ allVisibleSelected ? 'Clear visible' : 'Select visible' }}
-            </button>
-            <div class="bulk-field">
-              <FcSelect v-model="bulkStatus">
-                <option value="pending">Pending</option>
-                <option value="in_progress">In progress</option>
-                <option value="review">Review</option>
-                <option value="blocked">Blocked</option>
-                <option value="done">Done</option>
-                <option value="cancelled">Cancelled</option>
-              </FcSelect>
-              <FcButton variant="secondary" :disabled="bulkBusy" @click="applyBulkStatus">Move selected</FcButton>
-            </div>
-            <div class="bulk-field">
-              <FcSelect v-model="bulkPriority">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </FcSelect>
-              <FcButton variant="secondary" :disabled="bulkBusy" @click="applyBulkPriority">Set priority</FcButton>
-            </div>
-            <FcButton variant="ghost" :disabled="bulkBusy" @click="clearSelection">Clear</FcButton>
-          </div>
-        </div>
+        <TaskBulkActionsBar
+          :selected-count="selectedCount"
+          :all-visible-selected="allVisibleSelected"
+          :busy="bulkBusy"
+          v-model:bulk-status="bulkStatus"
+          v-model:bulk-priority="bulkPriority"
+          @toggle-all="toggleSelectAllVisible"
+          @clear="clearSelection"
+          @apply-status="applyBulkStatus"
+          @apply-priority="applyBulkPriority"
+        />
       </FcCard>
     </Transition>
 
@@ -709,144 +701,61 @@ useAutoReload(reload);
     <div v-else-if="filteredTasks.length === 0" class="fc-empty">
       <Search :size="36" class="fc-empty-icon" />
       <h4>No matches for this filter</h4>
-      <p>Try a wider search or switch back to all projects, owners, and priorities.</p>
-      <FcButton
-        variant="secondary"
-        @click="filters.query = ''; filters.status = 'all'; filters.priority = 'all'; filters.projectId = 'all'; filters.assigneeAgentId = 'all';"
-      >
-        Reset filters
-      </FcButton>
+      <p>Try a wider search or clear the active filters.</p>
+      <FcButton variant="secondary" @click="resetFilters">Reset filters</FcButton>
     </div>
 
     <div v-else>
       <div v-if="viewMode === 'kanban'" class="kanban-board">
-        <section v-for="group in taskGroups" :key="group.key" class="kanban-column">
-          <div class="kanban-column-header">
-            <div>
-              <h4>{{ group.title }}</h4>
-              <p>{{ group.hint }}</p>
-            </div>
-            <FcBadge :status="group.key">{{ group.tasks.length }}</FcBadge>
-          </div>
-
-          <div v-if="group.tasks.length === 0" class="kanban-empty-column">
-            No tasks in this column.
-          </div>
-
-          <article v-for="task in group.tasks" :key="task.id" class="task-card">
-            <div class="task-card-top">
-              <label class="task-check">
-                <input
-                  :checked="selectedTaskIds.includes(task.id)"
-                  type="checkbox"
-                  class="fc-checkbox"
-                  @change="toggleTaskSelection(task.id)"
-                />
-                <span class="task-title">{{ task.title }}</span>
-              </label>
-              <span class="task-priority-pill" :data-priority="task.priority">
-                <Flag :size="12" />
-                {{ formatPriority(task.priority) }}
-              </span>
-            </div>
-
-            <p class="task-description">{{ task.description }}</p>
-
-            <div class="task-meta-grid">
-              <span><Workflow :size="13" /> {{ getProjectName(task.projectId) }}</span>
-              <span><UserRound :size="13" /> {{ getAgentName(task.assigneeAgentId) }}</span>
-            </div>
-
-            <div class="task-inline-field">
-              <span>Priority</span>
-              <FcSelect
-                :model-value="task.priority"
-                :disabled="isTaskBusy(task.id)"
-                @update:modelValue="onTaskPriorityChange(task, $event)"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </FcSelect>
-            </div>
-
-            <div class="task-card-footer">
-              <span class="task-updated">Updated {{ formatRelative(task.updatedAt) }}</span>
-              <div class="task-actions">
-                <FcButton
-                  v-for="nextStatus in ALLOWED_TRANSITIONS[task.status].slice(0, 2)"
-                  :key="`${task.id}-${nextStatus}`"
-                  variant="secondary"
-                  size="sm"
-                  :disabled="isTaskBusy(task.id)"
-                  @click="moveTask(task, nextStatus)"
-                >
-                  <component :is="nextStatus === 'done' ? CheckCircle2 : nextStatus === 'blocked' ? PauseCircle : ArrowRight" :size="12" />
-                  {{ formatStatus(nextStatus) }}
-                </FcButton>
-              </div>
-            </div>
-          </article>
-        </section>
+        <TaskKanbanColumn
+          v-for="group in taskGroups"
+          :key="group.key"
+          :column="group"
+          :tasks="group.tasks"
+          :selected-task-ids="selectedTaskIds"
+          :busy-map="busyMap"
+          :allowed-transitions="ALLOWED_TRANSITIONS"
+          :get-project-name="getProjectName"
+          :get-agent-name="getAgentName"
+          :format-priority="formatPriority"
+          :format-status="formatStatus"
+          :format-relative="formatRelative"
+          @toggle-select="toggleTaskSelection"
+          @move="moveTask"
+          @change-priority="changePriority"
+          @dragstart="onDragTask"
+          @dragend="onDragEnd"
+          @drop-task="handleDropOnColumn"
+        />
       </div>
 
       <div v-else class="list-stack">
-        <FcCard v-for="group in taskGroups" :key="group.key">
+        <FcCard v-for="group in listGroups" :key="group.key">
           <div class="fc-section-header">
             <div>
               <h4>{{ group.title }}</h4>
               <p class="fc-card-desc">{{ group.hint }}</p>
             </div>
-            <FcBadge :status="group.key">{{ group.tasks.length }}</FcBadge>
           </div>
 
-          <div v-if="group.tasks.length === 0" class="kanban-empty-column">No tasks in this group.</div>
-
-          <div v-else class="task-list-wrap">
-            <article v-for="task in group.tasks" :key="task.id" class="task-item">
-              <div class="task-item-top">
-                <label class="task-check">
-                  <input
-                    :checked="selectedTaskIds.includes(task.id)"
-                    type="checkbox"
-                    class="fc-checkbox"
-                    @change="toggleTaskSelection(task.id)"
-                  />
-                  <div>
-                    <strong class="task-title">{{ task.title }}</strong>
-                    <p class="task-description" style="margin-top: 4px;">{{ task.description }}</p>
-                  </div>
-                </label>
-                <div class="task-chip-row">
-                  <span class="task-priority-pill" :data-priority="task.priority">
-                    <Flag :size="12" />
-                    {{ formatPriority(task.priority) }}
-                  </span>
-                  <FcBadge :status="task.status">{{ formatStatus(task.status) }}</FcBadge>
-                </div>
-              </div>
-
-              <div class="task-meta-grid">
-                <span><Workflow :size="13" /> {{ getProjectName(task.projectId) }}</span>
-                <span><UserRound :size="13" /> {{ getAgentName(task.assigneeAgentId) }}</span>
-                <span>Updated {{ formatRelative(task.updatedAt) }}</span>
-              </div>
-
-              <div class="task-actions">
-                <FcButton
-                  v-for="nextStatus in ALLOWED_TRANSITIONS[task.status]"
-                  :key="`${task.id}-${nextStatus}`"
-                  variant="secondary"
-                  size="sm"
-                  :disabled="isTaskBusy(task.id)"
-                  @click="moveTask(task, nextStatus)"
-                >
-                  <component :is="nextStatus === 'done' ? CheckCircle2 : nextStatus === 'blocked' ? PauseCircle : ArrowRight" :size="12" />
-                  {{ formatStatus(nextStatus) }}
-                </FcButton>
-              </div>
-            </article>
+          <div class="task-list-wrap">
+            <TaskCard
+              v-for="task in group.tasks"
+              :key="task.id"
+              :task="task"
+              :selected="selectedTaskIds.includes(task.id)"
+              :busy="busyMap[task.id] === true"
+              :drag-enabled="false"
+              :transitions="ALLOWED_TRANSITIONS[task.status]"
+              :get-project-name="getProjectName"
+              :get-agent-name="getAgentName"
+              :format-priority="formatPriority"
+              :format-status="formatStatus"
+              :format-relative="formatRelative"
+              @toggle-select="toggleTaskSelection"
+              @move="moveTask"
+              @change-priority="changePriority"
+            />
           </div>
         </FcCard>
       </div>
@@ -868,11 +777,19 @@ useAutoReload(reload);
   }
 }
 
-.fc-search-wrap {
+.task-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.task-search-wrap {
   position: relative;
 }
 
-.fc-search-icon {
+.task-search-icon {
   position: absolute;
   left: 11px;
   top: 50%;
@@ -881,25 +798,41 @@ useAutoReload(reload);
   pointer-events: none;
 }
 
-.bulk-toolbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
+.task-filter-trigger {
+  position: relative;
 }
 
-.bulk-toolbar-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.bulk-field {
+.task-filter-count {
   display: inline-flex;
-  gap: 8px;
   align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fc-primary) 16%, var(--fc-surface));
+  color: var(--fc-primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0 5px;
+}
+
+.task-active-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.task-active-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border-subtle);
+  font-size: 0.74rem;
+  color: var(--fc-text-muted);
 }
 
 .kanban-board {
@@ -910,201 +843,24 @@ useAutoReload(reload);
   padding-bottom: 6px;
 }
 
-.kanban-column {
-  min-width: 260px;
-  border: 1px solid var(--fc-border-subtle);
-  border-radius: var(--fc-card-radius);
-  background: var(--fc-surface);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.kanban-column-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.kanban-column-header h4 {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.kanban-column-header p {
-  margin: 4px 0 0;
-  font-size: 0.75rem;
-  color: var(--fc-text-muted);
-}
-
-.kanban-empty-column {
-  border: 1px dashed var(--fc-border-subtle);
-  border-radius: var(--fc-control-radius);
-  padding: 12px;
-  color: var(--fc-text-muted);
-  font-size: 0.78rem;
-  background: color-mix(in srgb, var(--fc-surface-muted) 50%, var(--fc-surface));
-}
-
-.task-card,
-.task-item {
-  border: 1px solid var(--fc-border-subtle);
-  border-radius: var(--fc-control-radius);
-  padding: 12px;
-  background: color-mix(in srgb, var(--fc-surface-muted) 40%, var(--fc-surface));
-}
-
-.task-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.task-card-top,
-.task-item-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.task-check {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  flex: 1;
-}
-
-.task-title {
-  display: block;
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--fc-text-main);
-}
-
-.task-description {
-  margin: 0;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: var(--fc-text-muted);
-}
-
-.task-chip-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.task-priority-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 999px;
-  padding: 3px 9px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  border: 1px solid var(--fc-border-subtle);
-}
-
-.task-priority-pill[data-priority='low'] {
-  color: var(--fc-text-muted);
-  background: var(--fc-surface-muted);
-}
-
-.task-priority-pill[data-priority='medium'] {
-  color: var(--fc-info);
-  background: color-mix(in srgb, var(--fc-info) 10%, var(--fc-surface));
-  border-color: color-mix(in srgb, var(--fc-info) 30%, var(--fc-border-subtle));
-}
-
-.task-priority-pill[data-priority='high'] {
-  color: var(--fc-warning);
-  background: color-mix(in srgb, var(--fc-warning) 12%, var(--fc-surface));
-  border-color: color-mix(in srgb, var(--fc-warning) 30%, var(--fc-border-subtle));
-}
-
-.task-priority-pill[data-priority='urgent'] {
-  color: var(--fc-error);
-  background: color-mix(in srgb, var(--fc-error) 10%, var(--fc-surface));
-  border-color: color-mix(in srgb, var(--fc-error) 30%, var(--fc-border-subtle));
-}
-
-.task-meta-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 12px;
-  color: var(--fc-text-muted);
-  font-size: 0.76rem;
-}
-
-.task-meta-grid span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.task-inline-field {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-}
-
-.task-inline-field span {
-  font-size: 0.76rem;
-  color: var(--fc-text-muted);
-  font-weight: 600;
-}
-
-.task-inline-field :deep(select) {
-  min-width: 118px;
-}
-
-.task-card-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.task-updated {
-  font-size: 0.74rem;
-  color: var(--fc-text-muted);
-}
-
-.task-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.list-stack {
+.list-stack,
+.task-list-wrap {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.task-list-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 @media (max-width: 1100px) {
-  .bulk-toolbar {
-    flex-direction: column;
-    align-items: stretch;
+  .task-toolbar {
+    justify-content: flex-start;
   }
 
-  .bulk-toolbar-actions {
+  .task-search-wrap {
     width: 100%;
   }
 
-  .bulk-field {
+  .task-search-wrap :deep(input) {
     width: 100%;
-    flex-wrap: wrap;
   }
 }
 </style>
