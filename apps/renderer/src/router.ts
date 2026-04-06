@@ -6,7 +6,8 @@ import InboxPage from './views/InboxPage.vue';
 import PlaceholderPage from './views/PlaceholderPage.vue';
 import AuditPage from './views/AuditPage.vue';
 import SettingsPage from './views/SettingsPage.vue';
-import SetupPage from './views/SetupPage.vue';
+import OnboardingPage from './views/OnboardingPage.vue';
+import { uiRuntime } from './runtime';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -17,14 +18,14 @@ export const router = createRouter({
       redirect: '/dashboard'
     },
     {
+      path: '/setup',
+      component: OnboardingPage,
+      meta: { title: 'Setup', hideShell: true }
+    },
+    {
       path: '/dashboard',
       component: DashboardPage,
       meta: { title: 'Dashboard' }
-    },
-    {
-      path: '/command',
-      component: SetupPage,
-      meta: { title: 'Setup' }
     },
     {
       path: '/agents',
@@ -63,4 +64,14 @@ export const router = createRouter({
       meta: { title: 'Settings' }
     }
   ]
+});
+
+// Guard: if user revisits /setup after completing onboarding, redirect to dashboard
+router.beforeEach((to) => {
+  if (to.path !== '/setup') return true;
+  const isOnboarded = uiRuntime.stores.settings.state.data.some(
+    s => s.key === 'onboarding.complete' && s.value === true
+  );
+  if (isOnboarded) return { path: '/dashboard', replace: true };
+  return true;
 });

@@ -1,6 +1,5 @@
 export type AppRoutePath =
   | '/dashboard'
-  | '/command'
   | '/agents'
   | '/projects'
   | '/tasks'
@@ -21,12 +20,6 @@ export const appNavigationSections: AppNavigationSection[] = [
     path: '/dashboard',
     label: 'Dashboard',
     description: 'Overview of agent health, tasks, approvals, and token usage.'
-  },
-  {
-    path: '/command',
-    label: 'Command Center',
-    description: 'Send high-level instructions to the executive agent.',
-    primaryActionLabel: 'Run command'
   },
   {
     path: '/agents',

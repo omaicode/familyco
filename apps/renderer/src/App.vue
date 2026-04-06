@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
-  LayoutDashboard, Terminal, Bot, FolderKanban, ListChecks,
+  LayoutDashboard, Bot, FolderKanban, ListChecks,
   Inbox, ShieldCheck, Settings,
   Wifi, WifiOff, RefreshCw, AlertTriangle,
 } from 'lucide-vue-next';
@@ -33,7 +33,6 @@ const splashVisible = ref(true);
 // ── Navigation + icons ────────────────────────────────────
 const navIcons: Record<string, typeof LayoutDashboard> = {
   '/dashboard': LayoutDashboard,
-  '/command':   Terminal,
   '/agents':    Bot,
   '/projects':  FolderKanban,
   '/tasks':     ListChecks,
@@ -49,7 +48,7 @@ const navGroups = [
   },
   {
     label: 'Operations',
-    items: uiRuntime.navigation.filter(n => ['/command', '/agents', '/projects', '/tasks'].includes(n.path)),
+    items: uiRuntime.navigation.filter(n => ['/agents', '/projects', '/tasks'].includes(n.path)),
   },
   {
     label: 'Governance',
@@ -63,6 +62,9 @@ const navGroups = [
 
 // Close mobile menu on route change
 watch(() => route.path, () => { mobileMenuOpen.value = false; });
+
+// ── Setup route flag ─────────────────────────────────────
+const isSetupRoute = computed(() => route.meta.hideShell === true);
 
 // ── Sidebar pending badge ─────────────────────────────────
 const pendingInboxCount = computed(() =>
@@ -95,6 +97,14 @@ const loadThemePreference = async (): Promise<void> => {
     await uiRuntime.stores.settings.load();
     const stored = uiRuntime.stores.settings.state.data.find(item => item.key === 'ui.theme.preference');
     applyThemePreference(parseThemePreference(stored?.value) ?? 'system');
+
+    // Onboarding redirect — only when settings loaded successfully
+    const isOnboarded = uiRuntime.stores.settings.state.data.some(
+      s => s.key === 'onboarding.complete' && s.value === true
+    );
+    if (!isOnboarded && route.path !== '/setup') {
+      await router.replace('/setup');
+    }
   } catch {
     applyThemePreference('system');
   }
@@ -212,8 +222,11 @@ onUnmounted(() => {
   <!-- ── Splash screen ───────────────────────────────────── -->
   <SplashScreen :show="showSplash && splashVisible" />
 
+  <!-- ── Onboarding / Setup — fullscreen, no shell ─────── -->
+  <RouterView v-if="isSetupRoute" />
+
   <!-- ── App shell ──────────────────────────────────────── -->
-  <div :class="uiRuntime.layout.defaultContainerClasses.shell" style="display:flex; min-height:100vh;">
+  <div v-else :class="uiRuntime.layout.defaultContainerClasses.shell" style="display:flex; min-height:100vh;">
     <!-- Sidebar (includes mobile overlay) -->
     <AppSidebar
       :collapsed="sidebarCollapsed"

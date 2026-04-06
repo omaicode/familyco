@@ -3,7 +3,7 @@ import { appNavigationSections } from '../navigation/app-sections.js';
 
 export interface UIRouteDefinition {
   path: AppRoutePath;
-  pageId: 'dashboard' | 'command' | 'agents' | 'projects' | 'tasks' | 'inbox' | 'audit' | 'settings';
+  pageId: 'dashboard' | 'agents' | 'projects' | 'tasks' | 'inbox' | 'audit' | 'settings';
   pageTitle: string;
   minRequiredLevel: 'L0' | 'L1' | 'L2';
 }
@@ -15,12 +15,6 @@ export const uiRoutes: UIRouteDefinition[] = appNavigationSections.map((section)
       pageId: 'dashboard',
       pageTitle: 'Dashboard',
       minRequiredLevel: 'L1'
-    },
-    '/command': {
-      path: '/command',
-      pageId: 'command',
-      pageTitle: 'Command Center',
-      minRequiredLevel: 'L0'
     },
     '/agents': {
       path: '/agents',
