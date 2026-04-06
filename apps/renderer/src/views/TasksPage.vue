@@ -305,13 +305,28 @@ const taskGroups = computed(() =>
   }))
 );
 
+const isTaskSelectable = (task: TaskListItem): boolean => task.status !== 'cancelled';
+
+const selectableVisibleTasks = computed(() => filteredTasks.value.filter((task) => isTaskSelectable(task)));
+
 const allVisibleSelected = computed(() =>
-  filteredTasks.value.length > 0 && filteredTasks.value.every((task) => selectedTaskIds.value.includes(task.id))
+  selectableVisibleTasks.value.length > 0 &&
+  selectableVisibleTasks.value.every((task) => selectedTaskIds.value.includes(task.id))
 );
 
-const selectedCount = computed(() => selectedTaskIds.value.length);
+const selectedCount = computed(() =>
+  selectedTaskIds.value.filter((taskId) => {
+    const task = taskState.value.data.tasks.find((item) => item.id === taskId);
+    return task ? isTaskSelectable(task) : false;
+  }).length
+);
 
 const toggleTaskSelection = (taskId: string): void => {
+  const task = taskState.value.data.tasks.find((item) => item.id === taskId);
+  if (!task || !isTaskSelectable(task)) {
+    return;
+  }
+
   selectedTaskIds.value = selectedTaskIds.value.includes(taskId)
     ? selectedTaskIds.value.filter((id) => id !== taskId)
     : [...selectedTaskIds.value, taskId];
@@ -323,7 +338,7 @@ const toggleSelectAllVisible = (): void => {
     return;
   }
 
-  selectedTaskIds.value = filteredTasks.value.map((task) => task.id);
+  selectedTaskIds.value = selectableVisibleTasks.value.map((task) => task.id);
 };
 
 const clearSelection = (): void => {
@@ -363,6 +378,10 @@ const createTask = async (): Promise<void> => {
 };
 
 const moveTask = async (task: TaskListItem, status: TaskStatus): Promise<void> => {
+  if (task.status === 'cancelled') {
+    return;
+  }
+
   busyMap.value = { ...busyMap.value, [task.id]: true };
 
   try {
@@ -374,6 +393,9 @@ const moveTask = async (task: TaskListItem, status: TaskStatus): Promise<void> =
     if ('approvalRequired' in result) {
       setFeedback('info', `Status change queued for approval${result.reason ? ` — ${result.reason}` : ''}.`);
     } else {
+      if (status === 'cancelled') {
+        selectedTaskIds.value = selectedTaskIds.value.filter((id) => id !== task.id);
+      }
       setFeedback('success', `Task moved to ${formatStatus(status).toLowerCase()}.`);
     }
   } catch (error) {
@@ -871,10 +893,11 @@ useAutoReload(reload);
 .kanban-board {
   display: grid;
   grid-template-columns: repeat(6, minmax(320px, 1fr));
-  gap: 12px;
+  align-items: start;
+  gap: 16px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding-bottom: 6px;
+  padding: 4px 6px 12px;
 }
 
 @media (max-width: 900px) {

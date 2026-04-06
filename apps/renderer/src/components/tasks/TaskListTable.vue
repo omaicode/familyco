@@ -81,9 +81,10 @@ const formatDateTime = (iso: string): string => {
           <td class="task-table-select-cell">
             <input
               :checked="selectedTaskIds.includes(task.id)"
+              :disabled="task.status === 'cancelled'"
               type="checkbox"
               class="fc-checkbox"
-              @change="emit('toggleSelect', task.id)"
+              @change="task.status !== 'cancelled' && emit('toggleSelect', task.id)"
             />
           </td>
           <td class="task-table-main-cell">

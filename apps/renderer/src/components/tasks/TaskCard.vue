@@ -48,6 +48,7 @@ const getActionIcon = (status: TaskListItem['status']) => {
   return ArrowRight;
 };
 
+const isCancelledTask = (task: TaskListItem): boolean => task.status === 'cancelled';
 const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).toUpperCase()}`;
 </script>
 
@@ -57,19 +58,21 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
     :class="{
       'task-card-busy': props.busy,
       'task-card-kanban': props.kanbanCompact,
-      'task-card-draggable': props.dragEnabled
+      'task-card-draggable': props.dragEnabled && !isCancelledTask(props.task),
+      'task-card-locked': isCancelledTask(props.task)
     }"
-    :draggable="props.dragEnabled"
-    @dragstart="emit('dragstart', props.task, $event)"
+    :draggable="props.dragEnabled && !isCancelledTask(props.task)"
+    @dragstart="!isCancelledTask(props.task) && emit('dragstart', props.task, $event)"
     @dragend="emit('dragend')"
   >
     <div class="task-card-top">
       <label class="task-check">
         <input
           :checked="props.selected"
+          :disabled="isCancelledTask(props.task)"
           type="checkbox"
           class="fc-checkbox"
-          @change="emit('toggleSelect', props.task.id)"
+          @change="!isCancelledTask(props.task) && emit('toggleSelect', props.task.id)"
         />
         <div class="task-copy">
           <span v-if="props.kanbanCompact" class="task-code">{{ formatTaskCode(props.task) }}</span>
@@ -98,7 +101,7 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
           <Flag :size="12" />
           {{ props.formatPriority(props.task.priority) }}
         </span>
-        <span v-if="props.dragEnabled" class="task-drag-hint">
+        <span v-if="props.dragEnabled && !isCancelledTask(props.task)" class="task-drag-hint">
           <GripVertical :size="14" />
         </span>
       </div>
@@ -172,6 +175,14 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
 
 .task-card-busy {
   opacity: 0.75;
+}
+
+.task-card-locked {
+  opacity: 0.9;
+}
+
+.task-card-locked .task-check {
+  cursor: default;
 }
 
 .task-card-top {

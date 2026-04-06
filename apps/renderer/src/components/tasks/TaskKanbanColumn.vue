@@ -91,9 +91,11 @@ const onDrop = (): void => {
 <style scoped>
 .kanban-column {
   min-width: 340px;
+  align-self: start;
   border: 1px solid var(--fc-border-subtle);
   border-radius: var(--fc-card-radius);
   background: var(--fc-surface);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--fc-text-main) 4%, transparent);
   padding: 12px;
   display: flex;
   flex-direction: column;
