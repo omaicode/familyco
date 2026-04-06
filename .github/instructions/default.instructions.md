@@ -147,6 +147,10 @@ Khi đang ở trong VSCode (hoặc bất kỳ editor nào) với AI assistance:
    - Nếu sửa API: chạy integration test.  
    - Nếu sửa UI: chạy ít nhất unit test component (nếu có) hoặc manual quick test.
 
+7. **Không để file phình quá dài**  
+   - Nếu file Vue/TS vượt khoảng **250–300 dòng** hoặc ôm nhiều trách nhiệm, phải chủ động tách thành component/composable/helper riêng.  
+   - Page chỉ nên giữ orchestration và state chính; phần UI lặp lại hoặc block lớn phải tách ra file riêng.
+
 ---
 
 ## 7. Quy Trình Git / GitHub Chuẩn Cho AI Agent
@@ -204,13 +208,6 @@ Khi hỏi, hãy mô tả:
 - 1–2 phương án đề xuất.
 
 ---
-
-## 9. Cách Sử Dụng File Này
-
-- Trong GitHub: gắn file này trong repo (ví dụ `/.github/AI_AGENT_INSTRUCTIONS.md`) và refer tới nó trong README/CONTRIBUTING.
-- Trong VSCode:  
-  - Cho AI đọc file này trước (paste vào system prompt hoặc context của extension).  
-  - Khi AI đề xuất code không đúng các rule trên → chỉnh prompt hoặc reject suggestion.
 
 File này là "hợp đồng" giữa kiến trúc FamilyCo và AI Coding Agent. 
 Nếu rule nào cần cập nhật, phải được Founder chỉnh trực tiếp.
