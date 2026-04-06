@@ -148,19 +148,25 @@ Renderer (Vue) **không được** import `electron` trực tiếp; chỉ dùng 
 
 ## 8. Database — Bảng Cần Ghi Nhớ
 
-Prisma schema đầy đủ đã có trong tài liệu chi tiết; ở đây chỉ liệt kê **tên model chính** để AI Agent không tạo thêm bảng dư thừa:
+Database engine: **SQLite** (file-based, không cần server riêng).  
+ORM: **Prisma 7** — schema tại `prisma/schema.prisma`, migrate bằng `pnpm prisma:migrate:dev`.
 
-- `Agent` — thông tin Agent + hierarchy + config.
-- `AgentTool` — quan hệ Agent ↔ Tool.
-- `Project` — project + tree project con.
-- `Task` — task + tree sub-task.
-- `Message` — inbox message.
-- `ApprovalRequest` — approval flow.
-- `AuditLog` — audit trail.
+- Dev DB: `prisma/dev.db` (`DATABASE_URL=file:./prisma/dev.db` trong `.env`)
+- Electron Desktop: `<OS userData>/familyco.db` (set tự động trong `apps/desktop/src/electron/main.ts`)
+
+Repository driver (`FAMILYCO_REPOSITORY_DRIVER`): `prisma` (mặc định) hoặc `memory` (chỉ dùng cho test).
+
+Các model hiện có — AI Agent **không được** tạo thêm bảng mới khi chưa được approval:
+
+- `Agent` — thông tin Agent + hierarchy (tự tham chiếu qua `parentAgentId`).
+- `Project` — project + tree project con (qua `parentProjectId`).
+- `Task` — task với assignee + người tạo + project.
+- `ApprovalRequest` — approval flow (actor, action, status, payload JSON).
+- `AuditLog` — audit trail (không có FK trên `actorId` để cho phép actor "system").
 - `Settings` — key-value JSON (AI keys, config).
 - `ApiKey` — API keys cho server.
 
-Khi cần lưu thêm dữ liệu mới, ưu tiên **mở rộng `payload`/`metadata` dạng JSON string** trước khi tạo bảng mới.
+Khi cần lưu thêm dữ liệu mới, ưu tiên **mở rộng `payload` dạng JSON string** trước khi tạo bảng mới.
 
 ---
 

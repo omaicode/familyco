@@ -49,8 +49,8 @@
 | WebSocket | `@fastify/websocket` | Real-time event push |
 | Job Queue | BullMQ | Redis-backed, retry, delay, priority |
 | Redis | ioredis | Queue + pub/sub |
-| ORM | Prisma | Schema-first, type-safe |
-| DB mặc định | SQLite (Desktop) / PostgreSQL (Server Only) | Prisma adapter |
+| ORM | Prisma | 7.x — Schema-first, type-safe |
+| DB mặc định | SQLite (file-based, không cần server) | `prisma/dev.db` dev, `userData/familyco.db` Electron |
 | Auth | JWT + API Key | `@fastify/jwt` |
 | Validation | Zod | Schema validation toàn bộ API input |
 | Logging | Pino | Structured JSON log |
@@ -260,6 +260,13 @@ apps/renderer/src/
 
 ## 7. Database Schema (Prisma)
 
+> Schema chính: `prisma/schema.prisma`  
+> Migration: `pnpm prisma:migrate:dev` (tạo file SQL trong `prisma/migrations/`)
+
+Database engine: **SQLite** (file-based, không cần server riêng).  
+- Dev: `prisma/dev.db` (đặt `DATABASE_URL=file:./prisma/dev.db` trong `.env`)
+- Electron Desktop: `<OS userData>/familyco.db` — được set tự động qua `process.env.DATABASE_URL` trong `main.ts` trước khi Prisma khởi tạo.
+
 ```prisma
 // prisma/schema.prisma
 
@@ -268,137 +275,94 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  // url được cấu hình trong prisma.config.ts (không khai báo trong schema)
 }
 
 model Agent {
-  id              String    @id @default(cuid())
-  name            String
-  role            String
-  level           Int       // 0=L0, 1=L1, 2=L2
-  department      String
-  status          String    @default("idle")
-  model           String
-  systemPrompt    String    @default("")
-  temperature     Float     @default(0.7)
-  approvalMode    String    @default("suggest_only")
-  memoryType      String    @default("short")
-  canContactFounder Boolean @default(false)
-  parentId        String?
-  parent          Agent?    @relation("AgentTree", fields: [parentId], references: [id])
-  children        Agent[]   @relation("AgentTree")
-  tools           AgentTool[]
-  tasks           Task[]    @relation("AssignedAgent")
-  messages        Message[]
-  auditLogs       AuditLog[]
-  createdBy       String    @default("founder")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  lastActiveAt    DateTime?
-  totalTokensUsed Int       @default(0)
-}
+  id            String   @id @default(cuid())
+  name          String
+  role          String
+  level         String
+  department    String
+  status        String
+  parentAgentId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-model AgentTool {
-  id       String @id @default(cuid())
-  agentId  String
-  toolId   String
-  agent    Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  @@unique([agentId, toolId])
+  parent   Agent?  @relation("AgentHierarchy", fields: [parentAgentId], references: [id])
+  children Agent[] @relation("AgentHierarchy")
 }
 
 model Project {
-  id          String    @id @default(cuid())
-  name        String
-  description String    @default("")
-  status      String    @default("active")
-  ownerId     String?   // Agent owner (L0 hoặc L1)
-  parentId    String?
-  parent      Project?  @relation("ProjectTree", fields: [parentId], references: [id])
-  children    Project[] @relation("ProjectTree")
-  tasks       Task[]
-  createdBy   String    @default("founder")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deadline    DateTime?
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  ownerAgentId    String
+  parentProjectId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner         Agent    @relation("ProjectOwner", fields: [ownerAgentId], references: [id])
+  parentProject Project? @relation("ProjectTree", fields: [parentProjectId], references: [id])
+  subProjects   Project[] @relation("ProjectTree")
+  tasks         Task[]
 }
 
 model Task {
-  id           String    @id @default(cuid())
-  title        String
-  description  String    @default("")
-  status       String    @default("pending")  // pending|in_progress|review|blocked|done|cancelled
-  priority     Int       @default(0)
-  projectId    String?
-  project      Project?  @relation(fields: [projectId], references: [id])
-  assignedToId String?
-  assignedTo   Agent?    @relation("AssignedAgent", fields: [assignedToId], references: [id])
-  parentTaskId String?
-  parentTask   Task?     @relation("TaskTree", fields: [parentTaskId], references: [id])
-  subtasks     Task[]    @relation("TaskTree")
-  createdById  String    // agent_id hoặc "founder"
-  blockedReason String?
-  approvalId   String?   @unique
-  approval     ApprovalRequest? @relation(fields: [approvalId], references: [id])
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  dueAt        DateTime?
-  completedAt  DateTime?
-}
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  status          String
+  projectId       String
+  assigneeAgentId String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-model Message {
-  id          String    @id @default(cuid())
-  agentId     String?
-  agent       Agent?    @relation(fields: [agentId], references: [id])
-  fromType    String    // "founder" | "agent"
-  fromId      String    // "founder" hoặc agent id
-  toType      String    // "founder" | "agent"
-  toId        String
-  type        String    // APPROVAL_REQUEST | REPORT | ALERT | SUGGESTION | INFO
-  subject     String    @default("")
-  body        String
-  metadata    String    @default("{}") // JSON string
-  read        Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  project  Project @relation(fields: [projectId], references: [id])
+  assignee Agent?  @relation("TaskAssignee", fields: [assigneeAgentId], references: [id])
+  creator  Agent   @relation("TaskCreator", fields: [createdBy], references: [id])
 }
 
 model ApprovalRequest {
-  id          String    @id @default(cuid())
-  requesterId String    // agent id
-  actionType  String    // "create_agent" | "send_email" | "create_project" | ...
-  payload     String    // JSON string — full action payload
-  status      String    @default("pending")  // pending|approved|rejected|expired
-  reviewNote  String?
-  task        Task?
-  createdAt   DateTime  @default(now())
-  resolvedAt  DateTime?
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  targetId  String?
+  status    String
+  payload   String?  // JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actor Agent @relation("ApprovalActor", fields: [actorId], references: [id])
 }
 
+// AuditLog không có FK trên actorId (cho phép actor "system")
 model AuditLog {
   id        String   @id @default(cuid())
-  actorType String   // "founder" | "agent"
   actorId   String
-  agent     Agent?   @relation(fields: [actorId], references: [id])
-  action    String   // "task.created" | "agent.paused" | "approval.approved" | ...
-  targetType String?
+  action    String
   targetId  String?
-  payload   String   @default("{}") // JSON string
+  payload   String?  // JSON
   createdAt DateTime @default(now())
 }
 
 model Settings {
-  id    String @id @default(cuid())
-  key   String @unique
-  value String  // JSON string
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ApiKey {
   id        String   @id @default(cuid())
   name      String
   keyHash   String   @unique
-  lastUsedAt DateTime?
-  createdAt DateTime @default(now())
   active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 ```
 
@@ -637,31 +601,37 @@ export const eventBus = new TypedEventBus()
 ### Desktop / Server chung
 ```env
 NODE_ENV=development|production
-APP_VERSION=1.0.0
+PORT=4000
+HOST=0.0.0.0
+API_PREFIX=/api/v1
 ```
 
-### Server
+### Storage / Database
 ```env
-PORT=3000
-HOST=0.0.0.0
+# Driver: 'prisma' (SQLite) hoặc 'memory' (in-process, mất khi restart)
+FAMILYCO_REPOSITORY_DRIVER=prisma
 
-# DATABASE_URL is only required for: prisma CLI tools (migrate diff, db push) and the 'prisma' driver.
-# Not used at runtime when FAMILYCO_REPOSITORY_DRIVER=pglite.
-DATABASE_URL=file:./data/familyco.db
+# SQLite file path — dùng khi FAMILYCO_REPOSITORY_DRIVER=prisma
+# Dev:      DATABASE_URL=file:./prisma/dev.db
+# Electron: set tự động trong main.ts → file://<userData>/familyco.db
+DATABASE_URL=file:./prisma/dev.db
+```
 
-# Redis (cần cho BullMQ — Server Only)
-REDIS_URL=redis://localhost:6379
+### Queue
+```env
+# 'memory' (mặc định) hoặc 'bullmq' (cần Redis — Server Only)
+FAMILYCO_QUEUE_DRIVER=memory
+REDIS_URL=redis://127.0.0.1:6379
+FAMILYCO_QUEUE_NAME=familyco-jobs
+ENABLE_QUEUE_WORKERS=0
+```
 
-# JWT
-JWT_SECRET=change-this-secret
-JWT_EXPIRES_IN=7d
-
-# Encryption (cho lưu API keys, sensitive settings)
-ENCRYPTION_KEY=32-char-random-string
-
-# Logging
-LOG_LEVEL=info              # trace|debug|info|warn|error
-LOG_FORMAT=json             # json | pretty
+### Auth & Security
+```env
+# ⚠️ Đổi tất cả default này thành random string trong production
+FAMILYCO_API_KEY=local-dev-api-key
+JWT_SECRET=local-dev-secret
+API_KEY_SALT=local-dev-salt
 ```
 
 ### AI Providers (lưu trong DB Settings, không dùng .env trực tiếp)
@@ -779,30 +749,26 @@ pnpm --filter @familyco/server build
 docker build -f packages/server/Dockerfile -t familyco-server .
 ```
 
-### Docker Compose (Server Only + Redis + PostgreSQL)
+### Docker Compose (Server Only + Redis)
 ```yaml
 # docker-compose.yml
 services:
   server:
     image: familyco-server
-    ports: ["3000:3000"]
+    ports: ["4000:4000"]
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/familyco
+      NODE_ENV: production
+      DATABASE_URL: file:/data/familyco.db
+      FAMILYCO_REPOSITORY_DRIVER: prisma
       REDIS_URL: redis://redis:6379
-    depends_on: [db, redis]
-
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: familyco
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes: [pgdata:/var/lib/postgresql/data]
+    volumes:
+      - dbdata:/data
+    depends_on: [redis]
 
   redis:
     image: redis:7-alpine
 
 volumes:
-  pgdata:
+  dbdata:
 ```
 

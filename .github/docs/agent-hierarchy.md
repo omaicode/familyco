@@ -381,7 +381,7 @@ FamilyCo được phân phối dưới **2 distribution mode** phục vụ hai n
 │  │                   │  │  - Agent Engine        │  │
 │  │  - Dashboard      │  │  - Task Queue          │  │
 │  │  - Agent Manager  │  │  - AI API Client       │  │
-│  │  - Command Center │  │  - DB (SQLite/local)   │  │
+│  │  - Command Center │  │  - DB (SQLite file)    │  │
 │  │  - Settings       │  │  - WebSocket Server    │  │
 │  └───────────────────┘  └───────────────────────┘  │
 │                 localhost:PORT                       │
@@ -395,7 +395,7 @@ FamilyCo được phân phối dưới **2 distribution mode** phục vụ hai n
 | Thuộc tính | Chi tiết |
 |---|---|
 | Installer | `.exe` (Windows), `.dmg` (macOS), `.AppImage` (Linux) |
-| DB mặc định | SQLite (local), có thể đổi sang MySQL/PostgreSQL qua Settings |
+| DB mặc định | SQLite (file tại `userData/familyco.db`, tự động được quản lý) |
 | Data storage | Local machine, full privacy |
 | Update | Auto-update qua Electron updater |
 | Kết nối Server Only | Có — Founder có thể trỏ Desktop UI sang Server Only host riêng |
@@ -423,7 +423,7 @@ FamilyCo được phân phối dưới **2 distribution mode** phục vụ hai n
 │  - AI API Client                         │
 │  - REST API  (Express / Fastify)         │
 │  - WebSocket Server                      │
-│  - DB Adapter (SQLite / MySQL / PgSQL)   │
+│  - DB Adapter (SQLite / PostgreSQL)      │
 │  - CLI Config Interface                  │
 └──────────────────────────────────────────┘
        ▲               ▲
@@ -455,7 +455,7 @@ familyco-server backup --output ./backup.tar.gz
 |---|---|
 | Deployment | VPS, Docker, bare metal, Raspberry Pi |
 | Config | `.env` file + CLI flags |
-| DB | MySQL, PostgreSQL (khuyến nghị), SQLite |
+| DB | SQLite (mặc định) hoặc PostgreSQL (Server Only edition) |
 | Auth | API Key + JWT; có thể bật IP whitelist |
 | Process manager | PM2, systemd, Docker Compose |
 | Resource | Nhẹ, ~80-150MB RAM khi idle |

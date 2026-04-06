@@ -21,7 +21,7 @@
     "@fastify/cors": "^11.1.0",
     "@fastify/jwt": "^10.0.0",
     "@fastify/websocket": "^11.2.0",
-    "@prisma/client": "^6.17.1",
+    "@prisma/client": "^7.6.0",
     "bullmq": "^5.73.0",
     "fastify": "^5.6.1",
     "ioredis": "^5.10.1",
@@ -30,7 +30,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "prisma": "^6.17.1"
+    "prisma": "^7.6.0"
   },
   "author": "",
   "license": "UNLICENSED",

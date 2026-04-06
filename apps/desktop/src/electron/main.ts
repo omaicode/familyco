@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { app, BrowserWindow } from 'electron';
 import { registerDesktopIpcHandlers } from './ipc/ipc-handlers.js';
-import { startEmbeddedServer, type EmbeddedServerRuntime } from './server-bootstrap.js';
+import type { EmbeddedServerRuntime } from './server-bootstrap.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,16 +45,23 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
 const startDesktop = async (): Promise<void> => {
   const apiKey = process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key';
 
-  // Store PGlite data in the OS user-data folder for this app.
-  // Mac:     ~/Library/Application Support/FamilyCo/pgdata
-  // Windows: C:\Users\<user>\AppData\Roaming\FamilyCo\pgdata
-  // Linux:   ~/.config/FamilyCo/pgdata
-  const pgliteDataDir = path.join(app.getPath('userData'), 'pgdata');
+  // Store SQLite database in the OS user-data folder for this app.
+  // Mac:     ~/Library/Application Support/FamilyCo/familyco.db
+  // Windows: C:\Users\<user>\AppData\Roaming\FamilyCo\familyco.db
+  // Linux:   ~/.config/FamilyCo/familyco.db
+  const dbPath = path.join(app.getPath('userData'), 'familyco.db');
+
+  // Set DATABASE_URL before importing @familyco/server so the Prisma singleton
+  // is initialised with the correct path.
+  process.env.DATABASE_URL = `file://${dbPath}`;
+
+  // Dynamic import ensures server-bootstrap (and transitively @familyco/server /
+  // prisma-client) is not loaded until DATABASE_URL is set above.
+  const { startEmbeddedServer } = await import('./server-bootstrap.js');
 
   embeddedServer = await startEmbeddedServer({
     port: Number(process.env.DESKTOP_SERVER_PORT ?? 3040),
-    host: process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1',
-    dataDir: pgliteDataDir
+    host: process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1'
   });
 
   registerDesktopIpcHandlers({
