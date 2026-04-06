@@ -630,7 +630,6 @@ useAutoReload(reload);
             <div class="fc-form-group">
               <label class="fc-label">Project <span class="fc-label-optional">optional</span></label>
               <FcSelect v-model="draft.projectId">
-                <option value="">Use executive queue</option>
                 <option v-for="project in projectOptions" :key="project.id" :value="project.id">
                   {{ project.name }}
                 </option>

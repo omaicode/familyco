@@ -56,7 +56,7 @@ export async function resolveDefaultProjectId(
       : 'FamilyCo';
 
   const existingDefaultProject = knownProjects.find(
-    (project) => project.ownerAgentId === executiveAgentId && project.name === `${companyName} Executive Queue`
+    (project) => project.ownerAgentId === executiveAgentId && project.name === `Default`
   );
 
   if (existingDefaultProject) {
@@ -69,7 +69,7 @@ export async function resolveDefaultProjectId(
   }
 
   const createdProject = await input.projectService.createProject({
-    name: `${companyName} Executive Queue`,
+    name: `Default`,
     description: 'Default project for founder requests that are routed to the L0 executive agent.',
     ownerAgentId: executiveAgentId
   });
