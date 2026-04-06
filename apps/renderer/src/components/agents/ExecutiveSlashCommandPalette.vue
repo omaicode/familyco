@@ -1,10 +1,7 @@
 <script setup lang="ts">
-interface SlashCommandSuggestion {
-  command: string;
-  label: string;
-  description: string;
-  insertValue: string;
-}
+import { Command } from 'lucide-vue-next';
+
+import type { SlashCommandSuggestion } from '../../composables/useExecutiveSlashCommands';
 
 const props = defineProps<{
   draftValue: string;
@@ -21,11 +18,11 @@ const emit = defineEmits<{
 <template>
   <div class="chat-slash-panel">
     <div class="chat-slash-header">
-      <div>
-        <p class="chat-slash-title">Slash commands</p>
-        <p class="chat-slash-copy">Type to filter, then use ↑ ↓ and Enter or Tab to insert quickly.</p>
-      </div>
-      <span class="chat-slash-count">{{ props.commands.length }} match<span v-if="props.commands.length !== 1">es</span></span>
+      <span class="chat-slash-title">
+        <Command :size="12" />
+        Commands
+      </span>
+      <span class="chat-slash-count">{{ props.commands.length }}</span>
     </div>
 
     <div v-if="props.commands.length > 0" class="chat-slash-list">
@@ -56,43 +53,49 @@ const emit = defineEmits<{
 .chat-slash-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--fc-primary) 22%, var(--fc-border-subtle));
-  background: color-mix(in srgb, var(--fc-primary) 5%, var(--fc-surface));
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--fc-primary) 24%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-surface) 92%, white 8%);
+  box-shadow: 0 20px 40px -28px rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(10px);
 }
 
 .chat-slash-header {
   display: flex;
   gap: 10px;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  padding: 0 4px;
 }
 
 .chat-slash-title {
-  margin: 0 0 2px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-.chat-slash-copy,
-.chat-slash-empty {
-  margin: 0;
-  color: var(--fc-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.75rem;
-  line-height: 1.5;
+  font-weight: 700;
+  color: var(--fc-text-main);
 }
 
 .chat-slash-count {
-  font-size: 0.75rem;
-  color: var(--fc-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fc-primary) 12%, transparent);
+  color: var(--fc-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .chat-slash-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .chat-slash-item {
@@ -102,30 +105,43 @@ const emit = defineEmits<{
   width: 100%;
   text-align: left;
   border-radius: 10px;
-  border: 1px solid var(--fc-border-subtle);
-  background: var(--fc-surface);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--fc-text-main);
-  padding: 8px 10px;
+  padding: 8px 9px;
   cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
 }
 
+.chat-slash-item:hover,
 .chat-slash-item[data-active='true'] {
-  border-color: color-mix(in srgb, var(--fc-primary) 40%, var(--fc-border-subtle));
-  background: color-mix(in srgb, var(--fc-primary) 8%, var(--fc-surface));
+  border-color: color-mix(in srgb, var(--fc-primary) 32%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-primary) 7%, var(--fc-surface));
+  transform: translateY(-1px);
 }
 
 .chat-slash-item-top {
   display: flex;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
   align-items: center;
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
-.chat-slash-item p {
+.chat-slash-item code {
+  font-size: 0.72rem;
+}
+
+.chat-slash-item p,
+.chat-slash-empty {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--fc-text-muted);
-  line-height: 1.5;
+  line-height: 1.45;
+}
+
+.chat-slash-empty {
+  padding: 4px;
 }
 </style>

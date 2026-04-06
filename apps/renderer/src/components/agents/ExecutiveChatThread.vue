@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { AlertTriangle, CircleCheckBig, MessagesSquare } from 'lucide-vue-next';
+import { AlertTriangle, CircleCheckBig, LoaderCircle, MessagesSquare } from 'lucide-vue-next';
 
 import type { ChatToolCallDetails, ThreadMessage } from '../../composables/executiveChat.shared';
 
 const props = defineProps<{
   thread: ThreadMessage[];
   selectedAgentName: string;
+  isStreaming?: boolean;
 }>();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -29,6 +30,15 @@ const getMessageToolCalls = (message: ThreadMessage): ChatToolCallDetails[] => {
 const hasToolError = (message: ThreadMessage): boolean => {
   return message.type === 'alert' || getMessageToolCalls(message).some((toolCall) => !toolCall.ok);
 };
+
+const isStreamingMessage = (message: ThreadMessage): boolean => {
+  if (!props.isStreaming || message.direction !== 'agent_to_founder') {
+    return false;
+  }
+
+  const lastAgentMessage = [...props.thread].reverse().find((entry) => entry.direction === 'agent_to_founder');
+  return lastAgentMessage?.id === message.id;
+};
 </script>
 
 <template>
@@ -43,42 +53,53 @@ const hasToolError = (message: ThreadMessage): boolean => {
       </div>
     </div>
 
-    <article
-      v-for="message in props.thread"
-      v-else
-      :key="message.id"
-      class="chat-bubble"
-      :class="[message.direction, { 'chat-bubble-alert': hasToolError(message) }]"
-    >
-      <div class="chat-bubble-meta">
-        <span>{{ message.direction === 'founder_to_agent' ? 'Founder' : props.selectedAgentName }}</span>
-        <span>{{ new Date(message.createdAt).toLocaleString() }}</span>
-      </div>
-      <p class="chat-bubble-title">{{ message.title }}</p>
-      <p class="chat-bubble-body">{{ message.body }}</p>
-
-      <div v-if="message.direction === 'agent_to_founder' && getMessageToolCalls(message).length > 0" class="chat-tool-results">
-        <div
-          v-for="(toolCall, index) in getMessageToolCalls(message)"
-          :key="`${message.id}-${toolCall.toolName}-${index}`"
-          class="chat-tool-item"
-          :data-ok="toolCall.ok"
-        >
-          <div class="chat-tool-header">
-            <span class="chat-tool-status">
-              <component :is="toolCall.ok ? CircleCheckBig : AlertTriangle" :size="13" />
-              {{ toolCall.ok ? 'Tool completed' : 'Tool failed' }}
-            </span>
-            <code>{{ toolCall.toolName }}</code>
-          </div>
-          <p class="chat-tool-summary">{{ toolCall.summary }}</p>
-          <p v-if="toolCall.error?.message" class="chat-tool-error">
-            {{ toolCall.error.message }}
-            <span v-if="toolCall.error.code">({{ toolCall.error.code }})</span>
-          </p>
+    <TransitionGroup v-else tag="div" name="chat-bubble-list" class="chat-thread-list">
+      <article
+        v-for="message in props.thread"
+        :key="message.id"
+        class="chat-bubble"
+        :class="[
+          message.direction,
+          {
+            'chat-bubble-alert': hasToolError(message),
+            'chat-bubble-streaming': isStreamingMessage(message)
+          }
+        ]"
+      >
+        <div class="chat-bubble-meta">
+          <span>{{ message.direction === 'founder_to_agent' ? 'Founder' : props.selectedAgentName }}</span>
+          <span>{{ new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
         </div>
-      </div>
-    </article>
+        <p class="chat-bubble-body">{{ message.body }}</p>
+
+        <div v-if="isStreamingMessage(message)" class="chat-streaming-indicator">
+          <LoaderCircle :size="12" class="chat-streaming-spinner" />
+          <span>Agent is responding…</span>
+        </div>
+
+        <div v-if="message.direction === 'agent_to_founder' && getMessageToolCalls(message).length > 0" class="chat-tool-results">
+          <div
+            v-for="(toolCall, index) in getMessageToolCalls(message)"
+            :key="`${message.id}-${toolCall.toolName}-${index}`"
+            class="chat-tool-item"
+            :data-ok="toolCall.ok"
+          >
+            <div class="chat-tool-header">
+              <span class="chat-tool-status">
+                <component :is="toolCall.ok ? CircleCheckBig : AlertTriangle" :size="13" />
+                {{ toolCall.ok ? 'Tool completed' : 'Tool failed' }}
+              </span>
+              <code>{{ toolCall.toolName }}</code>
+            </div>
+            <p class="chat-tool-summary">{{ toolCall.summary }}</p>
+            <p v-if="toolCall.error?.message" class="chat-tool-error">
+              {{ toolCall.error.message }}
+              <span v-if="toolCall.error.code">({{ toolCall.error.code }})</span>
+            </p>
+          </div>
+        </div>
+      </article>
+    </TransitionGroup>
   </div>
 </template>
 
@@ -89,6 +110,12 @@ const hasToolError = (message: ThreadMessage): boolean => {
   gap: 10px;
   margin-bottom: 14px;
   min-height: 220px;
+}
+
+.chat-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .chat-empty-state {
@@ -113,15 +140,37 @@ const hasToolError = (message: ThreadMessage): boolean => {
 }
 
 .chat-bubble {
+  position: relative;
   border: 1px solid var(--fc-border-subtle);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 12px 14px;
-  background: var(--fc-surface);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fc-surface) 95%, white 5%), var(--fc-surface));
+  box-shadow: 0 14px 28px -24px rgba(15, 23, 42, 0.45);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.chat-bubble:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px -28px rgba(15, 23, 42, 0.5);
 }
 
 .chat-bubble.agent_to_founder {
-  border-color: color-mix(in srgb, var(--fc-primary) 28%, var(--fc-border-subtle));
-  background: color-mix(in srgb, var(--fc-primary) 6%, var(--fc-surface));
+  border-color: color-mix(in srgb, var(--fc-primary) 30%, var(--fc-border-subtle));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fc-primary) 6%, var(--fc-surface)), color-mix(in srgb, var(--fc-primary) 10%, var(--fc-surface)));
+}
+
+.chat-bubble-streaming {
+  overflow: hidden;
+}
+
+.chat-bubble-streaming::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 15%, rgba(255, 255, 255, 0.22) 45%, transparent 75%);
+  transform: translateX(-100%);
+  animation: chat-sheen 1.8s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .chat-bubble-alert {
@@ -138,16 +187,24 @@ const hasToolError = (message: ThreadMessage): boolean => {
   margin-bottom: 6px;
 }
 
-.chat-bubble-title {
-  margin: 0 0 4px;
-  font-size: 0.875rem;
+.chat-bubble-body {
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.chat-streaming-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--fc-primary);
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
-.chat-bubble-body {
-  margin: 0;
-  line-height: 1.55;
-  white-space: pre-wrap;
+.chat-streaming-spinner {
+  animation: chat-spin 0.9s linear infinite;
 }
 
 .chat-tool-results {
@@ -195,5 +252,26 @@ const hasToolError = (message: ThreadMessage): boolean => {
 .chat-tool-error {
   color: var(--fc-danger);
   margin-top: 4px;
+}
+
+.chat-bubble-list-enter-active,
+.chat-bubble-list-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.chat-bubble-list-enter-from,
+.chat-bubble-list-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.985);
+}
+
+@keyframes chat-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes chat-sheen {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 </style>

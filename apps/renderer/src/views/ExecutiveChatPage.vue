@@ -61,7 +61,6 @@ const {
           <div class="chat-toolbar">
             <div>
               <p class="chat-caption">Primary interaction lane</p>
-              <h4 style="margin: 0 0 6px;">Founder → L0 chat</h4>
               <div class="chat-status-pill" :data-state="connectionState">
                 <component :is="connectionState === 'connecting' ? LoaderCircle : PlugZap" :size="13" :class="{ 'fc-spin': connectionState === 'connecting' }" />
                 <span>Socket {{ connectionLabel }}</span>
@@ -91,7 +90,7 @@ const {
           </div>
 
           <template v-else>
-            <ExecutiveChatThread :thread="thread" :selected-agent-name="selectedAgent.name" />
+            <ExecutiveChatThread :thread="thread" :selected-agent-name="selectedAgent.name" :is-streaming="isStreaming" />
             <ExecutiveChatComposer
               v-model="draftMessage"
               :connection-state="connectionState"
