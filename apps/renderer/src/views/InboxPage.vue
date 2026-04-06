@@ -172,7 +172,7 @@ useAutoReload(reload);
     <div class="fc-page-header">
       <div>
         <h3>Inbox</h3>
-        <p>Review approvals, messages, and governance highlights.</p>
+        <p>Review approvals, task updates, and governance highlights.</p>
       </div>
       <button class="fc-btn-secondary" :disabled="isLoading" @click="reload">
         <RefreshCw :size="14" :class="{ 'fc-spin': isLoading }" />
@@ -235,7 +235,7 @@ useAutoReload(reload);
           @click="activeTab = 'messages'"
         >
           <MessageSquare :size="14" />
-          Messages
+          Task updates
           <span v-if="unreadCount > 0" class="fc-tab-count">{{ unreadCount }}</span>
         </button>
         <button

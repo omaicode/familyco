@@ -222,6 +222,7 @@ async function createFounderMessage(input: {
     title: buildChatTitle(input.body.message),
     body: input.body.message,
     payload: {
+      channel: 'chat',
       meta: input.body.meta ?? null,
       ...(input.slashCommand ? { slashCommand: input.slashCommand } : {})
     }
@@ -248,6 +249,7 @@ async function buildProcessedChatResult(input: {
     title: `Reply from ${input.agent.name}`,
     body: replyText,
     payload: {
+      channel: 'chat',
       taskId: extractEntityId(normalizedOutput.task),
       projectId: extractEntityId(normalizedOutput.project),
       toolCalls: normalizedOutput.toolCalls
@@ -293,6 +295,7 @@ async function createDirectChatReply(input: {
     title: `Reply from ${input.agent.name}`,
     body: input.replyText,
     payload: {
+      channel: 'chat',
       toolCalls: []
     }
   });

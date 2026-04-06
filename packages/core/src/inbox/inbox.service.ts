@@ -20,8 +20,14 @@ export class InboxService {
     return this.repository.create(input);
   }
 
-  listMessages(query: ListInboxMessagesQuery): Promise<InboxMessage[]> {
-    return this.repository.list(query);
+  async listMessages(query: ListInboxMessagesQuery): Promise<InboxMessage[]> {
+    const messages = await this.repository.list(query);
+
+    if (query.recipientId !== 'founder') {
+      return messages;
+    }
+
+    return messages.filter(shouldIncludeInFounderInbox);
   }
 
   async listConversation(
@@ -54,4 +60,48 @@ export class InboxService {
   async archive(id: string): Promise<InboxMessage> {
     return this.repository.updateStatus(id, 'archived');
   }
+}
+
+function shouldIncludeInFounderInbox(message: InboxMessage): boolean {
+  if (isChatConversationMessage(message)) {
+    return false;
+  }
+
+  if (message.type === 'approval') {
+    return true;
+  }
+
+  if (message.senderId === 'founder') {
+    return false;
+  }
+
+  return isTaskRelatedInboxMessage(message);
+}
+
+function isChatConversationMessage(message: InboxMessage): boolean {
+  if (message.title.startsWith('Reply from ')) {
+    return true;
+  }
+
+  const payload = message.payload ?? {};
+  return payload.channel === 'chat' || Array.isArray(payload.toolCalls);
+}
+
+function isTaskRelatedInboxMessage(message: InboxMessage): boolean {
+  const payload = message.payload ?? {};
+  const taskId = typeof payload.taskId === 'string' ? payload.taskId : null;
+  const targetId = typeof payload.targetId === 'string' ? payload.targetId.toLowerCase() : '';
+  const action = typeof payload.action === 'string' ? payload.action.toLowerCase() : '';
+  const toolName = typeof payload.toolName === 'string' ? payload.toolName.toLowerCase() : '';
+  const body = message.body.toLowerCase();
+  const title = message.title.toLowerCase();
+
+  return Boolean(
+    taskId
+    || targetId.startsWith('task')
+    || action.includes('task')
+    || toolName.includes('task')
+    || body.includes('task')
+    || title.includes('task')
+  );
 }

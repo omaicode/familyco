@@ -257,8 +257,14 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   });
 
   assert.equal(inboxResponse.statusCode, 200);
-  const inboxItems = inboxResponse.json() as Array<{ id: string; type: string; status: string }>;
+  const inboxItems = inboxResponse.json() as Array<{
+    id: string;
+    type: string;
+    status: string;
+    title: string;
+  }>;
   assert.equal(inboxItems.length > 0, true);
+  assert.equal(inboxItems.some((item) => item.title.startsWith('Reply from ')), false);
   const firstInboxItem = inboxItems[0];
 
   const readResponse = await app.inject({
