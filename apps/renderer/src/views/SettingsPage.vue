@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
-  Building2, Wallet, Cpu,
+  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -17,9 +18,11 @@ import FcSelect from '../components/FcSelect.vue';
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
 type Provider = 'openai' | 'anthropic' | 'google';
-type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'advanced';
+type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'system';
 
 // ── State ─────────────────────────────────────────────────
+const router = useRouter();
+
 const activeSection = ref<Section>('company');
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -58,6 +61,17 @@ const providerDraft = reactive<Record<Provider, { apiKey: string; model: string 
 const themePreference = ref<ThemePreference>('system');
 const themeSaving = ref(false);
 
+// ── System ────────────────────────────────────────────────
+const systemBusy = ref(false);
+const systemInfo = reactive({
+  runtimeMode: 'Browser',
+  apiBaseUrl: '',
+  serverReachable: false,
+  lastHealthCheckAt: '',
+  onboardingComplete: false,
+  settingsCount: 0
+});
+
 // ── Helpers ───────────────────────────────────────────────
 interface ProviderOption { value: Provider; label: string; models: string[]; keyHint: string; }
 const providerOptions: ProviderOption[] = [
@@ -76,6 +90,12 @@ const getSetting = (key: string): unknown =>
 const setFeedback = (type: 'success' | 'error', text: string) => {
   feedback.value = { type, text };
   setTimeout(() => { if (feedback.value?.text === text) feedback.value = null; }, 4000);
+};
+
+const formatDateTime = (iso: string): string => {
+  if (!iso) return 'Not checked yet';
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
 };
 
 // ── Load ──────────────────────────────────────────────────
@@ -120,6 +140,16 @@ const reload = async () => {
   agentHeartbeatMinutes.value = String(typeof rawHb === 'number' ? rawHb : (rawHb ? Number(rawHb) : 60));
   const rawMode2 = getSetting('agent.defaultApprovalMode');
   agentDefaultApprovalMode.value = (rawMode2 === 'auto' || rawMode2 === 'review') ? rawMode2 : 'suggest';
+
+  // System diagnostics
+  systemInfo.runtimeMode = typeof window !== 'undefined' && typeof window.familycoDesktop?.invoke === 'function'
+    ? 'Desktop app'
+    : 'Browser';
+  systemInfo.apiBaseUrl = uiRuntime.stores.app.state.connection.baseURL;
+  systemInfo.serverReachable = uiRuntime.stores.app.state.connection.isServerReachable;
+  systemInfo.lastHealthCheckAt = uiRuntime.stores.app.state.connection.lastHealthCheckAt ?? '';
+  systemInfo.onboardingComplete = getSetting('onboarding.complete') === true;
+  systemInfo.settingsCount = uiRuntime.stores.settings.state.data.filter(s => s.key !== 'provider.apiKey').length;
 };
 
 // ── Apply theme ───────────────────────────────────────────
@@ -212,6 +242,75 @@ const saveAgents = async () => {
   }
 };
 
+// ── System actions ────────────────────────────────────────
+const exportSettings = async () => {
+  systemBusy.value = true;
+  feedback.value = null;
+  try {
+    const payload = visibleSettings.value.map((item) => ({ key: item.key, value: item.value }));
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `familyco-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setFeedback('success', 'Workspace settings exported');
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to export settings');
+  } finally {
+    systemBusy.value = false;
+  }
+};
+
+const copyApiBaseUrl = async () => {
+  if (!systemInfo.apiBaseUrl) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(systemInfo.apiBaseUrl);
+      setFeedback('success', 'API URL copied');
+      return;
+    }
+    window.prompt('Copy API URL', systemInfo.apiBaseUrl);
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to copy API URL');
+  }
+};
+
+const clearProviderKey = async () => {
+  systemBusy.value = true;
+  feedback.value = null;
+  try {
+    await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: '' });
+    providerApiKey.value = '';
+    providerDraft.openai.apiKey = '';
+    providerDraft.anthropic.apiKey = '';
+    providerDraft.google.apiKey = '';
+    await reload();
+    setFeedback('success', 'Stored provider key cleared');
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to clear provider key');
+  } finally {
+    systemBusy.value = false;
+  }
+};
+
+const restartOnboarding = async () => {
+  systemBusy.value = true;
+  feedback.value = null;
+  try {
+    await uiRuntime.api.upsertSetting({ key: 'onboarding.complete', value: false });
+    await uiRuntime.stores.settings.load();
+    await router.replace('/setup');
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to restart onboarding');
+  } finally {
+    systemBusy.value = false;
+  }
+};
+
 // ── Provider change ───────────────────────────────────────
 const onProviderChange = (newProvider: Provider) => {
   // Save current values into the draft cache before switching
@@ -233,7 +332,7 @@ const maskedKey = computed(() => {
   return k.slice(0, 6) + '•'.repeat(Math.min(k.length - 8, 20)) + k.slice(-4);
 });
 
-// ── Advanced: visible settings (hide secrets) ─────────────
+// ── Visible settings (hide secrets) ───────────────────────
 const visibleSettings = computed(() =>
   uiRuntime.stores.settings.state.data.filter(s => s.key !== 'provider.apiKey')
 );
@@ -249,7 +348,11 @@ useAutoReload(reload);
         <h3>Settings</h3>
         <p>Configure AI provider, appearance, and workspace preferences.</p>
       </div>
-      <button class="fc-btn-secondary" :disabled="providerSaving || themeSaving" @click="reload">
+      <button
+        class="fc-btn-secondary"
+        :disabled="providerSaving || themeSaving || companySaving || budgetSaving || agentsSaving || systemBusy"
+        @click="reload"
+      >
         <RefreshCw :size="14" />
         Refresh
       </button>
@@ -320,11 +423,11 @@ useAutoReload(reload);
         </button>
         <button
           class="st-nav-item"
-          :class="{ 'st-nav-item-active': activeSection === 'advanced' }"
-          @click="activeSection = 'advanced'"
+          :class="{ 'st-nav-item-active': activeSection === 'system' }"
+          @click="activeSection = 'system'"
         >
           <Database :size="15" class="st-nav-icon" />
-          <span>Advanced</span>
+          <span>System</span>
           <ChevronRight :size="13" class="st-nav-chevron" />
         </button>
       </nav>
@@ -627,30 +730,109 @@ useAutoReload(reload);
             </div>
           </div>
 
-          <!-- ── Advanced ──────────────────────────── -->
-          <div v-else-if="activeSection === 'advanced'" key="advanced">
+          <!-- ── System ────────────────────────────── -->
+          <div v-else-if="activeSection === 'system'" key="system">
             <div class="st-pane-header">
               <Database :size="16" class="st-pane-icon" />
               <div>
-                <h4>Advanced</h4>
-                <p>All stored configuration keys in this workspace. API keys are hidden.</p>
+                <h4>System</h4>
+                <p>Workspace actions, runtime diagnostics, and recovery tools for your FamilyCo environment.</p>
               </div>
             </div>
 
-            <div v-if="visibleSettings.length === 0" class="fc-empty" style="padding:32px 0;">
-              <p style="margin:0;font-size:0.875rem;">No settings stored yet.</p>
-            </div>
-            <div v-else class="st-kv-list">
-              <div
-                v-for="s in visibleSettings"
-                :key="s.key"
-                class="st-kv-row"
-              >
-                <code class="st-kv-key">{{ s.key }}</code>
-                <span class="st-kv-value">
-                  {{ typeof s.value === 'string' ? s.value : JSON.stringify(s.value) }}
-                </span>
-              </div>
+            <div class="st-system-grid">
+              <section class="st-system-card">
+                <div class="st-system-card-head">
+                  <h5>Runtime diagnostics</h5>
+                  <p>Quick visibility into the current workspace connection state.</p>
+                </div>
+
+                <div class="st-kv-list">
+                  <div class="st-kv-row">
+                    <code class="st-kv-key">Runtime mode</code>
+                    <span class="st-kv-value">{{ systemInfo.runtimeMode }}</span>
+                  </div>
+                  <div class="st-kv-row">
+                    <code class="st-kv-key">API base URL</code>
+                    <span class="st-kv-value">{{ systemInfo.apiBaseUrl || 'Not set' }}</span>
+                  </div>
+                  <div class="st-kv-row">
+                    <code class="st-kv-key">Server status</code>
+                    <span class="st-kv-value" :class="systemInfo.serverReachable ? 'st-status-ok' : 'st-status-bad'">
+                      {{ systemInfo.serverReachable ? 'Reachable' : 'Unavailable' }}
+                    </span>
+                  </div>
+                  <div class="st-kv-row">
+                    <code class="st-kv-key">Last health check</code>
+                    <span class="st-kv-value">{{ formatDateTime(systemInfo.lastHealthCheckAt) }}</span>
+                  </div>
+                  <div class="st-kv-row">
+                    <code class="st-kv-key">Stored settings</code>
+                    <span class="st-kv-value">{{ systemInfo.settingsCount }}</span>
+                  </div>
+                </div>
+
+                <div class="st-actions">
+                  <FcButton variant="secondary" size="sm" :disabled="systemBusy || !systemInfo.apiBaseUrl" @click="copyApiBaseUrl">
+                    <Copy :size="13" />
+                    Copy API URL
+                  </FcButton>
+                </div>
+              </section>
+
+              <section class="st-system-card">
+                <div class="st-system-card-head">
+                  <h5>Workspace actions</h5>
+                  <p>Useful maintenance actions for your current workspace.</p>
+                </div>
+
+                <div class="st-system-actions">
+                  <FcButton variant="secondary" size="sm" :disabled="systemBusy || visibleSettings.length === 0" @click="exportSettings">
+                    <Download :size="13" />
+                    Export settings
+                  </FcButton>
+                </div>
+                <p class="st-hint">Exports a JSON snapshot of the current workspace settings. Provider API keys are excluded for safety.</p>
+              </section>
+
+              <section class="st-system-card st-system-card-danger">
+                <div class="st-system-card-head">
+                  <h5>Recovery</h5>
+                  <p>Use these carefully when you need to recover or reconfigure the workspace.</p>
+                </div>
+
+                <div class="st-system-actions">
+                  <FcButton variant="secondary" size="sm" :disabled="systemBusy" @click="clearProviderKey">
+                    <ShieldAlert :size="13" />
+                    Clear provider key
+                  </FcButton>
+                  <FcButton variant="danger" size="sm" :disabled="systemBusy || !systemInfo.onboardingComplete" @click="restartOnboarding">
+                    <RotateCcw :size="13" />
+                    Restart onboarding
+                  </FcButton>
+                </div>
+                <p class="st-hint">Restarting onboarding sends you back to the setup wizard so you can reconfigure the workspace from scratch.</p>
+              </section>
+
+              <details class="st-raw-settings">
+                <summary>Raw stored settings</summary>
+
+                <div v-if="visibleSettings.length === 0" class="fc-empty" style="padding:20px 0 4px;">
+                  <p style="margin:0;font-size:0.875rem;">No settings stored yet.</p>
+                </div>
+                <div v-else class="st-kv-list" style="margin-top:12px;">
+                  <div
+                    v-for="s in visibleSettings"
+                    :key="s.key"
+                    class="st-kv-row"
+                  >
+                    <code class="st-kv-key">{{ s.key }}</code>
+                    <span class="st-kv-value">
+                      {{ typeof s.value === 'string' ? s.value : JSON.stringify(s.value) }}
+                    </span>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
 
@@ -890,7 +1072,70 @@ useAutoReload(reload);
   background: linear-gradient(135deg, #f9f9f7 50%, #1c1c1e 50%);
 }
 
-/* ── Advanced: KV list ───────────────────────────────────── */
+/* ── System cards ────────────────────────────────────────── */
+.st-system-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.st-system-card {
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fc-surface) 92%, transparent);
+  padding: 14px;
+}
+
+.st-system-card-head {
+  margin-bottom: 12px;
+}
+
+.st-system-card-head h5 {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--fc-text-main);
+}
+
+.st-system-card-head p {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--fc-text-muted);
+  line-height: 1.5;
+}
+
+.st-system-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.st-system-card-danger {
+  border-color: color-mix(in srgb, var(--fc-danger) 25%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-danger) 4%, var(--fc-surface));
+}
+
+.st-status-ok { color: var(--fc-success); font-weight: 600; }
+.st-status-bad { color: var(--fc-danger); font-weight: 600; }
+
+.st-raw-settings {
+  border: 1px dashed var(--fc-border-subtle);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--fc-surface) 95%, transparent);
+}
+
+.st-raw-settings summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fc-text-main);
+}
+
+.st-raw-settings[open] summary { margin-bottom: 2px; }
+
+/* ── KV list ─────────────────────────────────────────────── */
 .st-kv-list {
   display: flex;
   flex-direction: column;
