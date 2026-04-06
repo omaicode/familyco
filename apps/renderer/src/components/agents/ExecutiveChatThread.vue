@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AlertTriangle, CircleCheckBig, MessagesSquare } from 'lucide-vue-next';
 
-import type { ChatToolCallDetails, ThreadMessage } from '../../composables/useExecutiveChat';
+import type { ChatToolCallDetails, ThreadMessage } from '../../composables/executiveChat.shared';
 
 const props = defineProps<{
   thread: ThreadMessage[];
