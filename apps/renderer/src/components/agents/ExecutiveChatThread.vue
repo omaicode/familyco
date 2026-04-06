@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
-import { AlertTriangle, CircleCheckBig, LoaderCircle, MessagesSquare } from 'lucide-vue-next';
+import { computed, nextTick, ref, watch } from 'vue';
+import { AlertTriangle, ArrowDown, CircleCheckBig, LoaderCircle, MessagesSquare } from 'lucide-vue-next';
 
 import type { ChatToolCallDetails, ThreadMessage } from '../../composables/executiveChat.shared';
 
@@ -17,6 +17,19 @@ const emit = defineEmits<{
 }>();
 
 const scrollRef = ref<HTMLDivElement | null>(null);
+const showJumpToLatest = ref(false);
+const historyStatusCopy = computed(() => {
+  if (props.isLoadingOlder) {
+    return 'Loading earlier messages…';
+  }
+
+  if (props.hasMoreHistory) {
+    return 'Scroll up to load earlier messages';
+  }
+
+  return 'You are viewing the earliest available messages';
+});
+
 let pendingRestoreFromTop = false;
 let previousScrollHeight = 0;
 let previousScrollTop = 0;
@@ -53,6 +66,20 @@ const isStreamingMessage = (message: ThreadMessage): boolean => {
   return lastAgentMessage?.id === message.id;
 };
 
+const scrollToBottom = (behavior: ScrollBehavior = 'smooth'): void => {
+  const scroller = scrollRef.value;
+  if (!scroller) {
+    return;
+  }
+
+  scroller.scrollTo({
+    top: scroller.scrollHeight,
+    behavior
+  });
+  stickToBottom = true;
+  showJumpToLatest.value = false;
+};
+
 const handleScroll = (): void => {
   const scroller = scrollRef.value;
   if (!scroller) {
@@ -60,6 +87,7 @@ const handleScroll = (): void => {
   }
 
   stickToBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 72;
+  showJumpToLatest.value = !stickToBottom && scroller.scrollTop < scroller.scrollHeight - scroller.clientHeight - 120;
 
   if (scroller.scrollTop > 40 || props.isLoadingOlder || !props.hasMoreHistory) {
     return;
@@ -85,11 +113,12 @@ watch(
       const delta = scroller.scrollHeight - previousScrollHeight;
       scroller.scrollTop = previousScrollTop + delta;
       pendingRestoreFromTop = false;
+      showJumpToLatest.value = true;
       return;
     }
 
     if (stickToBottom || props.isStreaming) {
-      scroller.scrollTop = scroller.scrollHeight;
+      scrollToBottom(props.isStreaming ? 'auto' : 'smooth');
     }
   },
   { immediate: true }
@@ -112,11 +141,16 @@ watch(
       <div class="chat-history-status" :data-loading="props.isLoadingOlder ? 'true' : 'false'">
         <template v-if="props.isLoadingOlder">
           <LoaderCircle :size="12" class="chat-streaming-spinner" />
-          <span>Loading earlier messages…</span>
+          <span>{{ historyStatusCopy }}</span>
         </template>
-        <template v-else-if="props.hasMoreHistory">
-          <span>Scroll up to load earlier messages</span>
+        <template v-else>
+          <span>{{ historyStatusCopy }}</span>
         </template>
+      </div>
+
+      <div v-if="props.isLoadingOlder" class="chat-history-skeletons" aria-hidden="true">
+        <span class="chat-history-skeleton short"></span>
+        <span class="chat-history-skeleton"></span>
       </div>
 
       <TransitionGroup tag="div" name="chat-bubble-list" class="chat-thread-list">
@@ -166,6 +200,16 @@ watch(
           </div>
         </article>
       </TransitionGroup>
+
+      <button
+        v-if="showJumpToLatest"
+        type="button"
+        class="chat-jump-latest"
+        @click="scrollToBottom()"
+      >
+        <ArrowDown :size="14" />
+        Latest
+      </button>
     </div>
   </div>
 </template>
@@ -180,6 +224,7 @@ watch(
 }
 
 .chat-thread-scroll {
+  position: relative;
   max-height: min(62vh, 680px);
   overflow-y: auto;
   padding-right: 6px;
@@ -207,6 +252,27 @@ watch(
   color: var(--fc-text-muted);
   font-size: 0.72rem;
   box-shadow: 0 8px 18px -16px rgba(15, 23, 42, 0.5);
+}
+
+.chat-history-skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.chat-history-skeleton {
+  display: block;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fc-surface-muted) 90%, white 10%) 0%, color-mix(in srgb, var(--fc-primary) 8%, var(--fc-surface)) 50%, color-mix(in srgb, var(--fc-surface-muted) 90%, white 10%) 100%);
+  background-size: 180% 100%;
+  animation: chat-skeleton-shimmer 1.1s linear infinite;
+}
+
+.chat-history-skeleton.short {
+  width: 68%;
 }
 
 .chat-empty-state {
@@ -356,6 +422,26 @@ watch(
   transform: translateY(8px) scale(0.985);
 }
 
+.chat-jump-latest {
+  position: sticky;
+  bottom: 12px;
+  left: calc(100% - 108px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  margin-left: auto;
+  border: 1px solid color-mix(in srgb, var(--fc-primary) 24%, var(--fc-border-subtle));
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: color-mix(in srgb, var(--fc-surface) 90%, white 10%);
+  color: var(--fc-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  box-shadow: 0 12px 24px -20px rgba(59, 130, 246, 0.5);
+  cursor: pointer;
+}
+
 @keyframes chat-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -364,5 +450,10 @@ watch(
 @keyframes chat-sheen {
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
+}
+
+@keyframes chat-skeleton-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
 }
 </style>
