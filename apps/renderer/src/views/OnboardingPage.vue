@@ -19,11 +19,12 @@ const errorMessage = ref<string | null>(null);
 const done = ref(false);
 const showApiKey = ref(false);
 
-const createdResult = ref<{ executiveName: string; templateCount: number } | null>(null);
+const createdResult = ref<{ executiveName: string; mission: string; direction: string } | null>(null);
 
 const form = reactive({
   companyName: '',
-  departmentsText: 'Operations, Marketing, Research',
+  companyMission: '',
+  companyDirection: '',
   provider: 'openai' as Provider,
   apiKey: '',
   defaultModel: 'gpt-4o',
@@ -67,12 +68,14 @@ const providerOptions: ProviderOption[] = [
 
 const selectedProvider = computed(() => providerOptions.find(p => p.value === form.provider)!);
 
-const departments = computed(() =>
-  form.departmentsText.split(',').map(s => s.trim()).filter(s => s.length > 0)
-);
-
 const canNext = computed(() => {
-  if (currentStep.value === 2) return form.companyName.trim().length > 0;
+  if (currentStep.value === 2) {
+    return (
+      form.companyName.trim().length > 0 &&
+      (form.companyMission.trim().length > 0 || form.companyDirection.trim().length > 0)
+    );
+  }
+
   if (currentStep.value === 3) return form.apiKey.trim().length > 0;
   return true;
 });
@@ -96,12 +99,14 @@ const initialize = async () => {
     await uiRuntime.api.upsertSetting({ key: 'provider.defaultModel', value: form.defaultModel });
     const result = await uiRuntime.api.initializeSetup({
       companyName: form.companyName.trim(),
-      departments: departments.value,
+      companyMission: form.companyMission.trim(),
+      companyDirection: form.companyDirection.trim(),
     });
     await uiRuntime.api.upsertSetting({ key: 'onboarding.complete', value: true });
     createdResult.value = {
       executiveName: result.executiveAgent.name,
-      templateCount: result.departmentTemplates.length,
+      mission: result.companyMission,
+      direction: result.companyDirection,
     };
     done.value = true;
   } catch (err) {
@@ -131,12 +136,8 @@ const goToDashboard = () => router.replace('/chat');
         <h2 style="margin:0 0 8px;font-size:1.5rem;">You're all set!</h2>
         <p style="margin:0 0 24px;color:var(--fc-text-muted);font-size:0.9375rem;line-height:1.6;">
           Executive agent <strong>{{ createdResult.executiveName }}</strong> is ready.
-          <template v-if="createdResult.templateCount > 0">
-            {{ createdResult.templateCount }} optional department template{{ createdResult.templateCount !== 1 ? 's' : '' }} were saved for later approval.
-          </template>
-          <template v-else>
-            You can add optional department templates later as your AI company grows.
-          </template>
+          <span v-if="createdResult.mission"> Mission: {{ createdResult.mission }}</span>
+          <span v-if="createdResult.direction"> Direction: {{ createdResult.direction }}</span>
         </p>
         <button class="ob-btn-primary ob-btn-lg" style="width:100%;" @click="goToDashboard">
           Open Executive Chat <ArrowRight :size="16" />
@@ -181,7 +182,7 @@ const goToDashboard = () => router.replace('/chat');
               </div>
               <div class="ob-feature-item">
                 <Users :size="16" style="color:var(--fc-primary);flex-shrink:0;" />
-                <span>Save optional future department templates</span>
+                <span>Describe your mission and operating direction</span>
               </div>
             </div>
 
@@ -198,7 +199,7 @@ const goToDashboard = () => router.replace('/chat');
               <Building2 :size="28" />
             </div>
             <h2 class="ob-title">Company details</h2>
-            <p class="ob-subtitle">Name your company and list any future departments you may want later. They stay as templates until the L0 executive proposes them and the Founder approves.</p>
+            <p class="ob-subtitle">Name your company and describe the mission plus the direction you want the executive agent to follow from day one.</p>
 
             <div class="ob-form-group">
               <label class="ob-label">Company name <span class="ob-required">*</span></label>
@@ -212,17 +213,25 @@ const goToDashboard = () => router.replace('/chat');
             </div>
 
             <div class="ob-form-group">
-              <label class="ob-label">Future departments <span class="ob-optional">optional</span></label>
-              <input
-                v-model="form.departmentsText"
+              <label class="ob-label">Mission <span class="ob-required">*</span></label>
+              <textarea
+                v-model="form.companyMission"
                 class="ob-input"
-                placeholder="Operations, Marketing, Research"
-              />
-              <p class="ob-hint">Comma-separated optional ideas. They are saved as templates only — no extra agents are created during setup.</p>
-              <!-- Preview chips -->
-              <div v-if="departments.length > 0" class="ob-chip-row">
-                <span v-for="dept in departments" :key="dept" class="ob-chip">{{ dept }}</span>
-              </div>
+                rows="3"
+                placeholder="e.g. Help SMB founders run operations with AI-native execution."
+              ></textarea>
+              <p class="ob-hint">This gives the L0 executive a clear north star for planning and trade-offs.</p>
+            </div>
+
+            <div class="ob-form-group">
+              <label class="ob-label">Operating direction <span class="ob-optional">optional</span></label>
+              <textarea
+                v-model="form.companyDirection"
+                class="ob-input"
+                rows="3"
+                placeholder="e.g. Focus on delivery speed, approval safety, and founder visibility."
+              ></textarea>
+              <p class="ob-hint">Use this to describe priorities, constraints, or how the company should operate.</p>
             </div>
 
             <div class="ob-actions">
@@ -318,8 +327,12 @@ const goToDashboard = () => router.replace('/chat');
                 <span class="ob-summary-value">{{ form.companyName }}</span>
               </div>
               <div class="ob-summary-row">
-                <span class="ob-summary-label">Templates</span>
-                <span class="ob-summary-value">{{ departments.length > 0 ? departments.join(', ') : 'No optional templates yet' }}</span>
+                <span class="ob-summary-label">Mission</span>
+                <span class="ob-summary-value">{{ form.companyMission || 'Not provided yet' }}</span>
+              </div>
+              <div class="ob-summary-row">
+                <span class="ob-summary-label">Direction</span>
+                <span class="ob-summary-value">{{ form.companyDirection || 'Not provided yet' }}</span>
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">AI Provider</span>

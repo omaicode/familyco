@@ -6,12 +6,13 @@ export interface EventGatewayDeps {
 }
 
 export function registerEventGateway(app: FastifyInstance, deps: EventGatewayDeps): void {
-  const clients = new Set<{ send: (payload: string) => void; close: () => void; readyState?: number; OPEN?: number }>();
+  const clients = new Set<{ send: (payload: string) => void; close: () => void; readyState?: number; OPEN?: number; on?: (event: string, listener: () => void) => void }>();
 
   app.get('/events', { websocket: true }, (connection) => {
-    clients.add(connection.socket);
+    const socket = resolveSocketClient(connection);
+    clients.add(socket);
 
-    connection.socket.send(
+    socket.send(
       JSON.stringify({
         type: 'system.connected',
         payload: {
@@ -20,8 +21,8 @@ export function registerEventGateway(app: FastifyInstance, deps: EventGatewayDep
       })
     );
 
-    connection.socket.on('close', () => {
-      clients.delete(connection.socket);
+    socket.on?.('close', () => {
+      clients.delete(socket);
     });
   });
 
@@ -50,4 +51,37 @@ export function registerEventGateway(app: FastifyInstance, deps: EventGatewayDep
     }
     clients.clear();
   });
+}
+
+function resolveSocketClient(connection: {
+  socket?: {
+    send: (payload: string) => void;
+    close: () => void;
+    readyState?: number;
+    OPEN?: number;
+    on?: (event: string, listener: () => void) => void;
+  };
+  send?: (payload: string) => void;
+  close?: () => void;
+  readyState?: number;
+  OPEN?: number;
+  on?: (event: string, listener: () => void) => void;
+}): {
+  send: (payload: string) => void;
+  close: () => void;
+  readyState?: number;
+  OPEN?: number;
+  on?: (event: string, listener: () => void) => void;
+} {
+  if (connection.socket) {
+    return connection.socket;
+  }
+
+  return {
+    send: connection.send?.bind(connection) ?? (() => undefined),
+    close: connection.close?.bind(connection) ?? (() => undefined),
+    readyState: connection.readyState,
+    OPEN: connection.OPEN,
+    on: connection.on?.bind(connection)
+  };
 }

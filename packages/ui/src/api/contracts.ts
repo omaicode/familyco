@@ -204,7 +204,8 @@ export interface UpdateAgentParentPayload {
 
 export interface InitializeSetupPayload {
   companyName: string;
-  departments?: string[];
+  companyMission?: string;
+  companyDirection?: string;
 }
 
 export interface SendAgentChatPayload {
@@ -216,12 +217,19 @@ export interface SendAgentChatPayload {
   };
 }
 
+export interface ChatToolCallItem {
+  toolName: string;
+  ok: boolean;
+  summary: string;
+}
+
 export interface SendAgentChatResult {
   founderMessage: AgentChatMessage;
   replyMessage: AgentChatMessage;
   reply: string;
   task?: TaskListItem | null;
-  approvalRequest?: ApprovalListItem | null;
+  project?: ProjectListItem | null;
+  toolCalls?: ChatToolCallItem[];
 }
 
 export interface ReadInboxMessagePayload {
@@ -262,9 +270,9 @@ export interface FamilyCoApiContracts {
   upsertSetting: (payload: UpsertSettingPayload) => Promise<SettingItem>;
   initializeSetup: (payload: InitializeSetupPayload) => Promise<{
     companyName: string;
+    companyMission: string;
+    companyDirection: string;
     executiveAgent: AgentListItem;
-    departmentAgents: AgentListItem[];
-    departmentTemplates: string[];
     defaultProject: ProjectListItem | null;
   }>;
   getDashboardSummary: (projectId?: string) => Promise<DashboardSummary>;
@@ -350,9 +358,9 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     client.post<
       {
         companyName: string;
+        companyMission: string;
+        companyDirection: string;
         executiveAgent: AgentListItem;
-        departmentAgents: AgentListItem[];
-        departmentTemplates: string[];
         defaultProject: ProjectListItem | null;
       },
       InitializeSetupPayload

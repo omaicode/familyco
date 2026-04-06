@@ -5,6 +5,83 @@ import { createApp } from '../app.js';
 
 const TEST_API_KEY = 'test-api-key';
 
+interface ChatSocketEvent {
+  type: string;
+  payload?: Record<string, unknown>;
+}
+
+async function runSocketChat(url: string, message: string): Promise<ChatSocketEvent[]> {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(url);
+    const events: ChatSocketEvent[] = [];
+    let settled = false;
+
+    const finish = (handler: () => void): void => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeout);
+      handler();
+    };
+
+    const timeout = setTimeout(() => {
+      finish(() => {
+        socket.close();
+        reject(new Error('Timed out waiting for chat stream completion'));
+      });
+    }, 5000);
+
+    socket.addEventListener('message', (event) => {
+      const nextEvent = JSON.parse(String(event.data)) as ChatSocketEvent;
+      events.push(nextEvent);
+
+      if (nextEvent.type === 'chat.ready') {
+        socket.send(JSON.stringify({ message }));
+        return;
+      }
+
+      if (nextEvent.type === 'chat.error') {
+        finish(() => {
+          socket.close();
+          reject(
+            new Error(
+              typeof nextEvent.payload?.message === 'string'
+                ? nextEvent.payload.message
+                : 'Chat stream failed'
+            )
+          );
+        });
+        return;
+      }
+
+      if (nextEvent.type === 'chat.completed') {
+        finish(() => {
+          socket.close();
+          resolve(events);
+        });
+      }
+    });
+
+    socket.addEventListener('error', () => {
+      finish(() => {
+        reject(new Error('WebSocket connection failed'));
+      });
+    });
+
+    socket.addEventListener('close', () => {
+      if (settled) {
+        return;
+      }
+
+      finish(() => {
+        reject(new Error('Chat stream closed before completion'));
+      });
+    });
+  });
+}
+
 test('GET /health returns ok', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 
@@ -276,7 +353,7 @@ test('L1 mutation creates approval request when approval is required', async () 
   await app.close();
 });
 
-test('P1 routes: setup, chat, settings, and inbox flow work with a single L0 default', async () => {
+test('P1 routes: setup, socket chat, settings, and inbox flow work with a single L0 default', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 
   const setupResponse = await app.inject({
@@ -287,19 +364,20 @@ test('P1 routes: setup, chat, settings, and inbox flow work with a single L0 def
     },
     payload: {
       companyName: 'FamilyCo Test',
-      departments: ['Operations', 'Research']
+      companyMission: 'Help founders operate with AI-native execution.',
+      companyDirection: 'Prioritize planning, approvals, and delivery visibility.'
     }
   });
 
   assert.equal(setupResponse.statusCode, 201);
   const setupPayload = setupResponse.json() as {
+    companyMission: string;
+    companyDirection: string;
     executiveAgent: { id: string };
-    departmentAgents: Array<{ id: string; parentAgentId: string | null }>;
-    departmentTemplates: string[];
     defaultProject: { id: string; ownerAgentId: string };
   };
-  assert.equal(setupPayload.departmentAgents.length, 0);
-  assert.deepEqual(setupPayload.departmentTemplates, ['Operations', 'Research']);
+  assert.equal(setupPayload.companyMission, 'Help founders operate with AI-native execution.');
+  assert.equal(setupPayload.companyDirection, 'Prioritize planning, approvals, and delivery visibility.');
 
   const l0Id = setupPayload.executiveAgent.id;
   const defaultProjectId = setupPayload.defaultProject.id;
@@ -334,53 +412,33 @@ test('P1 routes: setup, chat, settings, and inbox flow work with a single L0 def
   assert.equal(createdTask.assigneeAgentId, l0Id);
   assert.equal(createdTask.projectId, defaultProjectId);
 
-  const chatResponse = await app.inject({
-    method: 'POST',
-    url: `/api/v1/agents/${l0Id}/chat`,
-    headers: {
-      'x-api-key': TEST_API_KEY
-    },
-    payload: {
-      message: 'Tạo cho tôi một agent chuyên làm project management.'
-    }
-  });
+  const address = await app.listen({ host: '127.0.0.1', port: 0 });
+  const chatSocketUrl = `${address.replace('http://', 'ws://')}/api/v1/agents/${l0Id}/chat/stream?apiKey=${TEST_API_KEY}`;
 
-  assert.equal(chatResponse.statusCode, 201);
-  const chatPayload = chatResponse.json() as {
-    reply: string;
-    approvalRequest?: { id: string; action: string; status: string };
-  };
-  assert.equal(typeof chatPayload.reply, 'string');
-  assert.equal(chatPayload.approvalRequest?.action, 'create_agent');
-  assert.equal(chatPayload.approvalRequest?.status, 'pending');
-
-  const decideApprovalResponse = await app.inject({
-    method: 'POST',
-    url: `/api/v1/approvals/${chatPayload.approvalRequest?.id}/decision`,
-    headers: {
-      'x-api-key': TEST_API_KEY
-    },
-    payload: {
-      status: 'approved'
-    }
-  });
-
-  assert.equal(decideApprovalResponse.statusCode, 200);
-
-  const agentsResponse = await app.inject({
-    method: 'GET',
-    url: '/api/v1/agents',
-    headers: {
-      'x-api-key': TEST_API_KEY
-    }
-  });
-
-  assert.equal(agentsResponse.statusCode, 200);
-  const agents = agentsResponse.json() as Array<{ id: string; level: string; parentAgentId: string | null; department: string }>;
-  const approvedDepartmentAgent = agents.find(
-    (agent) => agent.level === 'L1' && agent.parentAgentId === l0Id && agent.department === 'Operations'
+  const planningEvents = await runSocketChat(
+    chatSocketUrl,
+    'Review the current backlog and outline the next steps for the company this week.'
   );
-  assert.notEqual(approvedDepartmentAgent, undefined);
+  assert.equal(planningEvents.some((event) => event.type === 'chat.started'), true);
+  assert.equal(planningEvents.some((event) => event.type === 'chat.chunk'), true);
+  assert.equal(planningEvents.some((event) => event.type === 'chat.tool.used'), false);
+
+  const planningTaskListResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(planningTaskListResponse.statusCode, 200);
+  assert.equal((planningTaskListResponse.json() as Array<{ id: string }>).length, 1);
+
+  const toolEvents = await runSocketChat(
+    chatSocketUrl,
+    'Create a task to follow up on onboarding improvements and keep it in the executive queue.'
+  );
+  assert.equal(toolEvents.some((event) => event.type === 'chat.tool.used'), true);
 
   const threadResponse = await app.inject({
     method: 'GET',
@@ -392,7 +450,20 @@ test('P1 routes: setup, chat, settings, and inbox flow work with a single L0 def
 
   assert.equal(threadResponse.statusCode, 200);
   const thread = threadResponse.json() as Array<{ senderId: string; recipientId: string }>;
-  assert.equal(thread.length >= 2, true);
+  assert.equal(thread.length >= 4, true);
+
+  const allTasksAfterToolResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(allTasksAfterToolResponse.statusCode, 200);
+  const allTasksAfterTool = allTasksAfterToolResponse.json() as Array<{ id: string; projectId: string }>;
+  assert.equal(allTasksAfterTool.length, 2);
+  assert.equal(allTasksAfterTool.some((task) => task.projectId === defaultProjectId), true);
 
   const settingsUpsertResponse = await app.inject({
     method: 'POST',
@@ -427,7 +498,7 @@ test('P1 routes: setup, chat, settings, and inbox flow work with a single L0 def
       'x-api-key': TEST_API_KEY
     },
     payload: {
-      actorId: approvedDepartmentAgent?.id ?? l0Id,
+      actorId: l0Id,
       action: 'task.publish',
       targetId: 'task-1'
     }

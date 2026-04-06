@@ -1,7 +1,18 @@
 <script setup lang="ts">
 import type { AgentChatMessage } from '@familyco/ui';
-import { computed, ref, watch } from 'vue';
-import { ArrowRight, Bot, MessagesSquare, RefreshCw, Send, ShieldCheck, Sparkles } from 'lucide-vue-next';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import {
+  ArrowRight,
+  Bot,
+  LoaderCircle,
+  MessagesSquare,
+  PlugZap,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Wrench
+} from 'lucide-vue-next';
 
 import { uiRuntime } from '../runtime';
 import { useAutoReload } from '../composables/useAutoReload';
@@ -11,18 +22,27 @@ import FcCard from '../components/FcCard.vue';
 import FcSelect from '../components/FcSelect.vue';
 import SkeletonList from '../components/SkeletonList.vue';
 
+interface ChatSocketEvent {
+  type: string;
+  payload?: Record<string, unknown>;
+}
+
 const thread = ref<AgentChatMessage[]>([]);
 const selectedAgentId = ref('');
 const draftMessage = ref('');
 const isLoading = ref(false);
 const isRefreshing = ref(false);
 const isSending = ref(false);
+const isStreaming = ref(false);
+const connectionState = ref<'connecting' | 'connected' | 'disconnected'>('disconnected');
 const feedback = ref<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+const socket = ref<WebSocket | null>(null);
+const activeStreamId = ref<string | null>(null);
 
 const promptSuggestions = [
-  'Review the current backlog and propose a recovery plan for delayed tasks.',
-  'Set up a PM-focused agent proposal for project management support.',
-  'Summarize the top blockers this week and tell me what needs approval.'
+  'Review the current backlog and outline the next steps for the company this week.',
+  'Create a task to follow up on onboarding improvements and keep it in the executive queue.',
+  'Open a project for the Q2 operating cadence and summarize what it should cover.'
 ];
 
 const agentState = computed(() => uiRuntime.stores.agents.state.agents);
@@ -32,6 +52,17 @@ const executiveAgents = computed(() =>
 const selectedAgent = computed(
   () => executiveAgents.value.find((agent) => agent.id === selectedAgentId.value) ?? executiveAgents.value[0] ?? null
 );
+const connectionLabel = computed(() => {
+  if (connectionState.value === 'connected') {
+    return 'Connected';
+  }
+
+  if (connectionState.value === 'connecting') {
+    return 'Connecting…';
+  }
+
+  return 'Offline';
+});
 
 watch(
   executiveAgents,
@@ -47,6 +78,12 @@ watch(
   },
   { immediate: true }
 );
+
+watch(selectedAgentId, () => {
+  if (!isLoading.value) {
+    connectSocket();
+  }
+});
 
 const setFeedback = (type: 'success' | 'error' | 'info', text: string): void => {
   feedback.value = { type, text };
@@ -66,11 +103,8 @@ const reload = async (): Promise<void> => {
 
   try {
     await uiRuntime.stores.agents.loadAgents();
-    if (selectedAgentId.value) {
-      thread.value = sortThread(await uiRuntime.api.getAgentChat(selectedAgentId.value));
-    } else {
-      thread.value = [];
-    }
+    await refreshThread();
+    connectSocket();
   } catch (error) {
     setFeedback('error', error instanceof Error ? error.message : 'Failed to load the executive thread');
   } finally {
@@ -79,41 +113,193 @@ const reload = async (): Promise<void> => {
   }
 };
 
+const refreshThread = async (): Promise<void> => {
+  if (!selectedAgentId.value) {
+    thread.value = [];
+    return;
+  }
+
+  thread.value = sortThread(await uiRuntime.api.getAgentChat(selectedAgentId.value));
+};
+
 const applyPrompt = (prompt: string): void => {
   draftMessage.value = prompt;
 };
 
-const sendMessage = async (): Promise<void> => {
-  if (!selectedAgent.value || !draftMessage.value.trim()) {
+const buildSocketUrl = (agentId: string): string => {
+  const baseURL = uiRuntime.stores.app.state.connection.baseURL;
+  const url = new URL(`/api/v1/agents/${agentId}/chat/stream`, baseURL);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+
+  const runtimeApiKey = window.familycoDesktopConfig?.apiKey?.trim() || import.meta.env.VITE_API_KEY?.trim();
+  if (runtimeApiKey) {
+    url.searchParams.set('apiKey', runtimeApiKey);
+  }
+
+  return url.toString();
+};
+
+const closeSocket = (): void => {
+  socket.value?.close();
+  socket.value = null;
+  connectionState.value = 'disconnected';
+};
+
+const connectSocket = (): void => {
+  if (!selectedAgent.value) {
+    closeSocket();
     return;
   }
 
-  isSending.value = true;
+  const nextUrl = buildSocketUrl(selectedAgent.value.id);
+  if (socket.value?.url === nextUrl && connectionState.value !== 'disconnected') {
+    return;
+  }
 
-  try {
-    const result = await uiRuntime.api.sendAgentChat({
-      agentId: selectedAgent.value.id,
-      message: draftMessage.value.trim()
-    });
+  closeSocket();
+  connectionState.value = 'connecting';
 
-    thread.value = sortThread([...thread.value, result.founderMessage, result.replyMessage]);
-    draftMessage.value = '';
-
-    if (result.approvalRequest?.id) {
-      setFeedback('info', `Approval request ${result.approvalRequest.id} is now waiting in Inbox.`);
-    } else if (result.task?.id) {
-      setFeedback('success', `Task “${result.task.title}” is now pending under ${selectedAgent.value.name}.`);
-    } else {
-      setFeedback('success', 'Message delivered to the executive thread.');
+  const nextSocket = new WebSocket(nextUrl);
+  nextSocket.addEventListener('open', () => {
+    if (socket.value === nextSocket) {
+      connectionState.value = 'connected';
     }
-  } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : 'Failed to send the message');
-  } finally {
+  });
+  nextSocket.addEventListener('close', () => {
+    if (socket.value === nextSocket) {
+      socket.value = null;
+      connectionState.value = 'disconnected';
+    }
+  });
+  nextSocket.addEventListener('error', () => {
+    if (socket.value === nextSocket) {
+      connectionState.value = 'disconnected';
+    }
+  });
+  nextSocket.addEventListener('message', (event) => {
+    try {
+      handleSocketEvent(JSON.parse(String(event.data)) as ChatSocketEvent);
+    } catch {
+      setFeedback('error', 'Received an invalid streaming payload from the server.');
+    }
+  });
+
+  socket.value = nextSocket;
+};
+
+const sendMessage = (): void => {
+  const message = draftMessage.value.trim();
+  if (!selectedAgent.value || message.length === 0) {
+    return;
+  }
+
+  if (!socket.value || connectionState.value !== 'connected') {
+    connectSocket();
+    setFeedback('info', 'Reconnecting the executive socket. Send again once it shows connected.');
+    return;
+  }
+
+  const founderMessage: AgentChatMessage = {
+    id: `local-founder-${Date.now()}`,
+    senderId: 'founder',
+    recipientId: selectedAgent.value.id,
+    type: 'info',
+    title: buildChatTitle(message),
+    body: message,
+    createdAt: new Date().toISOString(),
+    direction: 'founder_to_agent'
+  };
+
+  thread.value = sortThread([...thread.value, founderMessage]);
+  socket.value.send(JSON.stringify({ message }));
+  draftMessage.value = '';
+  isSending.value = true;
+};
+
+const handleSocketEvent = (event: ChatSocketEvent): void => {
+  if (event.type === 'chat.ready') {
+    connectionState.value = 'connected';
+    return;
+  }
+
+  if (event.type === 'chat.started') {
+    const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : `stream-${Date.now()}`;
+    activeStreamId.value = requestId;
     isSending.value = false;
+    isStreaming.value = true;
+    upsertStreamingReply(requestId, '');
+    return;
+  }
+
+  if (event.type === 'chat.chunk') {
+    const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
+    const chunk = typeof event.payload?.chunk === 'string' ? event.payload.chunk : '';
+    if (!requestId) {
+      return;
+    }
+
+    const existing = thread.value.find((message) => message.id === requestId)?.body ?? '';
+    upsertStreamingReply(requestId, `${existing}${existing ? ' ' : ''}${chunk}`.trim());
+    return;
+  }
+
+  if (event.type === 'chat.tool.used') {
+    const summary = typeof event.payload?.summary === 'string' ? event.payload.summary : 'A tool was used from the executive lane.';
+    setFeedback(event.payload?.ok === false ? 'error' : 'info', summary);
+    return;
+  }
+
+  if (event.type === 'chat.completed') {
+    isSending.value = false;
+    isStreaming.value = false;
+    activeStreamId.value = null;
+    void refreshThread();
+    setFeedback('success', 'Streaming response completed.');
+    return;
+  }
+
+  if (event.type === 'chat.error') {
+    isSending.value = false;
+    isStreaming.value = false;
+    activeStreamId.value = null;
+    setFeedback(
+      'error',
+      typeof event.payload?.message === 'string' ? event.payload.message : 'Failed to stream the executive reply'
+    );
   }
 };
 
+const upsertStreamingReply = (requestId: string, body: string): void => {
+  if (!selectedAgent.value) {
+    return;
+  }
+
+  const streamingMessage: AgentChatMessage = {
+    id: requestId,
+    senderId: selectedAgent.value.id,
+    recipientId: 'founder',
+    type: 'info',
+    title: `Reply from ${selectedAgent.value.name}`,
+    body,
+    createdAt: new Date().toISOString(),
+    direction: 'agent_to_founder'
+  };
+
+  const remainingMessages = thread.value.filter((message) => message.id !== requestId);
+  thread.value = sortThread([...remainingMessages, streamingMessage]);
+};
+
+const buildChatTitle = (message: string): string => {
+  const compact = message.replace(/\s+/g, ' ').trim();
+  if (compact.length <= 56) {
+    return compact;
+  }
+
+  return `${compact.slice(0, 53).trimEnd()}...`;
+};
+
 useAutoReload(reload);
+onBeforeUnmount(() => closeSocket());
 </script>
 
 <template>
@@ -121,7 +307,7 @@ useAutoReload(reload);
     <div class="fc-page-header">
       <div>
         <h3>Executive Chat</h3>
-        <p>Talk directly with your L0 agent. It can turn requests into tracked tasks or agent proposals.</p>
+        <p>Talk to your L0 agent over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.</p>
       </div>
       <div class="fc-inline-actions">
         <FcButton variant="secondary" :disabled="isRefreshing" @click="reload">
@@ -149,7 +335,11 @@ useAutoReload(reload);
           <div class="chat-toolbar">
             <div>
               <p class="chat-caption">Primary interaction lane</p>
-              <h4 style="margin: 0;">Founder → L0 chat</h4>
+              <h4 style="margin: 0 0 6px;">Founder → L0 chat</h4>
+              <div class="chat-status-pill" :data-state="connectionState">
+                <component :is="connectionState === 'connecting' ? LoaderCircle : PlugZap" :size="13" :class="{ 'fc-spin': connectionState === 'connecting' }" />
+                <span>Socket {{ connectionLabel }}</span>
+              </div>
             </div>
 
             <div class="chat-select-wrap">
@@ -180,7 +370,7 @@ useAutoReload(reload);
                 <MessagesSquare :size="26" />
                 <div>
                   <p class="chat-empty-title">Start the first conversation</p>
-                  <p class="chat-empty-copy">Use chat for planning, follow-ups, and new agent proposals. Use Tasks when you need explicit delivery tracking.</p>
+                  <p class="chat-empty-copy">Use chat for planning and direction. Ask explicitly when you want the agent to call tools for a new task or project.</p>
                 </div>
               </div>
 
@@ -206,7 +396,7 @@ useAutoReload(reload);
                 v-model="draftMessage"
                 class="chat-textarea"
                 rows="5"
-                placeholder="Ask the executive agent to review blockers, make a plan, or propose a new department agent…"
+                placeholder="Ask the executive agent to review blockers, summarize direction, or create a task/project through tools…"
               ></textarea>
 
               <div class="chat-compose-actions">
@@ -223,9 +413,13 @@ useAutoReload(reload);
                   </button>
                 </div>
 
-                <FcButton variant="primary" :disabled="isSending || !draftMessage.trim()" @click="sendMessage">
+                <FcButton
+                  variant="primary"
+                  :disabled="isSending || isStreaming || connectionState !== 'connected' || !draftMessage.trim()"
+                  @click="sendMessage"
+                >
                   <Send :size="14" />
-                  {{ isSending ? 'Sending…' : 'Send to executive' }}
+                  {{ isStreaming ? 'Streaming…' : isSending ? 'Sending…' : 'Send to executive' }}
                 </FcButton>
               </div>
             </div>
@@ -238,22 +432,22 @@ useAutoReload(reload);
           <div class="fc-section-header">
             <div>
               <h4>How this lane works</h4>
-              <p class="fc-card-desc">The system should run with one L0 by default; extra agents are optional and approval-gated.</p>
+              <p class="fc-card-desc">One L0 executive is the default operating model. This lane streams live and only creates work when tools are explicitly called.</p>
             </div>
           </div>
 
           <div class="chat-side-list">
             <div class="chat-side-item">
               <ArrowRight :size="15" />
-              <span>Use <strong>Chat</strong> for discussion, planning, and asking the executive agent to organize work.</span>
+              <span>Use <strong>Chat</strong> for discussion, planning, and setting direction for the executive agent.</span>
+            </div>
+            <div class="chat-side-item">
+              <Wrench :size="15" />
+              <span>Ask clearly when you want the agent to <strong>create a task</strong> or <strong>open a project</strong> through tools.</span>
             </div>
             <div class="chat-side-item">
               <ShieldCheck :size="15" />
-              <span>Use <strong>Inbox</strong> to approve any proposed new agent before it is actually created.</span>
-            </div>
-            <div class="chat-side-item">
-              <Bot :size="15" />
-              <span>Only the L0 executive agent should recommend new L1/L2 roles such as PM, Ops, or Research.</span>
+              <span>Use <strong>Inbox</strong> whenever a separate approval needs founder review.</span>
             </div>
           </div>
         </FcCard>
@@ -293,6 +487,27 @@ useAutoReload(reload);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.chat-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--fc-border-subtle);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--fc-text-muted);
+}
+
+.chat-status-pill[data-state='connected'] {
+  color: var(--fc-success);
+  border-color: color-mix(in srgb, var(--fc-success) 35%, var(--fc-border-subtle));
+}
+
+.chat-status-pill[data-state='connecting'] {
+  color: var(--fc-info);
+  border-color: color-mix(in srgb, var(--fc-info) 35%, var(--fc-border-subtle));
 }
 
 .chat-select-wrap {

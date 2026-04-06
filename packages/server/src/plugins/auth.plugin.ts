@@ -32,7 +32,16 @@ export async function authenticateApiRequest(
   }
 
   const apiKeyHeader = request.headers['x-api-key'];
-  const apiKey = typeof apiKeyHeader === 'string' ? apiKeyHeader : undefined;
+  const apiKeyFromQuery =
+    typeof request.query === 'object' && request.query !== null && 'apiKey' in request.query
+      ? request.query.apiKey
+      : undefined;
+  const apiKey =
+    typeof apiKeyHeader === 'string'
+      ? apiKeyHeader
+      : typeof apiKeyFromQuery === 'string'
+        ? apiKeyFromQuery
+        : undefined;
 
   if (apiKey) {
     const apiKeyRecord = await apiKeyService.verify(apiKey);
