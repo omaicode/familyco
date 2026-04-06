@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/main.ts",
+    "postinstall": "node-gyp rebuild --directory ../../node_modules/better-sqlite3 || true",
     "test": "node --test dist/**/*.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -16,16 +17,17 @@
     "server"
   ],
   "dependencies": {
-    "@electric-sql/pglite": "^0.4.3",
     "@familyco/core": "workspace:*",
     "@fastify/cors": "^11.1.0",
     "@fastify/jwt": "^10.0.0",
     "@fastify/websocket": "^11.2.0",
+    "@prisma/adapter-better-sqlite3": "^7.6.0",
     "@prisma/client": "^7.6.0",
+    "better-sqlite3": "^12.8.0",
     "bullmq": "^5.73.0",
+    "dotenv": "^17.4.0",
     "fastify": "^5.6.1",
     "ioredis": "^5.10.1",
-    "pglite-prisma-adapter": "^0.7.2",
     "tslib": "^2.8.1",
     "zod": "^4.1.12"
   },
