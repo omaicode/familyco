@@ -1,5 +1,5 @@
 ---
-description: "FamilyCo project developer. Use when: implementing features, fixing bugs, writing tests, reviewing code, or asking questions about the FamilyCo codebase — monorepo, Fastify server, Vue 3 renderer, Electron desktop, Prisma SQLite, agent engine, approval flow. Knows the architecture, conventions, and hard constraints of this project."
+description: "FamilyCo project developer. Use when: implementing features, fixing bugs, writing tests, reviewing code, or asking questions about the FamilyCo codebase — monorepo, Fastify server, Vue 3 renderer, Electron desktop, Prisma SQLite, agent engine, approval flow. Prefer GitNexus-first workflows for architecture exploration, debugging, impact analysis, API tracing, and safe refactoring. Knows the architecture, conventions, and hard constraints of this project."
 name: "FamilyCo Dev"
 tools: [vscode, execute, read, edit, search, web, 'gitnexus/*', todo]
 ---
@@ -61,6 +61,46 @@ Trước khi viết code, xác định rõ:
 4. **Có cần approval từ Founder không?** — nếu đụng schema, kiến trúc, luồng approval, loại agent mới → mô tả vấn đề + đề xuất, không tự đổi.
 
 ---
+
+## GitNexus Workflow (Ưu Tiên Cho Phân Tích / Tìm Kiếm Code)
+
+Khi repo đã được index bởi GitNexus, **ưu tiên GitNexus trước** cho các tác vụ khám phá codebase, debugging, impact analysis, API tracing và refactor. Chỉ quay về `read/search/grep` khi cần xác nhận exact line, đọc file nhỏ, hoặc xử lý vùng chưa được index.
+
+### Thứ tự ưu tiên theo tác vụ
+
+1. **Hiểu tính năng / luồng chạy / “code này hoạt động ra sao?”**
+   - Dùng `gitnexus_query` để tìm execution flow liên quan.
+   - Sau đó dùng `gitnexus_context` trên symbol quan trọng để xem callers, callees, process participation.
+
+2. **Debug bug / regression / side effect lạ**
+   - Bắt đầu bằng `gitnexus_query` với symptom hoặc error text.
+   - Dùng `gitnexus_context` để xác định symbol nghi ngờ.
+   - Nếu cần trace sâu hoặc xác định blast radius của fix, dùng `gitnexus_impact`.
+
+3. **Sửa API route / controller / response shape**
+   - Dùng `gitnexus_api_impact` trước khi chỉnh API handler để biết consumers, fields đang được dùng, middleware, và rủi ro mismatch.
+   - Dùng `gitnexus_route_map` hoặc `gitnexus_shape_check` khi cần rà route hoặc so shape response.
+
+4. **Refactor / đổi tên / tách hàm / thay đổi shared symbol**
+   - Dùng `gitnexus_impact({ target, direction: "upstream" })` trước khi sửa để biết cái gì sẽ bị ảnh hưởng.
+   - Khi rename, ưu tiên `gitnexus_rename` thay vì find-and-replace.
+
+5. **Trước khi commit hoặc khi muốn review phạm vi thay đổi**
+   - Dùng `gitnexus_detect_changes()` để xem những process / symbol nào đang bị ảnh hưởng bởi diff hiện tại.
+
+### Quick recipes
+
+- **"How does X work?"** → `gitnexus_query` → `gitnexus_context` → `read_file`
+- **"Bug này nằm ở đâu?"** → `gitnexus_query` (symptom) → `gitnexus_context` (suspect) → `read_file`
+- **"Nếu sửa X thì vỡ gì?"** → `gitnexus_impact`
+- **"API này ai đang gọi?"** → `gitnexus_api_impact` hoặc `gitnexus_route_map`
+- **"Đổi tên symbol an toàn"** → `gitnexus_rename`
+
+### Lưu ý vận hành
+
+- Nếu GitNexus báo index stale, chạy `npx gitnexus analyze` tại root repo trước khi tiếp tục.
+- Nếu repo đã dùng embeddings trước đó, ưu tiên `npx gitnexus analyze --embeddings` để giữ chất lượng semantic search.
+- Khi nhiều repo được index, luôn truyền `repo: "familyco"` nếu tool yêu cầu.
 
 ## Convention Code
 

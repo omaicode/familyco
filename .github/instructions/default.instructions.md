@@ -97,7 +97,34 @@ Khi nhận một yêu cầu (issue / task / prompt), hãy đi theo checklist sau
 
 ---
 
-## 5. Quy Tắc Khi Chỉnh Code Trong VSCode
+## 5. GitNexus Workflow Cho Phân Tích / Tìm Kiếm Code
+
+Khi repo đã được GitNexus index, **ưu tiên dùng GitNexus trước** cho các tác vụ hiểu codebase, tìm execution flow, debug bug, phân tích ảnh hưởng thay đổi và rà consumer của API.
+
+### Ưu tiên dùng GitNexus khi:
+
+1. **Muốn hiểu “flow này chạy như thế nào?”**
+   - Dùng `gitnexus_query` để tìm process/execution flow liên quan.
+   - Dùng `gitnexus_context` để xem callers/callees của symbol chính.
+
+2. **Muốn biết “sửa chỗ này ảnh hưởng gì?”**
+   - Dùng `gitnexus_impact` trước khi sửa shared function/class/method.
+
+3. **Sửa API route / controller / response**
+   - Dùng `gitnexus_api_impact` để biết route đang được ai consume, access field nào, có mismatch shape hay không.
+
+4. **Refactor / rename / tách hàm**
+   - Dùng `gitnexus_rename` cho rename an toàn.
+   - Dùng `gitnexus_detect_changes()` trước khi commit để rà blast radius của diff hiện tại.
+
+### Chỉ dùng grep/read/search trực tiếp khi:
+- Cần exact line hoặc snippet cụ thể
+- Đọc file nhỏ để sửa nhanh
+- Nội dung chưa được GitNexus index hoặc cần xác nhận text literal
+
+Nếu GitNexus báo index stale, chạy `npx gitnexus analyze` ở root repo trước khi tiếp tục.
+
+## 6. Quy Tắc Khi Chỉnh Code Trong VSCode
 
 Khi đang ở trong VSCode (hoặc bất kỳ editor nào) với AI assistance:
 
@@ -122,7 +149,7 @@ Khi đang ở trong VSCode (hoặc bất kỳ editor nào) với AI assistance:
 
 ---
 
-## 6. Quy Trình Git / GitHub Chuẩn Cho AI Agent
+## 7. Quy Trình Git / GitHub Chuẩn Cho AI Agent
 
 ### 6.1 Branch Naming
 
@@ -160,7 +187,7 @@ Trước khi coi PR là "xong" (dù là AI tạo), hãy đảm bảo:
 
 ---
 
-## 7. Những Điều CẦN HỎI Thay Vì Tự Ý Làm
+## 8. Những Điều CẦN HỎI Thay Vì Tự Ý Làm
 
 Nếu rơi vào một trong các trường hợp dưới đây, **dừng lại và yêu cầu clarification từ Founder**, không tự implement:
 
@@ -178,7 +205,7 @@ Khi hỏi, hãy mô tả:
 
 ---
 
-## 8. Cách Sử Dụng File Này
+## 9. Cách Sử Dụng File Này
 
 - Trong GitHub: gắn file này trong repo (ví dụ `/.github/AI_AGENT_INSTRUCTIONS.md`) và refer tới nó trong README/CONTRIBUTING.
 - Trong VSCode:  
