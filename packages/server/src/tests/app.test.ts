@@ -609,7 +609,8 @@ test('GET /api/v1/tasks supports global filters for task management views', asyn
       description: 'Document the launch checklist for the ops team',
       projectId: firstProject.id,
       assigneeAgentId: agent.id,
-      createdBy: agent.id
+      createdBy: agent.id,
+      priority: 'medium'
     }
   });
 
@@ -624,7 +625,8 @@ test('GET /api/v1/tasks supports global filters for task management views', asyn
       description: 'Review the next experiments for activation',
       projectId: secondProject.id,
       assigneeAgentId: agent.id,
-      createdBy: agent.id
+      createdBy: agent.id,
+      priority: 'high'
     }
   });
 
@@ -672,7 +674,7 @@ test('GET /api/v1/tasks supports global filters for task management views', asyn
 
   const filteredResponse = await app.inject({
     method: 'GET',
-    url: `/api/v1/tasks?status=review&projectId=${secondProject.id}&assigneeAgentId=${agent.id}&q=retention`,
+    url: `/api/v1/tasks?status=review&projectId=${secondProject.id}&assigneeAgentId=${agent.id}&priority=high&q=retention`,
     headers: {
       'x-api-key': TEST_API_KEY
     }
@@ -682,6 +684,113 @@ test('GET /api/v1/tasks supports global filters for task management views', asyn
   const filteredTasks = filteredResponse.json() as Array<{ id: string }>;
   assert.equal(filteredTasks.length, 1);
   assert.equal(filteredTasks[0]?.id, taskB.id);
+
+  await app.close();
+});
+
+test('POST /api/v1/tasks/bulk updates priority and status for multiple tasks', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Bulk Lead',
+      role: 'Project Manager',
+      level: 'L0',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const agent = createAgentResponse.json() as { id: string };
+
+  const createProjectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Bulk Updates',
+      description: 'Manage many tasks together',
+      ownerAgentId: agent.id
+    }
+  });
+
+  assert.equal(createProjectResponse.statusCode, 201);
+  const project = createProjectResponse.json() as { id: string };
+
+  const createdTasks = await Promise.all([
+    app.inject({
+      method: 'POST',
+      url: '/api/v1/tasks',
+      headers: {
+        'x-api-key': TEST_API_KEY
+      },
+      payload: {
+        title: 'First bulk task',
+        description: 'Prepare first batch item',
+        projectId: project.id,
+        createdBy: agent.id
+      }
+    }),
+    app.inject({
+      method: 'POST',
+      url: '/api/v1/tasks',
+      headers: {
+        'x-api-key': TEST_API_KEY
+      },
+      payload: {
+        title: 'Second bulk task',
+        description: 'Prepare second batch item',
+        projectId: project.id,
+        createdBy: agent.id
+      }
+    })
+  ]);
+
+  const [firstTask, secondTask] = createdTasks.map((response) => {
+    assert.equal(response.statusCode, 201);
+    return response.json() as { id: string };
+  });
+
+  const priorityResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks/bulk',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      taskIds: [firstTask.id, secondTask.id],
+      action: 'update_priority',
+      priority: 'urgent'
+    }
+  });
+
+  assert.equal(priorityResponse.statusCode, 200);
+  const priorityTasks = priorityResponse.json() as Array<{ priority: string }>;
+  assert.deepEqual(priorityTasks.map((task) => task.priority), ['urgent', 'urgent']);
+
+  const statusResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks/bulk',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      taskIds: [firstTask.id, secondTask.id],
+      action: 'update_status',
+      status: 'in_progress'
+    }
+  });
+
+  assert.equal(statusResponse.statusCode, 200);
+  const statusTasks = statusResponse.json() as Array<{ status: string }>;
+  assert.deepEqual(statusTasks.map((task) => task.status), ['in_progress', 'in_progress']);
 
   await app.close();
 });

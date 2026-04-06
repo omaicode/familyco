@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import type { TaskListItem } from '@familyco/ui';
+import type { BulkUpdateTasksPayload, TaskListItem } from '@familyco/ui';
 import { computed, reactive, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  CheckSquare2,
   ClipboardList,
-  Clock3,
+  Columns3,
+  Flag,
+  List,
   PauseCircle,
   Plus,
   RefreshCw,
   Search,
+  Square,
   UserRound,
   Workflow
 } from 'lucide-vue-next';
@@ -27,7 +31,10 @@ import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
 
 type TaskStatus = TaskListItem['status'];
+type TaskPriority = TaskListItem['priority'];
 type StatusFilter = 'all' | TaskStatus;
+type PriorityFilter = 'all' | TaskPriority;
+type ViewMode = 'kanban' | 'list';
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   pending: 'Pending',
@@ -36,6 +43,20 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   done: 'Done',
   blocked: 'Blocked',
   cancelled: 'Cancelled'
+};
+
+const PRIORITY_LABELS: Record<TaskPriority, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  urgent: 'Urgent'
+};
+
+const PRIORITY_ORDER: Record<TaskPriority, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3
 };
 
 const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
@@ -47,15 +68,54 @@ const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   cancelled: []
 };
 
+const KANBAN_COLUMNS: Array<{ key: TaskStatus; title: string; hint: string }> = [
+  {
+    key: 'pending',
+    title: 'Backlog',
+    hint: 'Ready to start when capacity opens.'
+  },
+  {
+    key: 'in_progress',
+    title: 'Doing',
+    hint: 'Active execution across the org.'
+  },
+  {
+    key: 'review',
+    title: 'Review',
+    hint: 'Waiting for QA or approval.'
+  },
+  {
+    key: 'blocked',
+    title: 'Blocked',
+    hint: 'Needs a decision or dependency cleared.'
+  },
+  {
+    key: 'done',
+    title: 'Done',
+    hint: 'Completed and ready for reporting.'
+  },
+  {
+    key: 'cancelled',
+    title: 'Cancelled',
+    hint: 'Stopped work kept for traceability.'
+  }
+];
+
 const showCreateForm = ref(false);
 const isRefreshing = ref(false);
 const isCreating = ref(false);
+const bulkBusy = ref(false);
+const viewMode = ref<ViewMode>('kanban');
+const selectedTaskIds = ref<string[]>([]);
 const feedback = ref<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 const busyMap = ref<Record<string, boolean>>({});
+const bulkStatus = ref<TaskStatus>('in_progress');
+const bulkPriority = ref<TaskPriority>('high');
 
 const filters = reactive({
   query: '',
   status: 'all' as StatusFilter,
+  priority: 'all' as PriorityFilter,
   projectId: 'all',
   assigneeAgentId: 'all'
 });
@@ -65,7 +125,8 @@ const draft = reactive({
   description: '',
   projectId: '',
   assigneeAgentId: '',
-  createdBy: ''
+  createdBy: '',
+  priority: 'medium' as TaskPriority
 });
 
 const taskState = computed(() => uiRuntime.stores.tasks.state);
@@ -114,6 +175,7 @@ const formatRelative = (iso: string): string => {
 };
 
 const formatStatus = (status: TaskStatus): string => STATUS_LABELS[status];
+const formatPriority = (priority: TaskPriority): string => PRIORITY_LABELS[priority];
 
 const resetDraft = (): void => {
   draft.title = '';
@@ -121,6 +183,7 @@ const resetDraft = (): void => {
   draft.projectId = projectOptions.value[0]?.id ?? '';
   draft.assigneeAgentId = '';
   draft.createdBy = creatorOptions.value[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
+  draft.priority = 'medium';
 };
 
 const reload = async (): Promise<void> => {
@@ -146,14 +209,14 @@ const metrics = computed(() => {
   const tasks = taskState.value.data.tasks;
   const open = tasks.filter((task) => ['pending', 'in_progress', 'review', 'blocked'].includes(task.status)).length;
   const blocked = tasks.filter((task) => task.status === 'blocked').length;
-  const review = tasks.filter((task) => task.status === 'review').length;
+  const urgent = tasks.filter((task) => task.priority === 'urgent' && !['done', 'cancelled'].includes(task.status)).length;
   const done = tasks.filter((task) => task.status === 'done').length;
 
   return {
     total: tasks.length,
     open,
     blocked,
-    review,
+    urgent,
     done,
     completionRate: tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100)
   };
@@ -165,6 +228,10 @@ const filteredTasks = computed(() => {
   return [...taskState.value.data.tasks]
     .filter((task) => {
       if (filters.status !== 'all' && task.status !== filters.status) {
+        return false;
+      }
+
+      if (filters.priority !== 'all' && task.priority !== filters.priority) {
         return false;
       }
 
@@ -180,6 +247,7 @@ const filteredTasks = computed(() => {
         const haystack = [
           task.title,
           task.description,
+          task.priority,
           getProjectName(task.projectId),
           getAgentName(task.assigneeAgentId)
         ]
@@ -191,51 +259,49 @@ const filteredTasks = computed(() => {
 
       return true;
     })
-    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+    .sort((left, right) => {
+      const priorityDelta = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority];
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+
+      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    });
 });
 
-const taskGroups = computed(() => {
-  const sections: Array<{ key: TaskStatus; title: string; hint: string; tasks: TaskListItem[] }> = [
-    {
-      key: 'blocked',
-      title: 'Needs attention',
-      hint: 'Blocked work or actions waiting on a dependency.',
-      tasks: filteredTasks.value.filter((task) => task.status === 'blocked')
-    },
-    {
-      key: 'review',
-      title: 'Ready for review',
-      hint: 'Items prepared for approval, QA, or final sign-off.',
-      tasks: filteredTasks.value.filter((task) => task.status === 'review')
-    },
-    {
-      key: 'in_progress',
-      title: 'In progress',
-      hint: 'Active execution queue across departments.',
-      tasks: filteredTasks.value.filter((task) => task.status === 'in_progress')
-    },
-    {
-      key: 'pending',
-      title: 'Ready to start',
-      hint: 'Backlog items that can be picked up next.',
-      tasks: filteredTasks.value.filter((task) => task.status === 'pending')
-    },
-    {
-      key: 'done',
-      title: 'Completed',
-      hint: 'Recently completed deliverables and finished work.',
-      tasks: filteredTasks.value.filter((task) => task.status === 'done')
-    },
-    {
-      key: 'cancelled',
-      title: 'Cancelled',
-      hint: 'Stopped or deprioritized requests kept for audit history.',
-      tasks: filteredTasks.value.filter((task) => task.status === 'cancelled')
-    }
-  ];
+const taskGroups = computed(() =>
+  KANBAN_COLUMNS.map((column) => ({
+    ...column,
+    tasks: filteredTasks.value.filter((task) => task.status === column.key)
+  }))
+);
 
-  return sections.filter((section) => section.tasks.length > 0 || filters.status === 'all' || filters.status === section.key);
-});
+const allVisibleSelected = computed(() =>
+  filteredTasks.value.length > 0 && filteredTasks.value.every((task) => selectedTaskIds.value.includes(task.id))
+);
+
+const selectedCount = computed(() => selectedTaskIds.value.length);
+
+const isTaskBusy = (taskId: string): boolean => busyMap.value[taskId] === true;
+
+const toggleTaskSelection = (taskId: string): void => {
+  selectedTaskIds.value = selectedTaskIds.value.includes(taskId)
+    ? selectedTaskIds.value.filter((id) => id !== taskId)
+    : [...selectedTaskIds.value, taskId];
+};
+
+const toggleSelectAllVisible = (): void => {
+  if (allVisibleSelected.value) {
+    selectedTaskIds.value = [];
+    return;
+  }
+
+  selectedTaskIds.value = filteredTasks.value.map((task) => task.id);
+};
+
+const clearSelection = (): void => {
+  selectedTaskIds.value = [];
+};
 
 const createTask = async (): Promise<void> => {
   if (!draft.title || !draft.description || !draft.projectId || !draft.createdBy) {
@@ -250,7 +316,8 @@ const createTask = async (): Promise<void> => {
       description: draft.description.trim(),
       projectId: draft.projectId,
       assigneeAgentId: draft.assigneeAgentId || null,
-      createdBy: draft.createdBy
+      createdBy: draft.createdBy,
+      priority: draft.priority
     });
 
     if ('approvalRequired' in result) {
@@ -289,6 +356,81 @@ const moveTask = async (task: TaskListItem, status: TaskStatus): Promise<void> =
   }
 };
 
+const changePriority = async (task: TaskListItem, priority: TaskPriority): Promise<void> => {
+  if (task.priority === priority) {
+    return;
+  }
+
+  busyMap.value = { ...busyMap.value, [task.id]: true };
+
+  try {
+    const result = await uiRuntime.stores.tasks.updateTaskPriority({
+      taskId: task.id,
+      priority
+    });
+
+    if ('approvalRequired' in result) {
+      setFeedback('info', `Priority update queued for approval${result.reason ? ` — ${result.reason}` : ''}.`);
+    } else {
+      setFeedback('success', `Priority set to ${formatPriority(priority).toLowerCase()}.`);
+    }
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : 'Failed to update priority');
+  } finally {
+    busyMap.value = { ...busyMap.value, [task.id]: false };
+  }
+};
+
+const onTaskPriorityChange = (task: TaskListItem, value: string): void => {
+  void changePriority(task, value as TaskPriority);
+};
+
+const runBulkAction = async (payload: BulkUpdateTasksPayload, successText: string): Promise<void> => {
+  if (selectedTaskIds.value.length === 0) {
+    return;
+  }
+
+  bulkBusy.value = true;
+
+  try {
+    const result = await uiRuntime.stores.tasks.bulkUpdateTasks(payload);
+
+    if ('approvalRequired' in result) {
+      setFeedback('info', `Bulk update queued for approval${result.reason ? ` — ${result.reason}` : ''}.`);
+    } else {
+      setFeedback('success', successText);
+    }
+
+    clearSelection();
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : 'Bulk task update failed');
+  } finally {
+    bulkBusy.value = false;
+  }
+};
+
+const applyBulkStatus = async (): Promise<void> => {
+  await runBulkAction(
+    {
+      taskIds: selectedTaskIds.value,
+      action: 'update_status',
+      status: bulkStatus.value
+    },
+    `Updated ${selectedTaskIds.value.length} tasks to ${formatStatus(bulkStatus.value).toLowerCase()}.`
+  );
+};
+
+const applyBulkPriority = async (): Promise<void> => {
+  await runBulkAction(
+    {
+      taskIds: selectedTaskIds.value,
+      action: 'update_priority',
+      priority: bulkPriority.value
+    },
+    `Updated ${selectedTaskIds.value.length} tasks to ${formatPriority(bulkPriority.value).toLowerCase()} priority.`
+  );
+};
+
 useAutoReload(reload);
 </script>
 
@@ -297,9 +439,19 @@ useAutoReload(reload);
     <div class="fc-page-header">
       <div>
         <h3>Tasks</h3>
-        <p>Run one clear execution queue across projects, owners, and approval states.</p>
+        <p>Plan work in Kanban by default, triage by priority, and update many tasks in one move.</p>
       </div>
       <div class="fc-inline-actions">
+        <div class="fc-tabs" role="tablist" aria-label="Task views">
+          <button class="fc-tab" :class="{ 'fc-tab-active': viewMode === 'kanban' }" @click="viewMode = 'kanban'">
+            <Columns3 :size="14" />
+            Kanban
+          </button>
+          <button class="fc-tab" :class="{ 'fc-tab-active': viewMode === 'list' }" @click="viewMode = 'list'">
+            <List :size="14" />
+            List
+          </button>
+        </div>
         <button class="fc-btn-secondary" :disabled="isRefreshing" @click="reload">
           <RefreshCw :size="14" :class="{ 'fc-spin': isRefreshing }" />
           Refresh
@@ -327,22 +479,22 @@ useAutoReload(reload);
       <div class="fc-kpi-card" data-highlight="primary">
         <p class="fc-kpi-label">Open work</p>
         <p class="fc-kpi-value">{{ metrics.open }}</p>
-        <p class="fc-kpi-sub">Pending, active, review, and blocked items</p>
+        <p class="fc-kpi-sub">Everything still moving through the board</p>
       </div>
-      <div class="fc-kpi-card" data-highlight="warning">
-        <p class="fc-kpi-label">In review</p>
-        <p class="fc-kpi-value">{{ metrics.review }}</p>
-        <p class="fc-kpi-sub">Waiting for QA or founder approval</p>
+      <div class="fc-kpi-card" :data-highlight="metrics.urgent > 0 ? 'warning' : 'success'">
+        <p class="fc-kpi-label">Urgent</p>
+        <p class="fc-kpi-value">{{ metrics.urgent }}</p>
+        <p class="fc-kpi-sub">High-focus items that need founder visibility</p>
       </div>
       <div class="fc-kpi-card" :data-highlight="metrics.blocked > 0 ? 'error' : 'success'">
         <p class="fc-kpi-label">Blocked</p>
         <p class="fc-kpi-value">{{ metrics.blocked }}</p>
-        <p class="fc-kpi-sub">Escalate these first to restore flow</p>
+        <p class="fc-kpi-sub">Clear these first to recover flow</p>
       </div>
       <div class="fc-kpi-card" data-highlight="success">
         <p class="fc-kpi-label">Completion rate</p>
         <p class="fc-kpi-value">{{ metrics.completionRate }}%</p>
-        <p class="fc-kpi-sub">{{ metrics.done }} of {{ Math.max(metrics.total, 1) }} tasks finished</p>
+        <p class="fc-kpi-sub">{{ metrics.done }} of {{ Math.max(metrics.total, 1) }} tasks completed</p>
       </div>
     </div>
 
@@ -351,7 +503,7 @@ useAutoReload(reload);
         <div class="fc-section-header">
           <div>
             <h4>Create task</h4>
-            <p class="fc-card-desc">Capture the next deliverable, assign an owner, and keep approvals visible.</p>
+            <p class="fc-card-desc">Capture the outcome, choose a priority, and keep the owner accountable.</p>
           </div>
         </div>
 
@@ -396,6 +548,18 @@ useAutoReload(reload);
             </div>
           </div>
 
+          <div class="fc-form-grid" style="margin-bottom: 12px;">
+            <div class="fc-form-group">
+              <label class="fc-label">Priority</label>
+              <FcSelect v-model="draft.priority">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </FcSelect>
+            </div>
+          </div>
+
           <div class="fc-form-group" style="margin-bottom: 12px;">
             <label class="fc-label">Execution brief</label>
             <textarea
@@ -424,7 +588,7 @@ useAutoReload(reload);
       <div class="fc-section-header">
         <div>
           <h4>Filter queue</h4>
-          <p class="fc-card-desc">Focus by project, owner, or status without losing the full task picture.</p>
+          <p class="fc-card-desc">Slice the board by status, priority, project, or owner.</p>
         </div>
       </div>
 
@@ -449,6 +613,16 @@ useAutoReload(reload);
           </FcSelect>
         </div>
         <div class="fc-form-group">
+          <label class="fc-label">Priority</label>
+          <FcSelect v-model="filters.priority">
+            <option value="all">All priorities</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </FcSelect>
+        </div>
+        <div class="fc-form-group">
           <label class="fc-label">Project</label>
           <FcSelect v-model="filters.projectId">
             <option value="all">All projects</option>
@@ -468,6 +642,45 @@ useAutoReload(reload);
         </div>
       </div>
     </FcCard>
+
+    <Transition name="fc-page">
+      <FcCard v-if="selectedCount > 0" style="margin-bottom: 16px;">
+        <div class="bulk-toolbar">
+          <div>
+            <strong>{{ selectedCount }} task{{ selectedCount === 1 ? '' : 's' }} selected</strong>
+            <p class="fc-card-desc" style="margin-top: 4px;">Apply updates once instead of editing cards one by one.</p>
+          </div>
+
+          <div class="bulk-toolbar-actions">
+            <button class="fc-btn-ghost" @click="toggleSelectAllVisible">
+              <component :is="allVisibleSelected ? CheckSquare2 : Square" :size="14" />
+              {{ allVisibleSelected ? 'Clear visible' : 'Select visible' }}
+            </button>
+            <div class="bulk-field">
+              <FcSelect v-model="bulkStatus">
+                <option value="pending">Pending</option>
+                <option value="in_progress">In progress</option>
+                <option value="review">Review</option>
+                <option value="blocked">Blocked</option>
+                <option value="done">Done</option>
+                <option value="cancelled">Cancelled</option>
+              </FcSelect>
+              <FcButton variant="secondary" :disabled="bulkBusy" @click="applyBulkStatus">Move selected</FcButton>
+            </div>
+            <div class="bulk-field">
+              <FcSelect v-model="bulkPriority">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </FcSelect>
+              <FcButton variant="secondary" :disabled="bulkBusy" @click="applyBulkPriority">Set priority</FcButton>
+            </div>
+            <FcButton variant="ghost" :disabled="bulkBusy" @click="clearSelection">Clear</FcButton>
+          </div>
+        </div>
+      </FcCard>
+    </Transition>
 
     <div v-if="taskState.isLoading" class="fc-loading">
       <p style="margin: 0 0 12px; font-size: 0.875rem; color: var(--fc-text-muted);">Loading tasks…</p>
@@ -496,14 +709,89 @@ useAutoReload(reload);
     <div v-else-if="filteredTasks.length === 0" class="fc-empty">
       <Search :size="36" class="fc-empty-icon" />
       <h4>No matches for this filter</h4>
-      <p>Try a wider search or switch back to all projects and assignees.</p>
-      <FcButton variant="secondary" @click="filters.query = ''; filters.status = 'all'; filters.projectId = 'all'; filters.assigneeAgentId = 'all';">
+      <p>Try a wider search or switch back to all projects, owners, and priorities.</p>
+      <FcButton
+        variant="secondary"
+        @click="filters.query = ''; filters.status = 'all'; filters.priority = 'all'; filters.projectId = 'all'; filters.assigneeAgentId = 'all';"
+      >
         Reset filters
       </FcButton>
     </div>
 
-    <div v-else class="task-layout">
-      <div class="task-groups">
+    <div v-else>
+      <div v-if="viewMode === 'kanban'" class="kanban-board">
+        <section v-for="group in taskGroups" :key="group.key" class="kanban-column">
+          <div class="kanban-column-header">
+            <div>
+              <h4>{{ group.title }}</h4>
+              <p>{{ group.hint }}</p>
+            </div>
+            <FcBadge :status="group.key">{{ group.tasks.length }}</FcBadge>
+          </div>
+
+          <div v-if="group.tasks.length === 0" class="kanban-empty-column">
+            No tasks in this column.
+          </div>
+
+          <article v-for="task in group.tasks" :key="task.id" class="task-card">
+            <div class="task-card-top">
+              <label class="task-check">
+                <input
+                  :checked="selectedTaskIds.includes(task.id)"
+                  type="checkbox"
+                  class="fc-checkbox"
+                  @change="toggleTaskSelection(task.id)"
+                />
+                <span class="task-title">{{ task.title }}</span>
+              </label>
+              <span class="task-priority-pill" :data-priority="task.priority">
+                <Flag :size="12" />
+                {{ formatPriority(task.priority) }}
+              </span>
+            </div>
+
+            <p class="task-description">{{ task.description }}</p>
+
+            <div class="task-meta-grid">
+              <span><Workflow :size="13" /> {{ getProjectName(task.projectId) }}</span>
+              <span><UserRound :size="13" /> {{ getAgentName(task.assigneeAgentId) }}</span>
+            </div>
+
+            <div class="task-inline-field">
+              <span>Priority</span>
+              <FcSelect
+                :model-value="task.priority"
+                :disabled="isTaskBusy(task.id)"
+                @update:modelValue="onTaskPriorityChange(task, $event)"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </FcSelect>
+            </div>
+
+            <div class="task-card-footer">
+              <span class="task-updated">Updated {{ formatRelative(task.updatedAt) }}</span>
+              <div class="task-actions">
+                <FcButton
+                  v-for="nextStatus in ALLOWED_TRANSITIONS[task.status].slice(0, 2)"
+                  :key="`${task.id}-${nextStatus}`"
+                  variant="secondary"
+                  size="sm"
+                  :disabled="isTaskBusy(task.id)"
+                  @click="moveTask(task, nextStatus)"
+                >
+                  <component :is="nextStatus === 'done' ? CheckCircle2 : nextStatus === 'blocked' ? PauseCircle : ArrowRight" :size="12" />
+                  {{ formatStatus(nextStatus) }}
+                </FcButton>
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+
+      <div v-else class="list-stack">
         <FcCard v-for="group in taskGroups" :key="group.key">
           <div class="fc-section-header">
             <div>
@@ -513,22 +801,36 @@ useAutoReload(reload);
             <FcBadge :status="group.key">{{ group.tasks.length }}</FcBadge>
           </div>
 
-          <div class="task-list-wrap">
+          <div v-if="group.tasks.length === 0" class="kanban-empty-column">No tasks in this group.</div>
+
+          <div v-else class="task-list-wrap">
             <article v-for="task in group.tasks" :key="task.id" class="task-item">
               <div class="task-item-top">
-                <div>
-                  <strong class="task-title">{{ task.title }}</strong>
-                  <p class="fc-list-meta" style="margin: 4px 0 0;">
-                    {{ task.description }}
-                  </p>
+                <label class="task-check">
+                  <input
+                    :checked="selectedTaskIds.includes(task.id)"
+                    type="checkbox"
+                    class="fc-checkbox"
+                    @change="toggleTaskSelection(task.id)"
+                  />
+                  <div>
+                    <strong class="task-title">{{ task.title }}</strong>
+                    <p class="task-description" style="margin-top: 4px;">{{ task.description }}</p>
+                  </div>
+                </label>
+                <div class="task-chip-row">
+                  <span class="task-priority-pill" :data-priority="task.priority">
+                    <Flag :size="12" />
+                    {{ formatPriority(task.priority) }}
+                  </span>
+                  <FcBadge :status="task.status">{{ formatStatus(task.status) }}</FcBadge>
                 </div>
-                <FcBadge :status="task.status">{{ formatStatus(task.status) }}</FcBadge>
               </div>
 
               <div class="task-meta-grid">
                 <span><Workflow :size="13" /> {{ getProjectName(task.projectId) }}</span>
                 <span><UserRound :size="13" /> {{ getAgentName(task.assigneeAgentId) }}</span>
-                <span><Clock3 :size="13" /> Updated {{ formatRelative(task.updatedAt) }}</span>
+                <span>Updated {{ formatRelative(task.updatedAt) }}</span>
               </div>
 
               <div class="task-actions">
@@ -537,7 +839,7 @@ useAutoReload(reload);
                   :key="`${task.id}-${nextStatus}`"
                   variant="secondary"
                   size="sm"
-                  :disabled="busyMap[task.id]"
+                  :disabled="isTaskBusy(task.id)"
                   @click="moveTask(task, nextStatus)"
                 >
                   <component :is="nextStatus === 'done' ? CheckCircle2 : nextStatus === 'blocked' ? PauseCircle : ArrowRight" :size="12" />
@@ -546,32 +848,6 @@ useAutoReload(reload);
               </div>
             </article>
           </div>
-        </FcCard>
-      </div>
-
-      <div class="task-side-panel">
-        <FcCard>
-          <div class="fc-section-header">
-            <div>
-              <h4>Queue guidance</h4>
-              <p class="fc-card-desc">A simple playbook to keep work moving.</p>
-            </div>
-          </div>
-
-          <ul class="guidance-list">
-            <li>
-              <strong>Unblock first</strong>
-              <span>Resolve anything in <code>blocked</code> before starting new work.</span>
-            </li>
-            <li>
-              <strong>Review daily</strong>
-              <span>Items in <code>review</code> are the fastest path to visible progress.</span>
-            </li>
-            <li>
-              <strong>Keep briefs specific</strong>
-              <span>Every task should describe the outcome, constraints, and approval trigger.</span>
-            </li>
-          </ul>
         </FcCard>
       </div>
     </div>
@@ -605,30 +881,74 @@ useAutoReload(reload);
   pointer-events: none;
 }
 
-.task-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
-  gap: 12px;
-  align-items: start;
-}
-
-.task-groups {
+.bulk-toolbar {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.task-side-panel {
-  position: sticky;
-  top: 88px;
+.bulk-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.task-list-wrap {
+.bulk-field {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(260px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.kanban-column {
+  min-width: 260px;
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: var(--fc-card-radius);
+  background: var(--fc-surface);
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
+.kanban-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.kanban-column-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.kanban-column-header p {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--fc-text-muted);
+}
+
+.kanban-empty-column {
+  border: 1px dashed var(--fc-border-subtle);
+  border-radius: var(--fc-control-radius);
+  padding: 12px;
+  color: var(--fc-text-muted);
+  font-size: 0.78rem;
+  background: color-mix(in srgb, var(--fc-surface-muted) 50%, var(--fc-surface));
+}
+
+.task-card,
 .task-item {
   border: 1px solid var(--fc-border-subtle);
   border-radius: var(--fc-control-radius);
@@ -636,6 +956,13 @@ useAutoReload(reload);
   background: color-mix(in srgb, var(--fc-surface-muted) 40%, var(--fc-surface));
 }
 
+.task-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-card-top,
 .task-item-top {
   display: flex;
   justify-content: space-between;
@@ -643,17 +970,72 @@ useAutoReload(reload);
   gap: 10px;
 }
 
+.task-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+}
+
 .task-title {
   display: block;
   font-size: 0.92rem;
   font-weight: 600;
+  color: var(--fc-text-main);
+}
+
+.task-description {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--fc-text-muted);
+}
+
+.task-chip-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.task-priority-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--fc-border-subtle);
+}
+
+.task-priority-pill[data-priority='low'] {
+  color: var(--fc-text-muted);
+  background: var(--fc-surface-muted);
+}
+
+.task-priority-pill[data-priority='medium'] {
+  color: var(--fc-info);
+  background: color-mix(in srgb, var(--fc-info) 10%, var(--fc-surface));
+  border-color: color-mix(in srgb, var(--fc-info) 30%, var(--fc-border-subtle));
+}
+
+.task-priority-pill[data-priority='high'] {
+  color: var(--fc-warning);
+  background: color-mix(in srgb, var(--fc-warning) 12%, var(--fc-surface));
+  border-color: color-mix(in srgb, var(--fc-warning) 30%, var(--fc-border-subtle));
+}
+
+.task-priority-pill[data-priority='urgent'] {
+  color: var(--fc-error);
+  background: color-mix(in srgb, var(--fc-error) 10%, var(--fc-surface));
+  border-color: color-mix(in srgb, var(--fc-error) 30%, var(--fc-border-subtle));
 }
 
 .task-meta-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 12px;
-  margin-top: 10px;
   color: var(--fc-text-muted);
   font-size: 0.76rem;
 }
@@ -664,45 +1046,65 @@ useAutoReload(reload);
   gap: 5px;
 }
 
+.task-inline-field {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.task-inline-field span {
+  font-size: 0.76rem;
+  color: var(--fc-text-muted);
+  font-weight: 600;
+}
+
+.task-inline-field :deep(select) {
+  min-width: 118px;
+}
+
+.task-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-updated {
+  font-size: 0.74rem;
+  color: var(--fc-text-muted);
+}
+
 .task-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
 }
 
-.guidance-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.list-stack {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.guidance-list li {
+.task-list-wrap {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.guidance-list strong {
-  font-size: 0.85rem;
-}
-
-.guidance-list span {
-  font-size: 0.8rem;
-  color: var(--fc-text-muted);
-  line-height: 1.5;
+  gap: 10px;
 }
 
 @media (max-width: 1100px) {
-  .task-layout {
-    grid-template-columns: 1fr;
+  .bulk-toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .task-side-panel {
-    position: static;
+  .bulk-toolbar-actions {
+    width: 100%;
+  }
+
+  .bulk-field {
+    width: 100%;
+    flex-wrap: wrap;
   }
 }
 </style>

@@ -6,11 +6,14 @@ export type TaskStatus =
   | 'blocked'
   | 'cancelled';
 
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   status: TaskStatus;
+  priority: TaskPriority;
   projectId: string;
   assigneeAgentId: string | null;
   createdBy: string;
@@ -24,11 +27,20 @@ export interface CreateTaskInput {
   projectId: string;
   assigneeAgentId?: string | null;
   createdBy: string;
+  priority?: TaskPriority;
 }
 
 export interface ListTasksInput {
   projectId?: string;
   status?: TaskStatus;
+  priority?: TaskPriority;
   assigneeAgentId?: string;
   query?: string;
+}
+
+export interface BulkUpdateTasksInput {
+  taskIds: string[];
+  action: 'update_status' | 'update_priority';
+  status?: TaskStatus;
+  priority?: TaskPriority;
 }

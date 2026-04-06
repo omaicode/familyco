@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { TaskService } from './task.service.js';
-import type { CreateTaskInput, ListTasksInput, Task, TaskRepository, TaskStatus } from './index.js';
+import type {
+  CreateTaskInput,
+  ListTasksInput,
+  Task,
+  TaskPriority,
+  TaskRepository,
+  TaskStatus
+} from './index.js';
 import { EventBus } from '../events/event-bus.js';
 
 test('TaskService validates transitions and emits task events', async () => {
@@ -60,7 +67,8 @@ test('TaskService can list tasks with cross-project filters', async () => {
     description: 'Prepare scope and guardrails',
     projectId: 'project-a',
     assigneeAgentId: 'agent-a',
-    createdBy: 'agent-a'
+    createdBy: 'agent-a',
+    priority: 'medium'
   });
 
   const reviewTask = await service.createTask({
@@ -68,7 +76,8 @@ test('TaskService can list tasks with cross-project filters', async () => {
     description: 'Check everything before publishing',
     projectId: 'project-b',
     assigneeAgentId: 'agent-b',
-    createdBy: 'agent-b'
+    createdBy: 'agent-b',
+    priority: 'high'
   });
 
   await service.updateTaskStatus(draftTask.id, 'in_progress');
@@ -87,8 +96,46 @@ test('TaskService can list tasks with cross-project filters', async () => {
   assert.equal(byAssignee.length, 1);
   assert.equal(byAssignee[0]?.id, reviewTask.id);
 
+  const byPriority = await service.listTasks({ priority: 'high' });
+  assert.equal(byPriority.length, 1);
+  assert.equal(byPriority[0]?.id, reviewTask.id);
+
   const bySearch = await service.listTasks({ query: 'launch' });
   assert.equal(bySearch.length, 2);
+});
+
+test('TaskService updates priority and supports bulk status changes', async () => {
+  const repository = new InMemoryTaskRepositoryStub();
+  const service = new TaskService(repository);
+
+  const firstTask = await service.createTask({
+    title: 'Prioritize roadmap',
+    description: 'Focus the next sprint',
+    projectId: 'project-1',
+    createdBy: 'agent-1'
+  });
+
+  const secondTask = await service.createTask({
+    title: 'Prepare founder review',
+    description: 'Collect the changes for sign-off',
+    projectId: 'project-1',
+    createdBy: 'agent-1'
+  });
+
+  const reprioritized = await service.updateTaskPriority(firstTask.id, 'urgent');
+  assert.equal(reprioritized.priority, 'urgent');
+
+  await service.bulkUpdateTasks({
+    taskIds: [firstTask.id, secondTask.id],
+    action: 'update_status',
+    status: 'in_progress'
+  });
+
+  const refreshed = await service.listTasks({ projectId: 'project-1' });
+  assert.deepEqual(
+    refreshed.map((task) => task.status),
+    ['in_progress', 'in_progress']
+  );
 });
 
 class InMemoryTaskRepositoryStub implements TaskRepository {
@@ -101,6 +148,7 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
       title: input.title,
       description: input.description,
       status: 'pending',
+      priority: input.priority ?? 'medium',
       projectId: input.projectId,
       assigneeAgentId: input.assigneeAgentId ?? null,
       createdBy: input.createdBy,
@@ -125,6 +173,10 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
       }
 
       if (filters.status && task.status !== filters.status) {
+        return false;
+      }
+
+      if (filters.priority && task.priority !== filters.priority) {
         return false;
       }
 
@@ -154,6 +206,21 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
       ...existing,
       status,
       updatedAt: new Date('2026-01-02T00:00:00.000Z')
+    };
+    this.tasks.set(id, updated);
+    return updated;
+  }
+
+  async updatePriority(id: string, priority: TaskPriority): Promise<Task> {
+    const existing = this.tasks.get(id);
+    if (!existing) {
+      throw new Error(`TASK_NOT_FOUND:${id}`);
+    }
+
+    const updated: Task = {
+      ...existing,
+      priority,
+      updatedAt: new Date('2026-01-02T12:00:00.000Z')
     };
     this.tasks.set(id, updated);
     return updated;

@@ -25,6 +25,7 @@ export interface TaskListItem {
   title: string;
   description: string;
   status: 'pending' | 'in_progress' | 'review' | 'done' | 'blocked' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   assigneeAgentId: string | null;
   projectId: string;
   createdBy: string;
@@ -125,6 +126,7 @@ export interface CreateTaskPayload {
   projectId: string;
   assigneeAgentId?: string | null;
   createdBy: string;
+  priority?: TaskListItem['priority'];
 }
 
 export interface TaskApprovalResponse {
@@ -135,10 +137,13 @@ export interface TaskApprovalResponse {
 
 export type CreateTaskResult = TaskListItem | TaskApprovalResponse;
 export type UpdateTaskStatusResult = TaskListItem | TaskApprovalResponse;
+export type UpdateTaskPriorityResult = TaskListItem | TaskApprovalResponse;
+export type BulkUpdateTasksResult = TaskListItem[] | TaskApprovalResponse;
 
 export interface ListTasksQuery {
   projectId?: string;
   status?: TaskListItem['status'];
+  priority?: TaskListItem['priority'];
   assigneeAgentId?: string;
   q?: string;
 }
@@ -152,6 +157,18 @@ export interface DecideApprovalPayload {
 export interface UpdateTaskStatusPayload {
   taskId: string;
   status: 'pending' | 'in_progress' | 'review' | 'done' | 'blocked' | 'cancelled';
+}
+
+export interface UpdateTaskPriorityPayload {
+  taskId: string;
+  priority: TaskListItem['priority'];
+}
+
+export interface BulkUpdateTasksPayload {
+  taskIds: string[];
+  action: 'update_status' | 'update_priority';
+  status?: TaskListItem['status'];
+  priority?: TaskListItem['priority'];
 }
 
 export interface PauseAgentPayload {
@@ -193,6 +210,8 @@ export interface FamilyCoApiContracts {
   listTasks: (query?: ListTasksQuery) => Promise<TaskListItem[]>;
   createTask: (payload: CreateTaskPayload) => Promise<CreateTaskResult>;
   updateTaskStatus: (payload: UpdateTaskStatusPayload) => Promise<UpdateTaskStatusResult>;
+  updateTaskPriority: (payload: UpdateTaskPriorityPayload) => Promise<UpdateTaskPriorityResult>;
+  bulkUpdateTasks: (payload: BulkUpdateTasksPayload) => Promise<BulkUpdateTasksResult>;
   listApprovals: () => Promise<ApprovalListItem[]>;
   decideApproval: (payload: DecideApprovalPayload) => Promise<ApprovalListItem>;
   listInbox: (recipientId: string) => Promise<InboxMessageItem[]>;
@@ -232,6 +251,9 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     if (query.status) {
       params.set('status', query.status);
     }
+    if (query.priority) {
+      params.set('priority', query.priority);
+    }
     if (query.assigneeAgentId) {
       params.set('assigneeAgentId', query.assigneeAgentId);
     }
@@ -250,6 +272,14 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
         status: payload.status
       }
     ),
+  updateTaskPriority: (payload) =>
+    client.post<UpdateTaskPriorityResult, Omit<UpdateTaskPriorityPayload, 'taskId'>>(
+      `/api/v1/tasks/${payload.taskId}/priority`,
+      {
+        priority: payload.priority
+      }
+    ),
+  bulkUpdateTasks: (payload) => client.post<BulkUpdateTasksResult, BulkUpdateTasksPayload>('/api/v1/tasks/bulk', payload),
   listApprovals: () => client.get<ApprovalListItem[]>('/api/v1/approvals'),
   decideApproval: (payload) =>
     client.post<ApprovalListItem, Omit<DecideApprovalPayload, 'approvalId'>>(

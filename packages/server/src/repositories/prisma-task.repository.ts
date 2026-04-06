@@ -1,4 +1,11 @@
-import type { CreateTaskInput, ListTasksInput, Task, TaskRepository, TaskStatus } from '@familyco/core';
+import type {
+  CreateTaskInput,
+  ListTasksInput,
+  Task,
+  TaskPriority,
+  TaskRepository,
+  TaskStatus
+} from '@familyco/core';
 import type { PrismaClient } from '@prisma/client';
 
 const TASK_STATUSES: TaskStatus[] = [
@@ -10,6 +17,8 @@ const TASK_STATUSES: TaskStatus[] = [
   'cancelled'
 ];
 
+const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
+
 export class PrismaTaskRepository implements TaskRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -19,13 +28,14 @@ export class PrismaTaskRepository implements TaskRepository {
         title: input.title,
         description: input.description,
         status: 'pending',
+        priority: input.priority ?? 'medium',
         projectId: input.projectId,
         assigneeAgentId: input.assigneeAgentId ?? null,
         createdBy: input.createdBy
-      }
+      } as never
     });
 
-    return toTask(task);
+    return toTask(task as unknown as Parameters<typeof toTask>[0]);
   }
 
   async findById(id: string): Promise<Task | null> {
@@ -33,7 +43,7 @@ export class PrismaTaskRepository implements TaskRepository {
       where: { id }
     });
 
-    return task ? toTask(task) : null;
+    return task ? toTask(task as unknown as Parameters<typeof toTask>[0]) : null;
   }
 
   async list(filters: ListTasksInput = {}): Promise<Task[]> {
@@ -42,6 +52,7 @@ export class PrismaTaskRepository implements TaskRepository {
       where: {
         ...(filters.projectId ? { projectId: filters.projectId } : {}),
         ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.priority ? { priority: filters.priority } : {}),
         ...(filters.assigneeAgentId ? { assigneeAgentId: filters.assigneeAgentId } : {}),
         ...(query
           ? {
@@ -51,11 +62,11 @@ export class PrismaTaskRepository implements TaskRepository {
               ]
             }
           : {})
-      },
+      } as never,
       orderBy: { updatedAt: 'desc' }
     });
 
-    return tasks.map(toTask);
+    return tasks.map((task) => toTask(task as unknown as Parameters<typeof toTask>[0]));
   }
 
   async listByProject(projectId: string): Promise<Task[]> {
@@ -70,7 +81,18 @@ export class PrismaTaskRepository implements TaskRepository {
       }
     });
 
-    return toTask(task);
+    return toTask(task as unknown as Parameters<typeof toTask>[0]);
+  }
+
+  async updatePriority(id: string, priority: TaskPriority): Promise<Task> {
+    const task = await this.prisma.task.update({
+      where: { id },
+      data: {
+        priority
+      } as never
+    });
+
+    return toTask(task as unknown as Parameters<typeof toTask>[0]);
   }
 }
 
@@ -79,6 +101,7 @@ function toTask(task: {
   title: string;
   description: string;
   status: string;
+  priority: string;
   projectId: string;
   assigneeAgentId: string | null;
   createdBy: string;
@@ -89,8 +112,13 @@ function toTask(task: {
     throw new Error(`TASK_STATUS_INVALID:${task.status}`);
   }
 
+  if (!TASK_PRIORITIES.includes(task.priority as TaskPriority)) {
+    throw new Error(`TASK_PRIORITY_INVALID:${task.priority}`);
+  }
+
   return {
     ...task,
-    status: task.status as TaskStatus
+    status: task.status as TaskStatus,
+    priority: task.priority as TaskPriority
   };
 }

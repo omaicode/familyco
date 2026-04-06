@@ -1,11 +1,15 @@
 import type {
   AgentListItem,
+  BulkUpdateTasksPayload,
+  BulkUpdateTasksResult,
   CreateTaskPayload,
   CreateTaskResult,
   FamilyCoApiContracts,
   ListTasksQuery,
   ProjectListItem,
   TaskListItem,
+  UpdateTaskPriorityPayload,
+  UpdateTaskPriorityResult,
   UpdateTaskStatusPayload,
   UpdateTaskStatusResult
 } from '../api/contracts.js';
@@ -78,6 +82,28 @@ export class TaskStore {
     }
 
     await this.refresh();
+    return result;
+  }
+
+  async updateTaskPriority(payload: UpdateTaskPriorityPayload): Promise<UpdateTaskPriorityResult> {
+    const result = await this.api.updateTaskPriority(payload);
+
+    if ('approvalRequired' in result) {
+      return result;
+    }
+
+    await this.refresh();
+    return result;
+  }
+
+  async bulkUpdateTasks(payload: BulkUpdateTasksPayload): Promise<BulkUpdateTasksResult> {
+    const result = await this.api.bulkUpdateTasks(payload);
+
+    if (Array.isArray(result)) {
+      await this.refresh();
+      return result;
+    }
+
     return result;
   }
 }

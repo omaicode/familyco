@@ -47,6 +47,7 @@ model Task {
 	title           String
 	description     String
 	status          String
+	priority        String   @default("medium")
 	projectId       String
 	assigneeAgentId String?
 	createdBy       String

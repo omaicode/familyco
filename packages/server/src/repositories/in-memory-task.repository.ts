@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import type { CreateTaskInput, ListTasksInput, Task, TaskRepository, TaskStatus } from '@familyco/core';
+import type {
+  CreateTaskInput,
+  ListTasksInput,
+  Task,
+  TaskPriority,
+  TaskRepository,
+  TaskStatus
+} from '@familyco/core';
 
 export class InMemoryTaskRepository implements TaskRepository {
   private readonly tasks = new Map<string, Task>();
@@ -12,6 +19,7 @@ export class InMemoryTaskRepository implements TaskRepository {
       title: input.title,
       description: input.description,
       status: 'pending',
+      priority: input.priority ?? 'medium',
       projectId: input.projectId,
       assigneeAgentId: input.assigneeAgentId ?? null,
       createdBy: input.createdBy,
@@ -37,6 +45,10 @@ export class InMemoryTaskRepository implements TaskRepository {
         }
 
         if (filters.status && task.status !== filters.status) {
+          return false;
+        }
+
+        if (filters.priority && task.priority !== filters.priority) {
           return false;
         }
 
@@ -67,6 +79,22 @@ export class InMemoryTaskRepository implements TaskRepository {
     const updatedTask: Task = {
       ...task,
       status,
+      updatedAt: new Date()
+    };
+
+    this.tasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async updatePriority(id: string, priority: TaskPriority): Promise<Task> {
+    const task = this.tasks.get(id);
+    if (!task) {
+      throw new Error(`TASK_NOT_FOUND:${id}`);
+    }
+
+    const updatedTask: Task = {
+      ...task,
+      priority,
       updatedAt: new Date()
     };
 

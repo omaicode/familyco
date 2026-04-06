@@ -1,4 +1,4 @@
-import type { CreateTaskInput, ListTasksInput, Task, TaskStatus } from './task.entity.js';
+import type { CreateTaskInput, ListTasksInput, Task, TaskPriority, TaskStatus } from './task.entity.js';
 
 export interface TaskRepository {
   create(input: CreateTaskInput): Promise<Task>;
@@ -6,4 +6,5 @@ export interface TaskRepository {
   list(filters?: ListTasksInput): Promise<Task[]>;
   listByProject(projectId: string): Promise<Task[]>;
   updateStatus(id: string, status: TaskStatus): Promise<Task>;
+  updatePriority(id: string, priority: TaskPriority): Promise<Task>;
 }
