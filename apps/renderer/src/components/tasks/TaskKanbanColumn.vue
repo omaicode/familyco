@@ -101,6 +101,13 @@ const onDrop = (): void => {
   flex-direction: column;
   gap: 10px;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .kanban-column {
+    min-width: 100%;
+  }
 }
 
 .kanban-column-over {
