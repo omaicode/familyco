@@ -14,6 +14,7 @@ const props = defineProps<{
   tasks: TaskListItem[];
   selectedTaskIds: string[];
   busyMap: Record<string, boolean>;
+  draggingActive: boolean;
   getProjectName: (projectId: string) => string;
   getAgentName: (agentId: string | null | undefined) => string;
   formatPriority: (priority: TaskListItem['priority']) => string;
@@ -42,7 +43,7 @@ const onDrop = (): void => {
 <template>
   <section
     class="kanban-column"
-    :class="{ 'kanban-column-over': isOver }"
+    :class="{ 'kanban-column-over': isOver, 'kanban-column-ready': props.draggingActive && !isOver }"
     @dragenter.prevent="isOver = true"
     @dragover.prevent
     @dragleave="isOver = false"
@@ -55,6 +56,10 @@ const onDrop = (): void => {
       </div>
       <FcBadge :status="props.column.key">{{ props.tasks.length }}</FcBadge>
     </div>
+
+    <p v-if="props.draggingActive" class="kanban-drop-tip">
+      {{ isOver ? 'Release to move here' : `Drop into ${props.column.title.toLowerCase()}` }}
+    </p>
 
     <div v-if="props.tasks.length === 0" class="kanban-empty-column">
       Drop a task here to move it into {{ props.column.title.toLowerCase() }}.
@@ -102,6 +107,10 @@ const onDrop = (): void => {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fc-primary) 30%, transparent);
 }
 
+.kanban-column-ready {
+  border-style: dashed;
+}
+
 .kanban-column-header {
   display: flex;
   justify-content: space-between;
@@ -117,6 +126,12 @@ const onDrop = (): void => {
 .kanban-column-header p {
   margin: 4px 0 0;
   font-size: 0.75rem;
+  color: var(--fc-text-muted);
+}
+
+.kanban-drop-tip {
+  margin: -2px 0 0;
+  font-size: 0.72rem;
   color: var(--fc-text-muted);
 }
 

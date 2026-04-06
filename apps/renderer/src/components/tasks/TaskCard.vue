@@ -48,13 +48,17 @@ const getActionIcon = (status: TaskListItem['status']) => {
   return ArrowRight;
 };
 
-const formatTaskCode = (task: TaskListItem): string => `TASK-${task.id.slice(0, 8).toUpperCase()}`;
+const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).toUpperCase()}`;
 </script>
 
 <template>
   <article
     class="task-card"
-    :class="{ 'task-card-busy': props.busy, 'task-card-kanban': props.kanbanCompact }"
+    :class="{
+      'task-card-busy': props.busy,
+      'task-card-kanban': props.kanbanCompact,
+      'task-card-draggable': props.dragEnabled
+    }"
     :draggable="props.dragEnabled"
     @dragstart="emit('dragstart', props.task, $event)"
     @dragend="emit('dragend')"
@@ -149,6 +153,21 @@ const formatTaskCode = (task: TaskListItem): string => `TASK-${task.id.slice(0, 
   display: flex;
   flex-direction: column;
   gap: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.task-card-draggable {
+  cursor: grab;
+}
+
+.task-card-draggable:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--fc-primary) 22%, var(--fc-border-subtle));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--fc-primary) 10%, transparent);
+}
+
+.task-card-draggable:active {
+  cursor: grabbing;
 }
 
 .task-card-busy {

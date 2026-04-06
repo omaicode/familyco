@@ -717,28 +717,35 @@ useAutoReload(reload);
     </div>
 
     <div v-else>
-      <div v-if="viewMode === 'kanban'" class="kanban-board">
-        <TaskKanbanColumn
-          v-for="group in taskGroups"
-          :key="group.key"
-          :column="group"
-          :tasks="group.tasks"
-          :selected-task-ids="selectedTaskIds"
-          :busy-map="busyMap"
-          :allowed-transitions="ALLOWED_TRANSITIONS"
-          :get-project-name="getProjectName"
-          :get-agent-name="getAgentName"
-          :format-priority="formatPriority"
-          :format-status="formatStatus"
-          :format-relative="formatRelative"
-          @toggle-select="toggleTaskSelection"
-          @move="moveTask"
-          @change-priority="changePriority"
-          @dragstart="onDragTask"
-          @dragend="onDragEnd"
-          @drop-task="handleDropOnColumn"
-        />
-      </div>
+      <template v-if="viewMode === 'kanban'">
+        <div class="task-view-note">
+          <p>Drag tasks across columns to update status. Cards stay compact so task titles are easier to scan.</p>
+        </div>
+
+        <div class="kanban-board">
+          <TaskKanbanColumn
+            v-for="group in taskGroups"
+            :key="group.key"
+            :column="group"
+            :tasks="group.tasks"
+            :selected-task-ids="selectedTaskIds"
+            :busy-map="busyMap"
+            :dragging-active="draggingTaskId !== null"
+            :allowed-transitions="ALLOWED_TRANSITIONS"
+            :get-project-name="getProjectName"
+            :get-agent-name="getAgentName"
+            :format-priority="formatPriority"
+            :format-status="formatStatus"
+            :format-relative="formatRelative"
+            @toggle-select="toggleTaskSelection"
+            @move="moveTask"
+            @change-priority="changePriority"
+            @dragstart="onDragTask"
+            @dragend="onDragEnd"
+            @drop-task="handleDropOnColumn"
+          />
+        </div>
+      </template>
 
       <FcCard v-else>
         <div class="fc-section-header">
@@ -847,12 +854,56 @@ useAutoReload(reload);
   color: var(--fc-text-muted);
 }
 
+.task-view-note {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: var(--fc-control-radius);
+  border: 1px solid color-mix(in srgb, var(--fc-border-subtle) 88%, transparent);
+  background: color-mix(in srgb, var(--fc-surface-muted) 45%, var(--fc-surface));
+}
+
+.task-view-note p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--fc-text-muted);
+}
+
 .kanban-board {
   display: grid;
   grid-template-columns: repeat(6, minmax(320px, 1fr));
   gap: 12px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 6px;
+}
+
+@media (max-width: 900px) {
+  .task-toolbar {
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .task-search-wrap {
+    width: 100%;
+  }
+
+  .task-search-wrap :deep(input) {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .fc-tabs {
+    width: 100%;
+  }
+
+  .fc-tabs .fc-tab {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .kanban-board {
+    grid-template-columns: repeat(6, minmax(280px, 1fr));
+  }
 }
 
 
