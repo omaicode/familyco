@@ -99,6 +99,7 @@ function buildSystemPrompt(companyProfile: CompanyProfile, tools: ToolDefinition
     'Decide whether the founder message needs one or more tools. Never guess hidden tools and never invent tool names.',
     'If no tool is needed, return an empty toolCalls array.',
     'If a tool is needed, choose from the provided tool list and include concrete arguments for every required field.',
+    'If you do not know a valid agentId or projectId, omit that optional field instead of inventing a database identifier.',
     'Return strict JSON only with this shape:',
     '{"reply":"string","toolCalls":[{"toolName":"string","arguments":{}}]}',
     `Company name: ${companyProfile.companyName}`,

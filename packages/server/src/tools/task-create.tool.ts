@@ -1,4 +1,4 @@
-import type { ToolExecutionResult } from '@familyco/core';
+import type { AgentService, ProjectService, ToolExecutionResult } from '@familyco/core';
 
 import { resolveDefaultProjectId, resolveExecutiveAgentId } from '../modules/shared/defaults.js';
 import { asNonEmptyString, asTaskPriority, unavailableTool } from './tool.helpers.js';
@@ -25,19 +25,19 @@ export const taskCreateTool: ServerToolDefinition = {
       name: 'projectId',
       type: 'string',
       required: false,
-      description: 'Optional target project. Defaults to the executive queue when omitted.'
+      description: 'Optional target project id or name. Omit it when unknown to use the executive queue.'
     },
     {
       name: 'assigneeAgentId',
       type: 'string',
       required: false,
-      description: 'Agent who should own the task. Defaults to the executive agent.'
+      description: 'Agent id or name that should own the task. Omit it when unknown to use the executive agent.'
     },
     {
       name: 'createdBy',
       type: 'string',
       required: false,
-      description: 'Agent id recorded as the creator of the task.'
+      description: 'Optional creator agent id or name. Defaults to the resolved assignee.'
     },
     {
       name: 'priority',
@@ -53,26 +53,37 @@ export const taskCreateTool: ServerToolDefinition = {
 
     const title = asNonEmptyString(argumentsMap.title) ?? 'Executive follow-up';
     const description = asNonEmptyString(argumentsMap.description) ?? title;
-    const assigneeAgentId =
-      asNonEmptyString(argumentsMap.assigneeAgentId) ??
-      (await resolveExecutiveAgentId({
-        agentService: context.agentService,
-        settingsService: context.settingsService
-      }));
-    const projectId =
-      asNonEmptyString(argumentsMap.projectId) ??
-      (await resolveDefaultProjectId({
-        agentService: context.agentService,
-        projectService: context.projectService,
-        settingsService: context.settingsService
-      }));
+    const fallbackAgentId = await resolveExecutiveAgentId({
+      agentService: context.agentService,
+      settingsService: context.settingsService
+    });
+    const fallbackProjectId = await resolveDefaultProjectId({
+      agentService: context.agentService,
+      projectService: context.projectService,
+      settingsService: context.settingsService
+    });
+    const assigneeAgentId = await resolveAgentReference({
+      candidate: asNonEmptyString(argumentsMap.assigneeAgentId),
+      fallbackAgentId,
+      agentService: context.agentService
+    });
+    const projectId = await resolveProjectReference({
+      candidate: asNonEmptyString(argumentsMap.projectId),
+      fallbackProjectId,
+      projectService: context.projectService
+    });
+    const createdBy = await resolveAgentReference({
+      candidate: asNonEmptyString(argumentsMap.createdBy),
+      fallbackAgentId: assigneeAgentId,
+      agentService: context.agentService
+    });
 
     const task = await context.taskService.createTask({
       title,
       description,
       projectId,
       assigneeAgentId,
-      createdBy: asNonEmptyString(argumentsMap.createdBy) ?? assigneeAgentId,
+      createdBy,
       priority: asTaskPriority(argumentsMap.priority)
     });
 
@@ -83,3 +94,50 @@ export const taskCreateTool: ServerToolDefinition = {
     };
   }
 };
+
+async function resolveAgentReference(input: {
+  candidate?: string;
+  fallbackAgentId: string;
+  agentService: AgentService;
+}): Promise<string> {
+  if (!input.candidate) {
+    return input.fallbackAgentId;
+  }
+
+  try {
+    const agent = await input.agentService.getAgentById(input.candidate);
+    return agent.id;
+  } catch {
+    const normalizedCandidate = normalizeLookup(input.candidate);
+    const agents = await input.agentService.listAgents();
+    const matchedAgent = agents.find((agent) => {
+      return [agent.id, agent.name, agent.role]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .some((value) => normalizeLookup(value) === normalizedCandidate);
+    });
+
+    return matchedAgent?.id ?? input.fallbackAgentId;
+  }
+}
+
+async function resolveProjectReference(input: {
+  candidate?: string;
+  fallbackProjectId: string;
+  projectService: ProjectService;
+}): Promise<string> {
+  if (!input.candidate) {
+    return input.fallbackProjectId;
+  }
+
+  const normalizedCandidate = normalizeLookup(input.candidate);
+  const projects = await input.projectService.listProjects();
+  const matchedProject = projects.find((project) => {
+    return normalizeLookup(project.id) === normalizedCandidate || normalizeLookup(project.name) === normalizedCandidate;
+  });
+
+  return matchedProject?.id ?? input.fallbackProjectId;
+}
+
+function normalizeLookup(value: string): string {
+  return value.trim().toLowerCase();
+}

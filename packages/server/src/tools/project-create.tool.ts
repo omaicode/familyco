@@ -1,4 +1,4 @@
-import type { ToolExecutionResult } from '@familyco/core';
+import type { AgentService, ToolExecutionResult } from '@familyco/core';
 
 import { resolveExecutiveAgentId } from '../modules/shared/defaults.js';
 import { asNonEmptyString, unavailableTool } from './tool.helpers.js';
@@ -25,7 +25,7 @@ export const projectCreateTool: ServerToolDefinition = {
       name: 'ownerAgentId',
       type: 'string',
       required: false,
-      description: 'Agent id that owns the project. Defaults to the executive agent.'
+      description: 'Agent id or name that owns the project. Omit it when unknown to use the executive agent.'
     }
   ],
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
@@ -33,12 +33,15 @@ export const projectCreateTool: ServerToolDefinition = {
       return unavailableTool('project.create', 'project.create requires project, settings, and agent services');
     }
 
-    const ownerAgentId =
-      asNonEmptyString(argumentsMap.ownerAgentId) ??
-      (await resolveExecutiveAgentId({
-        agentService: context.agentService,
-        settingsService: context.settingsService
-      }));
+    const fallbackOwnerAgentId = await resolveExecutiveAgentId({
+      agentService: context.agentService,
+      settingsService: context.settingsService
+    });
+    const ownerAgentId = await resolveAgentReference({
+      candidate: asNonEmptyString(argumentsMap.ownerAgentId),
+      fallbackAgentId: fallbackOwnerAgentId,
+      agentService: context.agentService
+    });
 
     const project = await context.projectService.createProject({
       name: asNonEmptyString(argumentsMap.name) ?? 'Executive Initiative',
@@ -55,3 +58,28 @@ export const projectCreateTool: ServerToolDefinition = {
     };
   }
 };
+
+async function resolveAgentReference(input: {
+  candidate?: string;
+  fallbackAgentId: string;
+  agentService: AgentService;
+}): Promise<string> {
+  if (!input.candidate) {
+    return input.fallbackAgentId;
+  }
+
+  try {
+    const agent = await input.agentService.getAgentById(input.candidate);
+    return agent.id;
+  } catch {
+    const normalizedCandidate = input.candidate.trim().toLowerCase();
+    const agents = await input.agentService.listAgents();
+    const matchedAgent = agents.find((agent) => {
+      return [agent.id, agent.name, agent.role]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .some((value) => value.trim().toLowerCase() === normalizedCandidate);
+    });
+
+    return matchedAgent?.id ?? input.fallbackAgentId;
+  }
+}

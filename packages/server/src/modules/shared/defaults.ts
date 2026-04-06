@@ -14,7 +14,12 @@ export async function resolveExecutiveAgentId(
 ): Promise<string> {
   const storedExecutiveAgentId = await input.settingsService.get('defaults.executiveAgentId');
   if (typeof storedExecutiveAgentId?.value === 'string' && storedExecutiveAgentId.value.length > 0) {
-    return storedExecutiveAgentId.value;
+    try {
+      const existingAgent = await input.agentService.getAgentById(storedExecutiveAgentId.value);
+      return existingAgent.id;
+    } catch {
+      // Ignore stale stored defaults and resolve from live data below.
+    }
   }
 
   const executiveAgent = await input.agentService.findExecutiveAgent();

@@ -470,6 +470,24 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   );
   assert.equal(toolEvents.some((event) => event.type === 'chat.tool.used'), true);
 
+  const fallbackToolEvents = await runSocketChat(
+    chatSocketUrl,
+    'Create a task even if the tool arguments contain loose references.',
+    {
+      toolCall: {
+        toolName: 'task.create',
+        arguments: {
+          title: 'Normalize invalid references',
+          description: 'Should fall back to the executive defaults instead of failing.',
+          projectId: 'FamilyCo Test Executive Queue',
+          assigneeAgentId: 'Chief of Staff',
+          createdBy: 'founder'
+        }
+      }
+    }
+  );
+  assert.equal(fallbackToolEvents.some((event) => event.type === 'chat.tool.used'), true);
+
   const threadResponse = await app.inject({
     method: 'GET',
     url: `/api/v1/agents/${l0Id}/chat`,
@@ -491,9 +509,20 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   });
 
   assert.equal(allTasksAfterToolResponse.statusCode, 200);
-  const allTasksAfterTool = allTasksAfterToolResponse.json() as Array<{ id: string; projectId: string }>;
-  assert.equal(allTasksAfterTool.length, 2);
+  const allTasksAfterTool = allTasksAfterToolResponse.json() as Array<{
+    id: string;
+    title: string;
+    projectId: string;
+    assigneeAgentId: string | null;
+    createdBy: string;
+  }>;
+  assert.equal(allTasksAfterTool.length, 3);
   assert.equal(allTasksAfterTool.some((task) => task.projectId === defaultProjectId), true);
+  const fallbackTask = allTasksAfterTool.find((task) => task.title === 'Normalize invalid references');
+  assert.ok(fallbackTask);
+  assert.equal(fallbackTask?.projectId, defaultProjectId);
+  assert.equal(fallbackTask?.assigneeAgentId, l0Id);
+  assert.equal(fallbackTask?.createdBy, l0Id);
 
   const settingsUpsertResponse = await app.inject({
     method: 'POST',
