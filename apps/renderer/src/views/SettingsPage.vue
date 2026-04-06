@@ -10,6 +10,7 @@ import { applyRuntimeTheme, uiRuntime } from '../runtime';
 import { useAutoReload } from '../composables/useAutoReload';
 import FcBanner from '../components/FcBanner.vue';
 import FcButton from '../components/FcButton.vue';
+import FcInput from '../components/FcInput.vue';
 import FcPasswordInput from '../components/FcPasswordInput.vue';
 import FcSelect from '../components/FcSelect.vue';
 
