@@ -29,6 +29,7 @@ const {
   composerRef,
   activeSlashIndex,
   isSlashMode,
+  isSlashPopoverVisible,
   filteredSlashCommands,
   slashPopoverStyle,
   applySlashCommand,
@@ -62,7 +63,7 @@ const handleDraftKeydown = (event: KeyboardEvent): void => {
       ></textarea>
 
       <ExecutiveSlashCommandPalette
-        v-if="isSlashMode"
+        v-if="isSlashPopoverVisible"
         class="chat-slash-floating"
         :style="slashPopoverStyle"
         :draft-value="draftValue"

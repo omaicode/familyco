@@ -41,8 +41,10 @@ export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string
 
   const slashDraft = computed(() => draftValue.value.trimStart());
   const isSlashMode = computed(() => slashDraft.value.startsWith('/'));
+  const hasResolvedSlashCommand = computed(() => draftMatchesKnownCommand());
+  const isSlashPopoverVisible = computed(() => isSlashMode.value && !hasResolvedSlashCommand.value);
   const filteredSlashCommands = computed(() => {
-    if (!isSlashMode.value) {
+    if (!isSlashPopoverVisible.value) {
       return [];
     }
 
@@ -139,7 +141,7 @@ export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string
 
   const updateSlashPopoverPosition = (): void => {
     const textarea = composerRef.value;
-    if (!textarea || !isSlashMode.value) {
+    if (!textarea || !isSlashPopoverVisible.value) {
       return;
     }
 
@@ -171,7 +173,7 @@ export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string
   });
 
   watch(draftValue, (nextMessage) => {
-    if (!nextMessage.trimStart().startsWith('/')) {
+    if (!nextMessage.trimStart().startsWith('/') || hasResolvedSlashCommand.value) {
       activeSlashIndex.value = 0;
       return;
     }
@@ -197,6 +199,7 @@ export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string
     composerRef,
     activeSlashIndex,
     isSlashMode,
+    isSlashPopoverVisible,
     filteredSlashCommands,
     slashPopoverStyle,
     applySlashCommand,
