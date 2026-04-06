@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import {
   ShieldCheck, Filter, RefreshCw, AlertTriangle,
   ChevronDown, ChevronRight, Search, X
@@ -7,6 +7,7 @@ import {
 
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
+import { useAutoReload } from '../composables/useAutoReload';
 
 const filters = reactive({
   action: '',
@@ -68,7 +69,7 @@ const toggleExpand = (id: string) => {
   expandedId.value = expandedId.value === id ? null : id;
 };
 
-onMounted(async () => { await load(); });
+useAutoReload(load);
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import {
   Bot, Plus, Pause, Play, RefreshCw, AlertTriangle,
   CheckCircle2, Users, ChevronRight, X
@@ -7,6 +7,7 @@ import {
 
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
+import { useAutoReload } from '../composables/useAutoReload';
 
 const showCreateForm = ref(false);
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -61,7 +62,7 @@ const pauseAgent = async (agentId: string) => {
   }
 };
 
-onMounted(async () => { await reload(); });
+useAutoReload(reload);
 </script>
 
 <template>

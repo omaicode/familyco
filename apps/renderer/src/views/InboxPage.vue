@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import {
   RefreshCw, Inbox, MessageSquare, ShieldCheck, CheckCircle2, XCircle,
   HelpCircle, Check, X, Archive, BookOpen, ChevronDown, AlertTriangle,
@@ -8,6 +8,7 @@ import {
 
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
+import { useAutoReload } from '../composables/useAutoReload';
 
 type ApprovalDecision = 'approved' | 'rejected';
 
@@ -156,7 +157,7 @@ const archive = async (id: string) => {
   }
 };
 
-onMounted(async () => { await reload(); });
+useAutoReload(reload);
 </script>
 
 <template>

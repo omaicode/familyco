@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   CheckCircle2, AlertTriangle, X, Key, Palette,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
+import { useAutoReload } from '../composables/useAutoReload';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -124,7 +125,7 @@ const visibleSettings = computed(() =>
   uiRuntime.stores.settings.state.data.filter(s => s.key !== 'provider.apiKey')
 );
 
-onMounted(reload);
+useAutoReload(reload);
 </script>
 
 <template>

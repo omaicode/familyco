@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
   Bot, AlertOctagon, Clock, Zap, CheckCircle2, TrendingUp,
@@ -9,6 +9,7 @@ import {
 
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
+import { useAutoReload } from '../composables/useAutoReload';
 
 const projectId = ref(import.meta.env.VITE_DEFAULT_PROJECT_ID || 'demo-project');
 const isRefreshing = ref(false);
@@ -55,7 +56,7 @@ const formatRelative = (iso: string): string => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
-onMounted(async () => { await refresh(); });
+useAutoReload(refresh);
 </script>
 
 <template>

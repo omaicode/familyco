@@ -24,6 +24,9 @@ const lastConnectionError = ref<string | null>(uiRuntime.stores.app.state.connec
 const isReconnecting = ref(false);
 const globalErrorMessage = ref<string | null>(null);
 
+// Tracks whether settings loaded successfully at least once (for onboarding check)
+const hasCheckedOnboarding = ref(false);
+
 // ── UI state ──────────────────────────────────────────────
 const sidebarCollapsed = ref(false);
 const mobileMenuOpen = ref(false);
@@ -98,15 +101,19 @@ const loadThemePreference = async (): Promise<void> => {
     const stored = uiRuntime.stores.settings.state.data.find(item => item.key === 'ui.theme.preference');
     applyThemePreference(parseThemePreference(stored?.value) ?? 'system');
 
-    // Onboarding redirect — only when settings loaded successfully
-    const isOnboarded = uiRuntime.stores.settings.state.data.some(
-      s => s.key === 'onboarding.complete' && s.value === true
-    );
-    if (!isOnboarded && route.path !== '/setup') {
-      await router.replace('/setup');
+    // Onboarding redirect — only on first successful settings load
+    if (!hasCheckedOnboarding.value) {
+      hasCheckedOnboarding.value = true;
+      const isOnboarded = uiRuntime.stores.settings.state.data.some(
+        s => s.key === 'onboarding.complete' && s.value === true
+      );
+      if (!isOnboarded && route.path !== '/setup') {
+        await router.replace('/setup');
+      }
     }
   } catch {
     applyThemePreference('system');
+    // Server not ready yet — will retry when fc:server-ready fires
   }
 };
 
@@ -175,6 +182,19 @@ const handleWindowError = (event: ErrorEvent) => setGlobalError(event.error ?? e
 const handleUnhandledRejection = (event: PromiseRejectionEvent) => setGlobalError(event.reason);
 const handleOnline = () => { setBrowserConnection(true); void checkHealth(); };
 const handleOffline = () => { setBrowserConnection(false); setConnectionState(false, 'No internet connection'); };
+
+// ── Server-ready broadcast ────────────────────────────────
+// When the server transitions from unreachable → reachable:
+// 1. Dispatch 'fc:server-ready' so pages can retry their initial load.
+// 2. Retry loadThemePreference if onboarding hasn't been checked yet.
+watch(serverReachable, (isNowReachable, wasPreviouslyReachable) => {
+  if (isNowReachable && !wasPreviouslyReachable) {
+    window.dispatchEvent(new CustomEvent('fc:server-ready'));
+    if (!hasCheckedOnboarding.value) {
+      void loadThemePreference();
+    }
+  }
+});
 
 // ── Sidebar ───────────────────────────────────────────────
 const toggleSidebar = () => { sidebarCollapsed.value = !sidebarCollapsed.value; };
