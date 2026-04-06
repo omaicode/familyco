@@ -67,6 +67,7 @@ const onDrop = (): void => {
       :selected="props.selectedTaskIds.includes(task.id)"
       :busy="props.busyMap[task.id] === true"
       :compact-actions="true"
+      :kanban-compact="true"
       :transitions="props.allowedTransitions[task.status]"
       :get-project-name="props.getProjectName"
       :get-agent-name="props.getAgentName"
@@ -84,7 +85,7 @@ const onDrop = (): void => {
 
 <style scoped>
 .kanban-column {
-  min-width: 260px;
+  min-width: 320px;
   border: 1px solid var(--fc-border-subtle);
   border-radius: var(--fc-card-radius);
   background: var(--fc-surface);

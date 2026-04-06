@@ -21,6 +21,7 @@ const props = withDefaults(defineProps<{
   busy: boolean;
   dragEnabled?: boolean;
   compactActions?: boolean;
+  kanbanCompact?: boolean;
   getProjectName: (projectId: string) => string;
   getAgentName: (agentId: string | null | undefined) => string;
   formatPriority: (priority: TaskListItem['priority']) => string;
@@ -29,7 +30,8 @@ const props = withDefaults(defineProps<{
   transitions: TaskListItem['status'][];
 }>(), {
   dragEnabled: true,
-  compactActions: false
+  compactActions: false,
+  kanbanCompact: false
 });
 
 const emit = defineEmits<{
@@ -45,12 +47,14 @@ const getActionIcon = (status: TaskListItem['status']) => {
   if (status === 'blocked') return PauseCircle;
   return ArrowRight;
 };
+
+const formatTaskCode = (task: TaskListItem): string => `TASK-${task.id.slice(0, 8).toUpperCase()}`;
 </script>
 
 <template>
   <article
     class="task-card"
-    :class="{ 'task-card-busy': props.busy }"
+    :class="{ 'task-card-busy': props.busy, 'task-card-kanban': props.kanbanCompact }"
     :draggable="props.dragEnabled"
     @dragstart="emit('dragstart', props.task, $event)"
     @dragend="emit('dragend')"
@@ -63,9 +67,20 @@ const getActionIcon = (status: TaskListItem['status']) => {
           class="fc-checkbox"
           @change="emit('toggleSelect', props.task.id)"
         />
-        <div>
-          <span class="task-title">{{ props.task.title }}</span>
+        <div class="task-copy">
+          <span v-if="props.kanbanCompact" class="task-code">{{ formatTaskCode(props.task) }}</span>
+          <span class="task-title" :class="{ 'task-title-compact': props.kanbanCompact }">{{ props.task.title }}</span>
+
+          <div v-if="props.kanbanCompact" class="task-compact-badges">
+            <FcBadge :status="props.task.status">{{ props.formatStatus(props.task.status) }}</FcBadge>
+            <span class="task-priority-pill" :data-priority="props.task.priority">
+              <Flag :size="12" />
+              {{ props.formatPriority(props.task.priority) }}
+            </span>
+          </div>
+
           <MarkdownPreview
+            v-else
             class="task-description-markdown"
             :source="props.task.description"
             :compact="true"
@@ -75,7 +90,7 @@ const getActionIcon = (status: TaskListItem['status']) => {
       </label>
 
       <div class="task-card-side">
-        <span class="task-priority-pill" :data-priority="props.task.priority">
+        <span v-if="!props.kanbanCompact" class="task-priority-pill" :data-priority="props.task.priority">
           <Flag :size="12" />
           {{ props.formatPriority(props.task.priority) }}
         </span>
@@ -85,13 +100,13 @@ const getActionIcon = (status: TaskListItem['status']) => {
       </div>
     </div>
 
-    <div class="task-meta-grid">
+    <div v-if="!props.kanbanCompact" class="task-meta-grid">
       <span><Workflow :size="13" /> {{ props.getProjectName(props.task.projectId) }}</span>
       <span><UserRound :size="13" /> {{ props.getAgentName(props.task.assigneeAgentId) }}</span>
       <span>Updated {{ props.formatRelative(props.task.updatedAt) }}</span>
     </div>
 
-    <div class="task-inline-field">
+    <div v-if="!props.kanbanCompact" class="task-inline-field">
       <span>Priority</span>
       <FcSelect
         :model-value="props.task.priority"
@@ -105,7 +120,7 @@ const getActionIcon = (status: TaskListItem['status']) => {
       </FcSelect>
     </div>
 
-    <div class="task-card-footer">
+    <div v-if="!props.kanbanCompact" class="task-card-footer">
       <FcBadge :status="props.task.status">{{ props.formatStatus(props.task.status) }}</FcBadge>
 
       <div class="task-actions">
@@ -152,6 +167,21 @@ const getActionIcon = (status: TaskListItem['status']) => {
   align-items: flex-start;
   gap: 8px;
   flex: 1;
+  min-width: 0;
+}
+
+.task-copy {
+  min-width: 0;
+}
+
+.task-code {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fc-text-muted);
 }
 
 .task-title {
@@ -161,16 +191,28 @@ const getActionIcon = (status: TaskListItem['status']) => {
   color: var(--fc-text-main);
 }
 
+.task-title-compact {
+  line-height: 1.4;
+}
+
 .task-description-markdown {
   margin-top: 4px;
   font-size: 0.8rem;
   color: var(--fc-text-muted);
 }
 
+.task-compact-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
 .task-card-side {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .task-drag-hint {
@@ -253,6 +295,11 @@ const getActionIcon = (status: TaskListItem['status']) => {
 .task-actions {
   display: flex;
   flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-card-kanban {
+  padding: 12px;
   gap: 8px;
 }
 </style>
