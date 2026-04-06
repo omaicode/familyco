@@ -20,8 +20,13 @@ export interface TaskModuleDeps {
 export function registerTaskController(app: FastifyInstance, deps: TaskModuleDeps): void {
   app.get('/tasks', async (request) => {
     requireMinimumLevel(request, 'L1');
-    const { projectId } = listTasksQuerySchema.parse(request.query);
-    return deps.taskService.listProjectTasks(projectId);
+    const { projectId, status, assigneeAgentId, q } = listTasksQuerySchema.parse(request.query);
+    return deps.taskService.listTasks({
+      projectId,
+      status,
+      assigneeAgentId,
+      query: q
+    });
   });
 
   app.post('/tasks', async (request, reply) => {

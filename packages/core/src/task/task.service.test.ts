@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { TaskService } from './task.service.js';
-import type { CreateTaskInput, Task, TaskRepository, TaskStatus } from './index.js';
+import type { CreateTaskInput, ListTasksInput, Task, TaskRepository, TaskStatus } from './index.js';
 import { EventBus } from '../events/event-bus.js';
 
 test('TaskService validates transitions and emits task events', async () => {
@@ -51,6 +51,46 @@ test('TaskService validates transitions and emits task events', async () => {
   ]);
 });
 
+test('TaskService can list tasks with cross-project filters', async () => {
+  const repository = new InMemoryTaskRepositoryStub();
+  const service = new TaskService(repository);
+
+  const draftTask = await service.createTask({
+    title: 'Draft launch brief',
+    description: 'Prepare scope and guardrails',
+    projectId: 'project-a',
+    assigneeAgentId: 'agent-a',
+    createdBy: 'agent-a'
+  });
+
+  const reviewTask = await service.createTask({
+    title: 'Review launch assets',
+    description: 'Check everything before publishing',
+    projectId: 'project-b',
+    assigneeAgentId: 'agent-b',
+    createdBy: 'agent-b'
+  });
+
+  await service.updateTaskStatus(draftTask.id, 'in_progress');
+  await service.updateTaskStatus(reviewTask.id, 'in_progress');
+  await service.updateTaskStatus(reviewTask.id, 'review');
+
+  const reviewOnly = await service.listTasks({ status: 'review' });
+  assert.equal(reviewOnly.length, 1);
+  assert.equal(reviewOnly[0]?.id, reviewTask.id);
+
+  const byProject = await service.listTasks({ projectId: 'project-a' });
+  assert.equal(byProject.length, 1);
+  assert.equal(byProject[0]?.id, draftTask.id);
+
+  const byAssignee = await service.listTasks({ assigneeAgentId: 'agent-b' });
+  assert.equal(byAssignee.length, 1);
+  assert.equal(byAssignee[0]?.id, reviewTask.id);
+
+  const bySearch = await service.listTasks({ query: 'launch' });
+  assert.equal(bySearch.length, 2);
+});
+
 class InMemoryTaskRepositoryStub implements TaskRepository {
   private readonly tasks = new Map<string, Task>();
 
@@ -76,8 +116,32 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
     return this.tasks.get(id) ?? null;
   }
 
+  async list(filters: ListTasksInput = {}): Promise<Task[]> {
+    const query = filters.query?.trim().toLowerCase();
+
+    return Array.from(this.tasks.values()).filter((task) => {
+      if (filters.projectId && task.projectId !== filters.projectId) {
+        return false;
+      }
+
+      if (filters.status && task.status !== filters.status) {
+        return false;
+      }
+
+      if (filters.assigneeAgentId && task.assigneeAgentId !== filters.assigneeAgentId) {
+        return false;
+      }
+
+      if (query) {
+        return `${task.title} ${task.description}`.toLowerCase().includes(query);
+      }
+
+      return true;
+    });
+  }
+
   async listByProject(projectId: string): Promise<Task[]> {
-    return Array.from(this.tasks.values()).filter((task) => task.projectId === projectId);
+    return this.list({ projectId });
   }
 
   async updateStatus(id: string, status: TaskStatus): Promise<Task> {

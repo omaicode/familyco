@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { CreateTaskInput, Task, TaskRepository, TaskStatus } from '@familyco/core';
+import type { CreateTaskInput, ListTasksInput, Task, TaskRepository, TaskStatus } from '@familyco/core';
 
 export class InMemoryTaskRepository implements TaskRepository {
   private readonly tasks = new Map<string, Task>();
@@ -27,8 +27,35 @@ export class InMemoryTaskRepository implements TaskRepository {
     return this.tasks.get(id) ?? null;
   }
 
+  async list(filters: ListTasksInput = {}): Promise<Task[]> {
+    const query = filters.query?.trim().toLowerCase();
+
+    return Array.from(this.tasks.values())
+      .filter((task) => {
+        if (filters.projectId && task.projectId !== filters.projectId) {
+          return false;
+        }
+
+        if (filters.status && task.status !== filters.status) {
+          return false;
+        }
+
+        if (filters.assigneeAgentId && task.assigneeAgentId !== filters.assigneeAgentId) {
+          return false;
+        }
+
+        if (query) {
+          const haystack = `${task.title} ${task.description}`.toLowerCase();
+          return haystack.includes(query);
+        }
+
+        return true;
+      })
+      .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+  }
+
   async listByProject(projectId: string): Promise<Task[]> {
-    return Array.from(this.tasks.values()).filter((task) => task.projectId === projectId);
+    return this.list({ projectId });
   }
 
   async updateStatus(id: string, status: TaskStatus): Promise<Task> {

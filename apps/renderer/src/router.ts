@@ -4,7 +4,7 @@ import AgentsPage from './views/AgentsPage.vue';
 import DashboardPage from './views/DashboardPage.vue';
 import InboxPage from './views/InboxPage.vue';
 import ProjectsPage from './views/ProjectsPage.vue';
-import PlaceholderPage from './views/PlaceholderPage.vue';
+import TasksPage from './views/TasksPage.vue';
 import AuditPage from './views/AuditPage.vue';
 import SettingsPage from './views/SettingsPage.vue';
 import OnboardingPage from './views/OnboardingPage.vue';
@@ -40,11 +40,8 @@ export const router = createRouter({
     },
     {
       path: '/tasks',
-      component: PlaceholderPage,
-      props: {
-        title: 'Tasks',
-        description: 'Review task lifecycle and execution queue state.'
-      }
+      component: TasksPage,
+      meta: { title: 'Tasks' }
     },
     {
       path: '/inbox',

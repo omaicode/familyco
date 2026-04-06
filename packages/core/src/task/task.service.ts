@@ -1,4 +1,4 @@
-import type { CreateTaskInput, Task, TaskStatus } from './task.entity.js';
+import type { CreateTaskInput, ListTasksInput, Task, TaskStatus } from './task.entity.js';
 import type { TaskRepository } from './task.repository.js';
 import type { EventBus } from '../events/event-bus.js';
 
@@ -26,8 +26,12 @@ export class TaskService {
     return task;
   }
 
+  listTasks(filters: ListTasksInput = {}): Promise<Task[]> {
+    return this.repository.list(filters);
+  }
+
   listProjectTasks(projectId: string): Promise<Task[]> {
-    return this.repository.listByProject(projectId);
+    return this.listTasks({ projectId });
   }
 
   async updateTaskStatus(taskId: string, status: TaskStatus): Promise<Task> {

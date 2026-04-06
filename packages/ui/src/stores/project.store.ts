@@ -38,7 +38,7 @@ export class ProjectStore {
       const taskEntries = await Promise.all(
         projects.map(async (project) => {
           try {
-            const tasks = await this.api.listTasks(project.id);
+            const tasks = await this.api.listTasks({ projectId: project.id });
             return [project.id, tasks] as const;
           } catch {
             return [project.id, [] as TaskListItem[]] as const;

@@ -28,6 +28,8 @@ export interface TaskListItem {
   assigneeAgentId: string | null;
   projectId: string;
   createdBy: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ApprovalListItem {
@@ -125,6 +127,22 @@ export interface CreateTaskPayload {
   createdBy: string;
 }
 
+export interface TaskApprovalResponse {
+  approvalRequired: true;
+  approvalRequestId: string;
+  reason?: string;
+}
+
+export type CreateTaskResult = TaskListItem | TaskApprovalResponse;
+export type UpdateTaskStatusResult = TaskListItem | TaskApprovalResponse;
+
+export interface ListTasksQuery {
+  projectId?: string;
+  status?: TaskListItem['status'];
+  assigneeAgentId?: string;
+  q?: string;
+}
+
 export interface DecideApprovalPayload {
   approvalId: string;
   status: 'approved' | 'rejected';
@@ -172,9 +190,9 @@ export interface FamilyCoApiContracts {
   updateAgentParent: (payload: UpdateAgentParentPayload) => Promise<AgentListItem>;
   listProjects: () => Promise<ProjectListItem[]>;
   createProject: (payload: CreateProjectPayload) => Promise<CreateProjectResult>;
-  listTasks: (projectId: string) => Promise<TaskListItem[]>;
-  createTask: (payload: CreateTaskPayload) => Promise<TaskListItem>;
-  updateTaskStatus: (payload: UpdateTaskStatusPayload) => Promise<TaskListItem>;
+  listTasks: (query?: ListTasksQuery) => Promise<TaskListItem[]>;
+  createTask: (payload: CreateTaskPayload) => Promise<CreateTaskResult>;
+  updateTaskStatus: (payload: UpdateTaskStatusPayload) => Promise<UpdateTaskStatusResult>;
   listApprovals: () => Promise<ApprovalListItem[]>;
   decideApproval: (payload: DecideApprovalPayload) => Promise<ApprovalListItem>;
   listInbox: (recipientId: string) => Promise<InboxMessageItem[]>;
@@ -206,10 +224,27 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     ),
   listProjects: () => client.get<ProjectListItem[]>('/api/v1/projects'),
   createProject: (payload) => client.post<CreateProjectResult, CreateProjectPayload>('/api/v1/projects', payload),
-  listTasks: (projectId) => client.get<TaskListItem[]>(`/api/v1/tasks?projectId=${projectId}`),
-  createTask: (payload) => client.post<TaskListItem, CreateTaskPayload>('/api/v1/tasks', payload),
+  listTasks: (query = {}) => {
+    const params = new URLSearchParams();
+    if (query.projectId) {
+      params.set('projectId', query.projectId);
+    }
+    if (query.status) {
+      params.set('status', query.status);
+    }
+    if (query.assigneeAgentId) {
+      params.set('assigneeAgentId', query.assigneeAgentId);
+    }
+    if (query.q) {
+      params.set('q', query.q);
+    }
+
+    const suffix = params.toString();
+    return client.get<TaskListItem[]>(suffix ? `/api/v1/tasks?${suffix}` : '/api/v1/tasks');
+  },
+  createTask: (payload) => client.post<CreateTaskResult, CreateTaskPayload>('/api/v1/tasks', payload),
   updateTaskStatus: (payload) =>
-    client.post<TaskListItem, Omit<UpdateTaskStatusPayload, 'taskId'>>(
+    client.post<UpdateTaskStatusResult, Omit<UpdateTaskStatusPayload, 'taskId'>>(
       `/api/v1/tasks/${payload.taskId}/status`,
       {
         status: payload.status

@@ -9,7 +9,10 @@ export const createTaskSchema = z.object({
 });
 
 export const listTasksQuerySchema = z.object({
-  projectId: z.string().min(1)
+  projectId: z.string().min(1).optional(),
+  status: z.enum(['pending', 'in_progress', 'review', 'done', 'blocked', 'cancelled']).optional(),
+  assigneeAgentId: z.string().min(1).optional(),
+  q: z.string().min(1).optional()
 });
 
 export const updateTaskStatusParamsSchema = z.object({

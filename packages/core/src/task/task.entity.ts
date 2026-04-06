@@ -25,3 +25,10 @@ export interface CreateTaskInput {
   assigneeAgentId?: string | null;
   createdBy: string;
 }
+
+export interface ListTasksInput {
+  projectId?: string;
+  status?: TaskStatus;
+  assigneeAgentId?: string;
+  query?: string;
+}

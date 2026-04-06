@@ -546,6 +546,146 @@ test('P2 quota: engine enqueue is rate-limited by daily quota', async () => {
   await app.close();
 });
 
+test('GET /api/v1/tasks supports global filters for task management views', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Task Lead',
+      role: 'Operations',
+      level: 'L0',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const agent = createAgentResponse.json() as { id: string };
+
+  const firstProjectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Ops Launch',
+      description: 'Launch operations playbook',
+      ownerAgentId: agent.id
+    }
+  });
+
+  const secondProjectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Retention Sprint',
+      description: 'Improve retention workflows',
+      ownerAgentId: agent.id
+    }
+  });
+
+  assert.equal(firstProjectResponse.statusCode, 201);
+  assert.equal(secondProjectResponse.statusCode, 201);
+
+  const firstProject = firstProjectResponse.json() as { id: string };
+  const secondProject = secondProjectResponse.json() as { id: string };
+
+  const taskAResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Prepare launch checklist',
+      description: 'Document the launch checklist for the ops team',
+      projectId: firstProject.id,
+      assigneeAgentId: agent.id,
+      createdBy: agent.id
+    }
+  });
+
+  const taskBResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Review retention experiments',
+      description: 'Review the next experiments for activation',
+      projectId: secondProject.id,
+      assigneeAgentId: agent.id,
+      createdBy: agent.id
+    }
+  });
+
+  assert.equal(taskAResponse.statusCode, 201);
+  assert.equal(taskBResponse.statusCode, 201);
+
+  const taskB = taskBResponse.json() as { id: string };
+
+  const advanceTask = await app.inject({
+    method: 'POST',
+    url: `/api/v1/tasks/${taskB.id}/status`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      status: 'in_progress'
+    }
+  });
+
+  assert.equal(advanceTask.statusCode, 200);
+
+  const reviewTask = await app.inject({
+    method: 'POST',
+    url: `/api/v1/tasks/${taskB.id}/status`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      status: 'review'
+    }
+  });
+
+  assert.equal(reviewTask.statusCode, 200);
+
+  const allTasksResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(allTasksResponse.statusCode, 200);
+  assert.equal((allTasksResponse.json() as Array<{ id: string }>).length, 2);
+
+  const filteredResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/tasks?status=review&projectId=${secondProject.id}&assigneeAgentId=${agent.id}&q=retention`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(filteredResponse.statusCode, 200);
+  const filteredTasks = filteredResponse.json() as Array<{ id: string }>;
+  assert.equal(filteredTasks.length, 1);
+  assert.equal(filteredTasks[0]?.id, taskB.id);
+
+  await app.close();
+});
+
 test('agent + project + task flow works with in-memory repositories', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 

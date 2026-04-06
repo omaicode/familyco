@@ -1,4 +1,4 @@
-import type { CreateTaskInput, Task, TaskRepository, TaskStatus } from '@familyco/core';
+import type { CreateTaskInput, ListTasksInput, Task, TaskRepository, TaskStatus } from '@familyco/core';
 import type { PrismaClient } from '@prisma/client';
 
 const TASK_STATUSES: TaskStatus[] = [
@@ -36,13 +36,30 @@ export class PrismaTaskRepository implements TaskRepository {
     return task ? toTask(task) : null;
   }
 
-  async listByProject(projectId: string): Promise<Task[]> {
+  async list(filters: ListTasksInput = {}): Promise<Task[]> {
+    const query = filters.query?.trim();
     const tasks = await this.prisma.task.findMany({
-      where: { projectId },
-      orderBy: { createdAt: 'asc' }
+      where: {
+        ...(filters.projectId ? { projectId: filters.projectId } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.assigneeAgentId ? { assigneeAgentId: filters.assigneeAgentId } : {}),
+        ...(query
+          ? {
+              OR: [
+                { title: { contains: query } },
+                { description: { contains: query } }
+              ]
+            }
+          : {})
+      },
+      orderBy: { updatedAt: 'desc' }
     });
 
     return tasks.map(toTask);
+  }
+
+  async listByProject(projectId: string): Promise<Task[]> {
+    return this.list({ projectId });
   }
 
   async updateStatus(id: string, status: TaskStatus): Promise<Task> {
