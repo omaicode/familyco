@@ -105,6 +105,15 @@ export interface CreateAgentPayload {
   parentAgentId?: string | null;
 }
 
+export interface AgentActionApprovalResponse {
+  approvalRequired: true;
+  approvalRequestId: string;
+  reason?: string;
+}
+
+export type CreateAgentResult = AgentListItem | AgentActionApprovalResponse;
+export type PauseAgentResult = AgentListItem | AgentActionApprovalResponse;
+
 export interface CreateProjectPayload {
   name: string;
   description: string;
@@ -202,8 +211,8 @@ export interface FamilyCoApiContracts {
   listAgents: () => Promise<AgentListItem[]>;
   listAgentChildren: (agentId: string) => Promise<AgentListItem[]>;
   getAgentPath: (agentId: string) => Promise<AgentListItem[]>;
-  createAgent: (payload: CreateAgentPayload) => Promise<AgentListItem>;
-  pauseAgent: (payload: PauseAgentPayload) => Promise<AgentListItem>;
+  createAgent: (payload: CreateAgentPayload) => Promise<CreateAgentResult>;
+  pauseAgent: (payload: PauseAgentPayload) => Promise<PauseAgentResult>;
   updateAgentParent: (payload: UpdateAgentParentPayload) => Promise<AgentListItem>;
   listProjects: () => Promise<ProjectListItem[]>;
   createProject: (payload: CreateProjectPayload) => Promise<CreateProjectResult>;
@@ -232,8 +241,8 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   listAgents: () => client.get<AgentListItem[]>('/api/v1/agents'),
   listAgentChildren: (agentId) => client.get<AgentListItem[]>(`/api/v1/agents/${agentId}/children`),
   getAgentPath: (agentId) => client.get<AgentListItem[]>(`/api/v1/agents/${agentId}/path`),
-  createAgent: (payload) => client.post<AgentListItem, CreateAgentPayload>('/api/v1/agents', payload),
-  pauseAgent: (payload) => client.post<AgentListItem>(`/api/v1/agents/${payload.agentId}/pause`),
+  createAgent: (payload) => client.post<CreateAgentResult, CreateAgentPayload>('/api/v1/agents', payload),
+  pauseAgent: (payload) => client.post<PauseAgentResult>(`/api/v1/agents/${payload.agentId}/pause`),
   updateAgentParent: (payload) =>
     client.patch<AgentListItem, { parentAgentId: string | null }>(
       `/api/v1/agents/${payload.agentId}/parent`,

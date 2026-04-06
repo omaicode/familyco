@@ -1,14 +1,22 @@
 import type {
+  AgentActionApprovalResponse,
   AgentListItem,
   CreateAgentPayload,
+  CreateAgentResult,
   FamilyCoApiContracts,
-  PauseAgentPayload
+  PauseAgentPayload,
+  PauseAgentResult,
+  UpdateAgentParentPayload
 } from '../api/contracts.js';
 import { createAsyncState, type AsyncState } from './async-state.js';
 
 export interface AgentStoreState {
   agents: AsyncState<AgentListItem[]>;
 }
+
+const isApprovalResponse = (
+  result: AgentListItem | AgentActionApprovalResponse
+): result is AgentActionApprovalResponse => 'approvalRequired' in result;
 
 export class AgentStore {
   state: AgentStoreState;
@@ -35,20 +43,36 @@ export class AgentStore {
     }
   }
 
-  async createAgent(payload: CreateAgentPayload): Promise<AgentListItem> {
+  async createAgent(payload: CreateAgentPayload): Promise<CreateAgentResult> {
     const createdAgent = await this.api.createAgent(payload);
-    this.state.agents.data = [createdAgent, ...this.state.agents.data];
-    this.state.agents.isEmpty = false;
+
+    if (!isApprovalResponse(createdAgent)) {
+      this.state.agents.data = [createdAgent, ...this.state.agents.data];
+      this.state.agents.isEmpty = false;
+    }
+
     return createdAgent;
   }
 
-  async pauseAgent(payload: PauseAgentPayload): Promise<AgentListItem> {
+  async pauseAgent(payload: PauseAgentPayload): Promise<PauseAgentResult> {
     const pausedAgent = await this.api.pauseAgent(payload);
-    this.state.agents.data = this.state.agents.data.map((agent) =>
-      agent.id === pausedAgent.id ? pausedAgent : agent
-    );
+
+    if (!isApprovalResponse(pausedAgent)) {
+      this.state.agents.data = this.state.agents.data.map((agent) =>
+        agent.id === pausedAgent.id ? pausedAgent : agent
+      );
+    }
 
     return pausedAgent;
+  }
+
+  async updateAgentParent(payload: UpdateAgentParentPayload): Promise<AgentListItem> {
+    const updatedAgent = await this.api.updateAgentParent(payload);
+    this.state.agents.data = this.state.agents.data.map((agent) =>
+      agent.id === updatedAgent.id ? updatedAgent : agent
+    );
+
+    return updatedAgent;
   }
 }
 
