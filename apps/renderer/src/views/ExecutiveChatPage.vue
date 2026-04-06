@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AgentChatMessage } from '@familyco/ui';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import {
   AlertTriangle,
   ArrowRight,
@@ -39,9 +39,27 @@ interface ChatToolCallDetails {
   };
 }
 
-const thread = ref<AgentChatMessage[]>([]);
+interface SlashCommandSuggestion {
+  command: string;
+  label: string;
+  description: string;
+  insertValue: string;
+}
+
+type ThreadMessage = AgentChatMessage & {
+  payload?: {
+    taskId?: string;
+    projectId?: string;
+    toolCalls?: ChatToolCallDetails[];
+    [key: string]: unknown;
+  };
+};
+
+const thread = ref<ThreadMessage[]>([]);
 const selectedAgentId = ref('');
 const draftMessage = ref('');
+const composerRef = ref<HTMLTextAreaElement | null>(null);
+const activeSlashIndex = ref(0);
 const isLoading = ref(false);
 const isRefreshing = ref(false);
 const isSending = ref(false);
@@ -57,6 +75,33 @@ const promptSuggestions = [
   '/create-task Follow up on onboarding improvements for the executive queue',
   '/create-project Launch the Q2 operating cadence workspace',
   '/reset'
+];
+
+const slashCommandCatalog: SlashCommandSuggestion[] = [
+  {
+    command: '/help',
+    label: 'Show help',
+    description: 'List the available chat commands and how to use them.',
+    insertValue: '/help'
+  },
+  {
+    command: '/create-task',
+    label: 'Create a task',
+    description: 'Open a new task directly from the executive chat lane.',
+    insertValue: '/create-task '
+  },
+  {
+    command: '/create-project',
+    label: 'Create a project',
+    description: 'Spin up a new project workspace from a short description.',
+    insertValue: '/create-project '
+  },
+  {
+    command: '/reset',
+    label: 'Start fresh',
+    description: 'Clear the current conversation history and working memory.',
+    insertValue: '/reset'
+  }
 ];
 
 const agentState = computed(() => uiRuntime.stores.agents.state.agents);
@@ -76,6 +121,22 @@ const connectionLabel = computed(() => {
   }
 
   return 'Offline';
+});
+const slashDraft = computed(() => draftMessage.value.trimStart());
+const isSlashMode = computed(() => slashDraft.value.startsWith('/'));
+const filteredSlashCommands = computed(() => {
+  if (!isSlashMode.value) {
+    return [];
+  }
+
+  const normalized = slashDraft.value.toLowerCase();
+  const query = normalized.replace(/^\//, '');
+
+  return slashCommandCatalog.filter((command) => {
+    return command.command.includes(normalized)
+      || command.label.toLowerCase().includes(query)
+      || command.description.toLowerCase().includes(query);
+  });
 });
 
 watch(
@@ -99,6 +160,23 @@ watch(selectedAgentId, () => {
   }
 });
 
+watch(filteredSlashCommands, (nextCommands) => {
+  if (nextCommands.length === 0) {
+    activeSlashIndex.value = 0;
+    return;
+  }
+
+  if (activeSlashIndex.value > nextCommands.length - 1) {
+    activeSlashIndex.value = 0;
+  }
+});
+
+watch(draftMessage, (nextMessage) => {
+  if (!nextMessage.trimStart().startsWith('/')) {
+    activeSlashIndex.value = 0;
+  }
+});
+
 const setFeedback = (type: 'success' | 'error' | 'info', text: string): void => {
   feedback.value = { type, text };
   setTimeout(() => {
@@ -108,7 +186,7 @@ const setFeedback = (type: 'success' | 'error' | 'info', text: string): void => 
   }, 4000);
 };
 
-const sortThread = (messages: AgentChatMessage[]): AgentChatMessage[] =>
+const sortThread = (messages: ThreadMessage[]): ThreadMessage[] =>
   [...messages].sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -120,7 +198,7 @@ const isToolCallDetails = (value: unknown): value is ChatToolCallDetails =>
   && typeof value.ok === 'boolean'
   && typeof value.summary === 'string';
 
-const getMessageToolCalls = (message: AgentChatMessage): ChatToolCallDetails[] => {
+const getMessageToolCalls = (message: ThreadMessage): ChatToolCallDetails[] => {
   if (!isRecord(message.payload) || !Array.isArray(message.payload.toolCalls)) {
     return [];
   }
@@ -193,6 +271,55 @@ const refreshThread = async (): Promise<void> => {
 
 const applyPrompt = (prompt: string): void => {
   draftMessage.value = prompt;
+};
+
+const applySlashCommand = async (command: SlashCommandSuggestion): Promise<void> => {
+  draftMessage.value = command.insertValue;
+  activeSlashIndex.value = 0;
+  await nextTick();
+  composerRef.value?.focus();
+};
+
+const draftMatchesKnownCommand = (): boolean => {
+  const normalized = draftMessage.value.trim();
+  return slashCommandCatalog.some((command) => {
+    return normalized === command.command || normalized.startsWith(`${command.command} `);
+  });
+};
+
+const onDraftKeydown = (event: KeyboardEvent): void => {
+  if (isSlashMode.value && filteredSlashCommands.value.length > 0) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      activeSlashIndex.value = (activeSlashIndex.value + 1) % filteredSlashCommands.value.length;
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      activeSlashIndex.value = activeSlashIndex.value === 0
+        ? filteredSlashCommands.value.length - 1
+        : activeSlashIndex.value - 1;
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      void applySlashCommand(filteredSlashCommands.value[activeSlashIndex.value]);
+      return;
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey && !draftMatchesKnownCommand()) {
+      event.preventDefault();
+      void applySlashCommand(filteredSlashCommands.value[activeSlashIndex.value]);
+      return;
+    }
+  }
+
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
+  }
 };
 
 const buildSocketUrl = (agentId: string): string => {
@@ -268,7 +395,7 @@ const sendMessage = (): void => {
     return;
   }
 
-  const founderMessage: AgentChatMessage = {
+  const founderMessage: ThreadMessage = {
     id: `local-founder-${Date.now()}`,
     senderId: 'founder',
     recipientId: selectedAgent.value.id,
@@ -390,7 +517,7 @@ const upsertStreamingReply = (requestId: string, body: string): void => {
 
   const existingMessage = thread.value.find((message) => message.id === requestId);
   const toolCalls = streamToolCalls.value[requestId] ?? [];
-  const streamingMessage: AgentChatMessage = {
+  const streamingMessage: ThreadMessage = {
     id: requestId,
     senderId: selectedAgent.value.id,
     recipientId: 'founder',
@@ -532,11 +659,45 @@ onBeforeUnmount(() => closeSocket());
               <label class="fc-label" for="founder-message">Message</label>
               <textarea
                 id="founder-message"
+                ref="composerRef"
                 v-model="draftMessage"
                 class="chat-textarea"
                 rows="5"
-                placeholder="Ask the executive agent for guidance, or use /help, /create-task, /create-project, /reset …"
+                placeholder="Ask the executive agent for guidance, or type / to browse commands like /help, /create-task, /create-project, and /reset …"
+                @keydown="onDraftKeydown"
               ></textarea>
+
+              <div v-if="isSlashMode" class="chat-slash-panel">
+                <div class="chat-slash-header">
+                  <div>
+                    <p class="chat-slash-title">Slash commands</p>
+                    <p class="chat-slash-copy">Type to filter, then use ↑ ↓ and Enter or Tab to insert quickly.</p>
+                  </div>
+                  <span class="chat-slash-count">{{ filteredSlashCommands.length }} match<span v-if="filteredSlashCommands.length !== 1">es</span></span>
+                </div>
+
+                <div v-if="filteredSlashCommands.length > 0" class="chat-slash-list">
+                  <button
+                    v-for="(command, index) in filteredSlashCommands"
+                    :key="command.command"
+                    type="button"
+                    class="chat-slash-item"
+                    :data-active="index === activeSlashIndex"
+                    @mouseenter="activeSlashIndex = index"
+                    @mousedown.prevent="applySlashCommand(command)"
+                  >
+                    <div class="chat-slash-item-top">
+                      <code>{{ command.command }}</code>
+                      <span>{{ command.label }}</span>
+                    </div>
+                    <p>{{ command.description }}</p>
+                  </button>
+                </div>
+
+                <p v-else class="chat-slash-empty">
+                  No commands match <code>{{ draftMessage.trim() }}</code>. Try <code>/help</code> or <code>/create-task</code>.
+                </p>
+              </div>
 
               <div class="chat-compose-actions">
                 <div class="chat-suggestions">
@@ -782,6 +943,82 @@ onBeforeUnmount(() => closeSocket());
   padding: 10px 12px;
   background: var(--fc-surface);
   color: var(--fc-text-main);
+}
+
+.chat-slash-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--fc-primary) 22%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-primary) 5%, var(--fc-surface));
+}
+
+.chat-slash-header {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.chat-slash-title {
+  margin: 0 0 2px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.chat-slash-copy,
+.chat-slash-empty {
+  margin: 0;
+  color: var(--fc-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.chat-slash-count {
+  font-size: 0.75rem;
+  color: var(--fc-text-muted);
+}
+
+.chat-slash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-slash-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid var(--fc-border-subtle);
+  background: var(--fc-surface);
+  color: var(--fc-text-main);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.chat-slash-item[data-active='true'] {
+  border-color: color-mix(in srgb, var(--fc-primary) 40%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-primary) 8%, var(--fc-surface));
+}
+
+.chat-slash-item-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.chat-slash-item p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--fc-text-muted);
+  line-height: 1.5;
 }
 
 .chat-compose-actions {

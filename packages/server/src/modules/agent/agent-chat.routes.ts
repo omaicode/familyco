@@ -1,0 +1,65 @@
+import type { FastifyInstance } from 'fastify';
+
+import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
+import { agentChatBodySchema, pauseAgentParamsSchema } from './agent.schema.js';
+import { handleSocketChatMessage, processAgentChat, resolveSocketClient, sendSocketEvent, toErrorMessage } from './agent-chat.service.js';
+import type { AgentModuleDeps } from './agent.types.js';
+
+export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleDeps): void {
+  app.get('/agents/:id/chat', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+    await deps.agentService.getAgentById(id);
+
+    const conversation = await deps.inboxService.listConversation(id, 200);
+    return conversation.map((message) => ({
+      ...message,
+      direction: message.senderId === id ? 'agent_to_founder' : 'founder_to_agent'
+    }));
+  });
+
+  app.post('/agents/:id/chat', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+    const body = agentChatBodySchema.parse(request.body);
+
+    const result = await processAgentChat({
+      agentId: id,
+      body,
+      deps,
+      actorId: request.authContext?.subject ?? 'founder'
+    });
+
+    reply.code(201);
+    return result;
+  });
+
+  app.get('/agents/:id/chat/stream', { websocket: true }, (connection, request) => {
+    const socket = resolveSocketClient(connection);
+
+    try {
+      requireMinimumLevel(request, 'L0');
+      const { id } = pauseAgentParamsSchema.parse(request.params);
+
+      void deps.agentService.getAgentById(id).then(() => {
+        sendSocketEvent(socket, 'chat.ready', { agentId: id });
+      }).catch((error) => {
+        sendSocketEvent(socket, 'chat.error', { message: toErrorMessage(error) });
+        socket.close();
+      });
+
+      socket.on('message', (raw: unknown) => {
+        void handleSocketChatMessage({
+          raw: String(raw),
+          socket,
+          agentId: id,
+          deps,
+          actorId: request.authContext?.subject ?? 'founder'
+        });
+      });
+    } catch (error) {
+      sendSocketEvent(socket, 'chat.error', { message: toErrorMessage(error) });
+      socket.close();
+    }
+  });
+}
