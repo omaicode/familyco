@@ -2,12 +2,15 @@
 import { computed, reactive, ref } from 'vue';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
-  CheckCircle2, AlertTriangle, X, Key, Palette,
-  Eye, EyeOff, Database, ChevronRight,
+  Key, Palette, Database, ChevronRight,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
 import { useAutoReload } from '../composables/useAutoReload';
+import FcBanner from '../components/FcBanner.vue';
+import FcButton from '../components/FcButton.vue';
+import FcPasswordInput from '../components/FcPasswordInput.vue';
+import FcSelect from '../components/FcSelect.vue';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -17,7 +20,7 @@ type Section = 'provider' | 'appearance' | 'advanced';
 // ── State ─────────────────────────────────────────────────
 const activeSection = ref<Section>('provider');
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
-const showApiKey = ref(false);
+
 
 // ── Provider form ─────────────────────────────────────────
 const providerName = ref<Provider>('openai');
@@ -132,7 +135,6 @@ const onProviderChange = (newProvider: Provider) => {
   providerName.value   = newProvider;
   providerApiKey.value = providerDraft[newProvider].apiKey;
   providerModel.value  = providerDraft[newProvider].model;
-  showApiKey.value     = false;
 };
 
 // ── Masked key display ────────────────────────────────────
@@ -167,18 +169,15 @@ useAutoReload(reload);
 
     <!-- ── Feedback ─────────────────────────────────── -->
     <Transition name="fc-banner">
-      <div
+      <FcBanner
         v-if="feedback"
-        class="fc-banner"
-        :class="feedback.type === 'success' ? 'fc-banner-success' : 'fc-banner-error'"
+        :type="feedback.type"
+        closable
         style="margin-bottom:14px;"
+        @close="feedback = null"
       >
-        <component :is="feedback.type === 'success' ? CheckCircle2 : AlertTriangle" :size="15" />
-        <span>{{ feedback.text }}</span>
-        <button class="fc-btn-ghost fc-btn-icon" style="margin-left:auto;" @click="feedback = null">
-          <X :size="12" />
-        </button>
-      </div>
+        {{ feedback.text }}
+      </FcBanner>
     </Transition>
 
     <!-- ── 2-column layout ─────────────────────────── -->
@@ -249,9 +248,9 @@ useAutoReload(reload);
             <!-- Default model -->
             <div class="st-field-group">
               <label class="st-label" for="st-model">Default model</label>
-              <select id="st-model" v-model="providerModel" class="st-select">
+              <FcSelect id="st-model" v-model="providerModel">
                 <option v-for="m in selectedProvider.models" :key="m" :value="m">{{ m }}</option>
-              </select>
+              </FcSelect>
             </div>
 
             <!-- API Key -->
@@ -263,34 +262,20 @@ useAutoReload(reload);
                   class="st-label-badge st-label-badge-success"
                 >Saved</span>
               </label>
-              <div class="st-input-wrap">
-                <input
-                  id="st-apikey"
-                  v-model="providerApiKey"
-                  :type="showApiKey ? 'text' : 'password'"
-                  class="st-input st-input-password"
-                  :placeholder="selectedProvider.keyHint"
-                  autocomplete="off"
-                  spellcheck="false"
-                />
-                <button
-                  type="button"
-                  class="st-eye-btn"
-                  :aria-label="showApiKey ? 'Hide key' : 'Show key'"
-                  @click="showApiKey = !showApiKey"
-                >
-                  <component :is="showApiKey ? EyeOff : Eye" :size="14" />
-                </button>
-              </div>
-              <p v-if="providerApiKey && !showApiKey" class="st-hint">{{ maskedKey }}</p>
+              <FcPasswordInput
+                id="st-apikey"
+                v-model="providerApiKey"
+                :placeholder="selectedProvider.keyHint"
+              />
+              <p v-if="maskedKey" class="st-hint">{{ maskedKey }}</p>
               <p class="st-hint">Stored locally in your workspace database. Never logged or sent externally.</p>
             </div>
 
             <div class="st-actions">
-              <button class="fc-btn-primary fc-btn-sm" :disabled="providerSaving || !providerApiKey" @click="saveProvider">
+              <FcButton variant="primary" size="sm" :disabled="providerSaving || !providerApiKey" @click="saveProvider">
                 <Save :size="13" />
                 {{ providerSaving ? 'Saving…' : 'Save provider settings' }}
-              </button>
+              </FcButton>
             </div>
           </div>
 
@@ -418,12 +403,12 @@ useAutoReload(reload);
 }
 
 .st-nav-item:hover {
-  background: var(--fc-bg);
-  color: var(--fc-text);
+  background: var(--fc-surface-muted);
+  color: var(--fc-text-main);
 }
 
 .st-nav-item-active {
-  background: color-mix(in srgb, var(--fc-primary) 10%, var(--fc-bg));
+  background: color-mix(in srgb, var(--fc-primary) 10%, var(--fc-surface));
   color: var(--fc-primary) !important;
   font-weight: 600;
 }
@@ -516,61 +501,8 @@ useAutoReload(reload);
 
 .st-hint:last-child { font-family: inherit; letter-spacing: normal; }
 
-/* ── Input ───────────────────────────────────────────────── */
-.st-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 9px 12px;
-  border: 1px solid var(--fc-border);
-  border-radius: 8px;
-  background: var(--fc-bg);
-  color: var(--fc-text);
-  font-size: 0.9375rem;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.st-input:focus {
-  border-color: var(--fc-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fc-primary) 15%, transparent);
-}
-
-.st-input-wrap { position: relative; display: flex; align-items: center; }
-.st-input-password { padding-right: 40px; }
-
-.st-eye-btn {
-  position: absolute;
-  right: 10px;
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  color: var(--fc-text-muted);
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-}
-.st-eye-btn:hover { color: var(--fc-text); }
-
-/* ── Select ──────────────────────────────────────────────── */
-.st-select {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 9px 12px;
-  border: 1px solid var(--fc-border);
-  border-radius: 8px;
-  background: var(--fc-bg);
-  color: var(--fc-text);
-  font-size: 0.9375rem;
-  outline: none;
-  appearance: none;
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-.st-select:focus {
-  border-color: var(--fc-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fc-primary) 15%, transparent);
-}
+/* ── Input / Select: styles come from global styles.css ───── */
+/* .fc-input, .fc-select, .fc-password-wrap, .fc-password-eye */
 
 /* ── Provider grid ───────────────────────────────────────── */
 .st-provider-grid {
@@ -586,7 +518,7 @@ useAutoReload(reload);
   padding: 10px 14px;
   border: 1px solid var(--fc-border-subtle);
   border-radius: 8px;
-  background: var(--fc-bg);
+  background: var(--fc-surface);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   min-width: 100px;
@@ -595,19 +527,19 @@ useAutoReload(reload);
 
 .st-provider-btn:hover {
   border-color: var(--fc-primary);
-  background: color-mix(in srgb, var(--fc-primary) 4%, var(--fc-bg));
+  background: color-mix(in srgb, var(--fc-primary) 4%, var(--fc-surface));
 }
 
 .st-provider-selected {
   border-color: var(--fc-primary) !important;
-  background: color-mix(in srgb, var(--fc-primary) 10%, var(--fc-bg)) !important;
+  background: color-mix(in srgb, var(--fc-primary) 10%, var(--fc-surface)) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--fc-primary) 12%, transparent);
 }
 
 .st-provider-name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--fc-text);
+  color: var(--fc-text-main);
 }
 
 .st-provider-hint {
@@ -630,7 +562,7 @@ useAutoReload(reload);
   padding: 12px 16px;
   border: 1px solid var(--fc-border-subtle);
   border-radius: 10px;
-  background: var(--fc-bg);
+  background: var(--fc-surface);
   cursor: pointer;
   font-size: 0.8125rem;
   color: var(--fc-text-muted);
@@ -639,12 +571,12 @@ useAutoReload(reload);
   min-width: 80px;
 }
 
-.st-theme-opt:hover { border-color: var(--fc-border); color: var(--fc-text); }
+.st-theme-opt:hover { border-color: var(--fc-border-subtle); color: var(--fc-text-main); }
 
 .st-theme-opt-active {
   border-color: var(--fc-primary) !important;
   color: var(--fc-primary) !important;
-  background: color-mix(in srgb, var(--fc-primary) 8%, var(--fc-bg)) !important;
+  background: color-mix(in srgb, var(--fc-primary) 8%, var(--fc-surface)) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--fc-primary) 12%, transparent);
 }
 

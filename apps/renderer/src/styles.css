@@ -336,6 +336,18 @@ body {
 .fc-input::placeholder,.fc-textarea::placeholder { color: var(--fc-text-faint); }
 .fc-textarea { resize: vertical; min-height: 80px; }
 
+/* ─── Password input ────────────────────────────────────── */
+.fc-password-wrap { position: relative; display: flex; align-items: center; }
+.fc-input-password { padding-right: 40px; }
+.fc-password-eye {
+  position: absolute; right: 10px;
+  background: none; border: none; padding: 4px;
+  cursor: pointer; color: var(--fc-text-muted);
+  display: flex; align-items: center;
+  border-radius: 4px; transition: color 0.15s;
+}
+.fc-password-eye:hover { color: var(--fc-text-main); }
+
 /* ─── Toolbar / inline ──────────────────────────────────── */
 .fc-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .fc-toolbar-spacer { flex: 1; }
