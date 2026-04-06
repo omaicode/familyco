@@ -21,6 +21,7 @@ import FcButton from '../components/FcButton.vue';
 import FcCard from '../components/FcCard.vue';
 import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
+import MarkdownEditor from '../components/MarkdownEditor.vue';
 import TaskBulkActionsBar from '../components/tasks/TaskBulkActionsBar.vue';
 import TaskCard from '../components/tasks/TaskCard.vue';
 import TaskFiltersModal from '../components/tasks/TaskFiltersModal.vue';
@@ -636,10 +637,10 @@ useAutoReload(reload);
 
           <div class="fc-form-group" style="margin-bottom: 12px;">
             <label class="fc-label">Execution brief</label>
-            <textarea
+            <MarkdownEditor
               v-model="draft.description"
-              class="fc-textarea"
-              placeholder="Describe the outcome, constraints, and what ‘done’ should look like."
+              placeholder="Describe the outcome, constraints, and what ‘done’ should look like using Markdown."
+              preview-empty-text="The task brief preview will appear here."
             />
           </div>
 

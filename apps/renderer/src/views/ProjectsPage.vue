@@ -26,6 +26,9 @@ import FcButton from '../components/FcButton.vue';
 import FcCard from '../components/FcCard.vue';
 import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
+import MarkdownEditor from '../components/MarkdownEditor.vue';
+import MarkdownPreview from '../components/MarkdownPreview.vue';
+import { markdownToPlainText } from '../utils/markdown';
 
 type PortfolioFilter = 'all' | 'attention' | 'healthy' | 'roots';
 type RiskLevel = 'healthy' | 'watch' | 'critical';
@@ -78,24 +81,12 @@ const setFeedback = (type: 'success' | 'error', text: string): void => {
 const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
 const getPreview = (description: string): string => {
-  const normalized = normalizeText(description);
+  const normalized = normalizeText(markdownToPlainText(description));
   if (!normalized) {
     return 'Add a short operational brief so agents understand the objective and boundaries.';
   }
 
   return normalized.length <= 130 ? normalized : `${normalized.slice(0, 127)}…`;
-};
-
-const getBriefLines = (description: string): string[] => {
-  const parts = description
-    .split(/\n+|(?<=[.!?])\s+/)
-    .map((item) => normalizeText(item))
-    .filter(Boolean);
-
-  return (parts.length
-    ? parts
-    : ['Define the objective, success criteria, scope, and constraints for the assigned agents.'])
-    .slice(0, 4);
 };
 
 const formatDate = (iso: string): string => {
@@ -396,11 +387,11 @@ useAutoReload(reload);
 
           <div class="fc-form-group" style="grid-column:1 / -1;">
             <label class="fc-label">Operational brief</label>
-            <textarea
+            <MarkdownEditor
               v-model="draft.description"
-              class="fc-textarea"
-              placeholder="Describe the goal, success criteria, scope, constraints, and how agents should execute this project."
-            ></textarea>
+              placeholder="Describe the goal, success criteria, scope, constraints, and how agents should execute this project using Markdown."
+              preview-empty-text="The project brief preview will appear here."
+            />
           </div>
 
           <div class="fc-form-group">
@@ -632,11 +623,10 @@ useAutoReload(reload);
             </div>
 
             <div class="fc-project-brief-box">
-              <ul class="fc-project-brief-list">
-                <li v-for="line in getBriefLines(selectedProject.description)" :key="line">
-                  {{ line }}
-                </li>
-              </ul>
+              <MarkdownPreview
+                :source="selectedProject.description"
+                empty-text="Add a Markdown brief so agents can review scope and execution details."
+              />
             </div>
           </FcCard>
 
@@ -832,15 +822,8 @@ useAutoReload(reload);
   background: color-mix(in srgb, var(--fc-surface-muted) 35%, var(--fc-surface));
 }
 
-.fc-project-brief-list {
-  margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  color: var(--fc-text-main);
+.fc-project-brief-box :deep(.fc-markdown) {
   font-size: 0.875rem;
-  line-height: 1.55;
 }
 
 @media (max-width: 1080px) {

@@ -10,6 +10,7 @@ import {
   Workflow
 } from 'lucide-vue-next';
 
+import MarkdownPreview from '../MarkdownPreview.vue';
 import FcBadge from '../FcBadge.vue';
 import FcButton from '../FcButton.vue';
 import FcSelect from '../FcSelect.vue';
@@ -64,7 +65,12 @@ const getActionIcon = (status: TaskListItem['status']) => {
         />
         <div>
           <span class="task-title">{{ props.task.title }}</span>
-          <p class="task-description">{{ props.task.description }}</p>
+          <MarkdownPreview
+            class="task-description-markdown"
+            :source="props.task.description"
+            :compact="true"
+            empty-text="Add a Markdown brief so the assignee has execution context."
+          />
         </div>
       </label>
 
@@ -155,10 +161,9 @@ const getActionIcon = (status: TaskListItem['status']) => {
   color: var(--fc-text-main);
 }
 
-.task-description {
-  margin: 4px 0 0;
+.task-description-markdown {
+  margin-top: 4px;
   font-size: 0.8rem;
-  line-height: 1.5;
   color: var(--fc-text-muted);
 }
 
