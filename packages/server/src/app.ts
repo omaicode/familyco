@@ -8,6 +8,7 @@ import {
   ApprovalService,
   AuditService,
   EventBus,
+  FounderCommandService,
   InboxService,
   ProjectService,
   SettingsService,
@@ -131,6 +132,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
   const toolExecutor = new DefaultToolExecutor();
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor);
+  const founderCommandService = new FounderCommandService();
 
   const queueService =
     queueDriver === 'bullmq'
@@ -255,12 +257,21 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
 
       registerAgentController(api, {
         agentService,
+        taskService,
+        projectService,
+        settingsService,
+        inboxService,
         approvalService,
         auditService,
-        approvalGuard
+        approvalGuard,
+        founderCommandService
       });
       registerApprovalController(api, {
         approvalService,
+        agentService,
+        projectService,
+        settingsService,
+        taskService,
         auditService,
         inboxService
       });
@@ -292,11 +303,15 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       });
       registerSetupController(api, {
         agentService,
+        projectService,
         settingsService,
         auditService
       });
       registerTaskController(api, {
         taskService,
+        agentService,
+        projectService,
+        settingsService,
         approvalService,
         auditService,
         approvalGuard

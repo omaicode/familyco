@@ -276,7 +276,7 @@ test('L1 mutation creates approval request when approval is required', async () 
   await app.close();
 });
 
-test('P1 routes: setup, hierarchy, settings, inbox flow works', async () => {
+test('P1 routes: setup, chat, settings, and inbox flow work with a single L0 default', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 
   const setupResponse = await app.inject({
@@ -295,11 +295,15 @@ test('P1 routes: setup, hierarchy, settings, inbox flow works', async () => {
   const setupPayload = setupResponse.json() as {
     executiveAgent: { id: string };
     departmentAgents: Array<{ id: string; parentAgentId: string | null }>;
+    departmentTemplates: string[];
+    defaultProject: { id: string; ownerAgentId: string };
   };
-  assert.equal(setupPayload.departmentAgents.length, 2);
+  assert.equal(setupPayload.departmentAgents.length, 0);
+  assert.deepEqual(setupPayload.departmentTemplates, ['Operations', 'Research']);
 
   const l0Id = setupPayload.executiveAgent.id;
-  const firstL1Id = setupPayload.departmentAgents[0]?.id as string;
+  const defaultProjectId = setupPayload.defaultProject.id;
+  assert.equal(setupPayload.defaultProject.ownerAgentId, l0Id);
 
   const childrenResponse = await app.inject({
     method: 'GET',
@@ -311,20 +315,84 @@ test('P1 routes: setup, hierarchy, settings, inbox flow works', async () => {
 
   assert.equal(childrenResponse.statusCode, 200);
   const children = childrenResponse.json() as Array<{ id: string }>;
-  assert.equal(children.length >= 2, true);
+  assert.equal(children.length, 0);
 
-  const pathResponse = await app.inject({
+  const createTaskResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Review current backlog',
+      description: 'Check delayed work and prepare a recovery plan.'
+    }
+  });
+
+  assert.equal(createTaskResponse.statusCode, 201);
+  const createdTask = createTaskResponse.json() as { assigneeAgentId: string | null; projectId: string };
+  assert.equal(createdTask.assigneeAgentId, l0Id);
+  assert.equal(createdTask.projectId, defaultProjectId);
+
+  const chatResponse = await app.inject({
+    method: 'POST',
+    url: `/api/v1/agents/${l0Id}/chat`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      message: 'Tạo cho tôi một agent chuyên làm project management.'
+    }
+  });
+
+  assert.equal(chatResponse.statusCode, 201);
+  const chatPayload = chatResponse.json() as {
+    reply: string;
+    approvalRequest?: { id: string; action: string; status: string };
+  };
+  assert.equal(typeof chatPayload.reply, 'string');
+  assert.equal(chatPayload.approvalRequest?.action, 'create_agent');
+  assert.equal(chatPayload.approvalRequest?.status, 'pending');
+
+  const decideApprovalResponse = await app.inject({
+    method: 'POST',
+    url: `/api/v1/approvals/${chatPayload.approvalRequest?.id}/decision`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      status: 'approved'
+    }
+  });
+
+  assert.equal(decideApprovalResponse.statusCode, 200);
+
+  const agentsResponse = await app.inject({
     method: 'GET',
-    url: `/api/v1/agents/${firstL1Id}/path`,
+    url: '/api/v1/agents',
     headers: {
       'x-api-key': TEST_API_KEY
     }
   });
 
-  assert.equal(pathResponse.statusCode, 200);
-  const path = pathResponse.json() as Array<{ id: string }>;
-  assert.equal(path.length, 2);
-  assert.equal(path[0]?.id, l0Id);
+  assert.equal(agentsResponse.statusCode, 200);
+  const agents = agentsResponse.json() as Array<{ id: string; level: string; parentAgentId: string | null; department: string }>;
+  const approvedDepartmentAgent = agents.find(
+    (agent) => agent.level === 'L1' && agent.parentAgentId === l0Id && agent.department === 'Operations'
+  );
+  assert.notEqual(approvedDepartmentAgent, undefined);
+
+  const threadResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/agents/${l0Id}/chat`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(threadResponse.statusCode, 200);
+  const thread = threadResponse.json() as Array<{ senderId: string; recipientId: string }>;
+  assert.equal(thread.length >= 2, true);
 
   const settingsUpsertResponse = await app.inject({
     method: 'POST',
@@ -359,7 +427,7 @@ test('P1 routes: setup, hierarchy, settings, inbox flow works', async () => {
       'x-api-key': TEST_API_KEY
     },
     payload: {
-      actorId: firstL1Id,
+      actorId: approvedDepartmentAgent?.id ?? l0Id,
       action: 'task.publish',
       targetId: 'task-1'
     }

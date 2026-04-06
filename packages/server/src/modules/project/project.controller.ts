@@ -29,8 +29,10 @@ export function registerProjectController(app: FastifyInstance, deps: ProjectMod
       action: 'project.create',
       targetId: body.parentProjectId ?? undefined,
       payload: {
+        name: body.name,
+        description: body.description,
         ownerAgentId: body.ownerAgentId,
-        name: body.name
+        parentProjectId: body.parentProjectId ?? null
       }
     });
 

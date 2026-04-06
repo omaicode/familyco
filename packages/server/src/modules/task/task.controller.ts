@@ -1,8 +1,17 @@
-import { ApprovalGuard, type ApprovalService, type AuditService, type TaskService } from '@familyco/core';
+import {
+  ApprovalGuard,
+  type AgentService,
+  type ApprovalService,
+  type AuditService,
+  type ProjectService,
+  type SettingsService,
+  type TaskService
+} from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { ensureApproval } from '../shared/approval-flow.js';
+import { resolveDefaultProjectId, resolveExecutiveAgentId } from '../shared/defaults.js';
 import {
   bulkUpdateTasksSchema,
   createTaskSchema,
@@ -15,6 +24,9 @@ import {
 
 export interface TaskModuleDeps {
   taskService: TaskService;
+  agentService: AgentService;
+  projectService: ProjectService;
+  settingsService: SettingsService;
   approvalService: ApprovalService;
   auditService: AuditService;
   approvalGuard: ApprovalGuard;
@@ -36,24 +48,41 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
   app.post('/tasks', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = createTaskSchema.parse(request.body);
+    const executiveAgentId = await resolveExecutiveAgentId({
+      agentService: deps.agentService,
+      settingsService: deps.settingsService
+    });
+    const projectId =
+      body.projectId ??
+      (await resolveDefaultProjectId({
+        agentService: deps.agentService,
+        projectService: deps.projectService,
+        settingsService: deps.settingsService
+      }));
+    const normalizedInput = {
+      title: body.title,
+      description: body.description,
+      projectId,
+      assigneeAgentId: body.assigneeAgentId ?? body.assignedToId ?? executiveAgentId,
+      createdBy: body.createdBy ?? executiveAgentId,
+      priority: body.priority
+    };
 
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
       authContext: request.authContext,
       action: 'task.create',
-      targetId: body.projectId,
+      targetId: normalizedInput.projectId,
       payload: {
-        assigneeAgentId: body.assigneeAgentId,
-        createdBy: body.createdBy,
-        priority: body.priority,
-        title: body.title
+        ...normalizedInput,
+        dueAt: body.dueAt
       }
     });
 
     if (!approval.allowed) {
       await deps.auditService.write({
-        actorId: request.authContext?.subject ?? body.createdBy,
+        actorId: request.authContext?.subject ?? normalizedInput.createdBy,
         action: 'approval.request.create',
         targetId: approval.request.id,
         payload: {
@@ -69,14 +98,16 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       };
     }
 
-    const task = await deps.taskService.createTask(body);
+    const task = await deps.taskService.createTask(normalizedInput);
     await deps.auditService.write({
-      actorId: body.createdBy,
+      actorId: normalizedInput.createdBy,
       action: 'task.create',
       targetId: task.id,
       payload: {
         projectId: task.projectId,
-        priority: task.priority
+        priority: task.priority,
+        assigneeAgentId: task.assigneeAgentId,
+        dueAt: body.dueAt
       }
     });
 

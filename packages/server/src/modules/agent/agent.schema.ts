@@ -20,5 +20,15 @@ export const updateParentBodySchema = z.object({
   parentAgentId: z.string().min(1).nullable()
 });
 
+export const agentChatBodySchema = z.object({
+  message: z.string().min(1),
+  meta: z
+    .object({
+      projectId: z.string().min(1).optional(),
+      taskId: z.string().min(1).optional()
+    })
+    .optional()
+});
+
 export type CreateAgentDto = z.infer<typeof createAgentSchema>;
 export type PauseAgentParamsDto = z.infer<typeof pauseAgentParamsSchema>;

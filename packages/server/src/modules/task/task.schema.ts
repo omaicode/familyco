@@ -6,10 +6,12 @@ const taskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 export const createTaskSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
-  projectId: z.string().min(1),
+  projectId: z.string().min(1).optional(),
   assigneeAgentId: z.string().min(1).nullable().optional(),
-  createdBy: z.string().min(1),
-  priority: taskPrioritySchema.optional()
+  assignedToId: z.string().min(1).nullable().optional(),
+  createdBy: z.string().min(1).optional(),
+  priority: taskPrioritySchema.optional(),
+  dueAt: z.string().min(1).optional()
 });
 
 export const listTasksQuerySchema = z.object({

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
-  LayoutDashboard, Bot, FolderKanban, ListChecks,
+  LayoutDashboard, MessagesSquare, Bot, FolderKanban, ListChecks,
   Inbox, ShieldCheck, Settings,
   Wifi, WifiOff, RefreshCw, AlertTriangle,
 } from 'lucide-vue-next';
@@ -36,6 +36,7 @@ const splashVisible = ref(true);
 // ── Navigation + icons ────────────────────────────────────
 const navIcons: Record<string, typeof LayoutDashboard> = {
   '/dashboard': LayoutDashboard,
+  '/chat':      MessagesSquare,
   '/agents':    Bot,
   '/projects':  FolderKanban,
   '/tasks':     ListChecks,
@@ -47,7 +48,7 @@ const navIcons: Record<string, typeof LayoutDashboard> = {
 const navGroups = [
   {
     label: 'Overview',
-    items: uiRuntime.navigation.filter(n => ['/dashboard'].includes(n.path)),
+    items: uiRuntime.navigation.filter(n => ['/dashboard', '/chat'].includes(n.path)),
   },
   {
     label: 'Operations',

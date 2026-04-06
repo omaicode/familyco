@@ -54,15 +54,17 @@ FamilyCo tổ chức Agent theo mô hình 3 tầng (L0 → L1 → L2):
 
 AI Agent khi đọc tài liệu khác (Agent Hierarchy, Technical Architecture) phải **không tự ý thay đổi quy tắc role & permission** trừ khi có yêu cầu rõ ràng từ Founder.
 
+> Trạng thái mặc định sau onboarding là **chỉ có 1 Agent L0**. Các vai trò L1/L2 ban đầu chỉ tồn tại như **template** để L0 đề xuất sau này khi Founder thấy cần.
+
 ---
 
 ## 4. Các Khối Chức Năng Chính
 
-### 4.1 Command Center
+### 4.1 Executive Chat
 
-- Một màn hình trung tâm nơi Founder nhập chỉ thị dạng tự nhiên (natural language) và xem phản hồi.
-- Các hành động phổ biến: "Tạo dự án mới", "Kiểm tra tiến độ", "Đề xuất team cho dự án X", "Tóm tắt những gì công ty AI làm hôm nay".
-- Command Center không tự thực thi tất cả, mà **ủy quyền xử lý cho L0**; L0 phân phối cho các Agent khác.
+- Kênh hội thoại chính nơi Founder chat trực tiếp với **L0 Executive Agent**.
+- Dùng để hỏi đáp, brainstorm, xin đề xuất, hoặc yêu cầu hệ thống thực sự làm một việc cụ thể.
+- Chat không bắt buộc luôn tạo Task, nhưng khi Founder muốn execution rõ ràng thì L0 sẽ chuyển yêu cầu thành Task hoặc Approval phù hợp.
 
 ### 4.2 Dashboard
 
@@ -107,8 +109,8 @@ Onboarding là trải nghiệm quan trọng đầu tiên; mục tiêu là **tạ
 3. **Company Profile** — tên công ty, ngành, quy mô, mục tiêu 90 ngày.
 4. **Founder Preferences** — mức tự chủ AI (auto/suggest), cách giao tiếp, ngôn ngữ, timezone.
 5. **First Executive Agent** — tạo L0 (Chief of Staff) với prompt/template gợi ý.
-6. **Suggested Org Chart** — FamilyCo đề xuất các L1/L2; Founder xem và accept/reject.
-7. **Finish & First Command** — đưa Founder đến Command Center với vài gợi ý command đầu tiên.
+6. **Optional Role Templates** — FamilyCo lưu các department/role gợi ý dưới dạng template để dùng sau này nếu Founder cần.
+7. **Finish & First Chat** — đưa Founder đến Executive Chat với vài prompt gợi ý đầu tiên.
 
 AI Agent khi thay đổi frontend/back-end liên quan onboarding phải giữ logic 7 bước này, chỉ được thay đổi wording/UX nhỏ trừ khi có yêu cầu khác.
 

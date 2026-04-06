@@ -8,6 +8,8 @@
 
 FamilyCo tổ chức agent theo mô hình **cây phân cấp có vai trò** (Hierarchical Role Tree). Founder là điểm quyết định tối cao, bên dưới là Executive Layer (agent cấp cao nhất), tiếp theo là Department Layer và dưới cùng là Specialist Layer. Mỗi tầng có quyền hạn, khả năng tạo artifact và mức độ tự chủ khác nhau.
 
+> **Default invariant:** hệ thống phải chạy ổn chỉ với **1 root L0 Executive Agent**. L1/L2 là optional và ban đầu chỉ là template chứ chưa có record thật trong DB.
+
 ```
 Founder (Human)
   └── Executive Agent (Chief of Staff / CEO Agent)   [L0]
@@ -186,33 +188,24 @@ interface AgentProfile {
 
 ## 5. Luồng Tạo Agent
 
-### 5a. Founder tạo trực tiếp (qua Admin Panel)
+### 5a. L0 Agent đề xuất tạo Agent mới (Suggest-only)
 ```
-Founder mở Settings > Agent Management > New Agent
-  → Chọn Level (L0 / L1 / L2)
-  → Chọn Parent Agent (ai quản lý agent này)
-  → Điền Role, Department, Model, Tools
-  → Thiết lập Approval Mode
-  → Save → Agent được kích hoạt
-```
-
-### 5b. L0 Agent đề xuất tạo Agent mới (Suggest-only)
-```
-L0 phân tích workload hoặc nhận chỉ thị của Founder
-  → L0 sinh AgentSuggestion {role, level, tools, rationale}
-  → Gửi lên Founder Inbox (Suggest-only notification)
-  → Founder xem, chỉnh sửa nếu cần, Approve
-  → Hệ thống tự tạo agent từ template L0 đề xuất
-  → L0 nhận agent mới vào cây hierarchy
+Founder chat với L0 Executive Agent
+  → L0 phân tích workload hoặc nhu cầu mới
+  → L0 chọn template phù hợp {pm, ops, research, finance, marketing...}
+  → Tạo ApprovalRequest với action = create_agent
+  → Founder xem trong Inbox và Approve / Reject / Modify
+  → Khi Approve, hệ thống mới tạo Agent thật trong DB và gắn vào hierarchy
 ```
 
-### 5c. Founder ra chỉ thị tự nhiên (Command Center)
+### 5b. Founder tương tác qua Chat hoặc Task
 ```
 Founder: "Tạo cho tôi một agent để viết blog post hàng tuần"
+  → Founder gửi yêu cầu trong Executive Chat
   → L0 phân tích intent
-  → L0 sinh đề xuất: Content Writer Agent (L2, dưới Marketing Agent)
-  → Suggest-only notification → Founder approve
-  → Agent được tạo và gán vào Marketing Agent
+  → L0 sinh đề xuất agent phù hợp (ví dụ Marketing/Content support)
+  → Suggest-only notification xuất hiện trong Inbox
+  → Founder approve thì agent mới mới được tạo
 ```
 
 ---
@@ -220,7 +213,7 @@ Founder: "Tạo cho tôi một agent để viết blog post hàng tuần"
 ## 6. Luồng Tạo Project và Task
 
 ### Project Creation
-- **Founder** có thể tạo Project trực tiếp từ Command Center hoặc Projects tab.
+- **Founder** có thể tạo Project trực tiếp từ Executive Chat hoặc Projects tab.
 - **L0 Agent** có thể đề xuất Project (suggest-only).
 - **L1 Agent** có thể tạo sub-project trong Project đã được giao.
 - **L2 Agent** không thể tạo Project.
@@ -381,7 +374,7 @@ FamilyCo được phân phối dưới **2 distribution mode** phục vụ hai n
 │  │                   │  │  - Agent Engine        │  │
 │  │  - Dashboard      │  │  - Task Queue          │  │
 │  │  - Agent Manager  │  │  - AI API Client       │  │
-│  │  - Command Center │  │  - DB (SQLite file)    │  │
+│  │  - Executive Chat │  │  - DB (SQLite file)    │  │
 │  │  - Settings       │  │  - WebSocket Server    │  │
 │  └───────────────────┘  └───────────────────────┘  │
 │                 localhost:PORT                       │

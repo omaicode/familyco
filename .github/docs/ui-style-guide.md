@@ -40,7 +40,7 @@ Các nguyên tắc cốt lõi:
 
 Dùng cấu trúc 3 phần:
 
-- **Sidebar (trái)**: điều hướng chính (Dashboard, Command Center, Agents, Projects, Tasks, Inbox, Audit, Settings).
+- **Sidebar (trái)**: điều hướng chính (Dashboard, Chat, Agents, Projects, Tasks, Inbox, Audit, Settings).
 - **Topbar (trên)**: breadcrumb, search, quick actions (New, Filter), avatar Founder.
 - **Main Content**: phần view chính thay đổi theo route.
 

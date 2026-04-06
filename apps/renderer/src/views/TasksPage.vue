@@ -322,7 +322,7 @@ const clearSelection = (): void => {
 };
 
 const createTask = async (): Promise<void> => {
-  if (!draft.title || !draft.description || !draft.projectId || !draft.createdBy) {
+  if (!draft.title || !draft.description) {
     return;
   }
 
@@ -332,9 +332,9 @@ const createTask = async (): Promise<void> => {
     const result = await uiRuntime.stores.tasks.createTask({
       title: normalizeText(draft.title),
       description: draft.description.trim(),
-      projectId: draft.projectId,
+      projectId: draft.projectId || undefined,
       assigneeAgentId: draft.assigneeAgentId || null,
-      createdBy: draft.createdBy,
+      createdBy: draft.createdBy || undefined,
       priority: draft.priority
     });
 
@@ -582,10 +582,10 @@ useAutoReload(reload);
           </div>
         </div>
 
-        <div v-if="projectOptions.length === 0 || creatorOptions.length === 0" class="fc-warning">
-          <p>Create at least one project and one L0/L1 agent before adding tasks.</p>
+        <div v-if="creatorOptions.length === 0" class="fc-warning">
+          <p>Complete setup first so the executive agent can receive new tasks.</p>
           <div class="fc-inline-actions">
-            <RouterLink to="/projects" class="fc-btn-secondary">Open projects</RouterLink>
+            <RouterLink to="/setup" class="fc-btn-secondary">Open setup</RouterLink>
             <RouterLink to="/agents" class="fc-btn-secondary">Open agents</RouterLink>
           </div>
         </div>
@@ -597,17 +597,18 @@ useAutoReload(reload);
               <FcInput v-model="draft.title" placeholder="e.g. Review onboarding checklist" />
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">Project</label>
+              <label class="fc-label">Project <span class="fc-label-optional">optional</span></label>
               <FcSelect v-model="draft.projectId">
+                <option value="">Use executive queue</option>
                 <option v-for="project in projectOptions" :key="project.id" :value="project.id">
                   {{ project.name }}
                 </option>
               </FcSelect>
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">Assignee</label>
+              <label class="fc-label">Assignee <span class="fc-label-optional">defaults to L0</span></label>
               <FcSelect v-model="draft.assigneeAgentId">
-                <option value="">Unassigned</option>
+                <option value="">Executive agent</option>
                 <option v-for="agent in assigneeOptions" :key="agent.id" :value="agent.id">
                   {{ agent.name }} · {{ agent.role }}
                 </option>
@@ -647,7 +648,7 @@ useAutoReload(reload);
           <div class="fc-toolbar">
             <FcButton
               variant="primary"
-              :disabled="isCreating || !draft.title || !draft.description || !draft.projectId || !draft.createdBy"
+              :disabled="isCreating || !draft.title || !draft.description"
               @click="createTask"
             >
               <Plus :size="14" />
@@ -765,6 +766,13 @@ useAutoReload(reload);
 </template>
 
 <style scoped>
+.fc-label-optional {
+  color: var(--fc-text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
 .fc-spin {
   animation: fc-rotate 0.8s linear infinite;
 }

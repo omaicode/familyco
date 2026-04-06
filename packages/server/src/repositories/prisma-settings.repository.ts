@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '../db/prisma/client';
 import type { Setting, SettingsRepository, UpsertSettingInput } from '@familyco/core';
 
 export class PrismaSettingsRepository implements SettingsRepository {

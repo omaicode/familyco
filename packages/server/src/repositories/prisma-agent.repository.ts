@@ -5,7 +5,7 @@ import type {
   AgentStatus,
   CreateAgentInput
 } from '@familyco/core';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../db/prisma/client';
 
 const AGENT_LEVELS: AgentLevel[] = ['L0', 'L1', 'L2'];
 const AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'paused', 'archived'];

@@ -10,6 +10,17 @@ export interface AgentListItem {
   parentAgentId: string | null;
 }
 
+export interface AgentChatMessage {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  type: 'approval' | 'report' | 'alert' | 'info';
+  title: string;
+  body: string;
+  createdAt: string;
+  direction: 'founder_to_agent' | 'agent_to_founder';
+}
+
 export interface ProjectListItem {
   id: string;
   name: string;
@@ -132,10 +143,12 @@ export type CreateProjectResult = ProjectListItem | CreateProjectApprovalRespons
 export interface CreateTaskPayload {
   title: string;
   description: string;
-  projectId: string;
+  projectId?: string;
   assigneeAgentId?: string | null;
-  createdBy: string;
+  assignedToId?: string | null;
+  createdBy?: string;
   priority?: TaskListItem['priority'];
+  dueAt?: string;
 }
 
 export interface TaskApprovalResponse {
@@ -191,7 +204,24 @@ export interface UpdateAgentParentPayload {
 
 export interface InitializeSetupPayload {
   companyName: string;
-  departments: string[];
+  departments?: string[];
+}
+
+export interface SendAgentChatPayload {
+  agentId: string;
+  message: string;
+  meta?: {
+    projectId?: string;
+    taskId?: string;
+  };
+}
+
+export interface SendAgentChatResult {
+  founderMessage: AgentChatMessage;
+  replyMessage: AgentChatMessage;
+  reply: string;
+  task?: TaskListItem | null;
+  approvalRequest?: ApprovalListItem | null;
 }
 
 export interface ReadInboxMessagePayload {
@@ -211,6 +241,8 @@ export interface FamilyCoApiContracts {
   listAgents: () => Promise<AgentListItem[]>;
   listAgentChildren: (agentId: string) => Promise<AgentListItem[]>;
   getAgentPath: (agentId: string) => Promise<AgentListItem[]>;
+  getAgentChat: (agentId: string) => Promise<AgentChatMessage[]>;
+  sendAgentChat: (payload: SendAgentChatPayload) => Promise<SendAgentChatResult>;
   createAgent: (payload: CreateAgentPayload) => Promise<CreateAgentResult>;
   pauseAgent: (payload: PauseAgentPayload) => Promise<PauseAgentResult>;
   updateAgentParent: (payload: UpdateAgentParentPayload) => Promise<AgentListItem>;
@@ -232,6 +264,8 @@ export interface FamilyCoApiContracts {
     companyName: string;
     executiveAgent: AgentListItem;
     departmentAgents: AgentListItem[];
+    departmentTemplates: string[];
+    defaultProject: ProjectListItem | null;
   }>;
   getDashboardSummary: (projectId?: string) => Promise<DashboardSummary>;
   listAudit: (query?: ListAuditPayload) => Promise<AuditListItem[]>;
@@ -241,6 +275,15 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   listAgents: () => client.get<AgentListItem[]>('/api/v1/agents'),
   listAgentChildren: (agentId) => client.get<AgentListItem[]>(`/api/v1/agents/${agentId}/children`),
   getAgentPath: (agentId) => client.get<AgentListItem[]>(`/api/v1/agents/${agentId}/path`),
+  getAgentChat: (agentId) => client.get<AgentChatMessage[]>(`/api/v1/agents/${agentId}/chat`),
+  sendAgentChat: (payload) =>
+    client.post<SendAgentChatResult, Omit<SendAgentChatPayload, 'agentId'>>(
+      `/api/v1/agents/${payload.agentId}/chat`,
+      {
+        message: payload.message,
+        meta: payload.meta
+      }
+    ),
   createAgent: (payload) => client.post<CreateAgentResult, CreateAgentPayload>('/api/v1/agents', payload),
   pauseAgent: (payload) => client.post<PauseAgentResult>(`/api/v1/agents/${payload.agentId}/pause`),
   updateAgentParent: (payload) =>
@@ -309,6 +352,8 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
         companyName: string;
         executiveAgent: AgentListItem;
         departmentAgents: AgentListItem[];
+        departmentTemplates: string[];
+        defaultProject: ProjectListItem | null;
       },
       InitializeSetupPayload
     >('/api/v1/setup/initialize', payload),

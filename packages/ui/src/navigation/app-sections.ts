@@ -1,5 +1,6 @@
 export type AppRoutePath =
   | '/dashboard'
+  | '/chat'
   | '/agents'
   | '/projects'
   | '/tasks'
@@ -20,6 +21,12 @@ export const appNavigationSections: AppNavigationSection[] = [
     path: '/dashboard',
     label: 'Dashboard',
     description: 'Overview of agent health, tasks, approvals, and token usage.'
+  },
+  {
+    path: '/chat',
+    label: 'Chat',
+    description: 'Talk with the executive agent and let it turn plans into tracked work.',
+    primaryActionLabel: 'Send message'
   },
   {
     path: '/agents',

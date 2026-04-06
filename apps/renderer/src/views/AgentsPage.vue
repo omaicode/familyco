@@ -54,7 +54,7 @@ const {
     <div class="fc-page-header">
       <div>
         <h3>Agents</h3>
-        <p>Manage your AI team with a simpler roster, clear reporting lines, and faster setup.</p>
+        <p>Manage your AI team with one required L0 executive by default, then add optional roles as the company grows.</p>
       </div>
       <div class="fc-inline-actions">
         <FcButton variant="secondary" :disabled="isRefreshing" @click="reload">
@@ -115,7 +115,7 @@ const {
     <div v-else-if="agentState.isEmpty" class="fc-empty">
       <Bot :size="36" class="fc-empty-icon" />
       <h4>No agents yet</h4>
-      <p>Start with an executive agent, then add department leads and specialists as the team grows.</p>
+      <p>One executive agent is enough to start. Add department leads and specialists later through the approval flow.</p>
       <FcButton variant="primary" @click="applyTemplate('executive')">
         <Plus :size="14" />
         Create first agent

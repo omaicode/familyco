@@ -9,7 +9,7 @@ const form = reactive({
   departmentsText: 'Operations,Marketing,Research'
 });
 
-const created = ref<null | { executiveName: string; departmentCount: number }>(null);
+const created = ref<null | { executiveName: string; templateCount: number }>(null);
 const errorMessage = ref<string | null>(null);
 const isSubmitting = ref(false);
 
@@ -24,7 +24,7 @@ const runSetup = async () => {
       .filter(item => item.length > 0);
 
     const result = await uiRuntime.api.initializeSetup({ companyName: form.companyName, departments });
-    created.value = { executiveName: result.executiveAgent.name, departmentCount: result.departmentAgents.length };
+    created.value = { executiveName: result.executiveAgent.name, templateCount: result.departmentTemplates.length };
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Setup initialization failed';
   } finally {
@@ -37,8 +37,8 @@ const runSetup = async () => {
   <section>
     <div class="fc-page-header">
       <div>
-        <h3>Command Center</h3>
-        <p>Initialize your workspace and configure your first executive agent.</p>
+        <h3>Workspace setup</h3>
+        <p>Initialize FamilyCo with one executive agent and optional future department templates.</p>
       </div>
     </div>
 
@@ -51,11 +51,11 @@ const runSetup = async () => {
         <h4 style="margin:0 0 8px;font-size:1.125rem;">Workspace initialized</h4>
         <p class="fc-list-meta" style="margin:0 0 16px;">
           Executive agent <strong>{{ created.executiveName }}</strong> created with
-          {{ created.departmentCount }} department agent{{ created.departmentCount !== 1 ? 's' : '' }}.
+          {{ created.templateCount }} optional department template{{ created.templateCount !== 1 ? 's' : '' }} saved for later approval.
         </p>
         <div class="fc-inline-actions" style="justify-content:center;">
-          <RouterLink class="fc-btn-primary" to="/dashboard">
-            Go to dashboard <ArrowRight :size="14" />
+          <RouterLink class="fc-btn-primary" to="/chat">
+            Open executive chat <ArrowRight :size="14" />
           </RouterLink>
           <RouterLink class="fc-btn-secondary" to="/agents">
             View agents
@@ -81,7 +81,7 @@ const runSetup = async () => {
             <p class="fc-kpi-label" style="margin:0;">Step 2</p>
           </div>
           <p style="margin:0;font-size:0.875rem;font-weight:600;">Define departments</p>
-          <p class="fc-kpi-sub">Each department gets an L1 manager agent.</p>
+          <p class="fc-kpi-sub">These stay as optional templates until they are approved.</p>
         </article>
         <article class="fc-kpi-card" data-highlight="success">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -89,7 +89,7 @@ const runSetup = async () => {
             <p class="fc-kpi-label" style="margin:0;">Step 3</p>
           </div>
           <p style="margin:0;font-size:0.875rem;font-weight:600;">Initialize agents</p>
-          <p class="fc-kpi-sub">L0 executive is created and ready to command.</p>
+          <p class="fc-kpi-sub">A single L0 executive is enough to start operating.</p>
         </article>
       </div>
 
@@ -97,7 +97,7 @@ const runSetup = async () => {
       <div class="fc-settings-section">
         <div class="fc-settings-section-header">
           <h4>Initialize workspace</h4>
-          <p>This will create your executive (L0) and department manager (L1) agents.</p>
+          <p>This creates your executive (L0) and stores any future department ideas as templates only.</p>
         </div>
         <div class="fc-settings-section-body">
           <div class="fc-form-grid" style="margin-bottom:16px;">
@@ -112,7 +112,7 @@ const runSetup = async () => {
                 class="fc-input"
                 placeholder="Comma-separated department names"
               />
-              <p class="fc-list-meta" style="margin:4px 0 0;">e.g. Operations, Marketing, Research</p>
+              <p class="fc-list-meta" style="margin:4px 0 0;">e.g. Operations, Marketing, Research — saved as optional templates only.</p>
             </div>
           </div>
 

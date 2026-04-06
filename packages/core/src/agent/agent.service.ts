@@ -14,8 +14,17 @@ export class AgentService {
     return agent;
   }
 
+  createFromApproval(input: CreateAgentInput): Promise<AgentProfile> {
+    return this.createAgent(input);
+  }
+
   listAgents(): Promise<AgentProfile[]> {
     return this.repository.list();
+  }
+
+  async findExecutiveAgent(): Promise<AgentProfile | null> {
+    const agents = await this.repository.list();
+    return agents.find((agent) => agent.level === 'L0' && agent.status !== 'archived') ?? null;
   }
 
   async getAgentById(id: string): Promise<AgentProfile> {

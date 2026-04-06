@@ -19,7 +19,7 @@ const errorMessage = ref<string | null>(null);
 const done = ref(false);
 const showApiKey = ref(false);
 
-const createdResult = ref<{ executiveName: string; departmentCount: number } | null>(null);
+const createdResult = ref<{ executiveName: string; templateCount: number } | null>(null);
 
 const form = reactive({
   companyName: '',
@@ -72,7 +72,7 @@ const departments = computed(() =>
 );
 
 const canNext = computed(() => {
-  if (currentStep.value === 2) return form.companyName.trim().length > 0 && departments.value.length > 0;
+  if (currentStep.value === 2) return form.companyName.trim().length > 0;
   if (currentStep.value === 3) return form.apiKey.trim().length > 0;
   return true;
 });
@@ -101,7 +101,7 @@ const initialize = async () => {
     await uiRuntime.api.upsertSetting({ key: 'onboarding.complete', value: true });
     createdResult.value = {
       executiveName: result.executiveAgent.name,
-      departmentCount: result.departmentAgents.length,
+      templateCount: result.departmentTemplates.length,
     };
     done.value = true;
   } catch (err) {
@@ -111,7 +111,7 @@ const initialize = async () => {
   }
 };
 
-const goToDashboard = () => router.replace('/dashboard');
+const goToDashboard = () => router.replace('/chat');
 </script>
 
 <template>
@@ -130,11 +130,16 @@ const goToDashboard = () => router.replace('/dashboard');
         </div>
         <h2 style="margin:0 0 8px;font-size:1.5rem;">You're all set!</h2>
         <p style="margin:0 0 24px;color:var(--fc-text-muted);font-size:0.9375rem;line-height:1.6;">
-          Executive agent <strong>{{ createdResult.executiveName }}</strong> is ready, along with
-          {{ createdResult.departmentCount }} department manager{{ createdResult.departmentCount !== 1 ? 's' : '' }}.
+          Executive agent <strong>{{ createdResult.executiveName }}</strong> is ready.
+          <template v-if="createdResult.templateCount > 0">
+            {{ createdResult.templateCount }} optional department template{{ createdResult.templateCount !== 1 ? 's' : '' }} were saved for later approval.
+          </template>
+          <template v-else>
+            You can add optional department templates later as your AI company grows.
+          </template>
         </p>
         <button class="ob-btn-primary ob-btn-lg" style="width:100%;" @click="goToDashboard">
-          Open Dashboard <ArrowRight :size="16" />
+          Open Executive Chat <ArrowRight :size="16" />
         </button>
       </div>
 
@@ -168,7 +173,7 @@ const goToDashboard = () => router.replace('/dashboard');
             <div class="ob-feature-list">
               <div class="ob-feature-item">
                 <Building2 :size="16" style="color:var(--fc-primary);flex-shrink:0;" />
-                <span>Create your company and departments</span>
+                <span>Create your company and first executive agent</span>
               </div>
               <div class="ob-feature-item">
                 <Key :size="16" style="color:var(--fc-primary);flex-shrink:0;" />
@@ -176,7 +181,7 @@ const goToDashboard = () => router.replace('/dashboard');
               </div>
               <div class="ob-feature-item">
                 <Users :size="16" style="color:var(--fc-primary);flex-shrink:0;" />
-                <span>Initialize your agent hierarchy</span>
+                <span>Save optional future department templates</span>
               </div>
             </div>
 
@@ -193,7 +198,7 @@ const goToDashboard = () => router.replace('/dashboard');
               <Building2 :size="28" />
             </div>
             <h2 class="ob-title">Company details</h2>
-            <p class="ob-subtitle">Name your company and define your departments. Each department will get its own manager agent.</p>
+            <p class="ob-subtitle">Name your company and list any future departments you may want later. They stay as templates until the L0 executive proposes them and the Founder approves.</p>
 
             <div class="ob-form-group">
               <label class="ob-label">Company name <span class="ob-required">*</span></label>
@@ -207,13 +212,13 @@ const goToDashboard = () => router.replace('/dashboard');
             </div>
 
             <div class="ob-form-group">
-              <label class="ob-label">Departments <span class="ob-required">*</span></label>
+              <label class="ob-label">Future departments <span class="ob-optional">optional</span></label>
               <input
                 v-model="form.departmentsText"
                 class="ob-input"
                 placeholder="Operations, Marketing, Research"
               />
-              <p class="ob-hint">Comma-separated. Each becomes an L1 manager agent.</p>
+              <p class="ob-hint">Comma-separated optional ideas. They are saved as templates only — no extra agents are created during setup.</p>
               <!-- Preview chips -->
               <div v-if="departments.length > 0" class="ob-chip-row">
                 <span v-for="dept in departments" :key="dept" class="ob-chip">{{ dept }}</span>
@@ -304,7 +309,7 @@ const goToDashboard = () => router.replace('/dashboard');
               <Users :size="28" />
             </div>
             <h2 class="ob-title">Review & launch</h2>
-            <p class="ob-subtitle">Everything looks good. Click initialize to create your workspace.</p>
+            <p class="ob-subtitle">Everything looks good. Click initialize to create your workspace with one mandatory L0 executive agent.</p>
 
             <!-- Summary -->
             <div class="ob-summary">
@@ -313,8 +318,8 @@ const goToDashboard = () => router.replace('/dashboard');
                 <span class="ob-summary-value">{{ form.companyName }}</span>
               </div>
               <div class="ob-summary-row">
-                <span class="ob-summary-label">Departments</span>
-                <span class="ob-summary-value">{{ departments.join(', ') }}</span>
+                <span class="ob-summary-label">Templates</span>
+                <span class="ob-summary-value">{{ departments.length > 0 ? departments.join(', ') : 'No optional templates yet' }}</span>
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">AI Provider</span>
@@ -326,9 +331,7 @@ const goToDashboard = () => router.replace('/dashboard');
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">Agents created</span>
-                <span class="ob-summary-value">
-                  1 executive (L0) + {{ departments.length }} manager{{ departments.length !== 1 ? 's' : '' }} (L1)
-                </span>
+                <span class="ob-summary-value">1 executive (L0) only — extra roles stay optional until approval.</span>
               </div>
             </div>
 
@@ -504,6 +507,13 @@ const goToDashboard = () => router.replace('/dashboard');
 .ob-required {
   color: var(--fc-error, #e55);
   margin-left: 2px;
+}
+
+.ob-optional {
+  color: var(--fc-text-muted);
+  font-weight: 500;
+  margin-left: 4px;
+  text-transform: lowercase;
 }
 
 .ob-input {
