@@ -225,7 +225,7 @@ watch(
 
 .chat-thread-scroll {
   position: relative;
-  max-height: min(62vh, 680px);
+  max-height: min(50vh, 680px);
   overflow-y: auto;
   padding-right: 6px;
   scrollbar-gutter: stable;
@@ -348,6 +348,7 @@ watch(
   margin: 0;
   line-height: 1.6;
   white-space: pre-wrap;
+  font-size: 0.875rem;
 }
 
 .chat-streaming-indicator {

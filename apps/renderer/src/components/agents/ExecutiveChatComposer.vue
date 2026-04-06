@@ -77,7 +77,7 @@ const handleDraftKeydown = (event: KeyboardEvent): void => {
     <div class="chat-compose-footer">
       <p class="chat-compose-hint">
         <CornerDownLeft :size="13" />
-        <span><strong>Enter</strong> gửi · <strong>Shift + Enter</strong> xuống dòng · gõ <code>/</code> để mở command</span>
+        <span><strong>Enter</strong> send · <strong>Shift + Enter</strong> newline · Type <code>/</code> to open command</span>
       </p>
 
       <FcButton

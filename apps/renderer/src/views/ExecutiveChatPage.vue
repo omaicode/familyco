@@ -111,32 +111,6 @@ const {
           </template>
         </FcCard>
       </div>
-
-      <div class="chat-side-column">
-        <FcCard>
-          <div class="fc-section-header">
-            <div>
-              <h4>Lane rules</h4>
-              <p class="fc-card-desc">Một L0 executive xử lý lane chính. Chat để điều phối, slash command để mở việc rõ ràng.</p>
-            </div>
-          </div>
-
-          <div class="chat-side-list">
-            <div class="chat-side-item">
-              <ArrowRight :size="15" />
-              <span><strong>Chat</strong> để trao đổi và chốt hướng xử lý.</span>
-            </div>
-            <div class="chat-side-item">
-              <Wrench :size="15" />
-              <span>Dùng <code>/create-task</code>, <code>/create-project</code>, <code>/reset</code>, <code>/help</code> khi cần hành động cụ thể.</span>
-            </div>
-            <div class="chat-side-item">
-              <ShieldCheck :size="15" />
-              <span><strong>Inbox</strong> dành cho approval cần Founder duyệt.</span>
-            </div>
-          </div>
-        </FcCard>
-      </div>
     </div>
   </section>
 </template>
@@ -153,7 +127,7 @@ const {
 
 .chat-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
