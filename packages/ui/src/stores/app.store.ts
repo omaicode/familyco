@@ -1,3 +1,5 @@
+import { reactive } from 'vue';
+
 import type { AppRoutePath } from '../navigation/app-sections.js';
 import {
   familyCoUITheme,
@@ -33,7 +35,7 @@ export class AppStore {
   state: AppStoreState;
 
   constructor(baseURL: string) {
-    this.state = {
+    this.state = reactive({
       activeRoute: '/dashboard',
       activeLevel: 'L0',
       founderName: 'Founder',
@@ -48,7 +50,7 @@ export class AppStore {
         isBrowserOnline: true,
         lastErrorMessage: null
       }
-    };
+    }) as AppStoreState;
   }
 
   setRoute(route: AppRoutePath): void {
