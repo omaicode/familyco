@@ -21,6 +21,13 @@ interface ChatToolCall {
   };
 }
 
+interface ConversationHistoryEntry {
+  senderId: string;
+  body: string;
+  title?: string;
+  createdAt?: string;
+}
+
 interface ChatToolOutput {
   reply: string;
   toolCalls: ChatToolCall[];
@@ -52,6 +59,12 @@ export const chatRespondTool: ServerToolDefinition = {
       required: false,
       description:
         'Optional chat context such as projectId, taskId, or explicit toolCall/toolCalls selected by the agent with concrete arguments.'
+    },
+    {
+      name: 'conversationHistory',
+      type: 'array',
+      required: false,
+      description: 'Recent founder↔executive messages used as memory context for the current conversation.'
     }
   ],
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
@@ -67,6 +80,7 @@ export const chatRespondTool: ServerToolDefinition = {
     const profile = toCompanyProfile(profileResult.output);
     const availableTools = context.listTools().filter((tool) => tool.name !== 'chat.respond');
     const requestedToolCalls = readExplicitToolCalls(argumentsMap);
+    const conversationHistory = readConversationHistory(argumentsMap);
     const plannedResponse =
       requestedToolCalls.length > 0
         ? null
@@ -74,9 +88,9 @@ export const chatRespondTool: ServerToolDefinition = {
             settingsService: context.settingsService,
             message,
             companyProfile: profile,
-            tools: availableTools
+            tools: availableTools,
+            conversationHistory
           }).catch(() => null);
-
     const toolCallQueue = requestedToolCalls.length > 0 ? requestedToolCalls : plannedResponse?.toolCalls ?? [];
     const toolCalls: ChatToolCall[] = [];
     let createdTask: unknown | null = null;
@@ -169,6 +183,48 @@ function parseToolCall(value: unknown): ExplicitToolCall | null {
   return {
     toolName,
     arguments: isRecord(value.arguments) ? value.arguments : {}
+  };
+}
+
+function readConversationHistory(argumentsMap: Record<string, unknown>): ConversationHistoryEntry[] {
+  const directHistory = parseConversationHistory(argumentsMap.conversationHistory);
+  if (directHistory.length > 0) {
+    return directHistory;
+  }
+
+  if (!isRecord(argumentsMap.meta)) {
+    return [];
+  }
+
+  return parseConversationHistory(argumentsMap.meta.conversationHistory);
+}
+
+function parseConversationHistory(value: unknown): ConversationHistoryEntry[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => parseConversationEntry(entry))
+    .filter((entry): entry is ConversationHistoryEntry => entry !== null);
+}
+
+function parseConversationEntry(value: unknown): ConversationHistoryEntry | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const senderId = asNonEmptyString(value.senderId);
+  const body = asNonEmptyString(value.body);
+  if (!senderId || !body) {
+    return null;
+  }
+
+  return {
+    senderId,
+    body,
+    title: asNonEmptyString(value.title),
+    createdAt: asNonEmptyString(value.createdAt)
   };
 }
 

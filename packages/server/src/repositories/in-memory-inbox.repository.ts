@@ -40,6 +40,10 @@ export class InMemoryInboxRepository implements InboxRepository {
         return false;
       }
 
+      if (query.senderId && message.senderId !== query.senderId) {
+        return false;
+      }
+
       if (query.type && message.type !== query.type) {
         return false;
       }
@@ -70,5 +74,15 @@ export class InMemoryInboxRepository implements InboxRepository {
 
     this.messages[index] = updated;
     return updated;
+  }
+
+  async clearConversation(agentId: string, founderId = 'founder'): Promise<void> {
+    const remaining = this.messages.filter((message) => {
+      const isConversationMessage = message.recipientId === agentId
+        || (message.recipientId === founderId && message.senderId === agentId);
+      return !isConversationMessage;
+    });
+
+    this.messages.splice(0, this.messages.length, ...remaining);
   }
 }

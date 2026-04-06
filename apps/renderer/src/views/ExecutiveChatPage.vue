@@ -53,9 +53,10 @@ const activeStreamId = ref<string | null>(null);
 const streamToolCalls = ref<Record<string, ChatToolCallDetails[]>>({});
 
 const promptSuggestions = [
-  'Review the current backlog and outline the next steps for the company this week.',
-  'Create a task to follow up on onboarding improvements and keep it in the executive queue.',
-  'Open a project for the Q2 operating cadence and summarize what it should cover.'
+  '/help',
+  '/create-task Follow up on onboarding improvements for the executive queue',
+  '/create-project Launch the Q2 operating cadence workspace',
+  '/reset'
 ];
 
 const agentState = computed(() => uiRuntime.stores.agents.state.agents);
@@ -534,7 +535,7 @@ onBeforeUnmount(() => closeSocket());
                 v-model="draftMessage"
                 class="chat-textarea"
                 rows="5"
-                placeholder="Ask the executive agent to review blockers, summarize direction, or create a task/project through tools…"
+                placeholder="Ask the executive agent for guidance, or use /help, /create-task, /create-project, /reset …"
               ></textarea>
 
               <div class="chat-compose-actions">
@@ -581,7 +582,7 @@ onBeforeUnmount(() => closeSocket());
             </div>
             <div class="chat-side-item">
               <Wrench :size="15" />
-              <span>Ask clearly when you want the agent to <strong>create a task</strong> or <strong>open a project</strong> through tools.</span>
+              <span>Use slash commands like <code>/create-task</code>, <code>/create-project</code>, <code>/reset</code>, and <code>/help</code> for explicit chat actions.</span>
             </div>
             <div class="chat-side-item">
               <ShieldCheck :size="15" />

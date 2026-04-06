@@ -29,6 +29,10 @@ export class AgentRunner {
     private readonly memoryService: MemoryService = new InMemoryMemoryService()
   ) {}
 
+  async clearMemory(agentId: string): Promise<void> {
+    await this.memoryService.clear(agentId);
+  }
+
   async run(request: AgentRunRequest): Promise<AgentRunResult> {
     await this.memoryService.add({
       agentId: request.agentId,

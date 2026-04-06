@@ -81,6 +81,19 @@ model AuditLog {
 	createdAt DateTime @default(now())
 }
 
+model InboxMessage {
+	id          String   @id @default(cuid())
+	recipientId String
+	senderId    String
+	type        String
+	title       String
+	body        String
+	status      String
+	payload     Json?
+	createdAt   DateTime @default(now())
+	updatedAt   DateTime @updatedAt
+}
+
 model Settings {
 	id        String   @id @default(cuid())
 	key       String   @unique

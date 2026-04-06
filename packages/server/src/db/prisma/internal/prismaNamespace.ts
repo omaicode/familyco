@@ -389,6 +389,7 @@ export const ModelName = {
   Task: 'Task',
   ApprovalRequest: 'ApprovalRequest',
   AuditLog: 'AuditLog',
+  InboxMessage: 'InboxMessage',
   Settings: 'Settings',
   ApiKey: 'ApiKey'
 } as const
@@ -406,7 +407,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "settings" | "apiKey"
+    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "inboxMessage" | "settings" | "apiKey"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -780,6 +781,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    InboxMessage: {
+      payload: Prisma.$InboxMessagePayload<ExtArgs>
+      fields: Prisma.InboxMessageFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.InboxMessageFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.InboxMessageFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>
+        }
+        findFirst: {
+          args: Prisma.InboxMessageFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.InboxMessageFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>
+        }
+        findMany: {
+          args: Prisma.InboxMessageFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>[]
+        }
+        create: {
+          args: Prisma.InboxMessageCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>
+        }
+        createMany: {
+          args: Prisma.InboxMessageCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.InboxMessageCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>[]
+        }
+        delete: {
+          args: Prisma.InboxMessageDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>
+        }
+        update: {
+          args: Prisma.InboxMessageUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>
+        }
+        deleteMany: {
+          args: Prisma.InboxMessageDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.InboxMessageUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.InboxMessageUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>[]
+        }
+        upsert: {
+          args: Prisma.InboxMessageUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InboxMessagePayload>
+        }
+        aggregate: {
+          args: Prisma.InboxMessageAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateInboxMessage>
+        }
+        groupBy: {
+          args: Prisma.InboxMessageGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InboxMessageGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.InboxMessageCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InboxMessageCountAggregateOutputType> | number
+        }
+      }
+    }
     Settings: {
       payload: Prisma.$SettingsPayload<ExtArgs>
       fields: Prisma.SettingsFieldRefs
@@ -1034,6 +1109,22 @@ export const AuditLogScalarFieldEnum = {
 export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
 
 
+export const InboxMessageScalarFieldEnum = {
+  id: 'id',
+  recipientId: 'recipientId',
+  senderId: 'senderId',
+  type: 'type',
+  title: 'title',
+  body: 'body',
+  status: 'status',
+  payload: 'payload',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InboxMessageScalarFieldEnum = (typeof InboxMessageScalarFieldEnum)[keyof typeof InboxMessageScalarFieldEnum]
+
+
 export const SettingsScalarFieldEnum = {
   id: 'id',
   key: 'key',
@@ -1252,6 +1343,7 @@ export type GlobalOmitConfig = {
   task?: Prisma.TaskOmit
   approvalRequest?: Prisma.ApprovalRequestOmit
   auditLog?: Prisma.AuditLogOmit
+  inboxMessage?: Prisma.InboxMessageOmit
   settings?: Prisma.SettingsOmit
   apiKey?: Prisma.ApiKeyOmit
 }

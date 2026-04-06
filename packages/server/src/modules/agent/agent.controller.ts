@@ -160,15 +160,11 @@ export function registerAgentController(app: FastifyInstance, deps: AgentModuleD
     const { id } = pauseAgentParamsSchema.parse(request.params);
     await deps.agentService.getAgentById(id);
 
-    const inboundToAgent = await deps.inboxService.listMessages({ recipientId: id, limit: 100 });
-    const founderInbox = await deps.inboxService.listMessages({ recipientId: 'founder', limit: 200 });
-
-    return [...inboundToAgent, ...founderInbox.filter((message) => message.senderId === id)]
-      .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
-      .map((message) => ({
-        ...message,
-        direction: message.senderId === id ? 'agent_to_founder' : 'founder_to_agent'
-      }));
+    const conversation = await deps.inboxService.listConversation(id, 200);
+    return conversation.map((message) => ({
+      ...message,
+      direction: message.senderId === id ? 'agent_to_founder' : 'founder_to_agent'
+    }));
   });
 
   app.post('/agents/:id/chat', async (request, reply) => {
@@ -290,12 +286,26 @@ async function processAgentChat(input: {
     meta?: {
       projectId?: string;
       taskId?: string;
+      toolCall?: unknown;
+      toolCalls?: unknown[];
+      [key: string]: unknown;
     };
   };
   deps: AgentModuleDeps;
   actorId: string;
 }): Promise<ProcessedChatResult> {
   const agent = await input.deps.agentService.getAgentById(input.agentId);
+  const slashCommand = parseSlashCommand(input.body.message);
+
+  if (slashCommand) {
+    return handleSlashCommand({
+      agent,
+      body: input.body,
+      deps: input.deps,
+      actorId: input.actorId,
+      command: slashCommand
+    });
+  }
 
   const founderMessage = await input.deps.inboxService.createMessage({
     recipientId: agent.id,
@@ -307,6 +317,7 @@ async function processAgentChat(input: {
       meta: input.body.meta ?? null
     }
   });
+  const conversationHistory = await input.deps.inboxService.listConversation(agent.id, 24);
 
   const runResult = await input.deps.agentRunner.run({
     agentId: agent.id,
@@ -316,21 +327,176 @@ async function processAgentChat(input: {
     toolArguments: {
       agentId: agent.id,
       message: input.body.message,
-      meta: input.body.meta ?? null
+      meta: input.body.meta ?? null,
+      conversationHistory: conversationHistory.map(toConversationHistoryEntry)
     },
     input: input.body.message
   });
 
-  const normalizedOutput = normalizeChatOutput(runResult.output?.output);
-  const replyText = runResult.status === 'blocked'
-    ? runResult.reason ?? 'The chat request is waiting for review.'
+  return buildProcessedChatResult({
+    agent,
+    founderMessage,
+    runResult,
+    deps: input.deps,
+    actorId: input.actorId,
+    auditAction: 'agent.chat'
+  });
+}
+
+async function handleSlashCommand(input: {
+  agent: Awaited<ReturnType<AgentService['getAgentById']>>;
+  body: {
+    message: string;
+    meta?: {
+      projectId?: string;
+      taskId?: string;
+      toolCall?: unknown;
+      toolCalls?: unknown[];
+      [key: string]: unknown;
+    };
+  };
+  deps: AgentModuleDeps;
+  actorId: string;
+  command: SlashCommand;
+}): Promise<ProcessedChatResult> {
+  if (input.command.name === 'reset') {
+    await input.deps.inboxService.clearConversation(input.agent.id);
+    await input.deps.agentRunner.clearMemory(input.agent.id);
+
+    return createDirectChatReply({
+      agent: input.agent,
+      founderMessage: createEphemeralFounderMessage(input.agent.id, input.body.message),
+      deps: input.deps,
+      actorId: input.actorId,
+      auditAction: 'agent.chat.reset',
+      replyText: 'Started a new chat. Previous conversation history and working memory were cleared. Use `/help` to see the available chat commands.',
+      messageType: 'info'
+    });
+  }
+
+  const founderMessage = await input.deps.inboxService.createMessage({
+    recipientId: input.agent.id,
+    senderId: 'founder',
+    type: 'info',
+    title: buildChatTitle(input.body.message),
+    body: input.body.message,
+    payload: {
+      meta: input.body.meta ?? null,
+      slashCommand: input.command.name
+    }
+  });
+
+  if (input.command.name === 'help') {
+    return createDirectChatReply({
+      agent: input.agent,
+      founderMessage,
+      deps: input.deps,
+      actorId: input.actorId,
+      auditAction: 'agent.chat.help',
+      replyText: buildSlashCommandHelp(),
+      messageType: 'info'
+    });
+  }
+
+  if (input.command.name === 'create-task' || input.command.name === 'create-project') {
+    if (input.command.args.length === 0) {
+      const usage = input.command.name === 'create-task'
+        ? 'Usage: /create-task {desc}'
+        : 'Usage: /create-project {desc}';
+
+      return createDirectChatReply({
+        agent: input.agent,
+        founderMessage,
+        deps: input.deps,
+        actorId: input.actorId,
+        auditAction: `agent.chat.${input.command.name}.usage`,
+        replyText: `${usage}\n\n${buildSlashCommandHelp()}`,
+        messageType: 'alert'
+      });
+    }
+
+    const conversationHistory = await input.deps.inboxService.listConversation(input.agent.id, 24);
+    const explicitToolCall = input.command.name === 'create-task'
+      ? {
+          toolName: 'task.create',
+          arguments: {
+            title: summarizeSlashDescription(input.command.args, 'Executive follow-up'),
+            description: input.command.args
+          }
+        }
+      : {
+          toolName: 'project.create',
+          arguments: {
+            name: summarizeSlashDescription(input.command.args, 'Executive initiative'),
+            description: input.command.args
+          }
+        };
+
+    const runResult = await input.deps.agentRunner.run({
+      agentId: input.agent.id,
+      approvalMode: 'auto',
+      action: `chat.command.${input.command.name}`,
+      toolName: 'chat.respond',
+      toolArguments: {
+        agentId: input.agent.id,
+        message: input.command.args,
+        meta: {
+          ...(isRecord(input.body.meta) ? input.body.meta : {}),
+          slashCommand: input.command.name,
+          toolCall: explicitToolCall
+        },
+        conversationHistory: conversationHistory.map(toConversationHistoryEntry)
+      },
+      input: input.body.message
+    });
+
+    return buildProcessedChatResult({
+      agent: input.agent,
+      founderMessage,
+      runResult,
+      deps: input.deps,
+      actorId: input.actorId,
+      auditAction: `agent.chat.${input.command.name}`
+    });
+  }
+
+  return createDirectChatReply({
+    agent: input.agent,
+    founderMessage,
+    deps: input.deps,
+    actorId: input.actorId,
+    auditAction: 'agent.chat.command.invalid',
+    replyText: `Unknown command \`${input.command.raw}\`.\n\n${buildSlashCommandHelp()}`,
+    messageType: 'alert'
+  });
+}
+
+async function buildProcessedChatResult(input: {
+  agent: Awaited<ReturnType<AgentService['getAgentById']>>;
+  founderMessage: Awaited<ReturnType<InboxService['createMessage']>>;
+  runResult: Awaited<ReturnType<AgentRunner['run']>>;
+  deps: AgentModuleDeps;
+  actorId: string;
+  auditAction: string;
+}): Promise<ProcessedChatResult> {
+  const normalizedOutput = normalizeChatOutput(input.runResult.output?.output);
+  const replyText = input.runResult.status === 'blocked'
+    ? input.runResult.reason ?? 'The chat request is waiting for review.'
     : normalizedOutput.reply;
+
+  const messageType = input.runResult.status === 'blocked'
+    ? 'alert'
+    : normalizedOutput.toolCalls.some((toolCall) => !toolCall.ok)
+      ? 'alert'
+      : normalizedOutput.toolCalls.length > 0
+        ? 'report'
+        : 'info';
 
   const replyMessage = await input.deps.inboxService.createMessage({
     recipientId: 'founder',
-    senderId: agent.id,
-    type: normalizedOutput.toolCalls.length > 0 ? 'report' : 'info',
-    title: `Reply from ${agent.name}`,
+    senderId: input.agent.id,
+    type: messageType,
+    title: `Reply from ${input.agent.name}`,
     body: replyText,
     payload: {
       taskId: extractEntityId(normalizedOutput.task),
@@ -341,10 +507,10 @@ async function processAgentChat(input: {
 
   await input.deps.auditService.write({
     actorId: input.actorId,
-    action: 'agent.chat',
-    targetId: agent.id,
+    action: input.auditAction,
+    targetId: input.agent.id,
     payload: {
-      founderMessageId: founderMessage.id,
+      founderMessageId: input.founderMessage.id,
       replyMessageId: replyMessage.id,
       toolNames: normalizedOutput.toolCalls.map((toolCall) => toolCall.toolName),
       taskId: extractEntityId(normalizedOutput.task),
@@ -353,12 +519,143 @@ async function processAgentChat(input: {
   });
 
   return {
-    founderMessage,
+    founderMessage: input.founderMessage,
     replyMessage,
     reply: replyText,
     toolCalls: normalizedOutput.toolCalls,
     task: normalizedOutput.task,
     project: normalizedOutput.project
+  };
+}
+
+async function createDirectChatReply(input: {
+  agent: Awaited<ReturnType<AgentService['getAgentById']>>;
+  founderMessage: Awaited<ReturnType<InboxService['createMessage']>>;
+  deps: AgentModuleDeps;
+  actorId: string;
+  auditAction: string;
+  replyText: string;
+  messageType: 'alert' | 'info' | 'report';
+}): Promise<ProcessedChatResult> {
+  const replyMessage = await input.deps.inboxService.createMessage({
+    recipientId: 'founder',
+    senderId: input.agent.id,
+    type: input.messageType,
+    title: `Reply from ${input.agent.name}`,
+    body: input.replyText,
+    payload: {
+      toolCalls: []
+    }
+  });
+
+  await input.deps.auditService.write({
+    actorId: input.actorId,
+    action: input.auditAction,
+    targetId: input.agent.id,
+    payload: {
+      founderMessageId: input.founderMessage.id,
+      replyMessageId: replyMessage.id,
+      toolNames: []
+    }
+  });
+
+  return {
+    founderMessage: input.founderMessage,
+    replyMessage,
+    reply: input.replyText,
+    toolCalls: [],
+    task: null,
+    project: null
+  };
+}
+
+interface SlashCommand {
+  name: 'reset' | 'help' | 'create-task' | 'create-project' | 'unknown';
+  raw: string;
+  args: string;
+}
+
+function parseSlashCommand(message: string): SlashCommand | null {
+  const trimmed = message.trim();
+  if (!trimmed.startsWith('/')) {
+    return null;
+  }
+
+  const [rawCommand, ...rest] = trimmed.split(/\s+/);
+  const args = rest.join(' ').trim();
+  const normalized = rawCommand.toLowerCase();
+
+  if (normalized === '/reset' || normalized === '/new') {
+    return { name: 'reset', raw: rawCommand, args };
+  }
+
+  if (normalized === '/help' || normalized === '/h') {
+    return { name: 'help', raw: rawCommand, args };
+  }
+
+  if (normalized === '/create-task') {
+    return { name: 'create-task', raw: rawCommand, args };
+  }
+
+  if (normalized === '/create-project') {
+    return { name: 'create-project', raw: rawCommand, args };
+  }
+
+  return { name: 'unknown', raw: rawCommand, args };
+}
+
+function buildSlashCommandHelp(): string {
+  return [
+    'Available slash commands:',
+    '- `/help` or `/h`: Show the list of chat commands.',
+    '- `/reset` or `/new`: Clear the current chat history and start a fresh session.',
+    '- `/create-project {desc}`: Open a new project from the description you provide.',
+    '- `/create-task {desc}`: Create a new task from the description you provide.'
+  ].join('\n');
+}
+
+function summarizeSlashDescription(description: string, fallback: string): string {
+  const normalized = description.replace(/\s+/g, ' ').trim();
+  if (normalized.length === 0) {
+    return fallback;
+  }
+
+  if (normalized.length <= 72) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 69).trimEnd()}...`;
+}
+
+function toConversationHistoryEntry(message: Awaited<ReturnType<InboxService['createMessage']>>): {
+  senderId: string;
+  title: string;
+  body: string;
+  createdAt: string;
+} {
+  return {
+    senderId: message.senderId,
+    title: message.title,
+    body: message.body,
+    createdAt: message.createdAt.toISOString()
+  };
+}
+
+function createEphemeralFounderMessage(
+  agentId: string,
+  message: string
+): Awaited<ReturnType<InboxService['createMessage']>> {
+  const now = new Date();
+  return {
+    id: `local-${now.getTime()}`,
+    recipientId: agentId,
+    senderId: 'founder',
+    type: 'info',
+    title: buildChatTitle(message),
+    body: message,
+    status: 'read',
+    createdAt: now,
+    updatedAt: now
   };
 }
 

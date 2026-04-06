@@ -444,6 +444,23 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   );
   assert.equal(requestOnlyEvents.some((event) => event.type === 'chat.tool.used'), false);
 
+  const helpEvents = await runSocketChat(chatSocketUrl, '/help');
+  const helpCompletedEvent = helpEvents.find((event) => event.type === 'chat.completed');
+  assert.equal(typeof helpCompletedEvent?.payload?.reply, 'string');
+  assert.equal(String(helpCompletedEvent?.payload?.reply).includes('/create-task'), true);
+
+  const slashCreateTaskEvents = await runSocketChat(
+    chatSocketUrl,
+    '/create-task Prepare a weekly onboarding follow-up for the executive queue'
+  );
+  assert.equal(slashCreateTaskEvents.some((event) => event.type === 'chat.tool.used'), true);
+
+  const slashCreateProjectEvents = await runSocketChat(
+    chatSocketUrl,
+    '/create-project Launch the Q2 operating cadence workspace for weekly founder reviews'
+  );
+  assert.equal(slashCreateProjectEvents.some((event) => event.type === 'chat.tool.used'), true);
+
   const taskCountAfterNaturalLanguageRequest = await app.inject({
     method: 'GET',
     url: '/api/v1/tasks',
@@ -453,7 +470,7 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   });
 
   assert.equal(taskCountAfterNaturalLanguageRequest.statusCode, 200);
-  assert.equal((taskCountAfterNaturalLanguageRequest.json() as Array<{ id: string }>).length, 1);
+  assert.equal((taskCountAfterNaturalLanguageRequest.json() as Array<{ id: string }>).length, 2);
 
   const toolEvents = await runSocketChat(
     chatSocketUrl,
@@ -516,13 +533,32 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
     assigneeAgentId: string | null;
     createdBy: string;
   }>;
-  assert.equal(allTasksAfterTool.length, 3);
+  assert.equal(allTasksAfterTool.length, 4);
   assert.equal(allTasksAfterTool.some((task) => task.projectId === defaultProjectId), true);
   const fallbackTask = allTasksAfterTool.find((task) => task.title === 'Normalize invalid references');
   assert.ok(fallbackTask);
   assert.equal(fallbackTask?.projectId, defaultProjectId);
   assert.equal(fallbackTask?.assigneeAgentId, l0Id);
   assert.equal(fallbackTask?.createdBy, l0Id);
+  const slashTask = allTasksAfterTool.find((task) => task.title.includes('weekly onboarding follow-up'));
+  assert.ok(slashTask);
+
+  const resetEvents = await runSocketChat(chatSocketUrl, '/reset');
+  const resetCompletedEvent = resetEvents.find((event) => event.type === 'chat.completed');
+  assert.equal(typeof resetCompletedEvent?.payload?.reply, 'string');
+  assert.equal(String(resetCompletedEvent?.payload?.reply).includes('cleared'), true);
+
+  const threadAfterResetResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/agents/${l0Id}/chat`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(threadAfterResetResponse.statusCode, 200);
+  const threadAfterReset = threadAfterResetResponse.json() as Array<{ body: string }>;
+  assert.equal(threadAfterReset.length <= 1, true);
 
   const settingsUpsertResponse = await app.inject({
     method: 'POST',

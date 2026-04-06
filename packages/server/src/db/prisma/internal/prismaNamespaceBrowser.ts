@@ -56,6 +56,7 @@ export const ModelName = {
   Task: 'Task',
   ApprovalRequest: 'ApprovalRequest',
   AuditLog: 'AuditLog',
+  InboxMessage: 'InboxMessage',
   Settings: 'Settings',
   ApiKey: 'ApiKey'
 } as const
@@ -141,6 +142,22 @@ export const AuditLogScalarFieldEnum = {
 } as const
 
 export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
+export const InboxMessageScalarFieldEnum = {
+  id: 'id',
+  recipientId: 'recipientId',
+  senderId: 'senderId',
+  type: 'type',
+  title: 'title',
+  body: 'body',
+  status: 'status',
+  payload: 'payload',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InboxMessageScalarFieldEnum = (typeof InboxMessageScalarFieldEnum)[keyof typeof InboxMessageScalarFieldEnum]
 
 
 export const SettingsScalarFieldEnum = {

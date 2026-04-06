@@ -53,6 +53,7 @@ import {
   PrismaApiKeyRepository,
   PrismaApprovalRepository,
   PrismaAuditRepository,
+  PrismaInboxRepository,
   PrismaProjectRepository,
   PrismaSettingsRepository,
   PrismaTaskRepository
@@ -380,7 +381,7 @@ function createRepositories(
       apiKeyRepository: new PrismaApiKeyRepository(client),
       approvalRepository: new PrismaApprovalRepository(client),
       auditRepository: new PrismaAuditRepository(client),
-      inboxRepository: new InMemoryInboxRepository(),
+      inboxRepository: new PrismaInboxRepository(client),
       projectRepository: new PrismaProjectRepository(client),
       settingsRepository: new PrismaSettingsRepository(client),
       taskRepository: new PrismaTaskRepository(client)

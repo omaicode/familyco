@@ -21,6 +21,12 @@ interface PlanChatWithProviderInput {
   message: string;
   companyProfile: CompanyProfile;
   tools: ToolDefinitionSummary[];
+  conversationHistory?: Array<{
+    senderId: string;
+    body: string;
+    title?: string;
+    createdAt?: string;
+  }>;
 }
 
 interface ProviderSettings {
@@ -38,7 +44,7 @@ export async function planChatWithProvider(
   }
 
   const systemPrompt = buildSystemPrompt(input.companyProfile, input.tools);
-  const userPrompt = buildUserPrompt(input.message);
+  const userPrompt = buildUserPrompt(input.message, input.conversationHistory ?? []);
 
   const rawText = await requestPlannerCompletion({
     providerSettings,
@@ -109,13 +115,43 @@ function buildSystemPrompt(companyProfile: CompanyProfile, tools: ToolDefinition
   ].join('\n');
 }
 
-function buildUserPrompt(message: string): string {
+function buildUserPrompt(
+  message: string,
+  conversationHistory: Array<{
+    senderId: string;
+    body: string;
+    title?: string;
+    createdAt?: string;
+  }>
+): string {
+  const historyLines = conversationHistory
+    .slice(-12)
+    .map((entry) => {
+      const speaker = entry.senderId === 'founder' ? 'Founder' : 'Executive agent';
+      const title = entry.title ? `${entry.title}: ` : '';
+      const body = compactText(entry.body, 240);
+      return `- ${speaker}: ${title}${body}`;
+    })
+    .join('\n');
+
   return [
-    'Founder message:',
+    historyLines.length > 0 ? 'Recent conversation context:' : 'Recent conversation context: none',
+    historyLines || '- No prior messages recorded.',
+    '',
+    'Latest founder message:',
     message,
     '',
     'Return JSON only.'
   ].join('\n');
+}
+
+function compactText(value: string, maxLength: number): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, Math.max(maxLength - 1, 0)).trimEnd()}…`;
 }
 
 async function requestPlannerCompletion(input: {

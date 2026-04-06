@@ -25,6 +25,7 @@ export interface CreateInboxMessageInput {
 
 export interface ListInboxMessagesQuery {
   recipientId: string;
+  senderId?: string;
   type?: InboxMessageType;
   status?: InboxMessageStatus;
   limit?: number;

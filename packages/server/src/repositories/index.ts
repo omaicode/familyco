@@ -4,6 +4,7 @@ export * from './in-memory-approval.repository.js';
 export * from './in-memory-audit.repository.js';
 export * from './in-memory-inbox.repository.js';
 export * from './in-memory-project.repository.js';
+export * from './prisma-inbox.repository.js';
 export * from './in-memory-settings.repository.js';
 export * from './in-memory-task.repository.js';
 export * from './prisma-agent.repository.js';

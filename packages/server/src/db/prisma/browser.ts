@@ -43,6 +43,11 @@ export type ApprovalRequest = Prisma.ApprovalRequestModel
  */
 export type AuditLog = Prisma.AuditLogModel
 /**
+ * Model InboxMessage
+ * 
+ */
+export type InboxMessage = Prisma.InboxMessageModel
+/**
  * Model Settings
  * 
  */
