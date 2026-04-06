@@ -8,8 +8,8 @@
     "dev": "turbo run dev --parallel --filter=@familyco/server --filter=@familyco/renderer",
     "dev:desktop": "turbo run dev --parallel --filter=@familyco/renderer --filter=@familyco/desktop",
     "dev:p": "turbo run dev --parallel",
-    "prisma:generate": "pnpm --filter @familyco/server exec prisma generate --schema ../../prisma/schema.prisma",
-    "prisma:migrate:dev": "pnpm --filter @familyco/server exec prisma migrate dev --schema ../../prisma/schema.prisma",
+    "prisma:generate": "pnpm --filter @familyco/server exec prisma generate --config ../../prisma.config.ts --schema ../../prisma/schema.prisma",
+    "prisma:migrate:dev": "pnpm --filter @familyco/server exec prisma migrate dev --config ../../prisma.config.ts --schema ../../prisma/schema.prisma",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"
   },
