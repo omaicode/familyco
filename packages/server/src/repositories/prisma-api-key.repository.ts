@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../db/prisma/client';
+import type { PrismaClient } from '../db/prisma/client.js';
 
 import type { ApiKeyRecord, ApiKeyRepository } from '../modules/auth/api-key.service.js';
 

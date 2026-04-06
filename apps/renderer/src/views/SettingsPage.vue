@@ -28,7 +28,7 @@ const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
 
 // ── Company form ─────────────────────────────────────
 const companyName = ref('');
-const companyGoal = ref('');
+const companyDescription = ref('');
 const companyTimezone = ref('Asia/Ho_Chi_Minh');
 const companySaving = ref(false);
 
@@ -124,7 +124,11 @@ const reload = async () => {
 
   // Company
   companyName.value     = typeof getSetting('company.name') === 'string' ? getSetting('company.name') as string : '';
-  companyGoal.value     = typeof getSetting('company.goal') === 'string' ? getSetting('company.goal') as string : '';
+  companyDescription.value = typeof getSetting('company.description') === 'string'
+    ? getSetting('company.description') as string
+    : typeof getSetting('company.goal') === 'string'
+      ? getSetting('company.goal') as string
+      : '';
   companyTimezone.value = typeof getSetting('company.timezone') === 'string' ? getSetting('company.timezone') as string : 'Asia/Ho_Chi_Minh';
 
   // Budget
@@ -197,9 +201,9 @@ const saveCompany = async () => {
   companySaving.value = true;
   feedback.value = null;
   try {
-    await uiRuntime.api.upsertSetting({ key: 'company.name',     value: companyName.value.trim() });
-    await uiRuntime.api.upsertSetting({ key: 'company.goal',     value: companyGoal.value.trim() });
-    await uiRuntime.api.upsertSetting({ key: 'company.timezone', value: companyTimezone.value });
+    await uiRuntime.api.upsertSetting({ key: 'company.name',        value: companyName.value.trim() });
+    await uiRuntime.api.upsertSetting({ key: 'company.description', value: companyDescription.value.trim() });
+    await uiRuntime.api.upsertSetting({ key: 'company.timezone',    value: companyTimezone.value });
     await uiRuntime.stores.settings.load();
     setFeedback('success', 'Company settings saved');
   } catch (err) {
@@ -442,7 +446,7 @@ useAutoReload(reload);
               <Building2 :size="16" class="st-pane-icon" />
               <div>
                 <h4>Company</h4>
-                <p>Define your company's identity and mission. Agents use this as their north star when reasoning about work.</p>
+                <p>Define your company's identity and business description. Agents use this as core context when reasoning about work.</p>
               </div>
             </div>
 
@@ -452,15 +456,15 @@ useAutoReload(reload);
             </div>
 
             <div class="st-field-group">
-              <label class="st-label" for="st-company-goal">Company goal</label>
+              <label class="st-label" for="st-company-description">Company description</label>
               <textarea
-                id="st-company-goal"
-                v-model="companyGoal"
+                id="st-company-description"
+                v-model="companyDescription"
                 class="fc-textarea"
                 rows="4"
-                placeholder="e.g. Build the #1 AI-powered accounting platform with $1M ARR by Q4 2026."
+                placeholder="e.g. AI-native operating system for founders who need execution speed, approval safety, and visibility."
               />
-              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">The reason the company exists. Injected into every agent's context as mission context.</p>
+              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">This description is injected into the executive agent context so it understands the business and operating style.</p>
             </div>
 
             <div class="st-field-group">

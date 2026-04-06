@@ -1,6 +1,7 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
 import type { CompanyProfile } from './company-profile-read.tool.js';
+import { planChatWithProvider } from './provider-chat-planner.js';
 import { asNonEmptyString, extractEntityLabel, invalidArguments, isRecord } from './tool.helpers.js';
 import type { ServerToolDefinition, ToolDefinitionSummary } from './tool.types.js';
 
@@ -31,7 +32,7 @@ interface ChatToolOutput {
 export const chatRespondTool: ServerToolDefinition = {
   name: 'chat.respond',
   description:
-    'Compose a streaming-friendly executive reply. It never guesses tool usage from regex or text intent; it only runs tools that are explicitly chosen and fully parameterized by the agent.',
+    'Compose a streaming-friendly executive reply. When a provider is configured, the agent decides whether to call tools and what arguments to pass by reasoning over the tool metadata.',
   parameters: [
     {
       name: 'message',
@@ -66,12 +67,22 @@ export const chatRespondTool: ServerToolDefinition = {
     const profile = toCompanyProfile(profileResult.output);
     const availableTools = context.listTools().filter((tool) => tool.name !== 'chat.respond');
     const requestedToolCalls = readExplicitToolCalls(argumentsMap);
+    const plannedResponse =
+      requestedToolCalls.length > 0
+        ? null
+        : await planChatWithProvider({
+            settingsService: context.settingsService,
+            message,
+            companyProfile: profile,
+            tools: availableTools
+          }).catch(() => null);
 
+    const toolCallQueue = requestedToolCalls.length > 0 ? requestedToolCalls : plannedResponse?.toolCalls ?? [];
     const toolCalls: ChatToolCall[] = [];
     let createdTask: unknown | null = null;
     let createdProject: unknown | null = null;
 
-    for (const requestedToolCall of requestedToolCalls) {
+    for (const requestedToolCall of toolCallQueue) {
       if (requestedToolCall.toolName === 'chat.respond') {
         continue;
       }
@@ -98,9 +109,9 @@ export const chatRespondTool: ServerToolDefinition = {
       output: {
         reply: buildChatReply({
           profile,
-          message,
           toolCalls,
-          availableTools
+          availableTools,
+          plannedReply: plannedResponse?.reply ?? null
         }),
         toolCalls,
         task: createdTask,
@@ -196,28 +207,36 @@ function toToolCallSummary(result: ToolExecutionResult): ChatToolCall {
 
 function buildChatReply(input: {
   profile: CompanyProfile;
-  message: string;
   toolCalls: ChatToolCall[];
   availableTools: ToolDefinitionSummary[];
+  plannedReply: string | null;
 }): string {
+  if (input.toolCalls.length === 0 && input.plannedReply) {
+    return input.plannedReply;
+  }
+
+  if (input.toolCalls.length > 0) {
+    const executedSummary = input.toolCalls.map((toolCall) => toolCall.summary).join(' ');
+    if (input.plannedReply && input.plannedReply !== executedSummary) {
+      return `${input.plannedReply} ${executedSummary}`.trim();
+    }
+
+    return executedSummary;
+  }
+
   const descriptionText = input.profile.companyDescription.length > 0
     ? ` Company description: ${input.profile.companyDescription}`
     : '';
+  const suggestedTools = input.availableTools
+    .filter((tool) => tool.name === 'task.create' || tool.name === 'project.create')
+    .map((tool) => formatToolSignature(tool))
+    .join('; ');
 
-  if (input.toolCalls.length === 0) {
-    const suggestedTools = input.availableTools
-      .filter((tool) => tool.name === 'task.create' || tool.name === 'project.create')
-      .map((tool) => formatToolSignature(tool))
-      .join('; ');
+  const suggestionLine = suggestedTools.length > 0
+    ? ` When the agent decides to act, it should explicitly choose one of these tools and pass the needed parameters: ${suggestedTools}.`
+    : '';
 
-    const suggestionLine = suggestedTools.length > 0
-      ? ` When the agent decides to act, it should explicitly choose one of these tools and pass the needed parameters: ${suggestedTools}.`
-      : '';
-
-    return `I recorded your message for ${input.profile.companyName}. No tool was called automatically.${suggestionLine}${descriptionText}`;
-  }
-
-  return `${input.toolCalls.map((toolCall) => toolCall.summary).join(' ')}${descriptionText}`;
+  return `I recorded your message for ${input.profile.companyName}. No tool was called automatically.${suggestionLine}${descriptionText}`;
 }
 
 function formatToolSignature(tool: ToolDefinitionSummary): string {

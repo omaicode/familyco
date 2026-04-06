@@ -4,7 +4,7 @@ import type {
   ApprovalStatus,
   CreateApprovalRequestInput
 } from '@familyco/core';
-import { Prisma, type PrismaClient } from '../db/prisma/client';
+import { Prisma, type PrismaClient } from '../db/prisma/client.js';
 
 const APPROVAL_STATUSES: ApprovalStatus[] = ['pending', 'approved', 'rejected'];
 

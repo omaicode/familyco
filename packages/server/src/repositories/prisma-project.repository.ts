@@ -1,5 +1,5 @@
 import type { CreateProjectInput, Project, ProjectRepository } from '@familyco/core';
-import type { PrismaClient } from '../db/prisma/client';
+import type { PrismaClient } from '../db/prisma/client.js';
 
 export class PrismaProjectRepository implements ProjectRepository {
   constructor(private readonly prisma: PrismaClient) {}
