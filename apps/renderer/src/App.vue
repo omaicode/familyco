@@ -3,12 +3,14 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard, Terminal, Bot, FolderKanban, ListChecks,
-  Inbox, ShieldCheck, Settings, PanelLeftClose, PanelLeftOpen,
-  Wifi, WifiOff, Menu, X, Zap, RefreshCw, AlertTriangle,
-  CheckCircle2, XCircle
+  Inbox, ShieldCheck, Settings,
+  Wifi, WifiOff, RefreshCw, AlertTriangle,
 } from 'lucide-vue-next';
 
 import { uiRuntime, applyRuntimeTheme } from './runtime';
+import SplashScreen from './components/SplashScreen.vue';
+import AppSidebar from './components/AppSidebar.vue';
+import AppTopbar from './components/AppTopbar.vue';
 
 type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -208,114 +210,31 @@ onUnmounted(() => {
 
 <template>
   <!-- ── Splash screen ───────────────────────────────────── -->
-  <Transition name="fc-splash">
-    <div v-if="showSplash && splashVisible" class="fc-splash">
-      <div class="fc-splash-logo">
-        <Zap :size="32" />
-      </div>
-      <h2>FamilyCo</h2>
-      <p>AI-native operating system</p>
-      <div class="fc-splash-bar">
-        <div class="fc-splash-bar-fill"></div>
-      </div>
-    </div>
-  </Transition>
+  <SplashScreen :show="showSplash && splashVisible" />
 
   <!-- ── App shell ──────────────────────────────────────── -->
   <div :class="uiRuntime.layout.defaultContainerClasses.shell" style="display:flex; min-height:100vh;">
-    <!-- Mobile overlay -->
-    <div
-      v-if="mobileMenuOpen"
-      class="fc-sidebar-overlay"
-      @click="closeMobileMenu"
-    ></div>
-
-    <!-- Sidebar -->
-    <aside
-      class="fc-sidebar"
-      :class="{
-        collapsed: sidebarCollapsed,
-        'mobile-open': mobileMenuOpen,
-      }"
-    >
-      <!-- Brand -->
-      <div class="fc-brand">
-        <div class="fc-brand-logo">
-          <Zap :size="18" />
-        </div>
-        <div class="fc-brand-text">
-          <h1>FamilyCo</h1>
-          <p>AI Operating System</p>
-        </div>
-      </div>
-
-      <!-- Navigation -->
-      <nav class="fc-nav" aria-label="Main navigation">
-        <template v-for="group in navGroups" :key="group.label">
-          <span class="fc-nav-section-label">{{ group.label }}</span>
-          <div
-            v-for="section in group.items"
-            :key="section.path"
-            class="fc-nav-item-wrap"
-          >
-            <RouterLink
-              :to="section.path"
-              class="fc-nav-item"
-              active-class="fc-nav-item-active"
-              :data-tooltip="section.label"
-            >
-              <component
-                :is="navIcons[section.path]"
-                :size="18"
-                class="fc-nav-item-icon"
-              />
-              <span class="fc-nav-label">{{ section.label }}</span>
-            </RouterLink>
-            <!-- Pending approval badge on Inbox -->
-            <span
-              v-if="section.path === '/inbox' && pendingInboxCount > 0"
-              class="fc-nav-badge"
-            >{{ pendingInboxCount > 99 ? '99+' : pendingInboxCount }}</span>
-          </div>
-        </template>
-      </nav>
-
-      <!-- Footer / collapse button -->
-      <div class="fc-nav-footer">
-        <button
-          class="fc-sidebar-collapse-btn"
-          :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-          @click="toggleSidebar"
-        >
-          <component
-            :is="sidebarCollapsed ? PanelLeftOpen : PanelLeftClose"
-            :size="16"
-          />
-          <span>Collapse</span>
-        </button>
-      </div>
-    </aside>
+    <!-- Sidebar (includes mobile overlay) -->
+    <AppSidebar
+      :collapsed="sidebarCollapsed"
+      :mobile-open="mobileMenuOpen"
+      :nav-groups="navGroups"
+      :nav-icons="navIcons"
+      :pending-inbox-count="pendingInboxCount"
+      @toggle="toggleSidebar"
+      @close-mobile="closeMobileMenu"
+    />
 
     <!-- Main area -->
     <div :class="uiRuntime.layout.defaultContainerClasses.contentWrap" style="flex:1; min-width:0; display:flex; flex-direction:column;">
       <!-- Topbar -->
-      <header class="fc-topbar">
-        <div class="fc-topbar-left">
-          <button class="fc-hamburger" aria-label="Toggle menu" @click="toggleMobileMenu">
-            <component :is="mobileMenuOpen ? X : Menu" :size="18" />
-          </button>
-          <h2 class="fc-topbar-title">{{ pageTitle }}</h2>
-        </div>
-
-        <div class="fc-topbar-right">
-          <!-- Connection status -->
-          <div class="fc-connection-dot" :data-online="serverReachable">
-            <span class="fc-dot-label">{{ connectionLabel }}</span>
-          </div>
-          <!-- Avatar -->
-          <div class="fc-avatar" title="Founder">F</div>
-        </div>
-      </header>
+      <AppTopbar
+        :mobile-menu-open="mobileMenuOpen"
+        :page-title="pageTitle"
+        :server-reachable="serverReachable"
+        :connection-label="connectionLabel"
+        @toggle-mobile="toggleMobileMenu"
+      />
 
       <!-- Main content -->
       <main :class="uiRuntime.layout.defaultContainerClasses.mainContent">
