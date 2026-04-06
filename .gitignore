@@ -18,3 +18,4 @@ coverage/
 # Ignore database files
 prisma/*.db
 
+.gitnexus
