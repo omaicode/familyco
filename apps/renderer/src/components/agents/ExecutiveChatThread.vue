@@ -18,17 +18,6 @@ const emit = defineEmits<{
 
 const scrollRef = ref<HTMLDivElement | null>(null);
 const showJumpToLatest = ref(false);
-const historyStatusCopy = computed(() => {
-  if (props.isLoadingOlder) {
-    return 'Loading earlier messages…';
-  }
-
-  if (props.hasMoreHistory) {
-    return 'Scroll up to load earlier messages';
-  }
-
-  return 'You are viewing the earliest available messages';
-});
 
 let pendingRestoreFromTop = false;
 let previousScrollHeight = 0;
@@ -138,13 +127,10 @@ watch(
     </div>
 
     <div v-else ref="scrollRef" class="chat-thread-scroll" @scroll.passive="handleScroll">
-      <div class="chat-history-status" :data-loading="props.isLoadingOlder ? 'true' : 'false'">
-        <template v-if="props.isLoadingOlder">
+      <div class="chat-history-loading" :data-loading="props.isLoadingOlder ? 'true' : 'false'" v-if="props.isLoadingOlder">
+        <template>
           <LoaderCircle :size="12" class="chat-streaming-spinner" />
-          <span>{{ historyStatusCopy }}</span>
-        </template>
-        <template v-else>
-          <span>{{ historyStatusCopy }}</span>
+          <span>Loading earlier messages…</span>
         </template>
       </div>
 
@@ -237,7 +223,7 @@ watch(
   gap: 10px;
 }
 
-.chat-history-status {
+.chat-history-loading {
   position: sticky;
   top: 0;
   z-index: 1;
