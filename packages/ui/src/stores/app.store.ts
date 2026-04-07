@@ -1,6 +1,6 @@
 import { reactive } from 'vue';
 
-import type { SupportedLocale } from '../i18n/familyco-i18n.js';
+import type { SupportedLocale } from '../i18n/index.js';
 import type { AppRoutePath } from '../navigation/app-sections.js';
 import {
   familyCoUITheme,
