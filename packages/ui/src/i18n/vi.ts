@@ -57,7 +57,7 @@ export default {
   'No tasks recorded yet.': 'Chưa có công việc nào được ghi nhận.',
   'Governance events': 'Sự kiện kiểm soát',
   'Audit log': 'Nhật ký kiểm tra',
-  'Talk to your L0 agent over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.': 'Trao đổi với tác tử L0 qua luồng socket trực tiếp. Tác tử có thể phản hồi ngay và gọi công cụ khi bạn thực sự cần tạo task hoặc dự án.',
+  'Talk to your agents over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.': 'Trao đổi với các Agent của bạn qua luồng socket trực tiếp. Các Agent có thể phản hồi ngay và gọi công cụ khi bạn thực sự cần tạo task hoặc dự án.',
   'Primary interaction lane': 'Kênh tương tác chính',
   'Socket {{label}}': 'Socket {{label}}',
   'Socket status': 'Socket {{label}}',

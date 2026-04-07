@@ -19,7 +19,7 @@ export const uiRoutes: UIRouteDefinition[] = appNavigationSections.map((section)
     '/chat': {
       path: '/chat',
       pageId: 'chat',
-      pageTitle: 'Executive Chat',
+      pageTitle: 'Chat',
       minRequiredLevel: 'L0'
     },
     '/agents': {

@@ -3,13 +3,13 @@ import { createRouter, createWebHashHistory } from 'vue-router';
 import AgentsPage from './views/AgentsPage.vue';
 import AuditPage from './views/AuditPage.vue';
 import DashboardPage from './views/DashboardPage.vue';
-import ExecutiveChatPage from './views/ExecutiveChatPage.vue';
 import InboxPage from './views/InboxPage.vue';
 import OnboardingPage from './views/OnboardingPage.vue';
 import ProjectsPage from './views/ProjectsPage.vue';
 import SettingsPage from './views/SettingsPage.vue';
 import TasksPage from './views/TasksPage.vue';
 import { uiRuntime } from './runtime';
+import ChatPage from './views/ChatPage.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -31,8 +31,8 @@ export const router = createRouter({
     },
     {
       path: '/chat',
-      component: ExecutiveChatPage,
-      meta: { title: 'Executive Chat' }
+      component: ChatPage,
+      meta: { title: 'Chat' }
     },
     {
       path: '/agents',

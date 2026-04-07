@@ -38,8 +38,8 @@ const {
   <section>
     <div class="fc-page-header">
       <div>
-        <h3>{{ t('Executive Chat') }}</h3>
-        <p>{{ t('Talk to your L0 agent over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.') }}</p>
+        <h3>{{ t('Chat') }}</h3>
+        <p>{{ t('Talk to your agents over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.') }}</p>
       </div>
       <div class="fc-inline-actions">
         <FcButton variant="secondary" :disabled="isRefreshing" @click="reload">

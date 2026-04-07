@@ -58,7 +58,7 @@ export default {
   'No tasks recorded yet.': 'No tasks recorded yet.',
   'Governance events': 'Governance events',
   'Audit log': 'Audit log',
-  'Talk to your L0 agent over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.': 'Talk to your L0 agent over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.',
+  'Talk to your agents over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.': 'Talk to your L0 agent over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.',
   'Primary interaction lane': 'Primary interaction lane',
   'Socket {{label}}': 'Socket {{label}}',
   'Socket status': 'Socket {{label}}',
