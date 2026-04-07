@@ -128,7 +128,7 @@ body {
 .fc-topbar {
   display: flex; justify-content: space-between; align-items: center;
   position: sticky; top: 0;
-  padding: 22px 24px;
+  padding: 23px 24px;
   border-bottom: 1px solid var(--fc-border-subtle);
   background: color-mix(in srgb, var(--fc-surface) 88%, transparent);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
