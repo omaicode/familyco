@@ -582,6 +582,7 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
   border-radius: 10px;
   padding: 12px 14px;
   background: color-mix(in srgb, var(--fc-surface-muted) 35%, var(--fc-surface));
+  margin-top: 12px;
 }
 
 .task-comment-textarea {
