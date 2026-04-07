@@ -3,6 +3,7 @@ import type { TaskListItem } from '@familyco/ui';
 import {
   ArrowRight,
   CheckCircle2,
+  Eye,
   Flag,
   GripVertical,
   PauseCircle,
@@ -14,6 +15,7 @@ import MarkdownPreview from '../MarkdownPreview.vue';
 import FcBadge from '../FcBadge.vue';
 import FcButton from '../FcButton.vue';
 import FcSelect from '../FcSelect.vue';
+import { useI18n } from '../../composables/useI18n';
 
 const props = withDefaults(defineProps<{
   task: TaskListItem;
@@ -38,9 +40,12 @@ const emit = defineEmits<{
   toggleSelect: [taskId: string];
   move: [task: TaskListItem, status: TaskListItem['status']];
   changePriority: [task: TaskListItem, priority: TaskListItem['priority']];
+  view: [taskId: string];
   dragstart: [task: TaskListItem, event: DragEvent];
   dragend: [];
 }>();
+
+const { t } = useI18n();
 
 const getActionIcon = (status: TaskListItem['status']) => {
   if (status === 'done') return CheckCircle2;
@@ -127,10 +132,21 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
       </FcSelect>
     </div>
 
+    <div v-if="props.kanbanCompact" class="task-compact-actions">
+      <FcButton variant="ghost" size="sm" :disabled="props.busy" @click.stop="emit('view', props.task.id)">
+        <Eye :size="12" />
+        {{ t('Details') }}
+      </FcButton>
+    </div>
+
     <div v-if="!props.kanbanCompact" class="task-card-footer">
       <FcBadge :status="props.task.status">{{ props.formatStatus(props.task.status) }}</FcBadge>
 
       <div class="task-actions">
+        <FcButton variant="ghost" size="sm" :disabled="props.busy" @click.stop="emit('view', props.task.id)">
+          <Eye :size="12" />
+          {{ t('Details') }}
+        </FcButton>
         <FcButton
           v-for="nextStatus in props.compactActions ? props.transitions.slice(0, 2) : props.transitions"
           :key="`${props.task.id}-${nextStatus}`"
@@ -247,6 +263,11 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+}
+
+.task-compact-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .task-drag-hint {

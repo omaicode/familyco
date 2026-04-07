@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { BulkUpdateTasksPayload, TaskListItem } from '@familyco/ui';
+import type {
+  BulkUpdateTasksPayload,
+  CreateTaskCommentPayload,
+  TaskCommentItem,
+  TaskListItem,
+  UpdateTaskPayload
+} from '@familyco/ui';
 import { computed, reactive, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
@@ -23,6 +29,7 @@ import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import TaskBulkActionsBar from '../components/tasks/TaskBulkActionsBar.vue';
+import TaskDetailModal from '../components/tasks/TaskDetailModal.vue';
 import TaskFiltersModal from '../components/tasks/TaskFiltersModal.vue';
 import TaskKanbanColumn from '../components/tasks/TaskKanbanColumn.vue';
 import TaskListTable from '../components/tasks/TaskListTable.vue';
@@ -33,6 +40,7 @@ type TaskPriority = TaskListItem['priority'];
 type StatusFilter = 'all' | TaskStatus;
 type PriorityFilter = 'all' | TaskPriority;
 type ViewMode = 'kanban' | 'list';
+type TaskModalMode = 'view' | 'edit' | 'delete';
 
 interface FilterState {
   status: StatusFilter;
@@ -81,6 +89,13 @@ const feedback = ref<{ type: 'success' | 'error' | 'info'; text: string } | null
 const busyMap = ref<Record<string, boolean>>({});
 const bulkStatus = ref<TaskStatus>('in_progress');
 const bulkPriority = ref<TaskPriority>('high');
+const taskModalOpen = ref(false);
+const taskModalMode = ref<TaskModalMode>('view');
+const selectedTaskId = ref<string | null>(null);
+const isTaskMutating = ref(false);
+const commentsLoading = ref(false);
+const commentSubmitting = ref(false);
+const taskComments = ref<TaskCommentItem[]>([]);
 
 const filters = reactive<FilterState>({
   status: 'all',
@@ -116,6 +131,17 @@ const assigneeOptions = computed(() => taskState.value.data.agents.filter((agent
 const creatorOptions = computed(() =>
   taskState.value.data.agents.filter((agent) => agent.status !== 'terminated' && agent.level !== 'L2')
 );
+
+const commentAuthorOptions = computed(() => [
+  { id: 'founder', label: t('Founder (Human)'), type: 'human' as const },
+  ...taskState.value.data.agents
+    .filter((agent) => agent.status !== 'terminated')
+    .map((agent) => ({
+      id: agent.id,
+      label: `${agent.name} · ${agent.role}`,
+      type: 'agent' as const
+    }))
+]);
 
 const getProjectName = (projectId: string): string =>
   taskState.value.data.projects.find((project) => project.id === projectId)?.name ?? projectId;
@@ -304,6 +330,14 @@ const taskGroups = computed(() =>
     tasks: kanbanTasks.value.filter((task) => task.status === column.key)
   }))
 );
+
+const selectedTask = computed(() => {
+  if (!selectedTaskId.value) {
+    return null;
+  }
+
+  return taskState.value.data.tasks.find((task) => task.id === selectedTaskId.value) ?? null;
+});
 
 const isTaskSelectable = (task: TaskListItem): boolean => task.status !== 'cancelled';
 
@@ -509,6 +543,94 @@ const handleDropOnColumn = async (targetStatus: TaskStatus): Promise<void> => {
   await moveTask(task, targetStatus);
 };
 
+const loadTaskComments = async (taskId: string): Promise<void> => {
+  commentsLoading.value = true;
+
+  try {
+    taskComments.value = await uiRuntime.stores.tasks.listTaskComments(taskId);
+  } catch (error) {
+    taskComments.value = [];
+    setFeedback('error', error instanceof Error ? error.message : t('Failed to load task comments'));
+  } finally {
+    commentsLoading.value = false;
+  }
+};
+
+const openTaskModal = async (taskId: string, mode: TaskModalMode = 'view'): Promise<void> => {
+  selectedTaskId.value = taskId;
+  taskModalMode.value = mode;
+  taskModalOpen.value = true;
+  await loadTaskComments(taskId);
+};
+
+const closeTaskModal = (): void => {
+  taskModalOpen.value = false;
+  taskModalMode.value = 'view';
+};
+
+const saveTaskChanges = async (payload: UpdateTaskPayload): Promise<void> => {
+  isTaskMutating.value = true;
+
+  try {
+    const result = await uiRuntime.stores.tasks.updateTask(payload);
+
+    if ('approvalRequired' in result) {
+      setFeedback('info', `${t('Task update queued for approval')}${result.reason ? ` — ${result.reason}` : ''}.`);
+      closeTaskModal();
+      return;
+    }
+
+    selectedTaskId.value = result.id;
+    taskModalMode.value = 'view';
+    setFeedback('success', t('Task updated successfully.'));
+    await loadTaskComments(result.id);
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : t('Failed to update task'));
+  } finally {
+    isTaskMutating.value = false;
+  }
+};
+
+const removeTask = async (taskId: string): Promise<void> => {
+  isTaskMutating.value = true;
+
+  try {
+    const result = await uiRuntime.stores.tasks.deleteTask({ taskId });
+
+    if ('approvalRequired' in result) {
+      setFeedback('info', `${t('Task deletion queued for approval')}${result.reason ? ` — ${result.reason}` : ''}.`);
+      closeTaskModal();
+      return;
+    }
+
+    selectedTaskIds.value = selectedTaskIds.value.filter((id) => id !== taskId);
+    if (selectedTaskId.value === taskId) {
+      selectedTaskId.value = null;
+    }
+
+    closeTaskModal();
+    setFeedback('success', t('Task deleted successfully.'));
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : t('Failed to delete task'));
+  } finally {
+    isTaskMutating.value = false;
+  }
+};
+
+const addTaskComment = async (payload: CreateTaskCommentPayload): Promise<void> => {
+  commentSubmitting.value = true;
+
+  try {
+    const comment = await uiRuntime.stores.tasks.createTaskComment(payload);
+    taskComments.value = [...taskComments.value, comment];
+    setFeedback('success', t('Comment posted.'));
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : t('Failed to post comment'));
+  } finally {
+    commentSubmitting.value = false;
+  }
+};
+
 useAutoReload(reload);
 </script>
 
@@ -574,6 +696,30 @@ useAutoReload(reload);
       @close="filterModalOpen = false"
       @reset="resetFilters"
       @apply="applyFilters"
+    />
+
+    <TaskDetailModal
+      :open="taskModalOpen"
+      :mode="taskModalMode"
+      :task="selectedTask"
+      :comments="taskComments"
+      :project-options="projectOptions"
+      :assignee-options="assigneeOptions"
+      :creator-options="creatorOptions"
+      :comment-author-options="commentAuthorOptions"
+      :busy="isTaskMutating"
+      :comments-loading="commentsLoading"
+      :comment-submitting="commentSubmitting"
+      :format-relative="formatRelative"
+      :get-project-name="getProjectName"
+      :get-agent-name="getAgentName"
+      :format-priority="formatPriority"
+      :format-status="formatStatus"
+      @close="closeTaskModal"
+      @change-mode="taskModalMode = $event"
+      @save="saveTaskChanges"
+      @remove="removeTask"
+      @comment="addTaskComment"
     />
 
     <div v-if="activeFilterLabels.length > 0" class="task-active-filters">
@@ -761,6 +907,7 @@ useAutoReload(reload);
             @toggle-select="toggleTaskSelection"
             @move="moveTask"
             @change-priority="changePriority"
+            @view="openTaskModal($event, 'view')"
             @dragstart="onDragTask"
             @dragend="onDragEnd"
             @drop-task="handleDropOnColumn"
@@ -790,6 +937,7 @@ useAutoReload(reload);
           @toggle-select-all="toggleSelectAllVisible"
           @toggle-select="toggleTaskSelection"
           @move="moveTask"
+          @view="openTaskModal($event, 'view')"
         />
       </FcCard>
     </div>

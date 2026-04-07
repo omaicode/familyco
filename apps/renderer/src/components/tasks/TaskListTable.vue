@@ -3,6 +3,7 @@ import type { TaskListItem } from '@familyco/ui';
 
 import FcBadge from '../FcBadge.vue';
 import FcButton from '../FcButton.vue';
+import { useI18n } from '../../composables/useI18n';
 
 defineProps<{
   tasks: TaskListItem[];
@@ -21,7 +22,10 @@ const emit = defineEmits<{
   toggleSelectAll: [];
   toggleSelect: [taskId: string];
   move: [task: TaskListItem, status: TaskListItem['status']];
+  view: [taskId: string];
 }>();
+
+const { t } = useI18n();
 
 const formatTaskCode = (task: TaskListItem): string => `TASK-${task.id.slice(0, 8).toUpperCase()}`;
 
@@ -33,7 +37,7 @@ const summarizeDescription = (value: string): string => {
 const formatDateTime = (iso: string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return 'Unknown time';
+    return t('Unknown time');
   }
 
   return new Intl.DateTimeFormat(undefined, {
@@ -107,7 +111,10 @@ const formatDateTime = (iso: string): string => {
             <span>{{ formatDateTime(task.createdAt) }}</span>
           </td>
           <td>
-            <div v-if="allowedTransitions[task.status].length > 0" class="task-row-actions">
+            <div class="task-row-actions">
+              <FcButton variant="ghost" size="sm" @click="emit('view', task.id)">
+                {{ t('Details') }}
+              </FcButton>
               <FcButton
                 v-for="nextStatus in allowedTransitions[task.status].slice(0, 2)"
                 :key="`${task.id}-${nextStatus}`"
@@ -119,7 +126,6 @@ const formatDateTime = (iso: string): string => {
                 {{ formatStatus(nextStatus) }}
               </FcButton>
             </div>
-            <span v-else class="task-table-empty">—</span>
           </td>
         </tr>
       </tbody>

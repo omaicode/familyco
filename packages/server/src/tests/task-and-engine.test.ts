@@ -253,6 +253,155 @@ test('POST /api/v1/tasks/bulk updates priority and status for multiple tasks', a
   await app.close();
 });
 
+test('PATCH /api/v1/tasks, task comments, and DELETE /api/v1/tasks/:id support task detail workflows', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Workflow Lead',
+      role: 'Operations',
+      level: 'L0',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const agent = createAgentResponse.json() as { id: string };
+
+  const createProjectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Task Detail Project',
+      description: 'Project for task detail workflows',
+      ownerAgentId: agent.id
+    }
+  });
+
+  assert.equal(createProjectResponse.statusCode, 201);
+  const project = createProjectResponse.json() as { id: string };
+
+  const createTaskResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Review onboarding queue',
+      description: 'Prepare the founder-ready summary for the next check-in',
+      projectId: project.id,
+      assigneeAgentId: agent.id,
+      createdBy: agent.id,
+      priority: 'medium'
+    }
+  });
+
+  assert.equal(createTaskResponse.statusCode, 201);
+  const task = createTaskResponse.json() as { id: string };
+
+  const updateTaskResponse = await app.inject({
+    method: 'PATCH',
+    url: `/api/v1/tasks/${task.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Review executive onboarding queue',
+      description: 'Summarize blockers, owners, and next actions for the founder sync',
+      projectId: project.id,
+      assigneeAgentId: agent.id,
+      createdBy: agent.id,
+      priority: 'high'
+    }
+  });
+
+  assert.equal(updateTaskResponse.statusCode, 200);
+  const updatedTask = updateTaskResponse.json() as { title: string; priority: string; description: string };
+  assert.equal(updatedTask.title, 'Review executive onboarding queue');
+  assert.equal(updatedTask.priority, 'high');
+  assert.match(updatedTask.description, /founder sync/);
+
+  const humanCommentResponse = await app.inject({
+    method: 'POST',
+    url: `/api/v1/tasks/${task.id}/comments`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      body: 'Founder note: keep the update concise and decision-ready.',
+      authorType: 'human',
+      authorId: 'founder',
+      authorLabel: 'Founder'
+    }
+  });
+
+  assert.equal(humanCommentResponse.statusCode, 201);
+
+  const agentCommentResponse = await app.inject({
+    method: 'POST',
+    url: `/api/v1/tasks/${task.id}/comments`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      body: 'Ops agent: I will attach the latest blockers in the next run.',
+      authorType: 'agent',
+      authorId: agent.id,
+      authorLabel: 'Workflow Lead'
+    }
+  });
+
+  assert.equal(agentCommentResponse.statusCode, 201);
+
+  const listCommentsResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/tasks/${task.id}/comments`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(listCommentsResponse.statusCode, 200);
+  const comments = listCommentsResponse.json() as Array<{ body: string; authorType: string; authorLabel: string }>;
+  assert.equal(comments.length, 2);
+  assert.equal(comments[0]?.authorType, 'human');
+  assert.equal(comments[1]?.authorType, 'agent');
+  assert.equal(comments[1]?.authorLabel, 'Workflow Lead');
+
+  const deleteTaskResponse = await app.inject({
+    method: 'DELETE',
+    url: `/api/v1/tasks/${task.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(deleteTaskResponse.statusCode, 200);
+  assert.equal((deleteTaskResponse.json() as { id: string }).id, task.id);
+
+  const remainingTasksResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(remainingTasksResponse.statusCode, 200);
+  assert.equal((remainingTasksResponse.json() as Array<{ id: string }>).length, 0);
+
+  await app.close();
+});
+
 test('PATCH /api/v1/projects and DELETE /api/v1/projects/:id update briefs and protect non-empty projects', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 

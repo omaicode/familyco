@@ -2,6 +2,7 @@ import {
   ApprovalGuard,
   type AgentService,
   type ApprovalService,
+  type AuditRecord,
   type AuditService,
   type ProjectService,
   type SettingsService,
@@ -14,8 +15,11 @@ import { ensureApproval } from '../shared/approval-flow.js';
 import { resolveDefaultProjectId, resolveExecutiveAgentId } from '../shared/defaults.js';
 import {
   bulkUpdateTasksSchema,
+  createTaskCommentBodySchema,
   createTaskSchema,
   listTasksQuerySchema,
+  taskIdParamsSchema,
+  updateTaskBodySchema,
   updateTaskPriorityBodySchema,
   updateTaskPriorityParamsSchema,
   updateTaskStatusBodySchema,
@@ -113,6 +117,122 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
 
     reply.code(201);
     return task;
+  });
+
+  app.patch('/tasks/:id', async (request, reply) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = taskIdParamsSchema.parse(request.params);
+    const body = updateTaskBodySchema.parse(request.body);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'task.update',
+      targetId: id,
+      payload: body
+    });
+
+    if (!approval.allowed) {
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
+
+    const updatedTask = await deps.taskService.updateTask(id, body);
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? body.createdBy,
+      action: 'task.update',
+      targetId: updatedTask.id,
+      payload: {
+        title: updatedTask.title,
+        projectId: updatedTask.projectId,
+        priority: updatedTask.priority,
+        assigneeAgentId: updatedTask.assigneeAgentId
+      }
+    });
+
+    return updatedTask;
+  });
+
+  app.get('/tasks/:id/comments', async (request) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = taskIdParamsSchema.parse(request.params);
+    await deps.taskService.getTask(id);
+
+    const records = await deps.auditService.list({
+      action: 'task.comment.added',
+      targetId: id,
+      limit: 100
+    });
+
+    return records
+      .map(toTaskComment)
+      .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+  });
+
+  app.post('/tasks/:id/comments', async (request, reply) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = taskIdParamsSchema.parse(request.params);
+    const body = createTaskCommentBodySchema.parse(request.body);
+    await deps.taskService.getTask(id);
+
+    const comment = await deps.auditService.write({
+      actorId: body.authorId,
+      action: 'task.comment.added',
+      targetId: id,
+      payload: {
+        body: body.body,
+        authorType: body.authorType,
+        authorLabel: body.authorLabel ?? body.authorId
+      }
+    });
+
+    reply.code(201);
+    return toTaskComment(comment);
+  });
+
+  app.delete('/tasks/:id', async (request, reply) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = taskIdParamsSchema.parse(request.params);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'task.delete',
+      targetId: id,
+      payload: {
+        taskId: id
+      }
+    });
+
+    if (!approval.allowed) {
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
+
+    const deletedTask = await deps.taskService.deleteTask(id);
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'task.delete',
+      targetId: deletedTask.id,
+      payload: {
+        projectId: deletedTask.projectId,
+        title: deletedTask.title
+      }
+    });
+
+    return {
+      id: deletedTask.id
+    };
   });
 
   app.post('/tasks/bulk', async (request, reply) => {
@@ -223,4 +343,23 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
 
     return updatedTask;
   });
+}
+
+function toTaskComment(record: AuditRecord) {
+  const payload = record.payload ?? {};
+  const body = typeof payload.body === 'string' ? payload.body : '';
+  const authorType = payload.authorType === 'agent' ? 'agent' : 'human';
+  const authorLabel = typeof payload.authorLabel === 'string' && payload.authorLabel.length > 0
+    ? payload.authorLabel
+    : record.actorId;
+
+  return {
+    id: record.id,
+    taskId: record.targetId ?? '',
+    body,
+    authorId: record.actorId,
+    authorType,
+    authorLabel,
+    createdAt: record.createdAt.toISOString()
+  };
 }

@@ -2,14 +2,20 @@ import type {
   AgentListItem,
   BulkUpdateTasksPayload,
   BulkUpdateTasksResult,
+  CreateTaskCommentPayload,
   CreateTaskPayload,
   CreateTaskResult,
+  DeleteTaskPayload,
+  DeleteTaskResult,
   FamilyCoApiContracts,
   ListTasksQuery,
   ProjectListItem,
+  TaskCommentItem,
   TaskListItem,
+  UpdateTaskPayload,
   UpdateTaskPriorityPayload,
   UpdateTaskPriorityResult,
+  UpdateTaskResult,
   UpdateTaskStatusPayload,
   UpdateTaskStatusResult
 } from '../api/contracts.js';
@@ -74,6 +80,17 @@ export class TaskStore {
     return result;
   }
 
+  async updateTask(payload: UpdateTaskPayload): Promise<UpdateTaskResult> {
+    const result = await this.api.updateTask(payload);
+
+    if ('approvalRequired' in result) {
+      return result;
+    }
+
+    await this.refresh();
+    return result;
+  }
+
   async updateTaskStatus(payload: UpdateTaskStatusPayload): Promise<UpdateTaskStatusResult> {
     const result = await this.api.updateTaskStatus(payload);
 
@@ -105,6 +122,25 @@ export class TaskStore {
     }
 
     return result;
+  }
+
+  async deleteTask(payload: DeleteTaskPayload): Promise<DeleteTaskResult> {
+    const result = await this.api.deleteTask(payload);
+
+    if ('approvalRequired' in result) {
+      return result;
+    }
+
+    await this.refresh();
+    return result;
+  }
+
+  listTaskComments(taskId: string): Promise<TaskCommentItem[]> {
+    return this.api.listTaskComments(taskId);
+  }
+
+  createTaskComment(payload: CreateTaskCommentPayload): Promise<TaskCommentItem> {
+    return this.api.createTaskComment(payload);
   }
 }
 

@@ -4,7 +4,8 @@ import type {
   Task,
   TaskPriority,
   TaskRepository,
-  TaskStatus
+  TaskStatus,
+  UpdateTaskInput
 } from '@familyco/core';
 import type { PrismaClient } from '../db/prisma/client.js';
 
@@ -73,6 +74,22 @@ export class PrismaTaskRepository implements TaskRepository {
     return this.list({ projectId });
   }
 
+  async update(id: string, input: UpdateTaskInput): Promise<Task> {
+    const task = await this.prisma.task.update({
+      where: { id },
+      data: {
+        title: input.title,
+        description: input.description,
+        projectId: input.projectId,
+        assigneeAgentId: input.assigneeAgentId ?? null,
+        createdBy: input.createdBy,
+        priority: input.priority
+      } as never
+    });
+
+    return toTask(task as unknown as Parameters<typeof toTask>[0]);
+  }
+
   async updateStatus(id: string, status: TaskStatus): Promise<Task> {
     const task = await this.prisma.task.update({
       where: { id },
@@ -90,6 +107,14 @@ export class PrismaTaskRepository implements TaskRepository {
       data: {
         priority
       } as never
+    });
+
+    return toTask(task as unknown as Parameters<typeof toTask>[0]);
+  }
+
+  async delete(id: string): Promise<Task> {
+    const task = await this.prisma.task.delete({
+      where: { id }
     });
 
     return toTask(task as unknown as Parameters<typeof toTask>[0]);

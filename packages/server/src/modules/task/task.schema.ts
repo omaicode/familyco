@@ -3,15 +3,35 @@ import { z } from 'zod';
 const taskStatusSchema = z.enum(['pending', 'in_progress', 'review', 'done', 'blocked', 'cancelled']);
 const taskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 
+export const taskIdParamsSchema = z.object({
+  id: z.string().min(1)
+});
+
 export const createTaskSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().min(1),
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1),
   projectId: z.string().min(1).optional(),
   assigneeAgentId: z.string().min(1).nullable().optional(),
   assignedToId: z.string().min(1).nullable().optional(),
   createdBy: z.string().min(1).optional(),
   priority: taskPrioritySchema.optional(),
   dueAt: z.string().min(1).optional()
+});
+
+export const updateTaskBodySchema = z.object({
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  projectId: z.string().min(1),
+  assigneeAgentId: z.string().min(1).nullable().optional(),
+  createdBy: z.string().min(1),
+  priority: taskPrioritySchema
+});
+
+export const createTaskCommentBodySchema = z.object({
+  body: z.string().trim().min(1),
+  authorType: z.enum(['agent', 'human']),
+  authorId: z.string().min(1),
+  authorLabel: z.string().trim().min(1).optional()
 });
 
 export const listTasksQuerySchema = z.object({
@@ -22,17 +42,13 @@ export const listTasksQuerySchema = z.object({
   q: z.string().min(1).optional()
 });
 
-export const updateTaskStatusParamsSchema = z.object({
-  id: z.string().min(1)
-});
+export const updateTaskStatusParamsSchema = taskIdParamsSchema;
 
 export const updateTaskStatusBodySchema = z.object({
   status: taskStatusSchema
 });
 
-export const updateTaskPriorityParamsSchema = z.object({
-  id: z.string().min(1)
-});
+export const updateTaskPriorityParamsSchema = taskIdParamsSchema;
 
 export const updateTaskPriorityBodySchema = z.object({
   priority: taskPrioritySchema

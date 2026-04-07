@@ -6,7 +6,8 @@ import type {
   Task,
   TaskPriority,
   TaskRepository,
-  TaskStatus
+  TaskStatus,
+  UpdateTaskInput
 } from '@familyco/core';
 
 export class InMemoryTaskRepository implements TaskRepository {
@@ -70,6 +71,27 @@ export class InMemoryTaskRepository implements TaskRepository {
     return this.list({ projectId });
   }
 
+  async update(id: string, input: UpdateTaskInput): Promise<Task> {
+    const task = this.tasks.get(id);
+    if (!task) {
+      throw new Error(`TASK_NOT_FOUND:${id}`);
+    }
+
+    const updatedTask: Task = {
+      ...task,
+      title: input.title,
+      description: input.description,
+      projectId: input.projectId,
+      assigneeAgentId: input.assigneeAgentId ?? null,
+      createdBy: input.createdBy,
+      priority: input.priority,
+      updatedAt: new Date()
+    };
+
+    this.tasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
   async updateStatus(id: string, status: TaskStatus): Promise<Task> {
     const task = this.tasks.get(id);
     if (!task) {
@@ -100,5 +122,15 @@ export class InMemoryTaskRepository implements TaskRepository {
 
     this.tasks.set(id, updatedTask);
     return updatedTask;
+  }
+
+  async delete(id: string): Promise<Task> {
+    const task = this.tasks.get(id);
+    if (!task) {
+      throw new Error(`TASK_NOT_FOUND:${id}`);
+    }
+
+    this.tasks.delete(id);
+    return task;
   }
 }

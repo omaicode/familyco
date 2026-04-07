@@ -4,7 +4,8 @@ import type {
   ListTasksInput,
   Task,
   TaskPriority,
-  TaskStatus
+  TaskStatus,
+  UpdateTaskInput
 } from './task.entity.js';
 import type { TaskRepository } from './task.repository.js';
 import type { EventBus } from '../events/event-bus.js';
@@ -46,11 +47,48 @@ export class TaskService {
     return this.listTasks({ projectId });
   }
 
-  async updateTaskStatus(taskId: string, status: TaskStatus): Promise<Task> {
-    const currentTask = await this.repository.findById(taskId);
-    if (!currentTask) {
+  async getTask(taskId: string): Promise<Task> {
+    const task = await this.repository.findById(taskId);
+    if (!task) {
       throw new Error(`TASK_NOT_FOUND:${taskId}`);
     }
+
+    return task;
+  }
+
+  async updateTask(taskId: string, input: UpdateTaskInput): Promise<Task> {
+    await this.getTask(taskId);
+
+    const title = input.title.trim();
+    const description = input.description.trim();
+
+    if (!title) {
+      throw new Error('TASK_TITLE_REQUIRED');
+    }
+
+    if (!description) {
+      throw new Error('TASK_DESCRIPTION_REQUIRED');
+    }
+
+    const updatedTask = await this.repository.update(taskId, {
+      title,
+      description,
+      projectId: input.projectId,
+      assigneeAgentId: input.assigneeAgentId ?? null,
+      createdBy: input.createdBy,
+      priority: input.priority
+    });
+
+    this.eventBus?.emit('task.updated', {
+      taskId: updatedTask.id,
+      projectId: updatedTask.projectId
+    });
+
+    return updatedTask;
+  }
+
+  async updateTaskStatus(taskId: string, status: TaskStatus): Promise<Task> {
+    const currentTask = await this.getTask(taskId);
 
     const allowedStatuses = ALLOWED_TRANSITIONS[currentTask.status];
     if (!allowedStatuses.includes(status)) {
@@ -67,10 +105,7 @@ export class TaskService {
   }
 
   async updateTaskPriority(taskId: string, priority: TaskPriority): Promise<Task> {
-    const currentTask = await this.repository.findById(taskId);
-    if (!currentTask) {
-      throw new Error(`TASK_NOT_FOUND:${taskId}`);
-    }
+    await this.getTask(taskId);
 
     const updatedTask = await this.repository.updatePriority(taskId, priority);
     this.eventBus?.emit('task.priority.updated', {
@@ -79,6 +114,18 @@ export class TaskService {
     });
 
     return updatedTask;
+  }
+
+  async deleteTask(taskId: string): Promise<Task> {
+    await this.getTask(taskId);
+    const deletedTask = await this.repository.delete(taskId);
+
+    this.eventBus?.emit('task.deleted', {
+      taskId: deletedTask.id,
+      projectId: deletedTask.projectId
+    });
+
+    return deletedTask;
   }
 
   async bulkUpdateTasks(input: BulkUpdateTasksInput): Promise<Task[]> {

@@ -181,10 +181,48 @@ export interface TaskApprovalResponse {
   reason?: string;
 }
 
+export interface UpdateTaskPayload {
+  taskId: string;
+  title: string;
+  description: string;
+  projectId: string;
+  assigneeAgentId?: string | null;
+  createdBy: string;
+  priority: TaskListItem['priority'];
+}
+
+export interface DeleteTaskPayload {
+  taskId: string;
+}
+
+export interface DeleteTaskSuccessResponse {
+  id: string;
+}
+
+export interface TaskCommentItem {
+  id: string;
+  taskId: string;
+  body: string;
+  authorId: string;
+  authorType: 'agent' | 'human';
+  authorLabel: string;
+  createdAt: string;
+}
+
+export interface CreateTaskCommentPayload {
+  taskId: string;
+  body: string;
+  authorId: string;
+  authorType: TaskCommentItem['authorType'];
+  authorLabel?: string;
+}
+
 export type CreateTaskResult = TaskListItem | TaskApprovalResponse;
+export type UpdateTaskResult = TaskListItem | TaskApprovalResponse;
 export type UpdateTaskStatusResult = TaskListItem | TaskApprovalResponse;
 export type UpdateTaskPriorityResult = TaskListItem | TaskApprovalResponse;
 export type BulkUpdateTasksResult = TaskListItem[] | TaskApprovalResponse;
+export type DeleteTaskResult = DeleteTaskSuccessResponse | TaskApprovalResponse;
 
 export interface ListTasksQuery {
   projectId?: string;
@@ -300,9 +338,13 @@ export interface FamilyCoApiContracts {
   deleteProject: (payload: DeleteProjectPayload) => Promise<DeleteProjectResult>;
   listTasks: (query?: ListTasksQuery) => Promise<TaskListItem[]>;
   createTask: (payload: CreateTaskPayload) => Promise<CreateTaskResult>;
+  updateTask: (payload: UpdateTaskPayload) => Promise<UpdateTaskResult>;
   updateTaskStatus: (payload: UpdateTaskStatusPayload) => Promise<UpdateTaskStatusResult>;
   updateTaskPriority: (payload: UpdateTaskPriorityPayload) => Promise<UpdateTaskPriorityResult>;
   bulkUpdateTasks: (payload: BulkUpdateTasksPayload) => Promise<BulkUpdateTasksResult>;
+  deleteTask: (payload: DeleteTaskPayload) => Promise<DeleteTaskResult>;
+  listTaskComments: (taskId: string) => Promise<TaskCommentItem[]>;
+  createTaskComment: (payload: CreateTaskCommentPayload) => Promise<TaskCommentItem>;
   listApprovals: () => Promise<ApprovalListItem[]>;
   decideApproval: (payload: DecideApprovalPayload) => Promise<ApprovalListItem>;
   listInbox: (recipientId: string) => Promise<InboxMessageItem[]>;
@@ -385,6 +427,15 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     return client.get<TaskListItem[]>(suffix ? `/api/v1/tasks?${suffix}` : '/api/v1/tasks');
   },
   createTask: (payload) => client.post<CreateTaskResult, CreateTaskPayload>('/api/v1/tasks', payload),
+  updateTask: (payload) =>
+    client.patch<UpdateTaskResult, Omit<UpdateTaskPayload, 'taskId'>>(`/api/v1/tasks/${payload.taskId}`, {
+      title: payload.title,
+      description: payload.description,
+      projectId: payload.projectId,
+      assigneeAgentId: payload.assigneeAgentId ?? null,
+      createdBy: payload.createdBy,
+      priority: payload.priority
+    }),
   updateTaskStatus: (payload) =>
     client.post<UpdateTaskStatusResult, Omit<UpdateTaskStatusPayload, 'taskId'>>(
       `/api/v1/tasks/${payload.taskId}/status`,
@@ -400,6 +451,15 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
       }
     ),
   bulkUpdateTasks: (payload) => client.post<BulkUpdateTasksResult, BulkUpdateTasksPayload>('/api/v1/tasks/bulk', payload),
+  deleteTask: (payload) => client.delete<DeleteTaskResult>(`/api/v1/tasks/${payload.taskId}`),
+  listTaskComments: (taskId) => client.get<TaskCommentItem[]>(`/api/v1/tasks/${taskId}/comments`),
+  createTaskComment: (payload) =>
+    client.post<TaskCommentItem, Omit<CreateTaskCommentPayload, 'taskId'>>(`/api/v1/tasks/${payload.taskId}/comments`, {
+      body: payload.body,
+      authorId: payload.authorId,
+      authorType: payload.authorType,
+      authorLabel: payload.authorLabel
+    }),
   listApprovals: () => client.get<ApprovalListItem[]>('/api/v1/approvals'),
   decideApproval: (payload) =>
     client.post<ApprovalListItem, Omit<DecideApprovalPayload, 'approvalId'>>(

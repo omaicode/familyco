@@ -138,6 +138,41 @@ test('TaskService updates priority and supports bulk status changes', async () =
   );
 });
 
+test('TaskService updates task details and deletes tasks safely', async () => {
+  const repository = new InMemoryTaskRepositoryStub();
+  const service = new TaskService(repository);
+
+  const task = await service.createTask({
+    title: 'Draft weekly review',
+    description: 'Collect the open issues for the founder sync',
+    projectId: 'project-1',
+    createdBy: 'agent-1',
+    assigneeAgentId: 'agent-1'
+  });
+
+  const updated = await service.updateTask(task.id, {
+    title: 'Run weekly review',
+    description: 'Summarize blockers and next actions for the founder sync',
+    projectId: 'project-2',
+    createdBy: 'agent-2',
+    assigneeAgentId: 'agent-2',
+    priority: 'high'
+  });
+
+  assert.equal(updated.title, 'Run weekly review');
+  assert.equal(updated.projectId, 'project-2');
+  assert.equal(updated.createdBy, 'agent-2');
+  assert.equal(updated.assigneeAgentId, 'agent-2');
+  assert.equal(updated.priority, 'high');
+
+  const deleted = await service.deleteTask(task.id);
+  assert.equal(deleted.id, task.id);
+
+  await assert.rejects(() => service.deleteTask(task.id), /TASK_NOT_FOUND/);
+  const remaining = await service.listTasks();
+  assert.equal(remaining.length, 0);
+});
+
 class InMemoryTaskRepositoryStub implements TaskRepository {
   private readonly tasks = new Map<string, Task>();
 
@@ -224,5 +259,42 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
     };
     this.tasks.set(id, updated);
     return updated;
+  }
+
+  async update(id: string, input: {
+    title: string;
+    description: string;
+    projectId: string;
+    assigneeAgentId?: string | null;
+    createdBy: string;
+    priority: TaskPriority;
+  }): Promise<Task> {
+    const existing = this.tasks.get(id);
+    if (!existing) {
+      throw new Error(`TASK_NOT_FOUND:${id}`);
+    }
+
+    const updated: Task = {
+      ...existing,
+      title: input.title,
+      description: input.description,
+      projectId: input.projectId,
+      assigneeAgentId: input.assigneeAgentId ?? null,
+      createdBy: input.createdBy,
+      priority: input.priority,
+      updatedAt: new Date('2026-01-03T12:00:00.000Z')
+    };
+    this.tasks.set(id, updated);
+    return updated;
+  }
+
+  async delete(id: string): Promise<Task> {
+    const existing = this.tasks.get(id);
+    if (!existing) {
+      throw new Error(`TASK_NOT_FOUND:${id}`);
+    }
+
+    this.tasks.delete(id);
+    return existing;
   }
 }

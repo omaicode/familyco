@@ -30,6 +30,15 @@ export interface CreateTaskInput {
   priority?: TaskPriority;
 }
 
+export interface UpdateTaskInput {
+  title: string;
+  description: string;
+  projectId: string;
+  assigneeAgentId?: string | null;
+  createdBy: string;
+  priority: TaskPriority;
+}
+
 export interface ListTasksInput {
   projectId?: string;
   status?: TaskStatus;

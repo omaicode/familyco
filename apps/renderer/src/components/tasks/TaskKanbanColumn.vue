@@ -27,6 +27,7 @@ const emit = defineEmits<{
   toggleSelect: [taskId: string];
   move: [task: TaskListItem, status: TaskListItem['status']];
   changePriority: [task: TaskListItem, priority: TaskListItem['priority']];
+  view: [taskId: string];
   dragstart: [task: TaskListItem, event: DragEvent];
   dragend: [];
   dropTask: [status: TaskListItem['status']];
@@ -82,6 +83,7 @@ const onDrop = (): void => {
       @toggle-select="(taskId) => emit('toggleSelect', taskId)"
       @move="(task, status) => emit('move', task, status)"
       @change-priority="(task, priority) => emit('changePriority', task, priority)"
+      @view="(taskId) => emit('view', taskId)"
       @dragstart="(task, event) => emit('dragstart', task, event)"
       @dragend="() => emit('dragend')"
     />
