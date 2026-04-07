@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { AgentListItem, AuditListItem, TaskListItem } from '@familyco/ui';
-import { ShieldCheck } from 'lucide-vue-next';
+import { ShieldCheck, X } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import FcCard from '../FcCard.vue';
+import FcButton from '../FcButton.vue';
 import AgentActivityTimelineSection from './AgentActivityTimelineSection.vue';
 import AgentCurrentTasksPanel from './AgentCurrentTasksPanel.vue';
 import AgentProfileEditorSection from './AgentProfileEditorSection.vue';
@@ -12,6 +12,7 @@ import AgentReadinessChecklist from './AgentReadinessChecklist.vue';
 import AgentTeamSnapshot from './AgentTeamSnapshot.vue';
 
 const props = defineProps<{
+  open: boolean;
   selectedAgent: AgentListItem | null;
   selectedManager: AgentListItem | null;
   selectedDirectReports: AgentListItem[];
@@ -49,6 +50,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (event: 'close'): void;
   (event: 'update:managerDraft', value: string): void;
   (event: 'save-manager'): void;
   (event: 'save-details'): void;
@@ -84,107 +86,179 @@ const warningMessage = computed(() => {
 </script>
 
 <template>
-  <FcCard class="ag-detail-card">
-    <template v-if="selectedAgent">
-      <div class="ag-section-head">
-        <div>
-          <h4>{{ t('Inspector') }}</h4>
-          <p>{{ t('Review the selected agent, edit profile details, and inspect current execution context.') }}</p>
+  <Transition name="fc-page">
+    <div v-if="open && selectedAgent" class="ag-modal-wrap" @click.self="emit('close')">
+      <div class="ag-modal" role="dialog" aria-modal="true" :aria-label="selectedAgent.name">
+        <div class="ag-modal-header">
+          <div>
+            <p class="ag-modal-eyebrow">{{ t('Details') }}</p>
+            <h4>{{ selectedAgent.name }}</h4>
+            <p>{{ t('Review the selected agent, edit profile details, and inspect current execution context.') }}</p>
+          </div>
+
+          <div class="ag-modal-actions">
+            <span class="ag-modal-icon">
+              <ShieldCheck :size="16" />
+            </span>
+            <FcButton
+              variant="ghost"
+              size="icon"
+              :title="t('Close')"
+              :aria-label="t('Close')"
+              @click="emit('close')"
+            >
+              <X :size="14" />
+            </FcButton>
+          </div>
         </div>
-        <ShieldCheck :size="16" class="ag-muted-icon" />
+
+        <div class="ag-modal-body">
+          <div v-if="warningMessage" class="fc-warning">
+            <p>{{ warningMessage }}</p>
+          </div>
+
+          <AgentTeamSnapshot
+            :selected-agent="selectedAgent"
+            :selected-manager="selectedManager"
+            :selected-direct-reports="selectedDirectReports"
+            :selected-path="selectedPath"
+            :selected-manager-options="selectedManagerOptions"
+            :manager-draft="managerDraft"
+            :is-saving-parent="isSavingParent"
+            :get-agent-initials="getAgentInitials"
+            @update:manager-draft="emit('update:managerDraft', $event)"
+            @save-manager="emit('save-manager')"
+          />
+
+          <AgentProfileEditorSection
+            :selected-agent="selectedAgent"
+            :draft="detailDraft"
+            :is-saving="isSavingDetails"
+            :format-relative="formatRelative"
+            :format-timestamp="formatTimestamp"
+            @save="emit('save-details')"
+          />
+
+          <AgentCurrentTasksPanel
+            :tasks="currentTasks"
+            :selected-task="selectedTask"
+            :selected-task-id="selectedTaskId"
+            :is-loading="isLoadingDetails"
+            :error-message="detailError"
+            :get-project-name="getProjectName"
+            :format-relative="formatRelative"
+            :format-timestamp="formatTimestamp"
+            @select-task="emit('select-task', $event)"
+          />
+
+          <AgentActivityTimelineSection
+            :history="activityHistory"
+            :is-loading="isLoadingDetails"
+            :error-message="detailError"
+            :format-relative="formatRelative"
+            :format-timestamp="formatTimestamp"
+          />
+
+          <AgentReadinessChecklist
+            :selected-autonomy="selectedAutonomy"
+            :deployment-checklist="deploymentChecklist"
+          />
+        </div>
       </div>
-
-      <div v-if="warningMessage" class="fc-warning">
-        <p>{{ warningMessage }}</p>
-      </div>
-
-      <AgentTeamSnapshot
-        :selected-agent="selectedAgent"
-        :selected-manager="selectedManager"
-        :selected-direct-reports="selectedDirectReports"
-        :selected-path="selectedPath"
-        :selected-manager-options="selectedManagerOptions"
-        :manager-draft="managerDraft"
-        :is-saving-parent="isSavingParent"
-        :get-agent-initials="getAgentInitials"
-        @update:manager-draft="emit('update:managerDraft', $event)"
-        @save-manager="emit('save-manager')"
-      />
-
-      <AgentProfileEditorSection
-        :selected-agent="selectedAgent"
-        :draft="detailDraft"
-        :is-saving="isSavingDetails"
-        :format-relative="formatRelative"
-        :format-timestamp="formatTimestamp"
-        @save="emit('save-details')"
-      />
-
-      <AgentCurrentTasksPanel
-        :tasks="currentTasks"
-        :selected-task="selectedTask"
-        :selected-task-id="selectedTaskId"
-        :is-loading="isLoadingDetails"
-        :error-message="detailError"
-        :get-project-name="getProjectName"
-        :format-relative="formatRelative"
-        :format-timestamp="formatTimestamp"
-        @select-task="emit('select-task', $event)"
-      />
-
-      <AgentActivityTimelineSection
-        :history="activityHistory"
-        :is-loading="isLoadingDetails"
-        :error-message="detailError"
-        :format-relative="formatRelative"
-        :format-timestamp="formatTimestamp"
-      />
-
-      <AgentReadinessChecklist
-        :selected-autonomy="selectedAutonomy"
-        :deployment-checklist="deploymentChecklist"
-      />
-    </template>
-
-    <div v-else class="fc-empty ag-empty-panel">
-      <h4>{{ t('Select an agent') }}</h4>
-      <p>{{ t('Pick a row from the roster to review configuration and team placement.') }}</p>
     </div>
-  </FcCard>
+  </Transition>
 </template>
 
 <style scoped>
-.ag-detail-card {
+.ag-modal-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 12px;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(3px);
 }
 
-.ag-section-head {
+.ag-modal {
+  width: min(1120px, calc(100vw - 24px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 18px;
+  border: 1px solid var(--fc-border-subtle);
+  background: var(--fc-surface);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+}
+
+.ag-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--fc-border-subtle);
+  background: color-mix(in srgb, var(--fc-surface) 92%, white);
 }
 
-.ag-section-head h4 {
+.ag-modal-header h4 {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
-.ag-section-head p {
+.ag-modal-header p {
   margin: 4px 0 0;
-  font-size: 0.8125rem;
+  font-size: 0.82rem;
   color: var(--fc-text-muted);
 }
 
-.ag-muted-icon {
-  color: var(--fc-text-faint);
-  flex-shrink: 0;
+.ag-modal-eyebrow {
+  margin: 0 0 4px !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.ag-empty-panel {
-  padding: 36px 20px;
+.ag-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ag-modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--fc-primary);
+  background: color-mix(in srgb, var(--fc-primary) 10%, var(--fc-surface));
+}
+
+.ag-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
+}
+
+@media (max-width: 720px) {
+  .ag-modal-wrap {
+    padding: 12px 8px;
+  }
+
+  .ag-modal-header {
+    padding: 14px;
+  }
+
+  .ag-modal-body {
+    padding: 14px;
+  }
 }
 </style>

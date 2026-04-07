@@ -15,6 +15,7 @@ import { useI18n } from '../composables/useI18n';
 
 const { t } = useI18n();
 const heartbeatInfoOpen = ref(false);
+const agentDetailOpen = ref(false);
 
 const {
   AUTONOMY_GUIDE,
@@ -66,6 +67,11 @@ const {
   templateCards,
   applyTemplate
 } = useAgentsPage();
+
+const openAgentDetails = (agentId: string): void => {
+  selectedAgentId.value = agentId;
+  agentDetailOpen.value = true;
+};
 </script>
 
 <template>
@@ -152,7 +158,7 @@ const {
       </FcButton>
     </div>
 
-    <div v-else class="ag-main-grid">
+    <div v-else>
       <AgentRosterPanel
         :agents="agents"
         :filtered-agents="filteredAgents"
@@ -165,11 +171,12 @@ const {
         :get-agent-initials="getAgentInitials"
         :get-direct-report-count="getDirectReportCount"
         :format-relative="formatRelative"
-        @select="selectedAgentId = $event"
+        @select="openAgentDetails"
         @pause="pauseAgent"
       />
 
       <AgentInspectorPanel
+        :open="agentDetailOpen"
         :selected-agent="selectedAgent"
         :selected-manager="selectedManager"
         :selected-direct-reports="selectedDirectReports"
@@ -191,6 +198,7 @@ const {
         :get-project-name="getProjectName"
         :format-relative="formatRelative"
         :format-timestamp="formatTimestamp"
+        @close="agentDetailOpen = false"
         @update:manager-draft="managerDraft = $event"
         @save-manager="saveReportingLine"
         @save-details="saveAgentDetails"
@@ -199,18 +207,3 @@ const {
     </div>
   </section>
 </template>
-
-<style scoped>
-.ag-main-grid {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 12px;
-  align-items: start;
-}
-
-@media (max-width: 1100px) {
-  .ag-main-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
