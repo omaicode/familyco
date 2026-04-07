@@ -71,15 +71,24 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
     @dragend="emit('dragend')"
   >
     <div class="task-card-top">
-      <label class="task-check">
+      <div class="task-check">
         <input
           :checked="props.selected"
           :disabled="isCancelledTask(props.task)"
           type="checkbox"
           class="fc-checkbox"
+          @click.stop
           @change="!isCancelledTask(props.task) && emit('toggleSelect', props.task.id)"
         />
-        <div class="task-copy">
+        <div
+          class="task-copy"
+          :class="{ 'task-copy-clickable': props.kanbanCompact }"
+          :role="props.kanbanCompact ? 'button' : undefined"
+          :tabindex="props.kanbanCompact ? 0 : undefined"
+          @click="props.kanbanCompact && emit('view', props.task.id)"
+          @keydown.enter.prevent="props.kanbanCompact && emit('view', props.task.id)"
+          @keydown.space.prevent="props.kanbanCompact && emit('view', props.task.id)"
+        >
           <span v-if="props.kanbanCompact" class="task-code">{{ formatTaskCode(props.task) }}</span>
           <span class="task-title" :class="{ 'task-title-compact': props.kanbanCompact }">{{ props.task.title }}</span>
 
@@ -91,6 +100,11 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
             </span>
           </div>
 
+          <p v-if="props.kanbanCompact" class="task-compact-assignee">
+            <UserRound :size="12" />
+            {{ props.getAgentName(props.task.assigneeAgentId) }}
+          </p>
+
           <MarkdownPreview
             v-else
             class="task-description-markdown"
@@ -99,7 +113,7 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
             empty-text="Add a Markdown brief so the assignee has execution context."
           />
         </div>
-      </label>
+      </div>
 
       <div class="task-card-side">
         <span v-if="!props.kanbanCompact" class="task-priority-pill" :data-priority="props.task.priority">
@@ -130,13 +144,6 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
         <option value="high">High</option>
         <option value="urgent">Urgent</option>
       </FcSelect>
-    </div>
-
-    <div v-if="props.kanbanCompact" class="task-compact-actions">
-      <FcButton variant="ghost" size="sm" :disabled="props.busy" @click.stop="emit('view', props.task.id)">
-        <Eye :size="12" />
-        {{ t('Details') }}
-      </FcButton>
     </div>
 
     <div v-if="!props.kanbanCompact" class="task-card-footer">
@@ -220,6 +227,16 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
   min-width: 0;
 }
 
+.task-copy-clickable {
+  cursor: pointer;
+}
+
+.task-copy-clickable:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--fc-primary) 60%, transparent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
 .task-code {
   display: inline-block;
   margin-bottom: 4px;
@@ -258,16 +275,20 @@ const formatTaskCode = (task: TaskListItem): string => `${task.id.slice(0, 8).to
   margin-top: 7px;
 }
 
+.task-compact-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 7px 0 0;
+  font-size: 0.74rem;
+  color: var(--fc-text-muted);
+}
+
 .task-card-side {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-}
-
-.task-compact-actions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .task-drag-hint {
