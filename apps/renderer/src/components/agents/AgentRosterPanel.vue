@@ -36,6 +36,7 @@ defineProps<{
   getAgentName: (agentId: string | null) => string;
   getAgentInitials: (name: string) => string;
   getDirectReportCount: (agentId: string) => number;
+  formatRelative: (iso: string) => string;
 }>();
 
 const emit = defineEmits<{
@@ -102,51 +103,81 @@ const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.inclu
       <p>{{ t('Try broadening the filters or create a new agent from the quick setup panel.') }}</p>
     </div>
 
-    <div v-else class="ag-roster-list">
-      <div
-        v-for="agent in filteredAgents"
-        :key="agent.id"
-        class="ag-agent-row"
-        :class="{ 'is-selected': agent.id === selectedAgentId }"
-        @click="emit('select', agent.id)"
-      >
-        <div class="ag-agent-main">
-          <div class="ag-avatar" :data-level="agent.level">
-            {{ getAgentInitials(agent.name) }}
-          </div>
-
-          <div class="ag-agent-copy">
-            <div class="ag-agent-title">
-              <strong>{{ agent.name }}</strong>
-              <FcBadge :level="agent.level">{{ agent.level }}</FcBadge>
-            </div>
-            <p class="fc-list-meta">{{ agent.role }} · {{ agent.department }}</p>
-            <p class="ag-agent-subcopy">
-              {{ agent.level === 'L0' ? t('Company root') : t('Reports to label', { name: getAgentName(agent.parentAgentId) }) }}
-              <span v-if="getDirectReportCount(agent.id) > 0">
-                · {{ t('Direct reports count', { count: getDirectReportCount(agent.id) }) }}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <div class="ag-row-actions">
-          <span v-if="agent.level !== 'L0' && !agent.parentAgentId" class="fc-risk-tag" data-risk="medium">
-            {{ t('Manager needed') }}
-          </span>
-          <FcBadge :status="agent.status">{{ getStatusLabel(agent.status) }}</FcBadge>
-          <FcButton
-            v-if="canPause(agent.status)"
-            variant="secondary"
-            size="sm"
-            :disabled="busy[agent.id]"
-            @click.stop="emit('pause', agent)"
+    <div v-else class="ag-table-shell">
+      <table class="ag-table">
+        <thead>
+          <tr>
+            <th>{{ t('Agent') }}</th>
+            <th>{{ t('Role') }}</th>
+            <th>{{ t('Team') }}</th>
+            <th>{{ t('Status') }}</th>
+            <th>{{ t('Last update') }}</th>
+            <th>{{ t('Actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="agent in filteredAgents"
+            :key="agent.id"
+            :class="{ 'is-selected': agent.id === selectedAgentId }"
+            @click="emit('select', agent.id)"
           >
-            <Pause :size="12" />
-            {{ busy[agent.id] ? t('Pausing…') : t('Pause') }}
-          </FcButton>
-        </div>
-      </div>
+            <td>
+              <div class="ag-agent-main">
+                <div class="ag-avatar" :data-level="agent.level">
+                  {{ getAgentInitials(agent.name) }}
+                </div>
+                <div class="ag-agent-copy">
+                  <div class="ag-agent-title">
+                    <strong>{{ agent.name }}</strong>
+                    <FcBadge :level="agent.level">{{ agent.level }}</FcBadge>
+                  </div>
+                  <p class="fc-list-meta">{{ agent.department }}</p>
+                </div>
+              </div>
+            </td>
+            <td>
+              <strong class="ag-cell-strong">{{ agent.role }}</strong>
+            </td>
+            <td>
+              <p class="ag-agent-subcopy">
+                {{ agent.level === 'L0' ? t('Company root') : t('Reports to label', { name: getAgentName(agent.parentAgentId) }) }}
+              </p>
+              <p v-if="getDirectReportCount(agent.id) > 0" class="fc-list-meta">
+                {{ t('Direct reports count', { count: getDirectReportCount(agent.id) }) }}
+              </p>
+            </td>
+            <td>
+              <div class="ag-status-stack">
+                <span v-if="agent.level !== 'L0' && !agent.parentAgentId" class="fc-risk-tag" data-risk="medium">
+                  {{ t('Manager needed') }}
+                </span>
+                <FcBadge :status="agent.status">{{ getStatusLabel(agent.status) }}</FcBadge>
+              </div>
+            </td>
+            <td>
+              <span :title="agent.updatedAt">{{ formatRelative(agent.updatedAt) }}</span>
+            </td>
+            <td>
+              <div class="ag-row-actions">
+                <FcButton variant="secondary" size="sm" @click.stop="emit('select', agent.id)">
+                  {{ t('View') }}
+                </FcButton>
+                <FcButton
+                  v-if="canPause(agent.status)"
+                  variant="secondary"
+                  size="sm"
+                  :disabled="busy[agent.id]"
+                  @click.stop="emit('pause', agent)"
+                >
+                  <Pause :size="12" />
+                  {{ busy[agent.id] ? t('Pausing…') : t('Pause') }}
+                </FcButton>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </FcCard>
 </template>
@@ -194,33 +225,50 @@ const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.inclu
   color: var(--fc-text-muted);
 }
 
-.ag-roster-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ag-agent-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 12px;
+.ag-table-shell {
+  overflow-x: auto;
   border: 1px solid var(--fc-border-subtle);
   border-radius: var(--fc-control-radius);
-  background: var(--fc-surface);
+}
+
+.ag-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.ag-table th,
+.ag-table td {
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--fc-border-subtle);
+}
+
+.ag-table th {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fc-text-muted);
+  background: var(--fc-surface-muted);
+}
+
+.ag-table tbody tr {
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: background 0.15s ease;
 }
 
-.ag-agent-row:hover {
-  border-color: color-mix(in srgb, var(--fc-primary) 24%, var(--fc-border-subtle));
-  box-shadow: 0 4px 10px rgba(16, 24, 40, 0.05);
+.ag-table tbody tr:hover {
+  background: color-mix(in srgb, var(--fc-primary) 4%, var(--fc-surface));
 }
 
-.ag-agent-row.is-selected {
-  border-color: color-mix(in srgb, var(--fc-primary) 40%, var(--fc-border-subtle));
-  background: color-mix(in srgb, var(--fc-primary) 5%, var(--fc-surface));
+.ag-table tbody tr.is-selected {
+  background: color-mix(in srgb, var(--fc-primary) 7%, var(--fc-surface));
+}
+
+.ag-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .ag-agent-main {
@@ -272,10 +320,22 @@ const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.inclu
   font-size: 0.9rem;
 }
 
+.ag-cell-strong {
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
 .ag-agent-subcopy {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 0.75rem;
   color: var(--fc-text-muted);
+}
+
+.ag-status-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .ag-row-actions {
@@ -283,7 +343,6 @@ const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.inclu
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .ag-compact-empty {
@@ -293,14 +352,6 @@ const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.inclu
 @media (max-width: 720px) {
   .ag-filters {
     grid-template-columns: 1fr;
-  }
-
-  .ag-agent-row {
-    flex-direction: column;
-  }
-
-  .ag-row-actions {
-    justify-content: flex-start;
   }
 }
 </style>

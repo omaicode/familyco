@@ -3,7 +3,8 @@ import type {
   AgentProfile,
   AgentRepository,
   AgentStatus,
-  CreateAgentInput
+  CreateAgentInput,
+  UpdateAgentInput
 } from '@familyco/core';
 import type { PrismaClient } from '../db/prisma/client.js';
 
@@ -67,6 +68,20 @@ export class PrismaAgentRepository implements AgentRepository {
       where: { id },
       data: {
         status
+      }
+    });
+
+    return toAgentProfile(agent);
+  }
+
+  async update(id: string, input: UpdateAgentInput): Promise<AgentProfile> {
+    const agent = await this.prisma.agent.update({
+      where: { id },
+      data: {
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.role !== undefined ? { role: input.role } : {}),
+        ...(input.department !== undefined ? { department: input.department } : {}),
+        ...(input.status !== undefined ? { status: input.status } : {})
       }
     });
 

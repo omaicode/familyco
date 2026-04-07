@@ -5,6 +5,8 @@ import { ensureApproval } from '../shared/approval-flow.js';
 import {
   createAgentSchema,
   pauseAgentParamsSchema,
+  updateAgentBodySchema,
+  updateAgentParamsSchema,
   updateParentBodySchema,
   updateParentParamsSchema
 } from './agent.schema.js';
@@ -114,6 +116,26 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     requireMinimumLevel(request, 'L1');
     const { id } = pauseAgentParamsSchema.parse(request.params);
     return deps.agentService.getPath(id);
+  });
+
+  app.patch('/agents/:id', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = updateAgentParamsSchema.parse(request.params);
+    const body = updateAgentBodySchema.parse(request.body);
+    const updated = await deps.agentService.updateAgent(id, body);
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'agent.update',
+      targetId: updated.id,
+      payload: {
+        name: updated.name,
+        role: updated.role,
+        department: updated.department,
+        status: updated.status
+      }
+    });
+
+    return updated;
   });
 
   app.patch('/agents/:id/parent', async (request) => {

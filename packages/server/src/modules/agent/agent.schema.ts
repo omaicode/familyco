@@ -12,6 +12,21 @@ export const pauseAgentParamsSchema = z.object({
   id: z.string().min(1)
 });
 
+export const updateAgentParamsSchema = z.object({
+  id: z.string().min(1)
+});
+
+export const updateAgentBodySchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    role: z.string().min(1).optional(),
+    department: z.string().min(1).optional(),
+    status: z.enum(['active', 'idle', 'running', 'error', 'paused', 'terminated']).optional()
+  })
+  .refine((value) => Object.values(value).some((entry) => entry !== undefined), {
+    message: 'At least one editable field is required'
+  });
+
 export const updateParentParamsSchema = z.object({
   id: z.string().min(1)
 });

@@ -20,3 +20,10 @@ export interface CreateAgentInput {
   department: string;
   parentAgentId?: string | null;
 }
+
+export interface UpdateAgentInput {
+  name?: string;
+  role?: string;
+  department?: string;
+  status?: AgentStatus;
+}

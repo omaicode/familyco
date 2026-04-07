@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import type { AgentListItem } from '@familyco/ui';
+import type { AgentListItem, AuditListItem, TaskListItem } from '@familyco/ui';
 import { ShieldCheck } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import FcCard from '../FcCard.vue';
+import AgentActivityTimelineSection from './AgentActivityTimelineSection.vue';
+import AgentCurrentTasksPanel from './AgentCurrentTasksPanel.vue';
+import AgentProfileEditorSection from './AgentProfileEditorSection.vue';
 import AgentReadinessChecklist from './AgentReadinessChecklist.vue';
 import AgentTeamSnapshot from './AgentTeamSnapshot.vue';
 
@@ -25,13 +28,31 @@ const props = defineProps<{
   }>;
   selectedManagerOptions: AgentListItem[];
   managerDraft: string;
+  detailDraft: {
+    name: string;
+    role: string;
+    department: string;
+    status: AgentListItem['status'];
+  };
+  currentTasks: TaskListItem[];
+  selectedTask: TaskListItem | null;
+  selectedTaskId: string | null;
+  activityHistory: AuditListItem[];
+  detailError: string | null;
+  isLoadingDetails: boolean;
+  isSavingDetails: boolean;
   isSavingParent: boolean;
   getAgentInitials: (name: string) => string;
+  getProjectName: (projectId: string) => string;
+  formatRelative: (iso: string) => string;
+  formatTimestamp: (iso: string) => string;
 }>();
 
 const emit = defineEmits<{
   (event: 'update:managerDraft', value: string): void;
   (event: 'save-manager'): void;
+  (event: 'save-details'): void;
+  (event: 'select-task', taskId: string): void;
 }>();
 
 const { t } = useI18n();
@@ -68,7 +89,7 @@ const warningMessage = computed(() => {
       <div class="ag-section-head">
         <div>
           <h4>{{ t('Inspector') }}</h4>
-          <p>{{ t('Review heartbeat state, reporting line, and session continuity for the selected agent.') }}</p>
+          <p>{{ t('Review the selected agent, edit profile details, and inspect current execution context.') }}</p>
         </div>
         <ShieldCheck :size="16" class="ag-muted-icon" />
       </div>
@@ -88,6 +109,35 @@ const warningMessage = computed(() => {
         :get-agent-initials="getAgentInitials"
         @update:manager-draft="emit('update:managerDraft', $event)"
         @save-manager="emit('save-manager')"
+      />
+
+      <AgentProfileEditorSection
+        :selected-agent="selectedAgent"
+        :draft="detailDraft"
+        :is-saving="isSavingDetails"
+        :format-relative="formatRelative"
+        :format-timestamp="formatTimestamp"
+        @save="emit('save-details')"
+      />
+
+      <AgentCurrentTasksPanel
+        :tasks="currentTasks"
+        :selected-task="selectedTask"
+        :selected-task-id="selectedTaskId"
+        :is-loading="isLoadingDetails"
+        :error-message="detailError"
+        :get-project-name="getProjectName"
+        :format-relative="formatRelative"
+        :format-timestamp="formatTimestamp"
+        @select-task="emit('select-task', $event)"
+      />
+
+      <AgentActivityTimelineSection
+        :history="activityHistory"
+        :is-loading="isLoadingDetails"
+        :error-message="detailError"
+        :format-relative="formatRelative"
+        :format-timestamp="formatTimestamp"
       />
 
       <AgentReadinessChecklist

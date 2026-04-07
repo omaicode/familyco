@@ -1,4 +1,4 @@
-import type { AgentProfile, AgentStatus, CreateAgentInput } from './agent.entity.js';
+import type { AgentProfile, AgentStatus, CreateAgentInput, UpdateAgentInput } from './agent.entity.js';
 import type { AgentRepository } from './agent.repository.js';
 import type { EventBus } from '../events/event-bus.js';
 
@@ -46,6 +46,12 @@ export class AgentService {
     return this.repository.setStatus(id, status);
   }
 
+  async updateAgent(id: string, input: UpdateAgentInput): Promise<AgentProfile> {
+    const agent = await this.repository.update(id, input);
+    this.eventBus?.emit('agent.updated', { agentId: agent.id });
+    return agent;
+  }
+
   getChildren(id: string): Promise<AgentProfile[]> {
     return this.repository.findChildren(id);
   }
@@ -68,7 +74,9 @@ export class AgentService {
     return path;
   }
 
-  updateParent(id: string, parentAgentId: string | null): Promise<AgentProfile> {
-    return this.repository.updateParent(id, parentAgentId);
+  async updateParent(id: string, parentAgentId: string | null): Promise<AgentProfile> {
+    const agent = await this.repository.updateParent(id, parentAgentId);
+    this.eventBus?.emit('agent.updated', { agentId: agent.id });
+    return agent;
   }
 }

@@ -8,6 +8,8 @@ export interface AgentListItem {
   department: string;
   status: 'active' | 'idle' | 'running' | 'error' | 'paused' | 'terminated';
   parentAgentId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AgentChatMessage {
@@ -259,6 +261,14 @@ export interface PauseAgentPayload {
   agentId: string;
 }
 
+export interface UpdateAgentPayload {
+  agentId: string;
+  name: string;
+  role: string;
+  department: string;
+  status: AgentListItem['status'];
+}
+
 export interface UpdateAgentParentPayload {
   agentId: string;
   parentAgentId: string | null;
@@ -331,6 +341,7 @@ export interface FamilyCoApiContracts {
   sendAgentChat: (payload: SendAgentChatPayload) => Promise<SendAgentChatResult>;
   createAgent: (payload: CreateAgentPayload) => Promise<CreateAgentResult>;
   pauseAgent: (payload: PauseAgentPayload) => Promise<PauseAgentResult>;
+  updateAgent: (payload: UpdateAgentPayload) => Promise<AgentListItem>;
   updateAgentParent: (payload: UpdateAgentParentPayload) => Promise<AgentListItem>;
   listProjects: () => Promise<ProjectListItem[]>;
   createProject: (payload: CreateProjectPayload) => Promise<CreateProjectResult>;
@@ -388,6 +399,13 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     ),
   createAgent: (payload) => client.post<CreateAgentResult, CreateAgentPayload>('/api/v1/agents', payload),
   pauseAgent: (payload) => client.post<PauseAgentResult>(`/api/v1/agents/${payload.agentId}/pause`),
+  updateAgent: (payload) =>
+    client.patch<AgentListItem, Omit<UpdateAgentPayload, 'agentId'>>(`/api/v1/agents/${payload.agentId}`, {
+      name: payload.name,
+      role: payload.role,
+      department: payload.department,
+      status: payload.status
+    }),
   updateAgentParent: (payload) =>
     client.patch<AgentListItem, { parentAgentId: string | null }>(
       `/api/v1/agents/${payload.agentId}/parent`,

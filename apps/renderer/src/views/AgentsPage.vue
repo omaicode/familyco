@@ -23,24 +23,35 @@ const {
   attentionSummary,
   busy,
   createAgent,
+  currentTasks,
   deploymentChecklist,
   departmentOptions,
+  detailDraft,
+  detailError,
   draft,
   draftManagerOptions,
   feedback,
   filteredAgents,
   filters,
+  formatRelative,
+  formatTimestamp,
   getAgentInitials,
   getAgentName,
   getDirectReportCount,
+  getProjectName,
+  history,
   isCreating,
   isLoading,
+  isLoadingDetails,
   isRefreshing,
+  isSavingDetails,
   isSavingParent,
   managerDraft,
   pauseAgent,
   reload,
+  saveAgentDetails,
   saveReportingLine,
+  selectTask,
   selectedAgent,
   selectedAgentId,
   selectedAutonomy,
@@ -48,6 +59,8 @@ const {
   selectedManager,
   selectedManagerOptions,
   selectedPath,
+  selectedTask,
+  selectedTaskId,
   showCreateForm,
   summaryMetrics,
   templateCards,
@@ -151,6 +164,7 @@ const {
         :get-agent-name="getAgentName"
         :get-agent-initials="getAgentInitials"
         :get-direct-report-count="getDirectReportCount"
+        :format-relative="formatRelative"
         @select="selectedAgentId = $event"
         @pause="pauseAgent"
       />
@@ -164,10 +178,23 @@ const {
         :deployment-checklist="deploymentChecklist"
         :selected-manager-options="selectedManagerOptions"
         :manager-draft="managerDraft"
+        :detail-draft="detailDraft"
+        :current-tasks="currentTasks"
+        :selected-task="selectedTask"
+        :selected-task-id="selectedTaskId"
+        :activity-history="history"
+        :detail-error="detailError"
+        :is-loading-details="isLoadingDetails"
+        :is-saving-details="isSavingDetails"
         :is-saving-parent="isSavingParent"
         :get-agent-initials="getAgentInitials"
+        :get-project-name="getProjectName"
+        :format-relative="formatRelative"
+        :format-timestamp="formatTimestamp"
         @update:manager-draft="managerDraft = $event"
         @save-manager="saveReportingLine"
+        @save-details="saveAgentDetails"
+        @select-task="selectTask"
       />
     </div>
   </section>

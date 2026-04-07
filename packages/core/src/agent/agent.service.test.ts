@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { AgentService } from './agent.service.js';
-import type { AgentProfile, AgentRepository, CreateAgentInput } from './index.js';
+import type { AgentProfile, AgentRepository, CreateAgentInput, UpdateAgentInput } from './index.js';
 import { EventBus } from '../events/event-bus.js';
 
 test('AgentService emits created and paused events', async () => {
@@ -73,6 +73,32 @@ test('AgentService skips terminated executives when selecting the default L0 age
   assert.equal(executive?.id, 'agent-active');
 });
 
+test('AgentService updates editable profile fields for an existing agent', async () => {
+  const repository = new InMemoryAgentRepositoryStub();
+  const service = new AgentService(repository);
+
+  const created = await service.createAgent({
+    name: 'Ops Bot',
+    role: 'Operations Specialist',
+    level: 'L1',
+    department: 'Operations',
+    parentAgentId: null
+  });
+
+  const updated = await service.updateAgent(created.id, {
+    name: 'Ops Lead',
+    role: 'Operations Lead',
+    department: 'Operations Excellence',
+    status: 'idle'
+  });
+
+  assert.equal(updated.name, 'Ops Lead');
+  assert.equal(updated.role, 'Operations Lead');
+  assert.equal(updated.department, 'Operations Excellence');
+  assert.equal(updated.status, 'idle');
+  assert.equal(updated.parentAgentId, null);
+});
+
 class InMemoryAgentRepositoryStub implements AgentRepository {
   private readonly agents = new Map<string, AgentProfile>();
 
@@ -126,6 +152,24 @@ class InMemoryAgentRepositoryStub implements AgentRepository {
       updatedAt: new Date('2026-01-02T00:00:00.000Z')
     };
 
+    this.agents.set(id, updated);
+    return updated;
+  }
+
+  async update(id: string, input: UpdateAgentInput): Promise<AgentProfile> {
+    const existing = this.agents.get(id);
+    if (!existing) {
+      throw new Error(`AGENT_NOT_FOUND:${id}`);
+    }
+
+    const updated: AgentProfile = {
+      ...existing,
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.role !== undefined ? { role: input.role } : {}),
+      ...(input.department !== undefined ? { department: input.department } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      updatedAt: new Date('2026-01-03T00:00:00.000Z')
+    };
     this.agents.set(id, updated);
     return updated;
   }

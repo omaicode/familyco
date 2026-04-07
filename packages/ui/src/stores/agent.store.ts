@@ -6,6 +6,7 @@ import type {
   FamilyCoApiContracts,
   PauseAgentPayload,
   PauseAgentResult,
+  UpdateAgentPayload,
   UpdateAgentParentPayload
 } from '../api/contracts.js';
 import { createAsyncState, type AsyncState } from './async-state.js';
@@ -64,6 +65,15 @@ export class AgentStore {
     }
 
     return pausedAgent;
+  }
+
+  async updateAgent(payload: UpdateAgentPayload): Promise<AgentListItem> {
+    const updatedAgent = await this.api.updateAgent(payload);
+    this.state.agents.data = this.state.agents.data.map((agent) =>
+      agent.id === updatedAgent.id ? updatedAgent : agent
+    );
+
+    return updatedAgent;
   }
 
   async updateAgentParent(payload: UpdateAgentParentPayload): Promise<AgentListItem> {

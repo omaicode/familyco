@@ -14,10 +14,13 @@ import {
   type LevelFilter,
   type StatusFilter
 } from './agents-page.config';
+import { useAgentInsights } from './useAgentInsights';
 import { useAgentsDirectory } from './useAgentsDirectory';
 import { useAutoReload } from './useAutoReload';
+import { useI18n } from './useI18n';
 
 export function useAgentsPage() {
+  const { t } = useI18n();
   const showCreateForm = ref(false);
   const isCreating = ref(false);
   const isLoading = ref(false);
@@ -81,6 +84,22 @@ export function useAgentsPage() {
     selectedPath,
     summaryMetrics
   } = useAgentsDirectory(agents, filters, draft, selectedAgentId);
+
+  const {
+    currentTasks,
+    detailDraft,
+    detailError,
+    formatRelative,
+    formatTimestamp,
+    getProjectName,
+    history,
+    isLoadingDetails,
+    isSavingDetails,
+    saveAgentDetails: persistAgentDetails,
+    selectedTask,
+    selectedTaskId,
+    selectTask
+  } = useAgentInsights(selectedAgent);
 
   watch(
     agents,
@@ -227,6 +246,15 @@ export function useAgentsPage() {
     }
   };
 
+  const saveAgentDetails = async (): Promise<void> => {
+    try {
+      const updatedAgent = await persistAgentDetails();
+      setFeedback('success', t('Agent profile saved', { name: updatedAgent.name }));
+    } catch (error) {
+      setFeedback('error', error instanceof Error ? error.message : t('Failed to update agent'));
+    }
+  };
+
   useAutoReload(reload);
 
   return {
@@ -237,24 +265,35 @@ export function useAgentsPage() {
     attentionSummary,
     busy,
     createAgent,
+    currentTasks,
     deploymentChecklist,
     departmentOptions,
+    detailDraft,
+    detailError,
     draft,
     draftManagerOptions,
     feedback,
     filteredAgents,
     filters,
+    formatRelative,
+    formatTimestamp,
     getAgentInitials,
     getAgentName,
     getDirectReportCount,
+    getProjectName,
+    history,
     isCreating,
     isLoading,
+    isLoadingDetails,
     isRefreshing,
+    isSavingDetails,
     isSavingParent,
     managerDraft,
     pauseAgent,
     reload,
+    saveAgentDetails,
     saveReportingLine,
+    selectTask,
     selectedAgent,
     selectedAgentId,
     selectedAutonomy,
@@ -262,6 +301,8 @@ export function useAgentsPage() {
     selectedManager,
     selectedManagerOptions,
     selectedPath,
+    selectedTask,
+    selectedTaskId,
     showCreateForm,
     summaryMetrics,
     templateCards
