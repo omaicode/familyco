@@ -111,19 +111,23 @@ class InMemoryAgentRepositoryStub implements AgentRepository {
   }
 
   async pause(id: string): Promise<AgentProfile> {
+    return this.setStatus(id, 'paused');
+  }
+
+  async setStatus(id: string, status: AgentProfile['status']): Promise<AgentProfile> {
     const existing = this.agents.get(id);
     if (!existing) {
       throw new Error(`AGENT_NOT_FOUND:${id}`);
     }
 
-    const paused: AgentProfile = {
+    const updated: AgentProfile = {
       ...existing,
-      status: 'paused',
+      status,
       updatedAt: new Date('2026-01-02T00:00:00.000Z')
     };
 
-    this.agents.set(id, paused);
-    return paused;
+    this.agents.set(id, updated);
+    return updated;
   }
 
   async updateParent(id: string, parentAgentId: string | null): Promise<AgentProfile> {

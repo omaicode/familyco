@@ -1,4 +1,4 @@
-import type { AgentProfile, CreateAgentInput } from './agent.entity.js';
+import type { AgentProfile, AgentStatus, CreateAgentInput } from './agent.entity.js';
 import type { AgentRepository } from './agent.repository.js';
 import type { EventBus } from '../events/event-bus.js';
 
@@ -40,6 +40,10 @@ export class AgentService {
     const agent = await this.repository.pause(id);
     this.eventBus?.emit('agent.paused', { agentId: agent.id });
     return agent;
+  }
+
+  setAgentStatus(id: string, status: AgentStatus): Promise<AgentProfile> {
+    return this.repository.setStatus(id, status);
   }
 
   getChildren(id: string): Promise<AgentProfile[]> {

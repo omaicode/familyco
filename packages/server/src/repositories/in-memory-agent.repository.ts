@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { AgentProfile, AgentRepository, CreateAgentInput } from '@familyco/core';
+import type { AgentProfile, AgentRepository, AgentStatus, CreateAgentInput } from '@familyco/core';
 
 export class InMemoryAgentRepository implements AgentRepository {
   private readonly agents = new Map<string, AgentProfile>();
@@ -36,6 +36,10 @@ export class InMemoryAgentRepository implements AgentRepository {
   }
 
   async pause(id: string): Promise<AgentProfile> {
+    return this.setStatus(id, 'paused');
+  }
+
+  async setStatus(id: string, status: AgentStatus): Promise<AgentProfile> {
     const agent = this.agents.get(id);
     if (!agent) {
       throw new Error(`AGENT_NOT_FOUND:${id}`);
@@ -43,7 +47,7 @@ export class InMemoryAgentRepository implements AgentRepository {
 
     const updatedAgent: AgentProfile = {
       ...agent,
-      status: 'paused',
+      status,
       updatedAt: new Date()
     };
 

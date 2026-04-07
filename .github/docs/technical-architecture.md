@@ -623,11 +623,10 @@ ENABLE_QUEUE_WORKERS=0
 ```
 
 > **Hiện trạng runtime (2026-04-08):**
-> - Background worker chỉ thực sự xử lý async jobs khi `FAMILYCO_QUEUE_DRIVER=bullmq` **và** `ENABLE_QUEUE_WORKERS=1`.
-> - Với queue driver `memory` mặc định, jobs được giữ trong process để test/dev và **không có scheduler heartbeat định kỳ** tự đánh thức agent.
-> - Setting `agent.defaultHeartbeatMinutes` hiện mới là cấu hình UI/settings; chưa có recurring scheduler phía server dùng setting này để wake agents tự động.
-> - `AgentRunner` hiện lưu context ngắn hạn qua `InMemoryMemoryService`; chưa có adapter-level session serialization/restoration bền vững qua restart process.
-> - Kết quả mỗi lượt chạy hiện được ghi qua `AuditLog` + inbox reports; chưa có bảng `AgentRunRecord` chuyên biệt.
+> - Queue driver `memory` giờ xử lý async jobs ngay trong process cho môi trường dev/Desktop; với `bullmq`, cần thêm `ENABLE_QUEUE_WORKERS=1` để worker tiêu thụ queue từ Redis.
+> - Server có recurring heartbeat scheduler đọc `agent.defaultHeartbeatMinutes` và `agent.heartbeat.enabled`, rồi tự enqueue các lượt `heartbeat.tick` cho agent đang hoạt động.
+> - Session state của agent được lưu bền qua `SettingsBackedMemoryService` dưới key `agent.memory.<agentId>` khi dùng repository driver `prisma` (với `memory` driver thì chỉ tồn tại trong process test/dev).
+> - Trạng thái và lịch sử heartbeat gần nhất được lưu dưới `agent.heartbeat.state.<agentId>` và `agent.heartbeat.runs.<agentId>`; kết quả cũng tiếp tục được ghi vào `AuditLog` + inbox reports để debug/review.
 
 ### Auth & Security
 ```env

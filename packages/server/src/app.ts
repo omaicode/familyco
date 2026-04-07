@@ -12,6 +12,8 @@ import {
   ProjectService,
   SettingsService,
   TaskService,
+  type AgentRunRequest,
+  type AgentRunResult,
   type AgentRepository,
   type ApprovalRepository,
   type AuditRepository,
@@ -64,6 +66,8 @@ import {
   InMemoryQueueService,
   createToolCallWorker
 } from './queue/index.js';
+import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
+import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
 import { DefaultToolExecutor } from './tools/index.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
@@ -78,6 +82,9 @@ export interface CreateAppOptions {
   authApiKey?: string;
   authApiKeySalt?: string;
   dailyQuotaLimit?: number;
+  enableHeartbeatScheduler?: boolean;
+  heartbeatPollMs?: number;
+  defaultHeartbeatMinutes?: number;
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
@@ -107,6 +114,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const queueName = process.env.FAMILYCO_QUEUE_NAME ?? 'familyco-jobs';
   const enableQueueWorkers = process.env.ENABLE_QUEUE_WORKERS === '1';
   const dailyQuotaLimit = options.dailyQuotaLimit ?? Number(process.env.DAILY_QUOTA_LIMIT ?? 50);
+  const enableHeartbeatScheduler =
+    options.enableHeartbeatScheduler ??
+    (process.env.ENABLE_AGENT_HEARTBEATS
+      ? process.env.ENABLE_AGENT_HEARTBEATS === '1'
+      : repositoryDriver === 'prisma');
 
   const {
     agentRepository,
@@ -136,7 +148,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     settingsService,
     taskService
   });
-  const agentRunner = new AgentRunner(approvalGuard, toolExecutor);
+  const memoryService = new SettingsBackedMemoryService(settingsRepository);
+  const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
 
   const queueService =
     queueDriver === 'bullmq'
@@ -146,6 +159,121 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         })
       : new InMemoryQueueService();
   const workers: Array<{ close: () => Promise<void> }> = [];
+  const heartbeatRuntime = new HeartbeatRuntimeService({
+    queueService,
+    agentService,
+    settingsService,
+    pollMs: options.heartbeatPollMs,
+    defaultHeartbeatMinutes: options.defaultHeartbeatMinutes
+  });
+  const canProcessAsyncJobs = queueDriver === 'memory' || enableQueueWorkers;
+
+  const executeAgentRun = async (request: AgentRunRequest): Promise<AgentRunResult> => {
+    await heartbeatRuntime.markStarted(request);
+    return agentRunner.run(request);
+  };
+
+  const handleAgentRunCompleted = async (
+    request: AgentRunRequest,
+    result: AgentRunResult | undefined
+  ): Promise<void> => {
+    if (result) {
+      await heartbeatRuntime.markCompleted(request, result);
+    }
+
+    await auditService.write({
+      actorId: request.agentId,
+      action: 'engine.agent.run.completed',
+      targetId: request.agentId,
+      payload: {
+        status: result?.status,
+        toolName: request.toolName,
+        action: request.action
+      }
+    });
+
+    await inboxService.createMessage({
+      recipientId: 'founder',
+      senderId: request.agentId,
+      type: 'report',
+      title: request.action === 'heartbeat.tick' ? 'Heartbeat completed' : `Agent run ${result?.status ?? 'completed'}`,
+      body:
+        request.action === 'heartbeat.tick'
+          ? `Heartbeat processed by ${request.toolName}`
+          : `Action ${request.action} processed by ${request.toolName}`,
+      payload: {
+        result
+      }
+    });
+  };
+
+  const handleAgentRunFailed = async (request: AgentRunRequest, error: Error): Promise<void> => {
+    await heartbeatRuntime.markFailed(request, error);
+
+    await auditService.write({
+      actorId: request.agentId,
+      action: 'engine.agent.run.failed',
+      targetId: request.agentId,
+      payload: {
+        toolName: request.toolName,
+        action: request.action,
+        message: error.message
+      }
+    });
+
+    await inboxService.createMessage({
+      recipientId: 'founder',
+      senderId: request.agentId,
+      type: 'alert',
+      title: request.action === 'heartbeat.tick' ? 'Heartbeat failed' : 'Agent run failed',
+      body: error.message,
+      payload: {
+        action: request.action,
+        toolName: request.toolName
+      }
+    });
+  };
+
+  if (queueService instanceof InMemoryQueueService) {
+    queueService.setHandlers({
+      onAgentRun: async (job) => {
+        try {
+          const result = await executeAgentRun(job.payload.request);
+          await handleAgentRunCompleted(job.payload.request, result);
+          return result;
+        } catch (error) {
+          const normalizedError = toError(error);
+          await handleAgentRunFailed(job.payload.request, normalizedError);
+          throw normalizedError;
+        }
+      },
+      onToolExecute: async (job) => {
+        try {
+          const result = await toolExecutor.execute(job.payload.input);
+          await auditService.write({
+            actorId: 'system',
+            action: 'engine.tool.run.completed',
+            payload: {
+              toolName: job.payload.input.toolName,
+              result
+            }
+          });
+          return result;
+        } catch (error) {
+          const normalizedError = toError(error);
+          await auditService.write({
+            actorId: 'system',
+            action: 'engine.tool.run.failed',
+            payload: {
+              toolName: job.payload.input.toolName,
+              message: normalizedError.message
+            }
+          });
+          throw normalizedError;
+        }
+      }
+    });
+  }
 
   app.addHook('onReady', async () => {
     const bootstrapApiKey = await apiKeyService.ensureBootstrapKey('bootstrap', authApiKey);
@@ -163,51 +291,12 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         createAgentRunWorker({
           queueName,
           redisUrl,
-          agentRunner,
+          executeRun: executeAgentRun,
           onCompleted: async (job, result) => {
-            await auditService.write({
-              actorId: job.data.request.agentId,
-              action: 'engine.agent.run.completed',
-              targetId: job.data.request.agentId,
-              payload: {
-                status: result?.status,
-                toolName: job.data.request.toolName
-              }
-            });
-
-            await inboxService.createMessage({
-              recipientId: 'founder',
-              senderId: job.data.request.agentId,
-              type: 'report',
-              title: `Agent run ${result?.status ?? 'completed'}`,
-              body: `Action ${job.data.request.action} processed by ${job.data.request.toolName}`,
-              payload: {
-                result
-              }
-            });
+            await handleAgentRunCompleted(job.data.request, result);
           },
           onFailed: async (job, error) => {
-            await auditService.write({
-              actorId: job.data.request.agentId,
-              action: 'engine.agent.run.failed',
-              targetId: job.data.request.agentId,
-              payload: {
-                toolName: job.data.request.toolName,
-                message: error.message
-              }
-            });
-
-            await inboxService.createMessage({
-              recipientId: 'founder',
-              senderId: job.data.request.agentId,
-              type: 'alert',
-              title: 'Agent run failed',
-              body: error.message,
-              payload: {
-                action: job.data.request.action,
-                toolName: job.data.request.toolName
-              }
-            });
+            await handleAgentRunFailed(job.data.request, error);
           }
         }),
         createToolCallWorker({
@@ -237,9 +326,14 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         })
       );
     }
+
+    if (enableHeartbeatScheduler && canProcessAsyncJobs) {
+      await heartbeatRuntime.start();
+    }
   });
 
   app.addHook('onClose', async () => {
+    await heartbeatRuntime.stop();
     await Promise.all(workers.map(async (worker) => worker.close()));
     await queueService.close();
   });
@@ -339,6 +433,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
 
   return app;
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 function createCorsOriginMatcher(): (

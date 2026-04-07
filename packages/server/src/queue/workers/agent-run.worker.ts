@@ -1,11 +1,11 @@
-import type { AgentRunJobPayload, AgentRunResult, AgentRunner } from '@familyco/core';
+import type { AgentRunJobPayload, AgentRunRequest, AgentRunResult } from '@familyco/core';
 import { Worker, type Job } from 'bullmq';
 import IORedis from 'ioredis';
 
 export interface AgentRunWorkerOptions {
   queueName: string;
   redisUrl: string;
-  agentRunner: AgentRunner;
+  executeRun: (request: AgentRunRequest) => Promise<AgentRunResult>;
   onCompleted?: (job: Job<AgentRunJobPayload>, result: AgentRunResult | undefined) => Promise<void>;
   onFailed?: (job: Job<AgentRunJobPayload>, error: Error) => Promise<void>;
 }
@@ -23,7 +23,7 @@ export function createAgentRunWorker(options: AgentRunWorkerOptions): Worker {
         return;
       }
 
-      return options.agentRunner.run(job.data.request);
+      return options.executeRun(job.data.request);
     },
     {
       connection

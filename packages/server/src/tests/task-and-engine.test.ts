@@ -621,6 +621,121 @@ test('agent + project + task flow works with in-memory repositories', async () =
   await app.close();
 });
 
+test('heartbeat scheduler runs agents and persists session snapshots when enabled', async () => {
+  const app = createApp({
+    logger: false,
+    repositoryDriver: 'memory',
+    queueDriver: 'memory',
+    authApiKey: TEST_API_KEY,
+    enableHeartbeatScheduler: true,
+    heartbeatPollMs: 25
+  });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Heartbeat Ops Lead',
+      role: 'Operations',
+      level: 'L0',
+      department: 'Operations'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const createdAgent = createAgentResponse.json() as { id: string };
+
+  const heartbeatSettingResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/settings',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      key: 'agent.defaultHeartbeatMinutes',
+      value: 0.001
+    }
+  });
+
+  assert.equal(heartbeatSettingResponse.statusCode, 201);
+
+  const staleHeartbeatStateResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/settings',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      key: `agent.heartbeat.state.${createdAgent.id}`,
+      value: {
+        inFlight: true,
+        lastStatus: 'queued',
+        lastScheduledAt: '2026-04-01T00:00:00.000Z',
+        nextHeartbeatAt: '2026-04-01T00:01:00.000Z',
+        lastAction: 'heartbeat.tick',
+        lastToolName: 'task.log',
+        inputPreview: 'stale heartbeat state'
+      }
+    }
+  });
+
+  assert.equal(staleHeartbeatStateResponse.statusCode, 201);
+
+  await new Promise((resolve) => setTimeout(resolve, 180));
+
+  const memoryResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/settings/agent.memory.${createdAgent.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(memoryResponse.statusCode, 200);
+  const memorySetting = memoryResponse.json() as {
+    value: Array<{ role: string; content: string }>;
+  };
+  assert.equal(Array.isArray(memorySetting.value), true);
+  assert.equal(memorySetting.value.length >= 2, true);
+
+  const heartbeatStateResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/settings/agent.heartbeat.state.${createdAgent.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(heartbeatStateResponse.statusCode, 200);
+  const heartbeatState = heartbeatStateResponse.json() as {
+    value: {
+      lastStatus?: string;
+      lastCompletedAt?: string;
+      inFlight?: boolean;
+    };
+  };
+  assert.equal(heartbeatState.value.lastStatus, 'completed');
+  assert.equal(typeof heartbeatState.value.lastCompletedAt, 'string');
+  assert.equal(heartbeatState.value.inFlight, false);
+
+  const auditResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/audit?action=engine.agent.run.completed',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(auditResponse.statusCode, 200);
+  const auditRecords = auditResponse.json() as Array<{ targetId?: string }>;
+  assert.equal(auditRecords.some((record) => record.targetId === createdAgent.id), true);
+
+  await app.close();
+});
+
 test('prisma driver creates agent and audit records when enabled', { skip: process.env.RUN_PRISMA_TESTS !== '1' }, async () => {
   const app = createApp({ logger: false, repositoryDriver: 'prisma', authApiKey: TEST_API_KEY });
 

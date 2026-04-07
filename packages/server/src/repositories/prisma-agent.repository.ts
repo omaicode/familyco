@@ -59,10 +59,14 @@ export class PrismaAgentRepository implements AgentRepository {
   }
 
   async pause(id: string): Promise<AgentProfile> {
+    return this.setStatus(id, 'paused');
+  }
+
+  async setStatus(id: string, status: AgentStatus): Promise<AgentProfile> {
     const agent = await this.prisma.agent.update({
       where: { id },
       data: {
-        status: 'paused'
+        status
       }
     });
 
