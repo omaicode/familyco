@@ -13,7 +13,52 @@ export type AgentApprovalResponse = {
 export type AgentActionResult = AgentListItem | AgentApprovalResponse;
 
 const LEVEL_ORDER: Record<AgentLevel, number> = { L0: 0, L1: 1, L2: 2 };
-const STATUS_ORDER: Record<AgentStatus, number> = { active: 0, idle: 1, paused: 2, archived: 3 };
+const STATUS_ORDER: Record<AgentStatus, number> = {
+  active: 0,
+  idle: 1,
+  running: 2,
+  error: 3,
+  paused: 4,
+  terminated: 5
+};
+
+export const AGENT_STATUS_META: Record<
+  AgentStatus,
+  {
+    label: string;
+    description: string;
+  }
+> = {
+  active: {
+    label: 'Active',
+    description: 'Ready to receive the next heartbeat.'
+  },
+  idle: {
+    label: 'Idle',
+    description: 'Sleeping between heartbeat bursts with context restored on wake.'
+  },
+  running: {
+    label: 'Running',
+    description: 'A heartbeat is currently in progress.'
+  },
+  error: {
+    label: 'Error',
+    description: 'The last heartbeat failed and should be reviewed.'
+  },
+  paused: {
+    label: 'Paused',
+    description: 'Manually paused or stopped by budget guardrails.'
+  },
+  terminated: {
+    label: 'Terminated',
+    description: 'Permanently deactivated and kept for audit history only.'
+  }
+};
+
+export const HEALTHY_AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'running'];
+export const HEARTBEAT_READY_STATUSES: AgentStatus[] = ['active', 'idle'];
+export const ATTENTION_AGENT_STATUSES: AgentStatus[] = ['error', 'paused'];
+export const PAUSABLE_AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'running', 'error'];
 
 export const TEMPLATE_PRESETS: Record<
   CreateTemplateId,

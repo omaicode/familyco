@@ -2,6 +2,7 @@
 import type { AgentListItem } from '@familyco/ui';
 import { Plus, ShieldCheck } from 'lucide-vue-next';
 
+import { useI18n } from '../../composables/useI18n';
 import FcButton from '../FcButton.vue';
 import FcCard from '../FcCard.vue';
 import FcInput from '../FcInput.vue';
@@ -38,14 +39,16 @@ const emit = defineEmits<{
   (event: 'create'): void;
   (event: 'close'): void;
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
   <FcCard class="ag-create-card">
     <div class="ag-section-head">
       <div>
-        <h4>Create agent</h4>
-        <p>Fill only the essentials, then place the agent in the right reporting line.</p>
+        <h4>{{ t('Create agent') }}</h4>
+        <p>{{ t('Set up a heartbeat-based worker and place it in the right reporting line.') }}</p>
       </div>
     </div>
 
@@ -57,41 +60,41 @@ const emit = defineEmits<{
         type="button"
         @click="emit('apply-template', template.id)"
       >
-        <strong>{{ template.title }}</strong>
-        <span>{{ template.description }}</span>
+        <strong>{{ t(template.title) }}</strong>
+        <span>{{ t(template.description) }}</span>
       </button>
     </div>
 
     <div class="fc-form-grid">
       <div class="fc-form-group">
-        <label class="fc-label">Name</label>
-        <FcInput v-model="draft.name" placeholder="e.g. Nora — Ops Lead" />
+        <label class="fc-label">{{ t('Name') }}</label>
+        <FcInput v-model="draft.name" :placeholder="t('e.g. Nora — Ops Lead')" />
       </div>
 
       <div class="fc-form-group">
-        <label class="fc-label">Role</label>
-        <FcInput v-model="draft.role" placeholder="e.g. Operations Lead" />
+        <label class="fc-label">{{ t('Role') }}</label>
+        <FcInput v-model="draft.role" :placeholder="t('e.g. Operations Lead')" />
       </div>
 
       <div class="fc-form-group">
-        <label class="fc-label">Department</label>
-        <FcInput v-model="draft.department" placeholder="e.g. Operations" />
+        <label class="fc-label">{{ t('Department') }}</label>
+        <FcInput v-model="draft.department" :placeholder="t('e.g. Operations')" />
       </div>
 
       <div class="fc-form-group">
-        <label class="fc-label">Level</label>
+        <label class="fc-label">{{ t('Level') }}</label>
         <FcSelect v-model="draft.level">
-          <option value="L0">L0 — Executive</option>
-          <option value="L1">L1 — Department lead</option>
-          <option value="L2">L2 — Specialist</option>
+          <option value="L0">{{ t('L0 — Executive') }}</option>
+          <option value="L1">{{ t('L1 — Department lead') }}</option>
+          <option value="L2">{{ t('L2 — Specialist') }}</option>
         </FcSelect>
       </div>
 
       <div class="fc-form-group ag-span-2">
-        <label class="fc-label">Reports to</label>
+        <label class="fc-label">{{ t('Reports to') }}</label>
         <FcSelect v-model="draft.parentAgentId" :disabled="draft.level === 'L0' || draftManagerOptions.length === 0">
           <option value="">
-            {{ draft.level === 'L0' ? 'Executive agents stay at the root' : 'No manager assigned yet' }}
+            {{ draft.level === 'L0' ? t('Executive agents stay at the root') : t('No manager assigned yet') }}
           </option>
           <option v-for="manager in draftManagerOptions" :key="manager.id" :value="manager.id">
             {{ manager.name }} — {{ manager.role }}
@@ -103,10 +106,11 @@ const emit = defineEmits<{
     <div class="ag-note-box">
       <div class="ag-note-head">
         <ShieldCheck :size="15" />
-        <strong>{{ autonomyGuide.label }}</strong>
+        <strong>{{ t(autonomyGuide.label) }}</strong>
       </div>
-      <p>{{ autonomyGuide.description }}</p>
-      <small>{{ autonomyGuide.note }}</small>
+      <p>{{ t(autonomyGuide.description) }}</p>
+      <small>{{ t(autonomyGuide.note) }}</small>
+      <small class="ag-note-extra">{{ t('Agents wake up in short heartbeats, keep session state, and return to idle when the burst is done.') }}</small>
     </div>
 
     <div class="fc-toolbar">
@@ -116,9 +120,9 @@ const emit = defineEmits<{
         @click="emit('create')"
       >
         <Plus :size="14" />
-        {{ isCreating ? 'Creating…' : 'Create agent' }}
+        {{ isCreating ? t('Creating…') : t('Create agent') }}
       </FcButton>
-      <FcButton variant="ghost" @click="emit('close')">Cancel</FcButton>
+      <FcButton variant="ghost" @click="emit('close')">{{ t('Cancel') }}</FcButton>
     </div>
   </FcCard>
 </template>
@@ -206,6 +210,10 @@ const emit = defineEmits<{
   display: block;
   font-size: 0.74rem;
   color: var(--fc-text-muted);
+}
+
+.ag-note-extra {
+  margin-top: 6px;
 }
 
 @media (max-width: 720px) {

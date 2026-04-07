@@ -4,6 +4,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { uiRuntime } from '../runtime';
 import {
   AUTONOMY_GUIDE,
+  PAUSABLE_AGENT_STATUSES,
   TEMPLATE_PRESETS,
   isApprovalResponse,
   templateCards,
@@ -164,7 +165,7 @@ export function useAgentsPage() {
             : 'Approval request created. The agent will appear once it is approved.'
         );
       } else {
-        setFeedback('success', `${result.name} is now part of your AI team.`);
+        setFeedback('success', `${result.name} is now on your heartbeat roster.`);
         selectedAgentId.value = result.id;
       }
 
@@ -178,7 +179,7 @@ export function useAgentsPage() {
   };
 
   const pauseAgent = async (agent: AgentListItem): Promise<void> => {
-    if (agent.status !== 'active') {
+    if (!PAUSABLE_AGENT_STATUSES.includes(agent.status)) {
       return;
     }
 
@@ -192,7 +193,7 @@ export function useAgentsPage() {
           result.reason ? `Pause request queued: ${result.reason}` : `Pause request queued for ${agent.name}.`
         );
       } else {
-        setFeedback('success', `${result.name} has been paused.`);
+        setFeedback('success', `${result.name} has been paused for the next heartbeat.`);
       }
     } catch (error) {
       setFeedback('error', error instanceof Error ? error.message : 'Failed to pause agent');

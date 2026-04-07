@@ -295,8 +295,11 @@ body {
   border: 1px solid var(--fc-border-subtle); background: var(--fc-surface-muted); color: var(--fc-text-muted);
 }
 .fc-badge[data-status='active'],.fc-badge[data-status='done'],.fc-badge[data-status='approved'] { background: color-mix(in srgb, var(--fc-success) 12%, var(--fc-surface)); border-color: color-mix(in srgb, var(--fc-success) 35%, var(--fc-border-subtle)); color: var(--fc-success); }
-.fc-badge[data-status='pending'],.fc-badge[data-status='review'],.fc-badge[data-status='in_progress'] { background: color-mix(in srgb, var(--fc-info) 10%, var(--fc-surface)); border-color: color-mix(in srgb, var(--fc-info) 30%, var(--fc-border-subtle)); color: var(--fc-info); }
-.fc-badge[data-status='blocked'],.fc-badge[data-status='rejected'],.fc-badge[data-status='paused'] { background: color-mix(in srgb, var(--fc-error) 10%, var(--fc-surface)); border-color: color-mix(in srgb, var(--fc-error) 30%, var(--fc-border-subtle)); color: var(--fc-error); }
+.fc-badge[data-status='idle'],.fc-badge[data-status='pending'] { background: color-mix(in srgb, var(--fc-primary) 8%, var(--fc-surface)); border-color: color-mix(in srgb, var(--fc-primary) 24%, var(--fc-border-subtle)); color: var(--fc-primary); }
+.fc-badge[data-status='running'],.fc-badge[data-status='review'],.fc-badge[data-status='in_progress'] { background: color-mix(in srgb, var(--fc-info) 10%, var(--fc-surface)); border-color: color-mix(in srgb, var(--fc-info) 30%, var(--fc-border-subtle)); color: var(--fc-info); }
+.fc-badge[data-status='blocked'],.fc-badge[data-status='rejected'],.fc-badge[data-status='error'] { background: color-mix(in srgb, var(--fc-error) 10%, var(--fc-surface)); border-color: color-mix(in srgb, var(--fc-error) 30%, var(--fc-border-subtle)); color: var(--fc-error); }
+.fc-badge[data-status='paused'] { background: color-mix(in srgb, var(--fc-warning) 12%, var(--fc-surface)); border-color: color-mix(in srgb, var(--fc-warning) 32%, var(--fc-border-subtle)); color: var(--fc-warning); }
+.fc-badge[data-status='terminated'],.fc-badge[data-status='cancelled'] { background: color-mix(in srgb, var(--fc-text-muted) 8%, var(--fc-surface)); border-color: color-mix(in srgb, var(--fc-text-muted) 24%, var(--fc-border-subtle)); color: var(--fc-text-muted); }
 
 .fc-level-badge { display: inline-flex; align-items: center; border-radius: 6px; padding: 2px 7px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; }
 .fc-level-badge[data-level='L0'] { background: color-mix(in srgb,#7B61FF 12%,var(--fc-surface)); color: #7B61FF; border: 1px solid color-mix(in srgb,#7B61FF 30%,var(--fc-border-subtle)); }

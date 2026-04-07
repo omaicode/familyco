@@ -2,6 +2,8 @@
 import type { AgentListItem } from '@familyco/ui';
 import { Pause, Users } from 'lucide-vue-next';
 
+import { AGENT_STATUS_META, PAUSABLE_AGENT_STATUSES } from '../../composables/agents-page.config';
+import { useI18n } from '../../composables/useI18n';
 import FcBadge from '../FcBadge.vue';
 import FcButton from '../FcButton.vue';
 import FcCard from '../FcCard.vue';
@@ -11,12 +13,7 @@ import FcSelect from '../FcSelect.vue';
 type AgentLevel = AgentListItem['level'];
 type AgentStatus = AgentListItem['status'];
 
-const STATUS_LABELS: Record<AgentStatus, string> = {
-  active: 'Active',
-  idle: 'Idle',
-  paused: 'Paused',
-  archived: 'Archived'
-};
+const STATUS_OPTIONS: AgentStatus[] = ['active', 'idle', 'running', 'error', 'paused', 'terminated'];
 
 defineProps<{
   agents: AgentListItem[];
@@ -31,6 +28,8 @@ defineProps<{
   };
   attentionSummary: {
     paused: number;
+    error: number;
+    terminated: number;
     missingManager: number;
   };
   busy: Record<string, boolean>;
@@ -43,35 +42,39 @@ const emit = defineEmits<{
   (event: 'select', agentId: string): void;
   (event: 'pause', agent: AgentListItem): void;
 }>();
+
+const { t } = useI18n();
+
+const getStatusLabel = (status: AgentStatus): string => t(AGENT_STATUS_META[status].label);
+const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.includes(status);
 </script>
 
 <template>
   <FcCard class="ag-list-card">
     <div class="ag-section-head">
       <div>
-        <h4>Roster</h4>
-        <p>Filter by level, status, or department and act from one simple list.</p>
+        <h4>{{ t('Roster') }}</h4>
+        <p>{{ t('Filter by level, status, or department and act from one simple list.') }}</p>
       </div>
       <Users :size="16" class="ag-muted-icon" />
     </div>
 
     <div class="ag-filters">
-      <FcInput v-model="filters.searchQuery" placeholder="Search by name, role, or department" />
+      <FcInput v-model="filters.searchQuery" :placeholder="t('Search by name, role, or department')" />
       <FcSelect v-model="filters.level">
-        <option value="all">All levels</option>
+        <option value="all">{{ t('All levels') }}</option>
         <option value="L0">L0</option>
         <option value="L1">L1</option>
         <option value="L2">L2</option>
       </FcSelect>
       <FcSelect v-model="filters.status">
-        <option value="all">All statuses</option>
-        <option value="active">Active</option>
-        <option value="idle">Idle</option>
-        <option value="paused">Paused</option>
-        <option value="archived">Archived</option>
+        <option value="all">{{ t('All statuses') }}</option>
+        <option v-for="status in STATUS_OPTIONS" :key="status" :value="status">
+          {{ getStatusLabel(status) }}
+        </option>
       </FcSelect>
       <FcSelect v-model="filters.department">
-        <option value="all">All departments</option>
+        <option value="all">{{ t('All departments') }}</option>
         <option v-for="department in departmentOptions" :key="department" :value="department">
           {{ department }}
         </option>
@@ -79,15 +82,24 @@ const emit = defineEmits<{
     </div>
 
     <p class="ag-results-copy">
-      Showing <strong>{{ filteredAgents.length }}</strong> of <strong>{{ agents.length }}</strong> agents.
-      <template v-if="attentionSummary.paused || attentionSummary.missingManager">
-        {{ attentionSummary.paused }} paused · {{ attentionSummary.missingManager }} missing manager.
+      {{ t('Roster results summary', { shown: filteredAgents.length, total: agents.length }) }}
+      <template v-if="attentionSummary.paused || attentionSummary.error || attentionSummary.missingManager || attentionSummary.terminated">
+        {{
+          t('Roster attention summary', {
+            paused: attentionSummary.paused,
+            error: attentionSummary.error,
+            missing: attentionSummary.missingManager
+          })
+        }}
+        <template v-if="attentionSummary.terminated">
+          · {{ t('Terminated count label', { count: attentionSummary.terminated }) }}
+        </template>
       </template>
     </p>
 
     <div v-if="filteredAgents.length === 0" class="fc-empty ag-compact-empty">
-      <h4>No agents match these filters</h4>
-      <p>Try broadening the filters or create a new agent from the quick setup panel.</p>
+      <h4>{{ t('No agents match these filters') }}</h4>
+      <p>{{ t('Try broadening the filters or create a new agent from the quick setup panel.') }}</p>
     </div>
 
     <div v-else class="ag-roster-list">
@@ -110,9 +122,9 @@ const emit = defineEmits<{
             </div>
             <p class="fc-list-meta">{{ agent.role }} · {{ agent.department }}</p>
             <p class="ag-agent-subcopy">
-              {{ agent.level === 'L0' ? 'Company root' : `Reports to ${getAgentName(agent.parentAgentId)}` }}
+              {{ agent.level === 'L0' ? t('Company root') : t('Reports to label', { name: getAgentName(agent.parentAgentId) }) }}
               <span v-if="getDirectReportCount(agent.id) > 0">
-                · {{ getDirectReportCount(agent.id) }} direct reports
+                · {{ t('Direct reports count', { count: getDirectReportCount(agent.id) }) }}
               </span>
             </p>
           </div>
@@ -120,18 +132,18 @@ const emit = defineEmits<{
 
         <div class="ag-row-actions">
           <span v-if="agent.level !== 'L0' && !agent.parentAgentId" class="fc-risk-tag" data-risk="medium">
-            Manager needed
+            {{ t('Manager needed') }}
           </span>
-          <FcBadge :status="agent.status">{{ STATUS_LABELS[agent.status] }}</FcBadge>
+          <FcBadge :status="agent.status">{{ getStatusLabel(agent.status) }}</FcBadge>
           <FcButton
-            v-if="agent.status === 'active'"
+            v-if="canPause(agent.status)"
             variant="secondary"
             size="sm"
             :disabled="busy[agent.id]"
             @click.stop="emit('pause', agent)"
           >
             <Pause :size="12" />
-            {{ busy[agent.id] ? 'Pausing…' : 'Pause' }}
+            {{ busy[agent.id] ? t('Pausing…') : t('Pause') }}
           </FcButton>
         </div>
       </div>

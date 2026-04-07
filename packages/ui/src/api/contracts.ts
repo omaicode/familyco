@@ -6,7 +6,7 @@ export interface AgentListItem {
   role: string;
   level: 'L0' | 'L1' | 'L2';
   department: string;
-  status: 'active' | 'idle' | 'paused' | 'archived';
+  status: 'active' | 'idle' | 'running' | 'error' | 'paused' | 'terminated';
   parentAgentId: string | null;
 }
 

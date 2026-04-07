@@ -6,6 +6,7 @@ import SkeletonList from '../components/SkeletonList.vue';
 import FcBanner from '../components/FcBanner.vue';
 import FcButton from '../components/FcButton.vue';
 import AgentCreatePanel from '../components/agents/AgentCreatePanel.vue';
+import AgentExecutionModelCard from '../components/agents/AgentExecutionModelCard.vue';
 import AgentInspectorPanel from '../components/agents/AgentInspectorPanel.vue';
 import AgentRosterPanel from '../components/agents/AgentRosterPanel.vue';
 import AgentSummaryCards from '../components/agents/AgentSummaryCards.vue';
@@ -57,7 +58,7 @@ const {
     <div class="fc-page-header">
       <div>
         <h3>{{ t('Agents') }}</h3>
-        <p>{{ t('Manage your AI team with one required L0 executive by default, then add optional roles as the company grows.') }}</p>
+        <p>{{ t('Manage heartbeat-based AI employees with one required L0 executive by default, then add optional roles as the company grows.') }}</p>
       </div>
       <div class="fc-inline-actions">
         <FcButton variant="secondary" :disabled="isRefreshing" @click="reload">
@@ -84,6 +85,8 @@ const {
     </Transition>
 
     <AgentSummaryCards :metrics="summaryMetrics" :attention-summary="attentionSummary" />
+
+    <AgentExecutionModelCard />
 
     <Transition name="fc-banner">
       <AgentCreatePanel

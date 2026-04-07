@@ -121,7 +121,7 @@ const formatRelative = (iso: string): string => {
 };
 
 const ownerOptions = computed(() =>
-  projectState.value.data.agents.filter((agent) => agent.status !== 'archived' && agent.level !== 'L2')
+  projectState.value.data.agents.filter((agent) => agent.status !== 'terminated' && agent.level !== 'L2')
 );
 
 const getAgentLabel = (agentId: string | null | undefined): string => {

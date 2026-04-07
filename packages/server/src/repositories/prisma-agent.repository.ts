@@ -8,7 +8,10 @@ import type {
 import type { PrismaClient } from '../db/prisma/client.js';
 
 const AGENT_LEVELS: AgentLevel[] = ['L0', 'L1', 'L2'];
-const AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'paused', 'archived'];
+const AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'running', 'error', 'paused', 'terminated'];
+const LEGACY_AGENT_STATUS_ALIASES: Record<string, AgentStatus> = {
+  archived: 'terminated'
+};
 
 export class PrismaAgentRepository implements AgentRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -93,13 +96,22 @@ function toAgentProfile(agent: {
     throw new Error(`AGENT_LEVEL_INVALID:${agent.level}`);
   }
 
-  if (!AGENT_STATUSES.includes(agent.status as AgentStatus)) {
-    throw new Error(`AGENT_STATUS_INVALID:${agent.status}`);
-  }
-
   return {
     ...agent,
     level: agent.level as AgentLevel,
-    status: agent.status as AgentStatus
+    status: normalizeAgentStatus(agent.status)
   };
+}
+
+function normalizeAgentStatus(status: string): AgentStatus {
+  const aliasedStatus = LEGACY_AGENT_STATUS_ALIASES[status];
+  if (aliasedStatus) {
+    return aliasedStatus;
+  }
+
+  if (!AGENT_STATUSES.includes(status as AgentStatus)) {
+    throw new Error(`AGENT_STATUS_INVALID:${status}`);
+  }
+
+  return status as AgentStatus;
 }

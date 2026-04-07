@@ -2,18 +2,13 @@
 import type { AgentListItem } from '@familyco/ui';
 import { computed } from 'vue';
 
+import { AGENT_STATUS_META } from '../../composables/agents-page.config';
+import { useI18n } from '../../composables/useI18n';
 import FcBadge from '../FcBadge.vue';
 import FcButton from '../FcButton.vue';
 import FcSelect from '../FcSelect.vue';
 
 type AgentStatus = AgentListItem['status'];
-
-const STATUS_LABELS: Record<AgentStatus, string> = {
-  active: 'Active',
-  idle: 'Idle',
-  paused: 'Paused',
-  archived: 'Archived'
-};
 
 const props = defineProps<{
   selectedAgent: AgentListItem;
@@ -31,10 +26,14 @@ const emit = defineEmits<{
   (event: 'save-manager'): void;
 }>();
 
+const { t } = useI18n();
+
 const managerModel = computed({
   get: () => props.managerDraft,
   set: (value: string) => emit('update:managerDraft', value)
 });
+
+const getStatusLabel = (status: AgentStatus): string => t(AGENT_STATUS_META[status].label);
 </script>
 
 <template>
@@ -47,7 +46,7 @@ const managerModel = computed({
         <div class="ag-agent-title">
           <strong>{{ selectedAgent.name }}</strong>
           <FcBadge :level="selectedAgent.level">{{ selectedAgent.level }}</FcBadge>
-          <FcBadge :status="selectedAgent.status">{{ STATUS_LABELS[selectedAgent.status] }}</FcBadge>
+          <FcBadge :status="selectedAgent.status">{{ getStatusLabel(selectedAgent.status) }}</FcBadge>
         </div>
         <p class="fc-list-meta">{{ selectedAgent.role }} · {{ selectedAgent.department }}</p>
       </div>
@@ -55,21 +54,21 @@ const managerModel = computed({
 
     <div class="ag-mini-grid">
       <div class="ag-mini-stat">
-        <span>Reports to</span>
-        <strong>{{ selectedManager?.name ?? 'Root / unassigned' }}</strong>
+        <span>{{ t('Reports to') }}</span>
+        <strong>{{ selectedManager?.name ?? t('Root / unassigned') }}</strong>
       </div>
       <div class="ag-mini-stat">
-        <span>Direct reports</span>
+        <span>{{ t('Direct reports') }}</span>
         <strong>{{ selectedDirectReports.length }}</strong>
       </div>
       <div class="ag-mini-stat">
-        <span>Status</span>
-        <strong>{{ STATUS_LABELS[selectedAgent.status] }}</strong>
+        <span>{{ t('Status') }}</span>
+        <strong>{{ getStatusLabel(selectedAgent.status) }}</strong>
       </div>
     </div>
 
     <div class="ag-group">
-      <label class="ag-group-label">Team path</label>
+      <label class="ag-group-label">{{ t('Team path') }}</label>
       <div class="ag-path">
         <span v-for="(agent, index) in selectedPath" :key="agent.id" class="ag-path-chip">
           {{ agent.name }}
@@ -79,9 +78,9 @@ const managerModel = computed({
     </div>
 
     <div class="ag-group">
-      <label class="ag-group-label">Direct reports</label>
+      <label class="ag-group-label">{{ t('Direct reports') }}</label>
       <div class="ag-path">
-        <span v-if="selectedDirectReports.length === 0" class="ag-report-empty">No direct reports yet</span>
+        <span v-if="selectedDirectReports.length === 0" class="ag-report-empty">{{ t('No direct reports yet') }}</span>
         <span v-for="report in selectedDirectReports" :key="report.id" class="ag-path-chip">
           {{ report.name }}
         </span>
@@ -89,9 +88,9 @@ const managerModel = computed({
     </div>
 
     <div v-if="selectedAgent.level !== 'L0'" class="fc-form-group">
-      <label class="fc-label">Reports to</label>
+      <label class="fc-label">{{ t('Reports to') }}</label>
       <FcSelect v-model="managerModel">
-        <option value="">No manager assigned yet</option>
+        <option value="">{{ t('No manager assigned yet') }}</option>
         <option v-for="manager in selectedManagerOptions" :key="manager.id" :value="manager.id">
           {{ manager.name }} — {{ manager.role }}
         </option>
@@ -103,7 +102,7 @@ const managerModel = computed({
           :disabled="isSavingParent || managerDraft === (selectedAgent.parentAgentId ?? '')"
           @click="emit('save-manager')"
         >
-          {{ isSavingParent ? 'Saving…' : 'Save reporting line' }}
+          {{ isSavingParent ? t('Saving…') : t('Save reporting line') }}
         </FcButton>
       </div>
     </div>

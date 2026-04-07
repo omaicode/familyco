@@ -24,7 +24,7 @@ export class AgentService {
 
   async findExecutiveAgent(): Promise<AgentProfile | null> {
     const agents = await this.repository.list();
-    return agents.find((agent) => agent.level === 'L0' && agent.status !== 'archived') ?? null;
+    return agents.find((agent) => agent.level === 'L0' && agent.status !== 'terminated') ?? null;
   }
 
   async getAgentById(id: string): Promise<AgentProfile> {

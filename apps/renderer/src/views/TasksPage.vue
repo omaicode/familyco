@@ -112,9 +112,9 @@ const setFeedback = (type: 'success' | 'error' | 'info', text: string): void => 
 const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
 const projectOptions = computed(() => taskState.value.data.projects);
-const assigneeOptions = computed(() => taskState.value.data.agents.filter((agent) => agent.status !== 'archived'));
+const assigneeOptions = computed(() => taskState.value.data.agents.filter((agent) => agent.status !== 'terminated'));
 const creatorOptions = computed(() =>
-  taskState.value.data.agents.filter((agent) => agent.status !== 'archived' && agent.level !== 'L2')
+  taskState.value.data.agents.filter((agent) => agent.status !== 'terminated' && agent.level !== 'L2')
 );
 
 const getProjectName = (projectId: string): string =>

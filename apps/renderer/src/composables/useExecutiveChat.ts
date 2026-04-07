@@ -20,7 +20,7 @@ export function useExecutiveChat() {
 
   const agentState = computed(() => uiRuntime.stores.agents.state.agents);
   const executiveAgents = computed(() =>
-    agentState.value.data.filter((agent) => agent.level === 'L0' && agent.status !== 'archived')
+    agentState.value.data.filter((agent) => agent.level === 'L0' && agent.status !== 'terminated')
   );
   const selectedAgent = computed(
     () => executiveAgents.value.find((agent) => agent.id === selectedAgentId.value) ?? executiveAgents.value[0] ?? null

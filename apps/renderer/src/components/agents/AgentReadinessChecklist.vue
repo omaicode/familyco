@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '../../composables/useI18n';
+
 defineProps<{
   selectedAutonomy: {
     label: string;
@@ -11,24 +13,26 @@ defineProps<{
     done: boolean;
   }>;
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
   <div class="ag-stack">
     <div class="ag-note-box">
       <div class="ag-note-head">
-        <strong>{{ selectedAutonomy.label }}</strong>
+        <strong>{{ t(selectedAutonomy.label) }}</strong>
       </div>
-      <p>{{ selectedAutonomy.description }}</p>
-      <small>{{ selectedAutonomy.note }}</small>
+      <p>{{ t(selectedAutonomy.description) }}</p>
+      <small>{{ t(selectedAutonomy.note) }}</small>
     </div>
 
     <div class="ag-checklist">
       <div v-for="item in deploymentChecklist" :key="item.title" class="ag-checklist-item">
         <span class="ag-check-dot" :data-done="item.done"></span>
         <div>
-          <strong>{{ item.title }}</strong>
-          <p>{{ item.text }}</p>
+          <strong>{{ t(item.title) }}</strong>
+          <p>{{ t(item.text) }}</p>
         </div>
       </div>
     </div>

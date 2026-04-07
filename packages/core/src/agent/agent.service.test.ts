@@ -39,8 +39,46 @@ test('AgentService emits created and paused events', async () => {
   ]);
 });
 
+test('AgentService skips terminated executives when selecting the default L0 agent', async () => {
+  const repository = new InMemoryAgentRepositoryStub();
+  const service = new AgentService(repository);
+  const now = new Date('2026-01-04T00:00:00.000Z');
+
+  repository.seed({
+    id: 'agent-terminated',
+    name: 'Former Chief of Staff',
+    role: 'Executive',
+    level: 'L0',
+    department: 'Executive',
+    status: 'terminated',
+    parentAgentId: null,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  repository.seed({
+    id: 'agent-active',
+    name: 'Current Chief of Staff',
+    role: 'Executive',
+    level: 'L0',
+    department: 'Executive',
+    status: 'active',
+    parentAgentId: null,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  const executive = await service.findExecutiveAgent();
+
+  assert.equal(executive?.id, 'agent-active');
+});
+
 class InMemoryAgentRepositoryStub implements AgentRepository {
   private readonly agents = new Map<string, AgentProfile>();
+
+  seed(agent: AgentProfile): void {
+    this.agents.set(agent.id, agent);
+  }
 
   async create(input: CreateAgentInput): Promise<AgentProfile> {
     const now = new Date('2026-01-01T00:00:00.000Z');

@@ -3,6 +3,9 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 
 import {
   AUTONOMY_GUIDE,
+  ATTENTION_AGENT_STATUSES,
+  HEARTBEAT_READY_STATUSES,
+  HEALTHY_AGENT_STATUSES,
   normalizeText,
   sortAgents,
   type AgentLevel,
@@ -147,22 +150,26 @@ export function useAgentsDirectory(
 
   const summaryMetrics = computed(() => {
     const total = agents.value.length;
-    const active = agents.value.filter((agent) => agent.status === 'active').length;
-    const paused = agents.value.filter((agent) => agent.status === 'paused').length;
+    const heartbeatReady = agents.value.filter((agent) => HEARTBEAT_READY_STATUSES.includes(agent.status)).length;
+    const running = agents.value.filter((agent) => agent.status === 'running').length;
+    const attention = agents.value.filter((agent) => ATTENTION_AGENT_STATUSES.includes(agent.status)).length;
     const leads = agents.value.filter((agent) => agent.level !== 'L2').length;
-    const ready = agents.value.filter((agent) => agent.level === 'L0' || Boolean(agent.parentAgentId)).length;
+    const mapped = agents.value.filter((agent) => agent.level === 'L0' || Boolean(agent.parentAgentId)).length;
 
     return {
       total,
-      active,
-      paused,
+      heartbeatReady,
+      running,
+      attention,
       leads,
-      readiness: total === 0 ? 0 : Math.round((ready / total) * 100)
+      readiness: total === 0 ? 0 : Math.round((mapped / total) * 100)
     };
   });
 
   const attentionSummary = computed(() => ({
     paused: agents.value.filter((agent) => agent.status === 'paused').length,
+    error: agents.value.filter((agent) => agent.status === 'error').length,
+    terminated: agents.value.filter((agent) => agent.status === 'terminated').length,
     missingManager: agents.value.filter((agent) => agent.level !== 'L0' && !agent.parentAgentId).length
   }));
 
@@ -184,12 +191,28 @@ export function useAgentsDirectory(
         done: agent.level === 'L0' || Boolean(agent.parentAgentId)
       },
       {
-        title: 'Status is deployment-ready',
+        title: 'Heartbeat state is healthy',
         text:
           agent.status === 'paused'
-            ? 'Paused agents will not pick up new work until you reactivate them.'
-            : 'This agent is visible and ready for routing in the current control plane.',
-        done: agent.status === 'active' || agent.status === 'idle'
+            ? 'Paused agents stay asleep until you re-enable their heartbeat.'
+            : agent.status === 'error'
+              ? 'The last heartbeat failed. Review the run details before retrying work.'
+              : agent.status === 'terminated'
+                ? 'Terminated agents stay in the roster for traceability but no longer receive work.'
+                : agent.status === 'running'
+                  ? 'A heartbeat is in progress now and FamilyCo will capture the run record when it finishes.'
+                  : agent.status === 'idle'
+                    ? 'This agent is sleeping between heartbeats and can resume with saved session context.'
+                    : 'This agent is ready for the next heartbeat and can receive new work.',
+        done: HEALTHY_AGENT_STATUSES.includes(agent.status)
+      },
+      {
+        title: 'Session continuity is protected',
+        text:
+          agent.status === 'terminated'
+            ? 'Session history stays available for audit review even after permanent deactivation.'
+            : 'Session persistence lets the next heartbeat continue without re-reading the whole thread.',
+        done: true
       },
       {
         title: 'Scope matches hierarchy',

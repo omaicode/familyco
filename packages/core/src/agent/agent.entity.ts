@@ -1,5 +1,5 @@
 export type AgentLevel = 'L0' | 'L1' | 'L2';
-export type AgentStatus = 'active' | 'idle' | 'paused' | 'archived';
+export type AgentStatus = 'active' | 'idle' | 'running' | 'error' | 'paused' | 'terminated';
 
 export interface AgentProfile {
   id: string;
