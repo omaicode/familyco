@@ -11,11 +11,13 @@ import { uiRuntime, applyRuntimeTheme } from './runtime';
 import SplashScreen from './components/SplashScreen.vue';
 import AppSidebar from './components/AppSidebar.vue';
 import AppTopbar from './components/AppTopbar.vue';
+import { useI18n } from './composables/useI18n';
 
 type ThemePreference = 'system' | 'light' | 'dark';
 
 const route = useRoute();
 const router = useRouter();
+const { t, coerceSupportedLocale } = useI18n();
 
 // ── Connection state ──────────────────────────────────────
 const serverReachable = ref(uiRuntime.stores.app.state.connection.isServerReachable);
@@ -77,10 +79,10 @@ const pendingInboxCount = computed(() =>
 
 const pageTitle = computed(() => {
   const match = uiRuntime.routes.find((item) => item.path === route.path);
-  return match?.pageTitle ?? 'FamilyCo';
+  return t(match?.pageTitle ?? 'FamilyCo');
 });
 
-const connectionLabel = computed(() => serverReachable.value ? 'Connected' : 'Disconnected');
+const connectionLabel = computed(() => serverReachable.value ? t('Connected') : t('Disconnected'));
 const showConnectionWarning = computed(() => !serverReachable.value);
 
 // ── Theme ────────────────────────────────────────────────
@@ -100,7 +102,9 @@ const loadThemePreference = async (): Promise<void> => {
   try {
     await uiRuntime.stores.settings.load();
     const stored = uiRuntime.stores.settings.state.data.find(item => item.key === 'ui.theme.preference');
+    const storedLocale = uiRuntime.stores.settings.state.data.find(item => item.key === 'ui.locale');
     applyThemePreference(parseThemePreference(stored?.value) ?? 'system');
+    uiRuntime.stores.app.setLocale(coerceSupportedLocale(storedLocale?.value, 'en'));
 
     // Onboarding redirect — only on first successful settings load
     if (!hasCheckedOnboarding.value) {
@@ -130,7 +134,7 @@ const handleSystemThemeChange = (event: MediaQueryListEvent): void => {
 const resolveErrorMessage = (error: unknown): string => {
   if (error instanceof Error && error.message.trim()) return error.message;
   if (typeof error === 'string' && error.trim()) return error;
-  return 'Unexpected application error';
+  return t('Unexpected application error');
 };
 
 const setGlobalError = (error: unknown) => { globalErrorMessage.value = resolveErrorMessage(error); };
@@ -278,7 +282,7 @@ onUnmounted(() => {
             <component :is="browserOnline ? WifiOff : Wifi" :size="16" style="flex-shrink:0;" />
             <div style="flex:1; min-width:0;">
               <strong style="font-size:0.875rem;">
-                {{ browserOnline ? 'Server unreachable' : 'Network offline' }}
+                {{ browserOnline ? t('Server unreachable') : t('Network offline') }}
               </strong>
               <p class="fc-list-meta" style="margin:2px 0 0;" v-if="lastConnectionError">
                 {{ lastConnectionError }}
@@ -290,7 +294,7 @@ onUnmounted(() => {
               @click="retryRuntime"
             >
               <RefreshCw :size="13" :class="{ 'fc-spin': isReconnecting }" />
-              {{ isReconnecting ? 'Reconnecting…' : 'Retry' }}
+              {{ isReconnecting ? t('Reconnecting…') : t('Retry') }}
             </button>
           </section>
         </Transition>
@@ -302,7 +306,7 @@ onUnmounted(() => {
             <span style="flex:1;">{{ globalErrorMessage }}</span>
             <button class="fc-btn-secondary fc-btn-sm" @click="retryRuntime">
               <RefreshCw :size="13" />
-              Retry
+              {{ t('Retry') }}
             </button>
           </section>
         </Transition>

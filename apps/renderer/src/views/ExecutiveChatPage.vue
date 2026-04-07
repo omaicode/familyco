@@ -9,6 +9,9 @@ import FcCard from '../components/FcCard.vue';
 import FcSelect from '../components/FcSelect.vue';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useExecutiveChat } from '../composables/useExecutiveChat';
+import { useI18n } from '../composables/useI18n';
+
+const { t } = useI18n();
 
 const {
   thread,
@@ -35,13 +38,13 @@ const {
   <section>
     <div class="fc-page-header">
       <div>
-        <h3>Executive Chat</h3>
-        <p>Talk to your L0 agent over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.</p>
+        <h3>{{ t('Executive Chat') }}</h3>
+        <p>{{ t('Talk to your L0 agent over a live socket stream. It can reply immediately and call tools when you explicitly need a task or project.') }}</p>
       </div>
       <div class="fc-inline-actions">
         <FcButton variant="secondary" :disabled="isRefreshing" @click="reload">
           <RefreshCw :size="14" :class="{ 'fc-spin': isRefreshing }" />
-          {{ isRefreshing ? 'Refreshing…' : 'Refresh' }}
+          {{ isRefreshing ? t('Refreshing…') : t('Refresh') }}
         </FcButton>
       </div>
     </div>
@@ -63,15 +66,15 @@ const {
         <FcCard style="margin-bottom: 14px;">
           <div class="chat-toolbar">
             <div>
-              <p class="chat-caption">Primary interaction lane</p>
+              <p class="chat-caption">{{ t('Primary interaction lane') }}</p>
               <div class="chat-status-pill" :data-state="connectionState">
                 <component :is="connectionState === 'connecting' ? LoaderCircle : PlugZap" :size="13" :class="{ 'fc-spin': connectionState === 'connecting' }" />
-                <span>Socket {{ connectionLabel }}</span>
+                <span>{{ t('Socket status', { label: connectionLabel }) }}</span>
               </div>
             </div>
 
             <div class="chat-select-wrap">
-              <label class="fc-label" for="chat-agent">Executive agent</label>
+              <label class="fc-label" for="chat-agent">{{ t('Executive agent') }}</label>
               <FcSelect id="chat-agent" v-model="selectedAgentId" :disabled="executiveAgents.length <= 1">
                 <option v-for="agent in executiveAgents" :key="agent.id" :value="agent.id">
                   {{ agent.name }} · {{ agent.role }}
@@ -81,15 +84,15 @@ const {
           </div>
 
           <div v-if="isLoading" class="fc-loading">
-            <p style="margin: 0 0 12px; color: var(--fc-text-muted); font-size: 0.875rem;">Loading conversation…</p>
+            <p style="margin: 0 0 12px; color: var(--fc-text-muted); font-size: 0.875rem;">{{ t('Loading conversation…') }}</p>
             <SkeletonList />
           </div>
 
           <div v-else-if="!selectedAgent" class="fc-empty">
             <Bot :size="34" class="fc-empty-icon" />
-            <h4>No executive agent yet</h4>
-            <p>Complete setup first so FamilyCo can route founder requests through the L0 layer.</p>
-            <RouterLink to="/setup" class="fc-btn-primary">Open setup</RouterLink>
+            <h4>{{ t('No executive agent yet') }}</h4>
+            <p>{{ t('Complete setup first so FamilyCo can route founder requests through the L0 layer.') }}</p>
+            <RouterLink to="/setup" class="fc-btn-primary">{{ t('Open setup') }}</RouterLink>
           </div>
 
           <template v-else>

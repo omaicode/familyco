@@ -9,10 +9,13 @@ import {
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useAutoReload } from '../composables/useAutoReload';
+import { useI18n } from '../composables/useI18n';
 
 type ApprovalDecision = 'approved' | 'rejected';
 
 // ── State ──────────────────────────────────────────────────
+const { t } = useI18n();
+
 const approvalFilter = ref<'pending' | 'all'>('pending');
 const messageFilter = ref<'all' | 'unread' | 'approval' | 'alert' | 'report' | 'info'>('all');
 const selectedApprovalIds = ref<string[]>([]);
@@ -77,9 +80,9 @@ const formatTime = (iso: string): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const diff = Date.now() - d.getTime();
-  if (diff < 60_000)    return 'just now';
-  if (diff < 3600_000)  return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3600_000)}h ago`;
+  if (diff < 60_000)    return t('just now');
+  if (diff < 3600_000)  return t('{{count}}m ago', { count: Math.floor(diff / 60_000) });
+  if (diff < 86_400_000) return t('{{count}}h ago', { count: Math.floor(diff / 3600_000) });
   return d.toLocaleDateString();
 };
 
@@ -171,12 +174,12 @@ useAutoReload(reload);
     <!-- ── Header ──────────────────────────────────── -->
     <div class="fc-page-header">
       <div>
-        <h3>Inbox</h3>
-        <p>Review approvals, task updates, and governance highlights.</p>
+        <h3>{{ t('Inbox') }}</h3>
+        <p>{{ t('Review approvals, task updates, and governance highlights.') }}</p>
       </div>
       <button class="fc-btn-secondary" :disabled="isLoading" @click="reload">
         <RefreshCw :size="14" :class="{ 'fc-spin': isLoading }" />
-        Refresh
+        {{ t('Refresh') }}
       </button>
     </div>
 
@@ -195,7 +198,7 @@ useAutoReload(reload);
 
     <!-- ── Loading ──────────────────────────────────── -->
     <div v-if="isLoading" class="fc-loading">
-      <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">Loading inbox…</p>
+      <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">{{ t('Loading inbox…') }}</p>
       <SkeletonList />
     </div>
 
@@ -206,15 +209,15 @@ useAutoReload(reload);
         <p style="margin:0;">{{ uiRuntime.stores.inbox.state.errorMessage }}</p>
       </div>
       <button class="fc-btn-secondary fc-btn-sm" @click="reload">
-        <RefreshCw :size="13" /> Retry
+        <RefreshCw :size="13" /> {{ t('Retry') }}
       </button>
     </div>
 
     <!-- ── Empty ────────────────────────────────────── -->
     <div v-else-if="uiRuntime.stores.inbox.state.isEmpty" class="fc-empty">
       <Inbox :size="36" class="fc-empty-icon" />
-      <h4>All clear</h4>
-      <p>No pending approvals or messages right now.</p>
+      <h4>{{ t('All clear') }}</h4>
+      <p>{{ t('No pending approvals or messages right now.') }}</p>
     </div>
 
     <template v-else>
@@ -226,7 +229,7 @@ useAutoReload(reload);
           @click="activeTab = 'approvals'"
         >
           <ShieldCheck :size="14" />
-          Approvals
+          {{ t('Approvals') }}
           <span class="fc-tab-count">{{ pendingCount }}</span>
         </button>
         <button
@@ -235,7 +238,7 @@ useAutoReload(reload);
           @click="activeTab = 'messages'"
         >
           <MessageSquare :size="14" />
-          Task updates
+          {{ t('Task updates') }}
           <span v-if="unreadCount > 0" class="fc-tab-count">{{ unreadCount }}</span>
         </button>
         <button

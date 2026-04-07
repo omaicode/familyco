@@ -23,6 +23,7 @@ import MarkdownEditor from '../components/MarkdownEditor.vue';
 import ProjectDetailModal from '../components/projects/ProjectDetailModal.vue';
 import ProjectPortfolioTable from '../components/projects/ProjectPortfolioTable.vue';
 import { markdownToPlainText } from '../utils/markdown';
+import { useI18n } from '../composables/useI18n';
 
 type PortfolioFilter = 'all' | 'attention' | 'healthy' | 'roots';
 type RiskLevel = 'healthy' | 'watch' | 'critical';
@@ -49,6 +50,7 @@ interface ProjectCard extends ProjectListItem {
 
 const showCreateForm = ref(false);
 const isCreating = ref(false);
+const { t } = useI18n();
 const isRefreshing = ref(false);
 const selectedProjectId = ref<string | null>(null);
 const filterMode = ref<PortfolioFilter>('all');
@@ -84,7 +86,7 @@ const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim
 const getPreview = (description: string): string => {
   const normalized = normalizeText(markdownToPlainText(description));
   if (!normalized) {
-    return 'Add a short operational brief so agents understand the objective and boundaries.';
+    return t('Add a short operational brief so agents understand the objective and boundaries.');
   }
 
   return normalized.length <= 130 ? normalized : `${normalized.slice(0, 127)}…`;
@@ -93,10 +95,10 @@ const getPreview = (description: string): string => {
 const formatDate = (iso: string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return 'Recently updated';
+    return t('Recently updated');
   }
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat(uiRuntime.stores.app.state.locale === 'vi' ? 'vi-VN' : 'en-US', {
     day: '2-digit',
     month: 'short',
     year: 'numeric'
@@ -106,16 +108,16 @@ const formatDate = (iso: string): string => {
 const formatRelative = (iso: string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return 'just now';
+    return t('just now');
   }
 
   const diff = Date.now() - date.getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t('just now');
+  if (minutes < 60) return t('{{count}}m ago', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return t('{{count}}h ago', { count: hours });
+  return t('{{count}}d ago', { count: Math.floor(hours / 24) });
 };
 
 const ownerOptions = computed(() =>
@@ -124,7 +126,7 @@ const ownerOptions = computed(() =>
 
 const getAgentLabel = (agentId: string | null | undefined): string => {
   if (!agentId) {
-    return 'Unassigned';
+    return t('Unassigned');
   }
 
   return projectState.value.data.agents.find((agent) => agent.id === agentId)?.name ?? agentId;
@@ -148,15 +150,23 @@ const buildProjectCard = (project: ProjectListItem): ProjectCard => {
   const openTasks = counts.pending + counts.inProgress + counts.review + counts.blocked;
   const risk: RiskLevel = counts.blocked > 0 ? 'critical' : counts.review > 0 ? 'watch' : 'healthy';
 
-  let healthText = 'Brief ready for agents';
+  let healthText = t('Brief ready for agents');
   if (counts.blocked > 0) {
-    healthText = `${counts.blocked} blocked item${counts.blocked === 1 ? '' : 's'} need attention`;
+    healthText = counts.blocked === 1
+      ? t('{{count}} blocked item needs attention', { count: counts.blocked })
+      : t('{{count}} blocked items need attention', { count: counts.blocked });
   } else if (counts.review > 0) {
-    healthText = `${counts.review} item${counts.review === 1 ? '' : 's'} awaiting review`;
+    healthText = counts.review === 1
+      ? t('{{count}} item awaiting review', { count: counts.review })
+      : t('{{count}} items awaiting review', { count: counts.review });
   } else if (openTasks > 0) {
-    healthText = `${openTasks} task${openTasks === 1 ? '' : 's'} moving through delivery`;
+    healthText = openTasks === 1
+      ? t('{{count}} task moving through delivery', { count: openTasks })
+      : t('{{count}} tasks moving through delivery', { count: openTasks });
   } else if (counts.done > 0) {
-    healthText = `${counts.done} completed deliverable${counts.done === 1 ? '' : 's'}`;
+    healthText = counts.done === 1
+      ? t('{{count}} completed deliverable', { count: counts.done })
+      : t('{{count}} completed deliverables', { count: counts.done });
   }
 
   return {
@@ -434,17 +444,17 @@ useAutoReload(reload);
   <section>
     <div class="fc-page-header">
       <div>
-        <h3>Projects</h3>
-        <p>Give every agent a clear brief: what this project is, why it matters, and how delivery should run.</p>
+        <h3>{{ t('Projects') }}</h3>
+        <p>{{ t('Manage workstreams, owners, and delivery health across the company.') }}</p>
       </div>
       <div class="fc-inline-actions">
         <button class="fc-btn-secondary" :disabled="isRefreshing" @click="reload">
           <RefreshCw :size="14" :class="{ 'fc-spin': isRefreshing }" />
-          {{ isRefreshing ? 'Refreshing…' : 'Refresh' }}
+          {{ isRefreshing ? t('Refreshing…') : t('Refresh') }}
         </button>
         <button class="fc-btn-primary" @click="showCreateForm = !showCreateForm">
           <Plus :size="14" />
-          {{ showCreateForm ? 'Close form' : 'New project' }}
+          {{ showCreateForm ? t('Close form') : t('New project') }}
         </button>
       </div>
     </div>
@@ -465,22 +475,22 @@ useAutoReload(reload);
       <FcCard v-if="showCreateForm" style="margin-bottom:16px;">
         <div class="fc-section-header" style="margin-bottom:14px;align-items:flex-start;">
           <div>
-            <h4 style="margin:0;">Create project brief</h4>
-            <p class="fc-list-meta" style="margin:4px 0 0;">Projects work best when an L0 or L1 owner is clearly accountable for scope and handoffs.</p>
+            <h4 style="margin:0;">{{ t('Create project brief') }}</h4>
+            <p class="fc-list-meta" style="margin:4px 0 0;">{{ t('Projects work best when an L0 or L1 owner is clearly accountable for scope and handoffs.') }}</p>
           </div>
-          <span class="fc-risk-tag" data-risk="low">Agent-ready</span>
+          <span class="fc-risk-tag" data-risk="low">{{ t('Agent-ready') }}</span>
         </div>
 
         <div class="fc-form-grid" style="margin-bottom:12px;">
           <div class="fc-form-group">
-            <label class="fc-label">Project name</label>
+            <label class="fc-label">{{ t('Project name') }}</label>
             <FcInput v-model="draft.name" placeholder="e.g. Q2 Growth Engine" />
           </div>
 
           <div class="fc-form-group">
-            <label class="fc-label">Owner agent</label>
+            <label class="fc-label">{{ t('Owner agent') }}</label>
             <FcSelect v-model="draft.ownerAgentId">
-              <option value="" disabled>Select an L0 or L1 owner</option>
+              <option value="" disabled>{{ t('Select an L0 or L1 owner') }}</option>
               <option v-for="agent in ownerOptions" :key="agent.id" :value="agent.id">
                 {{ agent.name }} — {{ agent.role }}
               </option>
@@ -488,7 +498,7 @@ useAutoReload(reload);
           </div>
 
           <div class="fc-form-group" style="grid-column:1 / -1;">
-            <label class="fc-label">Operational brief</label>
+            <label class="fc-label">{{ t('Operational brief') }}</label>
             <MarkdownEditor
               v-model="draft.description"
               placeholder="Describe the goal, success criteria, scope, constraints, and how agents should execute this project using Markdown."
@@ -497,9 +507,9 @@ useAutoReload(reload);
           </div>
 
           <div class="fc-form-group">
-            <label class="fc-label">Parent project (optional)</label>
+            <label class="fc-label">{{ t('Parent project (optional)') }}</label>
             <FcSelect v-model="draft.parentProjectId">
-              <option value="">No parent project</option>
+              <option value="">{{ t('No parent project') }}</option>
               <option v-for="project in projects" :key="project.id" :value="project.id">
                 {{ project.name }}
               </option>
@@ -508,7 +518,7 @@ useAutoReload(reload);
         </div>
 
         <p class="fc-list-meta" style="margin:0 0 12px;">
-          Tip: write the brief as if a new agent needs to understand the project in under one minute.
+          {{ t('Tip: write the brief as if a new agent needs to understand the project in under one minute.') }}
         </p>
 
         <div class="fc-toolbar">
@@ -518,15 +528,15 @@ useAutoReload(reload);
             @click="createProject"
           >
             <Plus :size="14" />
-            {{ isCreating ? 'Creating…' : 'Create project' }}
+            {{ isCreating ? t('Creating…') : t('Create project') }}
           </FcButton>
-          <FcButton variant="ghost" @click="showCreateForm = false">Cancel</FcButton>
+          <FcButton variant="ghost" @click="showCreateForm = false">{{ t('Cancel') }}</FcButton>
         </div>
       </FcCard>
     </Transition>
 
     <div v-if="projectState.isLoading" class="fc-loading">
-      <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">Loading project portfolio…</p>
+      <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">{{ t('Loading project portfolio…') }}</p>
       <SkeletonList />
     </div>
 
@@ -536,16 +546,16 @@ useAutoReload(reload);
         <p style="margin:0;">{{ projectState.errorMessage }}</p>
       </div>
       <FcButton variant="secondary" size="sm" @click="reload">
-        <RefreshCw :size="13" /> Retry
+        <RefreshCw :size="13" /> {{ t('Retry') }}
       </FcButton>
     </div>
 
     <div v-else-if="projectState.isEmpty" class="fc-empty">
       <FolderKanban :size="36" class="fc-empty-icon" />
-      <h4>No projects yet</h4>
-      <p>Create your first project so agents know the objective, owner, and execution boundaries.</p>
+      <h4>{{ t('No projects yet') }}</h4>
+      <p>{{ t('Create your first project so agents know the objective, owner, and execution boundaries.') }}</p>
       <FcButton variant="primary" :disabled="ownerOptions.length === 0" @click="showCreateForm = true">
-        <Plus :size="14" /> Create first project
+        <Plus :size="14" /> {{ t('Create first project') }}
       </FcButton>
       <p v-if="ownerOptions.length === 0" class="fc-list-meta" style="margin-top:10px;">
         Create at least one L0 or L1 agent first so the project has an accountable owner.

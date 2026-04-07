@@ -10,9 +10,11 @@ import {
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useAutoReload } from '../composables/useAutoReload';
+import { useI18n } from '../composables/useI18n';
 
 const projectId = ref(import.meta.env.VITE_DEFAULT_PROJECT_ID || 'demo-project');
 const isRefreshing = ref(false);
+const { t } = useI18n();
 
 const refresh = async () => {
   isRefreshing.value = true;
@@ -30,9 +32,9 @@ const blockedRatioPercent = computed(() => `${Math.round(metrics.value.blockedRa
 
 const approvalQueueHealth = computed(() => {
   const n = metrics.value.pendingApprovals;
-  if (n >= 10) return { label: 'High pressure', highlight: 'error' };
-  if (n >= 4)  return { label: 'Moderate pressure', highlight: 'warning' };
-  return { label: 'Healthy', highlight: 'success' };
+  if (n >= 10) return { label: t('High pressure'), highlight: 'error' };
+  if (n >= 4)  return { label: t('Moderate pressure'), highlight: 'warning' };
+  return { label: t('Healthy'), highlight: 'success' };
 });
 
 const priorityApprovals = computed(() => pendingApprovals.value.slice(0, 4));
@@ -49,11 +51,11 @@ const formatRelative = (iso: string): string => {
   if (Number.isNaN(date.getTime())) return iso;
   const diff = Date.now() - date.getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1)  return 'just now';
-  if (m < 60) return `${m}m ago`;
+  if (m < 1)  return t('just now');
+  if (m < 60) return t('{{count}}m ago', { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return t('{{count}}h ago', { count: h });
+  return t('{{count}}d ago', { count: Math.floor(h / 24) });
 };
 
 useAutoReload(refresh);
@@ -64,23 +66,23 @@ useAutoReload(refresh);
     <!-- ── Header ─────────────────────────────────────── -->
     <div class="fc-page-header">
       <div>
-        <h3>Company Dashboard</h3>
-        <p>Focus on decisions first, then monitor throughput and operational risk.</p>
+        <h3>{{ t('Company Dashboard') }}</h3>
+        <p>{{ t('Focus on decisions first, then monitor throughput and operational risk.') }}</p>
       </div>
       <div class="fc-inline-actions">
         <RouterLink class="fc-btn-secondary" to="/inbox">
-          <Inbox :size="14" /> Review inbox
+          <Inbox :size="14" /> {{ t('Review inbox') }}
         </RouterLink>
         <button class="fc-btn-primary" :disabled="isRefreshing" @click="refresh">
           <RefreshCw :size="14" :class="{ 'fc-spin': isRefreshing }" />
-          {{ isRefreshing ? 'Refreshing…' : 'Refresh' }}
+          {{ isRefreshing ? t('Refreshing…') : t('Refresh') }}
         </button>
       </div>
     </div>
 
     <!-- ── Loading ─────────────────────────────────────── -->
     <div v-if="dashboardState.isLoading" class="fc-loading">
-      <p style="margin:0 0 10px;font-size:0.875rem;color:var(--fc-text-muted);">Loading dashboard…</p>
+      <p style="margin:0 0 10px;font-size:0.875rem;color:var(--fc-text-muted);">{{ t('Loading dashboard…') }}</p>
       <SkeletonList />
     </div>
 
@@ -88,7 +90,7 @@ useAutoReload(refresh);
     <div v-else-if="dashboardState.errorMessage" class="fc-error">
       <p>{{ dashboardState.errorMessage }}</p>
       <button class="fc-btn-secondary fc-btn-sm" @click="refresh">
-        <RefreshCw :size="13" /> Retry
+        <RefreshCw :size="13" /> {{ t('Retry') }}
       </button>
     </div>
 
@@ -101,8 +103,8 @@ useAutoReload(refresh);
               <AlertOctagon :size="15" style="color:var(--fc-primary);" />
             </div>
             <div>
-              <h4 style="margin:0;">Decision queue</h4>
-              <p class="fc-list-meta" style="margin:0;">{{ metrics.pendingApprovals }} pending</p>
+              <h4 style="margin:0;">{{ t('Decision queue') }}</h4>
+              <p class="fc-list-meta" style="margin:0;">{{ t('Pending count', { count: metrics.pendingApprovals }) }}</p>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -131,7 +133,7 @@ useAutoReload(refresh);
         </ul>
         <p v-else class="fc-list-meta" style="margin:0;display:flex;align-items:center;gap:6px;">
           <CheckCircle2 :size="14" style="color:var(--fc-success);" />
-          No approvals waiting — team can continue executing.
+          {{ t('No approvals waiting — team can continue executing.') }}
         </p>
       </article>
 
@@ -139,16 +141,16 @@ useAutoReload(refresh);
       <div class="fc-grid-kpi" style="grid-template-columns:repeat(4,minmax(0,1fr));">
         <article class="fc-kpi-card" data-highlight="primary">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-            <p class="fc-kpi-label" style="margin:0;">Active agents</p>
+            <p class="fc-kpi-label" style="margin:0;">{{ t('Active agents') }}</p>
             <Bot :size="16" style="color:var(--fc-primary);opacity:0.7;" />
           </div>
           <p class="fc-kpi-value">{{ metrics.activeAgents }}</p>
-          <p class="fc-kpi-sub">Agents running</p>
+          <p class="fc-kpi-sub">{{ t('Agents running') }}</p>
         </article>
 
         <article class="fc-kpi-card" :data-highlight="metrics.pendingApprovals >= 10 ? 'error' : metrics.pendingApprovals >= 4 ? 'warning' : 'success'">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-            <p class="fc-kpi-label" style="margin:0;">Pending approvals</p>
+            <p class="fc-kpi-label" style="margin:0;">{{ t('Pending approvals') }}</p>
             <AlertOctagon :size="16" style="opacity:0.7;" :style="{ color: metrics.pendingApprovals >= 10 ? 'var(--fc-error)' : metrics.pendingApprovals >= 4 ? 'var(--fc-warning)' : 'var(--fc-success)' }" />
           </div>
           <p class="fc-kpi-value">{{ metrics.pendingApprovals }}</p>
@@ -157,56 +159,56 @@ useAutoReload(refresh);
 
         <article class="fc-kpi-card" :data-highlight="metrics.blockedTasks > 5 ? 'error' : metrics.blockedTasks > 0 ? 'warning' : 'success'">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-            <p class="fc-kpi-label" style="margin:0;">Blocked tasks</p>
+            <p class="fc-kpi-label" style="margin:0;">{{ t('Blocked tasks') }}</p>
             <ListChecks :size="16" style="opacity:0.7;" :style="{ color: metrics.blockedTasks > 5 ? 'var(--fc-error)' : 'var(--fc-warning)' }" />
           </div>
           <p class="fc-kpi-value">{{ metrics.blockedTasks }}</p>
-          <p class="fc-kpi-sub">{{ blockedRatioPercent }} of total</p>
+          <p class="fc-kpi-sub">{{ blockedRatioPercent }} {{ t('blocked ratio') }}</p>
         </article>
 
         <article class="fc-kpi-card" data-highlight="info">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-            <p class="fc-kpi-label" style="margin:0;">Approval latency</p>
+            <p class="fc-kpi-label" style="margin:0;">{{ t('Approval latency') }}</p>
             <Clock :size="16" style="color:var(--fc-info);opacity:0.7;" />
           </div>
           <p class="fc-kpi-value">{{ metrics.approvalLatencyMinutes }}</p>
-          <p class="fc-kpi-sub">min average</p>
+          <p class="fc-kpi-sub">{{ t('min average') }}</p>
         </article>
 
         <article class="fc-kpi-card" data-highlight="success">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-            <p class="fc-kpi-label" style="margin:0;">Done in 24h</p>
+            <p class="fc-kpi-label" style="margin:0;">{{ t('Done in 24h') }}</p>
             <CheckCircle2 :size="16" style="color:var(--fc-success);opacity:0.7;" />
           </div>
           <p class="fc-kpi-value">{{ metrics.throughputDoneLast24h }}</p>
-          <p class="fc-kpi-sub">tasks completed</p>
+          <p class="fc-kpi-sub">{{ t('tasks completed') }}</p>
         </article>
 
         <article class="fc-kpi-card" data-highlight="primary">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-            <p class="fc-kpi-label" style="margin:0;">Tasks today</p>
+            <p class="fc-kpi-label" style="margin:0;">{{ t('Tasks today') }}</p>
             <TrendingUp :size="16" style="color:var(--fc-primary);opacity:0.7;" />
           </div>
           <p class="fc-kpi-value">{{ metrics.tasksToday }}</p>
-          <p class="fc-kpi-sub">created today</p>
+          <p class="fc-kpi-sub">{{ t('created today') }}</p>
         </article>
 
         <article class="fc-kpi-card" data-highlight="info">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-            <p class="fc-kpi-label" style="margin:0;">Token usage</p>
+            <p class="fc-kpi-label" style="margin:0;">{{ t('Token usage') }}</p>
             <Zap :size="16" style="color:var(--fc-info);opacity:0.7;" />
           </div>
           <p class="fc-kpi-value">{{ metrics.tokenUsageToday }}</p>
-          <p class="fc-kpi-sub">tokens today</p>
+          <p class="fc-kpi-sub">{{ t('tokens today') }}</p>
         </article>
 
         <article class="fc-kpi-card" data-highlight="success">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-            <p class="fc-kpi-label" style="margin:0;">Throughput</p>
+            <p class="fc-kpi-label" style="margin:0;">{{ t('Throughput') }}</p>
             <BarChart2 :size="16" style="color:var(--fc-success);opacity:0.7;" />
           </div>
           <p class="fc-kpi-value">{{ Math.round(metrics.blockedRatio * 100) }}%</p>
-          <p class="fc-kpi-sub">blocked ratio</p>
+          <p class="fc-kpi-sub">{{ t('blocked ratio') }}</p>
         </article>
       </div>
 
@@ -217,7 +219,7 @@ useAutoReload(refresh);
           <div class="fc-section-header">
             <div style="display:flex;align-items:center;gap:8px;">
               <Activity :size="14" style="color:var(--fc-text-muted);" />
-              <h4 style="margin:0;">Recent tasks</h4>
+              <h4 style="margin:0;">{{ t('Recent tasks') }}</h4>
             </div>
             <RouterLink class="fc-btn-ghost fc-btn-sm" to="/tasks">
               All <ChevronRight :size="12" />
@@ -233,7 +235,7 @@ useAutoReload(refresh);
             </li>
           </ul>
           <div v-else class="fc-empty" style="padding:24px;border:none;">
-            <p style="margin:0;font-size:0.8125rem;">No tasks recorded yet.</p>
+            <p style="margin:0;font-size:0.8125rem;">{{ t('No tasks recorded yet.') }}</p>
           </div>
         </article>
 
@@ -242,10 +244,10 @@ useAutoReload(refresh);
           <div class="fc-section-header">
             <div style="display:flex;align-items:center;gap:8px;">
               <ShieldCheck :size="14" style="color:var(--fc-text-muted);" />
-              <h4 style="margin:0;">Governance events</h4>
+              <h4 style="margin:0;">{{ t('Governance events') }}</h4>
             </div>
             <RouterLink class="fc-btn-ghost fc-btn-sm" to="/audit">
-              Audit log <ChevronRight :size="12" />
+              {{ t('Audit log') }} <ChevronRight :size="12" />
             </RouterLink>
           </div>
           <ul v-if="latestAudit.length > 0" class="fc-list">

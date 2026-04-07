@@ -26,6 +26,7 @@ import TaskBulkActionsBar from '../components/tasks/TaskBulkActionsBar.vue';
 import TaskFiltersModal from '../components/tasks/TaskFiltersModal.vue';
 import TaskKanbanColumn from '../components/tasks/TaskKanbanColumn.vue';
 import TaskListTable from '../components/tasks/TaskListTable.vue';
+import { useI18n } from '../composables/useI18n';
 
 type TaskStatus = TaskListItem['status'];
 type TaskPriority = TaskListItem['priority'];
@@ -40,21 +41,7 @@ interface FilterState {
   assigneeAgentId: string;
 }
 
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  pending: 'Pending',
-  in_progress: 'In progress',
-  review: 'In review',
-  done: 'Done',
-  blocked: 'Blocked',
-  cancelled: 'Cancelled'
-};
-
-const PRIORITY_LABELS: Record<TaskPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent'
-};
+const { t } = useI18n();
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
   urgent: 0,
@@ -72,14 +59,14 @@ const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   cancelled: []
 };
 
-const KANBAN_COLUMNS: Array<{ key: TaskStatus; title: string; hint: string }> = [
-  { key: 'pending', title: 'Backlog', hint: 'Ready to start when capacity opens.' },
-  { key: 'in_progress', title: 'Doing', hint: 'Active execution across the org.' },
-  { key: 'review', title: 'Review', hint: 'Waiting for QA or approval.' },
-  { key: 'blocked', title: 'Blocked', hint: 'Needs a decision or dependency cleared.' },
-  { key: 'done', title: 'Done', hint: 'Completed and ready for reporting.' },
-  { key: 'cancelled', title: 'Cancelled', hint: 'Stopped work kept for traceability.' }
-];
+const kanbanColumns = computed<Array<{ key: TaskStatus; title: string; hint: string }>>(() => [
+  { key: 'pending', title: t('Backlog'), hint: t('Ready to start when capacity opens.') },
+  { key: 'in_progress', title: t('Doing'), hint: t('Active execution across the org.') },
+  { key: 'review', title: t('Review'), hint: t('Waiting for QA or approval.') },
+  { key: 'blocked', title: t('Blocked'), hint: t('Needs a decision or dependency cleared.') },
+  { key: 'done', title: t('Done'), hint: t('Completed and ready for reporting.') },
+  { key: 'cancelled', title: t('Cancelled'), hint: t('Stopped work kept for traceability.') }
+]);
 
 const showCreateForm = ref(false);
 const filterModalOpen = ref(false);
@@ -135,7 +122,7 @@ const getProjectName = (projectId: string): string =>
 
 const getAgentName = (agentId: string | null | undefined): string => {
   if (!agentId) {
-    return 'Unassigned';
+    return t('Unassigned');
   }
 
   return taskState.value.data.agents.find((agent) => agent.id === agentId)?.name ?? agentId;
@@ -144,20 +131,33 @@ const getAgentName = (agentId: string | null | undefined): string => {
 const formatRelative = (iso: string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return 'recently';
+    return t('recently');
   }
 
   const diff = Date.now() - date.getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t('just now');
+  if (minutes < 60) return t('{{count}}m ago', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return t('{{count}}h ago', { count: hours });
+  return t('{{count}}d ago', { count: Math.floor(hours / 24) });
 };
 
-const formatStatus = (status: TaskStatus): string => STATUS_LABELS[status];
-const formatPriority = (priority: TaskPriority): string => PRIORITY_LABELS[priority];
+const formatStatus = (status: TaskStatus): string => ({
+  pending: t('Pending'),
+  in_progress: t('In progress'),
+  review: t('In review'),
+  done: t('Done'),
+  blocked: t('Blocked'),
+  cancelled: t('Cancelled')
+})[status];
+
+const formatPriority = (priority: TaskPriority): string => ({
+  low: t('Low'),
+  medium: t('Medium'),
+  high: t('High'),
+  urgent: t('Urgent')
+})[priority];
 
 const activeFilterCount = computed(
   () =>
@@ -168,10 +168,10 @@ const activeFilterCount = computed(
 const activeFilterLabels = computed(() => {
   const labels: string[] = [];
 
-  if (filters.status !== 'all') labels.push(`Status: ${formatStatus(filters.status)}`);
-  if (filters.priority !== 'all') labels.push(`Priority: ${formatPriority(filters.priority)}`);
-  if (filters.projectId !== 'all') labels.push(`Project: ${getProjectName(filters.projectId)}`);
-  if (filters.assigneeAgentId !== 'all') labels.push(`Assignee: ${getAgentName(filters.assigneeAgentId)}`);
+  if (filters.status !== 'all') labels.push(`${t('Status')}: ${formatStatus(filters.status)}`);
+  if (filters.priority !== 'all') labels.push(`${t('Priority')}: ${formatPriority(filters.priority)}`);
+  if (filters.projectId !== 'all') labels.push(`${t('Project')}: ${getProjectName(filters.projectId)}`);
+  if (filters.assigneeAgentId !== 'all') labels.push(`${t('Assignee')}: ${getAgentName(filters.assigneeAgentId)}`);
 
   return labels;
 });
@@ -299,7 +299,7 @@ const listTasks = computed(() =>
 );
 
 const taskGroups = computed(() =>
-  KANBAN_COLUMNS.map((column) => ({
+  kanbanColumns.value.map((column) => ({
     ...column,
     tasks: kanbanTasks.value.filter((task) => task.status === column.key)
   }))
@@ -516,40 +516,40 @@ useAutoReload(reload);
   <section>
     <div class="fc-page-header">
       <div>
-        <h3>Tasks</h3>
-        <p>Use a compact board-first workflow with drag-and-drop, hidden filters, and cleaner task cards.</p>
+        <h3>{{ t('Tasks') }}</h3>
+        <p>{{ t('Manage delivery queues, priorities, and execution status across agents.') }}</p>
       </div>
       <div class="task-toolbar">
         <div class="task-search-wrap">
           <Search :size="15" class="task-search-icon" />
-          <FcInput v-model="searchQuery" placeholder="Search tasks…" style="padding-left: 34px; min-width: 220px;" />
+          <FcInput v-model="searchQuery" :placeholder="t('Search tasks…')" style="padding-left: 34px; min-width: 220px;" />
         </div>
 
         <button class="fc-btn-secondary task-filter-trigger" @click="filterModalOpen = true">
           <SlidersHorizontal :size="14" />
-          Filters
+          {{ t('Filters') }}
           <span v-if="activeFilterCount > 0" class="task-filter-count">{{ activeFilterCount }}</span>
         </button>
 
         <div class="fc-tabs" role="tablist" aria-label="Task views">
           <button class="fc-tab" :class="{ 'fc-tab-active': viewMode === 'kanban' }" @click="viewMode = 'kanban'">
             <Columns3 :size="14" />
-            Kanban
+            {{ t('Kanban') }}
           </button>
           <button class="fc-tab" :class="{ 'fc-tab-active': viewMode === 'list' }" @click="viewMode = 'list'">
             <List :size="14" />
-            List
+            {{ t('List') }}
           </button>
         </div>
 
         <button class="fc-btn-secondary" :disabled="isRefreshing" @click="reload">
           <RefreshCw :size="14" :class="{ 'fc-spin': isRefreshing }" />
-          Refresh
+          {{ t('Refresh') }}
         </button>
 
         <button class="fc-btn-primary" @click="showCreateForm = !showCreateForm">
           <Plus :size="14" />
-          {{ showCreateForm ? 'Hide form' : 'New task' }}
+          {{ showCreateForm ? t('Hide form') : t('New task') }}
         </button>
       </div>
     </div>
@@ -578,27 +578,27 @@ useAutoReload(reload);
 
     <div v-if="activeFilterLabels.length > 0" class="task-active-filters">
       <span v-for="label in activeFilterLabels" :key="label" class="task-active-chip">{{ label }}</span>
-      <button class="fc-btn-ghost fc-btn-sm" @click="resetFilters">Clear</button>
+      <button class="fc-btn-ghost fc-btn-sm" @click="resetFilters">{{ t('Clear') }}</button>
     </div>
 
     <div class="fc-grid-kpi">
       <div class="fc-kpi-card" data-highlight="primary">
-        <p class="fc-kpi-label">Open work</p>
+        <p class="fc-kpi-label">{{ t('Open work') }}</p>
         <p class="fc-kpi-value">{{ metrics.open }}</p>
-        <p class="fc-kpi-sub">Everything still moving through the board</p>
+        <p class="fc-kpi-sub">{{ t('Everything still moving through the board') }}</p>
       </div>
       <div class="fc-kpi-card" :data-highlight="metrics.urgent > 0 ? 'warning' : 'success'">
-        <p class="fc-kpi-label">Urgent</p>
+        <p class="fc-kpi-label">{{ t('Urgent') }}</p>
         <p class="fc-kpi-value">{{ metrics.urgent }}</p>
-        <p class="fc-kpi-sub">High-focus items that need founder visibility</p>
+        <p class="fc-kpi-sub">{{ t('High-focus items that need founder visibility') }}</p>
       </div>
       <div class="fc-kpi-card" :data-highlight="metrics.blocked > 0 ? 'error' : 'success'">
-        <p class="fc-kpi-label">Blocked</p>
+        <p class="fc-kpi-label">{{ t('Blocked') }}</p>
         <p class="fc-kpi-value">{{ metrics.blocked }}</p>
-        <p class="fc-kpi-sub">Clear these first to recover flow</p>
+        <p class="fc-kpi-sub">{{ t('Clear these first to recover flow') }}</p>
       </div>
       <div class="fc-kpi-card" data-highlight="success">
-        <p class="fc-kpi-label">Completion rate</p>
+        <p class="fc-kpi-label">{{ t('Completion rate') }}</p>
         <p class="fc-kpi-value">{{ metrics.completionRate }}%</p>
         <p class="fc-kpi-sub">{{ metrics.done }} of {{ Math.max(metrics.total, 1) }} tasks completed</p>
       </div>
@@ -608,27 +608,27 @@ useAutoReload(reload);
       <FcCard v-if="showCreateForm" style="margin-bottom: 16px;">
         <div class="fc-section-header">
           <div>
-            <h4>Create task</h4>
-            <p class="fc-card-desc">Capture the outcome, choose a priority, and keep the owner accountable.</p>
+            <h4>{{ t('Create task') }}</h4>
+            <p class="fc-card-desc">{{ t('Capture the outcome, choose a priority, and keep the owner accountable.') }}</p>
           </div>
         </div>
 
         <div v-if="creatorOptions.length === 0" class="fc-warning">
-          <p>Complete setup first so the executive agent can receive new tasks.</p>
+          <p>{{ t('Complete setup first so the executive agent can receive new tasks.') }}</p>
           <div class="fc-inline-actions">
-            <RouterLink to="/setup" class="fc-btn-secondary">Open setup</RouterLink>
-            <RouterLink to="/agents" class="fc-btn-secondary">Open agents</RouterLink>
+            <RouterLink to="/setup" class="fc-btn-secondary">{{ t('Open setup') }}</RouterLink>
+            <RouterLink to="/agents" class="fc-btn-secondary">{{ t('Open agents') }}</RouterLink>
           </div>
         </div>
 
         <template v-else>
           <div class="fc-form-grid" style="margin-bottom: 12px;">
             <div class="fc-form-group">
-              <label class="fc-label">Task title</label>
+              <label class="fc-label">{{ t('Task title') }}</label>
               <FcInput v-model="draft.title" placeholder="e.g. Review onboarding checklist" />
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">Project <span class="fc-label-optional">optional</span></label>
+              <label class="fc-label">{{ t('Project') }} <span class="fc-label-optional">{{ t('optional') }}</span></label>
               <FcSelect v-model="draft.projectId">
                 <option v-for="project in projectOptions" :key="project.id" :value="project.id">
                   {{ project.name }}
@@ -636,16 +636,16 @@ useAutoReload(reload);
               </FcSelect>
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">Assignee <span class="fc-label-optional">defaults to L0</span></label>
+              <label class="fc-label">{{ t('Assignee') }} <span class="fc-label-optional">{{ t('defaults to L0') }}</span></label>
               <FcSelect v-model="draft.assigneeAgentId">
-                <option value="">Executive agent</option>
+                <option value="">{{ t('Executive agent') }}</option>
                 <option v-for="agent in assigneeOptions" :key="agent.id" :value="agent.id">
                   {{ agent.name }} · {{ agent.role }}
                 </option>
               </FcSelect>
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">Created by</label>
+              <label class="fc-label">{{ t('Created by') }}</label>
               <FcSelect v-model="draft.createdBy">
                 <option v-for="agent in creatorOptions" :key="agent.id" :value="agent.id">
                   {{ agent.name }} · {{ agent.level }}
@@ -656,7 +656,7 @@ useAutoReload(reload);
 
           <div class="fc-form-grid" style="margin-bottom: 12px;">
             <div class="fc-form-group">
-              <label class="fc-label">Priority</label>
+              <label class="fc-label">{{ t('Priority') }}</label>
               <FcSelect v-model="draft.priority">
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -667,7 +667,7 @@ useAutoReload(reload);
           </div>
 
           <div class="fc-form-group" style="margin-bottom: 12px;">
-            <label class="fc-label">Execution brief</label>
+              <label class="fc-label">{{ t('Execution brief') }}</label>
             <MarkdownEditor
               v-model="draft.description"
               placeholder="Describe the outcome, constraints, and what ‘done’ should look like using Markdown."
@@ -682,9 +682,9 @@ useAutoReload(reload);
               @click="createTask"
             >
               <Plus :size="14" />
-              {{ isCreating ? 'Creating…' : 'Create task' }}
+              {{ isCreating ? t('Creating…') : t('Create task') }}
             </FcButton>
-            <FcButton variant="ghost" @click="showCreateForm = false">Cancel</FcButton>
+            <FcButton variant="ghost" @click="showCreateForm = false">{{ t('Cancel') }}</FcButton>
           </div>
         </template>
       </FcCard>
@@ -707,7 +707,7 @@ useAutoReload(reload);
     </Transition>
 
     <div v-if="taskState.isLoading" class="fc-loading">
-      <p style="margin: 0 0 12px; font-size: 0.875rem; color: var(--fc-text-muted);">Loading tasks…</p>
+      <p style="margin: 0 0 12px; font-size: 0.875rem; color: var(--fc-text-muted);">{{ t('Loading tasks…') }}</p>
       <SkeletonList />
     </div>
 
@@ -717,30 +717,30 @@ useAutoReload(reload);
         <p style="margin: 0;">{{ taskState.errorMessage }}</p>
       </div>
       <FcButton variant="secondary" size="sm" @click="reload">
-        <RefreshCw :size="13" /> Retry
+        <RefreshCw :size="13" /> {{ t('Retry') }}
       </FcButton>
     </div>
 
     <div v-else-if="taskState.isEmpty" class="fc-empty">
       <ClipboardList :size="36" class="fc-empty-icon" />
-      <h4>No tasks yet</h4>
-      <p>Create the first task to turn project strategy into execution.</p>
+      <h4>{{ t('No tasks yet') }}</h4>
+      <p>{{ t('Create the first task to turn project strategy into execution.') }}</p>
       <FcButton variant="primary" @click="showCreateForm = true">
-        <Plus :size="14" /> Create first task
+        <Plus :size="14" /> {{ t('Create first task') }}
       </FcButton>
     </div>
 
     <div v-else-if="filteredTasks.length === 0" class="fc-empty">
       <Search :size="36" class="fc-empty-icon" />
-      <h4>No matches for this filter</h4>
-      <p>Try a wider search or clear the active filters.</p>
-      <FcButton variant="secondary" @click="resetFilters">Reset filters</FcButton>
+      <h4>{{ t('No matches for this filter') }}</h4>
+      <p>{{ t('Try a wider search or clear the active filters.') }}</p>
+      <FcButton variant="secondary" @click="resetFilters">{{ t('Reset filters') }}</FcButton>
     </div>
 
     <div v-else>
       <template v-if="viewMode === 'kanban'">
         <div class="task-view-note">
-          <p>Drag tasks across columns to update status. Cards stay compact so task titles are easier to scan.</p>
+          <p>{{ t('Drag tasks across columns to update status. Cards stay compact so task titles are easier to scan.') }}</p>
         </div>
 
         <div class="kanban-board">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SupportedLocale } from '@familyco/ui';
 import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
@@ -7,10 +8,12 @@ import {
 } from 'lucide-vue-next';
 
 import { uiRuntime } from '../runtime';
+import { useI18n } from '../composables/useI18n';
 
 type Provider = 'openai' | 'anthropic' | 'google';
 
 const router = useRouter();
+const { locale, setLocale, supportedLocales, t } = useI18n();
 
 const currentStep = ref(1);
 const TOTAL_STEPS = 4;
@@ -38,11 +41,11 @@ interface ProviderOption {
   models: string[];
 }
 
-const providerOptions: ProviderOption[] = [
+const providerOptions = computed<ProviderOption[]>(() => [
   {
     value: 'openai',
     label: 'OpenAI',
-    description: 'GPT-4o, o1, o3 — best for general-purpose agents',
+    description: t('GPT-4o, o1, o3 — best for general-purpose agents'),
     keyHint: 'sk-…',
     defaultModel: 'gpt-4o',
     models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'],
@@ -50,7 +53,7 @@ const providerOptions: ProviderOption[] = [
   {
     value: 'anthropic',
     label: 'Anthropic',
-    description: 'Claude — great for reasoning and long-context tasks',
+    description: t('Claude — great for reasoning and long-context tasks'),
     keyHint: 'sk-ant-…',
     defaultModel: 'claude-sonnet-4-5',
     models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'],
@@ -58,14 +61,14 @@ const providerOptions: ProviderOption[] = [
   {
     value: 'google',
     label: 'Google AI',
-    description: 'Gemini — multimodal and fast for structured tasks',
+    description: t('Gemini — multimodal and fast for structured tasks'),
     keyHint: 'AIza…',
     defaultModel: 'gemini-2.5-pro',
     models: ['gemini-2.5-pro', 'gemini-2.5-flash'],
   },
-];
+]);
 
-const selectedProvider = computed(() => providerOptions.find(p => p.value === form.provider)!);
+const selectedProvider = computed(() => providerOptions.value.find(p => p.value === form.provider)!);
 
 const canNext = computed(() => {
   if (currentStep.value === 2) {
@@ -78,7 +81,7 @@ const canNext = computed(() => {
 
 const selectProvider = (p: Provider) => {
   form.provider = p;
-  form.defaultModel = providerOptions.find(o => o.value === p)!.defaultModel;
+  form.defaultModel = providerOptions.value.find(o => o.value === p)!.defaultModel;
   showApiKey.value = false;
   form.apiKey = '';
 };
@@ -111,6 +114,11 @@ const initialize = async () => {
 };
 
 const goToDashboard = () => router.replace('/chat');
+
+const handleLocaleChange = (event: Event): void => {
+  const nextLocale = (event.target as HTMLSelectElement).value as SupportedLocale;
+  void setLocale(nextLocale);
+};
 </script>
 
 <template>
@@ -118,8 +126,17 @@ const goToDashboard = () => router.replace('/chat');
     <!-- Brand watermark -->
     <div class="ob-brand">
       <Zap :size="16" />
-      <span>FamilyCo</span>
+      <span>{{ t('FamilyCo') }}</span>
     </div>
+
+    <label class="ob-locale-switch">
+      <span>{{ t('Language') }}</span>
+      <select class="ob-locale-select" :value="locale" @change="handleLocaleChange">
+        <option v-for="option in supportedLocales" :key="option.value" :value="option.value">
+          {{ option.nativeLabel }}
+        </option>
+      </select>
+    </label>
 
     <!-- ── Success screen ─────────────────────────────── -->
     <Transition name="ob-fade" mode="out-in">
@@ -127,13 +144,13 @@ const goToDashboard = () => router.replace('/chat');
         <div class="ob-success-icon">
           <CheckCircle2 :size="36" />
         </div>
-        <h2 style="margin:0 0 8px;font-size:1.5rem;">You're all set!</h2>
+        <h2 style="margin:0 0 8px;font-size:1.5rem;">{{ t("You're all set!") }}</h2>
         <p style="margin:0 0 24px;color:var(--fc-text-muted);font-size:0.9375rem;line-height:1.6;">
-          Executive agent <strong>{{ createdResult.executiveName }}</strong> is ready.
-          <span v-if="createdResult.description"> Description: {{ createdResult.description }}</span>
+          {{ t('Executive ready message', { name: createdResult.executiveName }) }}
+          <span v-if="createdResult.description"> {{ t('Description') }}: {{ createdResult.description }}</span>
         </p>
         <button class="ob-btn-primary ob-btn-lg" style="width:100%;" @click="goToDashboard">
-          Open Executive Chat <ArrowRight :size="16" />
+          {{ t('Open Executive Chat') }} <ArrowRight :size="16" />
         </button>
       </div>
 
@@ -158,29 +175,29 @@ const goToDashboard = () => router.replace('/chat');
             <div class="ob-step-icon ob-step-icon-primary">
               <Sparkles :size="28" />
             </div>
-            <h2 class="ob-title">Welcome to FamilyCo</h2>
+            <h2 class="ob-title">{{ t('Welcome to FamilyCo') }}</h2>
             <p class="ob-subtitle">
-              Your AI-powered operating system for managing teams, tasks, and workflows.<br />
-              Let's take 2 minutes to set up your workspace.
+              {{ t('Your AI-powered operating system for managing teams, tasks, and workflows.') }}<br />
+              {{ t("Let's take 2 minutes to set up your workspace.") }}
             </p>
 
             <div class="ob-feature-list">
               <div class="ob-feature-item">
                 <Building2 :size="16" style="color:var(--fc-primary);flex-shrink:0;" />
-                <span>Create your company and first executive agent</span>
+                <span>{{ t('Create your company and first executive agent') }}</span>
               </div>
               <div class="ob-feature-item">
                 <Key :size="16" style="color:var(--fc-primary);flex-shrink:0;" />
-                <span>Connect your AI provider</span>
+                <span>{{ t('Connect your AI provider') }}</span>
               </div>
               <div class="ob-feature-item">
                 <Users :size="16" style="color:var(--fc-primary);flex-shrink:0;" />
-                <span>Describe what your company does and how the executive should understand it</span>
+                <span>{{ t('Describe what your company does and how the executive should understand it') }}</span>
               </div>
             </div>
 
             <button class="ob-btn-primary ob-btn-lg" style="width:100%;margin-top:8px;" @click="next">
-              Get started <ChevronRight :size="16" />
+              {{ t('Get started') }} <ChevronRight :size="16" />
             </button>
           </div>
         </Transition>
@@ -191,11 +208,11 @@ const goToDashboard = () => router.replace('/chat');
             <div class="ob-step-icon ob-step-icon-info">
               <Building2 :size="28" />
             </div>
-            <h2 class="ob-title">Company details</h2>
-            <p class="ob-subtitle">Name your company and add one clear description so the executive agent understands the business context from day one.</p>
+            <h2 class="ob-title">{{ t('Company details') }}</h2>
+            <p class="ob-subtitle">{{ t('Name your company and add one clear description so the executive agent understands the business context from day one.') }}</p>
 
             <div class="ob-form-group">
-              <label class="ob-label">Company name <span class="ob-required">*</span></label>
+              <label class="ob-label">{{ t('Company name') }} <span class="ob-required">*</span></label>
               <input
                 v-model="form.companyName"
                 class="ob-input"
@@ -206,22 +223,22 @@ const goToDashboard = () => router.replace('/chat');
             </div>
 
             <div class="ob-form-group">
-              <label class="ob-label">Company description <span class="ob-required">*</span></label>
+              <label class="ob-label">{{ t('Company description') }} <span class="ob-required">*</span></label>
               <textarea
                 v-model="form.companyDescription"
                 class="ob-input"
                 rows="4"
                 placeholder="e.g. We help founders run company operations with AI-native execution, approval safety, and fast delivery."
               ></textarea>
-              <p class="ob-hint">Keep it concise but concrete so the executive has enough context for planning and tool use.</p>
+              <p class="ob-hint">{{ t('Keep it concise but concrete so the executive has enough context for planning and tool use.') }}</p>
             </div>
 
             <div class="ob-actions">
               <button class="ob-btn-ghost" @click="prev">
-                <ChevronLeft :size="16" /> Back
+                <ChevronLeft :size="16" /> {{ t('Back') }}
               </button>
               <button class="ob-btn-primary" :disabled="!canNext" @click="next">
-                Next <ChevronRight :size="16" />
+                {{ t('Next') }} <ChevronRight :size="16" />
               </button>
             </div>
           </div>
@@ -233,8 +250,8 @@ const goToDashboard = () => router.replace('/chat');
             <div class="ob-step-icon ob-step-icon-accent">
               <Key :size="28" />
             </div>
-            <h2 class="ob-title">AI provider</h2>
-            <p class="ob-subtitle">Choose your AI provider and paste your API key. This is used by your agents to reason and act.</p>
+            <h2 class="ob-title">{{ t('AI provider') }}</h2>
+            <p class="ob-subtitle">{{ t('Choose your AI provider and paste your API key. This is used by your agents to reason and act.') }}</p>
 
             <!-- Provider selector -->
             <div class="ob-provider-grid">
@@ -252,7 +269,7 @@ const goToDashboard = () => router.replace('/chat');
 
             <!-- API Key -->
             <div class="ob-form-group">
-              <label class="ob-label">API Key <span class="ob-required">*</span></label>
+              <label class="ob-label">{{ t('API Key') }} <span class="ob-required">*</span></label>
               <div class="ob-input-wrap">
                 <input
                   v-model="form.apiKey"
@@ -265,18 +282,18 @@ const goToDashboard = () => router.replace('/chat');
                 <button
                   type="button"
                   class="ob-eye-btn"
-                  :aria-label="showApiKey ? 'Hide key' : 'Show key'"
+                  :aria-label="showApiKey ? t('Hide key') : t('Show key')"
                   @click="showApiKey = !showApiKey"
                 >
                   <component :is="showApiKey ? EyeOff : Eye" :size="15" />
                 </button>
               </div>
-              <p class="ob-hint">Stored locally in your database — never sent anywhere else.</p>
+              <p class="ob-hint">{{ t('Stored locally in your database — never sent anywhere else.') }}</p>
             </div>
 
             <!-- Default model -->
             <div class="ob-form-group">
-              <label class="ob-label">Default model</label>
+              <label class="ob-label">{{ t('Default model') }}</label>
               <select v-model="form.defaultModel" class="ob-input ob-select">
                 <option v-for="m in selectedProvider.models" :key="m" :value="m">{{ m }}</option>
               </select>
@@ -284,10 +301,10 @@ const goToDashboard = () => router.replace('/chat');
 
             <div class="ob-actions">
               <button class="ob-btn-ghost" @click="prev">
-                <ChevronLeft :size="16" /> Back
+                <ChevronLeft :size="16" /> {{ t('Back') }}
               </button>
               <button class="ob-btn-primary" :disabled="!canNext" @click="next">
-                Next <ChevronRight :size="16" />
+                {{ t('Next') }} <ChevronRight :size="16" />
               </button>
             </div>
           </div>
@@ -299,30 +316,30 @@ const goToDashboard = () => router.replace('/chat');
             <div class="ob-step-icon ob-step-icon-success">
               <Users :size="28" />
             </div>
-            <h2 class="ob-title">Review & launch</h2>
-            <p class="ob-subtitle">Everything looks good. Click initialize to create your workspace with one mandatory L0 executive agent.</p>
+            <h2 class="ob-title">{{ t('Review & launch') }}</h2>
+            <p class="ob-subtitle">{{ t('Everything looks good. Click initialize to create your workspace with one mandatory L0 executive agent.') }}</p>
 
             <!-- Summary -->
             <div class="ob-summary">
               <div class="ob-summary-row">
-                <span class="ob-summary-label">Company</span>
+                <span class="ob-summary-label">{{ t('Company') }}</span>
                 <span class="ob-summary-value">{{ form.companyName }}</span>
               </div>
               <div class="ob-summary-row">
-                <span class="ob-summary-label">Description</span>
-                <span class="ob-summary-value">{{ form.companyDescription || 'Not provided yet' }}</span>
+                <span class="ob-summary-label">{{ t('Description') }}</span>
+                <span class="ob-summary-value">{{ form.companyDescription || t('Not provided yet') }}</span>
               </div>
               <div class="ob-summary-row">
-                <span class="ob-summary-label">AI Provider</span>
+                <span class="ob-summary-label">{{ t('AI provider') }}</span>
                 <span class="ob-summary-value">{{ selectedProvider.label }}</span>
               </div>
               <div class="ob-summary-row">
-                <span class="ob-summary-label">Model</span>
+                <span class="ob-summary-label">{{ t('Default model') }}</span>
                 <span class="ob-summary-value">{{ form.defaultModel }}</span>
               </div>
               <div class="ob-summary-row">
-                <span class="ob-summary-label">Agents created</span>
-                <span class="ob-summary-value">1 executive (L0) only — extra roles stay optional until approval.</span>
+                <span class="ob-summary-label">{{ t('Agents created') }}</span>
+                <span class="ob-summary-value">{{ t('1 executive (L0) only — extra roles stay optional until approval.') }}</span>
               </div>
             </div>
 
@@ -334,11 +351,11 @@ const goToDashboard = () => router.replace('/chat');
 
             <div class="ob-actions">
               <button class="ob-btn-ghost" :disabled="isSubmitting" @click="prev">
-                <ChevronLeft :size="16" /> Back
+                <ChevronLeft :size="16" /> {{ t('Back') }}
               </button>
               <button class="ob-btn-primary" :disabled="isSubmitting" @click="initialize">
                 <Zap :size="15" />
-                {{ isSubmitting ? 'Initializing…' : 'Initialize workspace' }}
+                {{ isSubmitting ? t('Initializing…') : t('Initialize workspace') }}
               </button>
             </div>
           </div>
@@ -372,6 +389,29 @@ const goToDashboard = () => router.replace('/chat');
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+.ob-locale-switch {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 999px;
+  background: var(--fc-surface);
+  color: var(--fc-text-muted);
+  font-size: 0.8125rem;
+}
+
+.ob-locale-select {
+  border: none;
+  background: transparent;
+  color: var(--fc-text-main);
+  font: inherit;
+  outline: none;
 }
 
 /* ── Card ─────────────────────────────────────────────── */

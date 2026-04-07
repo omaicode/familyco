@@ -172,15 +172,30 @@ body {
   50%      { box-shadow: 0 0 0 5px color-mix(in srgb, var(--fc-success) 0%, transparent); }
 }
 
-/* ─── Avatar ────────────────────────────────────────────── */
-.fc-avatar {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--fc-primary) 0%, color-mix(in srgb, var(--fc-primary) 60%, var(--fc-info)) 100%);
-  border: 2px solid var(--fc-border-subtle);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.75rem; font-weight: 700;
-  color: var(--fc-primary-foreground);
-  cursor: default; flex-shrink: 0; user-select: none;
+/* ─── Topbar language picker ───────────────────────────── */
+.fc-topbar-locale {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--fc-border-subtle);
+  background: var(--fc-surface);
+  color: var(--fc-text-muted);
+  flex-shrink: 0;
+}
+
+.fc-topbar-select {
+  border: none;
+  background: transparent;
+  color: var(--fc-text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+
+.fc-topbar-select option {
+  color: var(--fc-text-main);
+  background: var(--fc-surface);
 }
 
 /* ─── Page header ───────────────────────────────────────── */

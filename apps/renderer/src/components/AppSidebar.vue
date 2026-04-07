@@ -3,6 +3,8 @@ import type { Component } from 'vue';
 import { RouterLink } from 'vue-router';
 import { Zap, PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next';
 
+import { useI18n } from '../composables/useI18n';
+
 interface NavItem {
   path: string;
   label: string;
@@ -25,6 +27,8 @@ const emit = defineEmits<{
   toggle: [];
   closeMobile: [];
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -49,15 +53,15 @@ const emit = defineEmits<{
         <Zap :size="18" />
       </div>
       <div class="fc-brand-text">
-        <h1>FamilyCo</h1>
-        <p>AI Operating System</p>
+        <h1>{{ t('FamilyCo') }}</h1>
+        <p>{{ t('AI Operating System') }}</p>
       </div>
     </div>
 
     <!-- Navigation -->
     <nav class="fc-nav" aria-label="Main navigation">
       <template v-for="group in props.navGroups" :key="group.label">
-        <span class="fc-nav-section-label">{{ group.label }}</span>
+        <span class="fc-nav-section-label">{{ t(group.label) }}</span>
         <div
           v-for="section in group.items"
           :key="section.path"
@@ -67,14 +71,14 @@ const emit = defineEmits<{
             :to="section.path"
             class="fc-nav-item"
             active-class="fc-nav-item-active"
-            :data-tooltip="section.label"
+            :data-tooltip="t(section.label)"
           >
             <component
               :is="props.navIcons[section.path]"
               :size="18"
               class="fc-nav-item-icon"
             />
-            <span class="fc-nav-label">{{ section.label }}</span>
+            <span class="fc-nav-label">{{ t(section.label) }}</span>
           </RouterLink>
           <!-- Pending approval badge on Inbox -->
           <span
@@ -89,14 +93,14 @@ const emit = defineEmits<{
     <div class="fc-nav-footer">
       <button
         class="fc-sidebar-collapse-btn"
-        :title="props.collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :title="props.collapsed ? t('Expand sidebar') : t('Collapse')"
         @click="emit('toggle')"
       >
         <component
           :is="props.collapsed ? PanelLeftOpen : PanelLeftClose"
           :size="16"
         />
-        <span>Collapse</span>
+        <span>{{ t('Collapse') }}</span>
       </button>
     </div>
   </aside>

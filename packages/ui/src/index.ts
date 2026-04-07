@@ -18,3 +18,4 @@ export * from './stores/settings.store.js';
 export * from './stores/task.store.js';
 export * from './pages/page-blueprints.js';
 export * from './bootstrap/ui-bootstrap.js';
+export * from './i18n/familyco-i18n.js';

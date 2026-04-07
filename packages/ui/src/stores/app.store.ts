@@ -1,5 +1,6 @@
 import { reactive } from 'vue';
 
+import type { SupportedLocale } from '../i18n/familyco-i18n.js';
 import type { AppRoutePath } from '../navigation/app-sections.js';
 import {
   familyCoUITheme,
@@ -25,6 +26,7 @@ export interface AppStoreState {
   activeRoute: AppRoutePath;
   activeLevel: AccessLevel;
   founderName: string;
+  locale: SupportedLocale;
   theme: FamilyCoUITheme;
   themePreference: ThemePreference;
   themeMode: ThemeMode;
@@ -39,6 +41,7 @@ export class AppStore {
       activeRoute: '/dashboard',
       activeLevel: 'L0',
       founderName: 'Founder',
+      locale: 'en',
       theme: familyCoUITheme,
       themePreference: 'system',
       themeMode: 'light',
@@ -59,6 +62,10 @@ export class AppStore {
 
   setActiveLevel(level: AccessLevel): void {
     this.state.activeLevel = level;
+  }
+
+  setLocale(locale: SupportedLocale): void {
+    this.state.locale = locale;
   }
 
   setServerReachable(reachable: boolean, checkedAtIso: string, lastErrorMessage: string | null = null): void {

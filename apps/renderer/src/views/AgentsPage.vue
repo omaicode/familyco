@@ -9,6 +9,9 @@ import AgentCreatePanel from '../components/agents/AgentCreatePanel.vue';
 import AgentInspectorPanel from '../components/agents/AgentInspectorPanel.vue';
 import AgentRosterPanel from '../components/agents/AgentRosterPanel.vue';
 import AgentSummaryCards from '../components/agents/AgentSummaryCards.vue';
+import { useI18n } from '../composables/useI18n';
+
+const { t } = useI18n();
 
 const {
   AUTONOMY_GUIDE,
@@ -53,17 +56,17 @@ const {
   <section>
     <div class="fc-page-header">
       <div>
-        <h3>Agents</h3>
-        <p>Manage your AI team with one required L0 executive by default, then add optional roles as the company grows.</p>
+        <h3>{{ t('Agents') }}</h3>
+        <p>{{ t('Manage your AI team with one required L0 executive by default, then add optional roles as the company grows.') }}</p>
       </div>
       <div class="fc-inline-actions">
         <FcButton variant="secondary" :disabled="isRefreshing" @click="reload">
           <RefreshCw :size="14" />
-          {{ isRefreshing ? 'Refreshing…' : 'Refresh' }}
+          {{ isRefreshing ? t('Refreshing…') : t('Refresh') }}
         </FcButton>
         <FcButton variant="primary" @click="showCreateForm = !showCreateForm">
           <Plus :size="14" />
-          {{ showCreateForm ? 'Close setup' : 'New agent' }}
+          {{ showCreateForm ? t('Close setup') : t('New agent') }}
         </FcButton>
       </div>
     </div>
@@ -97,7 +100,7 @@ const {
     </Transition>
 
     <div v-if="isLoading" class="fc-loading">
-      <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">Loading agents…</p>
+      <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">{{ t('Loading agents…') }}</p>
       <SkeletonList />
     </div>
 
@@ -108,17 +111,17 @@ const {
       </div>
       <FcButton variant="secondary" size="sm" @click="reload">
         <RefreshCw :size="13" />
-        Retry
+        {{ t('Retry') }}
       </FcButton>
     </div>
 
     <div v-else-if="agentState.isEmpty" class="fc-empty">
       <Bot :size="36" class="fc-empty-icon" />
-      <h4>No agents yet</h4>
-      <p>One executive agent is enough to start. Add department leads and specialists later through the approval flow.</p>
+      <h4>{{ t('No agents yet') }}</h4>
+      <p>{{ t('One executive agent is enough to start. Add department leads and specialists later through the approval flow.') }}</p>
       <FcButton variant="primary" @click="applyTemplate('executive')">
         <Plus :size="14" />
-        Create first agent
+        {{ t('Create first agent') }}
       </FcButton>
     </div>
 

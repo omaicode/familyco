@@ -8,6 +8,9 @@ import {
 import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useAutoReload } from '../composables/useAutoReload';
+import { useI18n } from '../composables/useI18n';
+
+const { t } = useI18n();
 
 const filters = reactive({
   action: '',
@@ -44,7 +47,7 @@ const load = async () => {
       offset: filters.offset
     });
   } catch (error) {
-    state.errorMessage = error instanceof Error ? error.message : 'Failed to load audit logs';
+    state.errorMessage = error instanceof Error ? error.message : t('Failed to load audit logs');
   } finally {
     state.isLoading = false;
   }
@@ -77,12 +80,12 @@ useAutoReload(load);
     <!-- ── Header ──────────────────────────────────── -->
     <div class="fc-page-header">
       <div>
-        <h3>Audit Inspector</h3>
-        <p>Filter and inspect mutation logs, governance actions, and payload details.</p>
+        <h3>{{ t('Audit Inspector') }}</h3>
+        <p>{{ t('Filter and inspect mutation logs, governance actions, and payload details.') }}</p>
       </div>
       <button class="fc-btn-secondary" :disabled="state.isLoading" @click="load">
         <RefreshCw :size="14" :class="{ 'fc-spin': state.isLoading }" />
-        Refresh
+        {{ t('Refresh') }}
       </button>
     </div>
 
@@ -91,37 +94,37 @@ useAutoReload(load);
       <div class="fc-settings-section-header">
         <div style="display:flex;align-items:center;gap:8px;">
           <Filter :size="16" style="color:var(--fc-primary);" />
-          <h4>Filters</h4>
+          <h4>{{ t('Filters') }}</h4>
         </div>
-        <p>Narrow down audit records by action, actor, or target.</p>
+        <p>{{ t('Narrow down audit records by action, actor, or target.') }}</p>
       </div>
       <div class="fc-settings-section-body">
         <div class="fc-form-grid" style="margin-bottom:12px;">
           <div class="fc-form-group">
-            <label class="fc-label">Action</label>
+            <label class="fc-label">{{ t('Action') }}</label>
             <input v-model="filters.action" class="fc-input" placeholder="e.g. task.create" @keydown.enter="load" />
           </div>
           <div class="fc-form-group">
-            <label class="fc-label">Actor ID</label>
+            <label class="fc-label">{{ t('Actor ID') }}</label>
             <input v-model="filters.actorId" class="fc-input" placeholder="Agent or user ID" @keydown.enter="load" />
           </div>
           <div class="fc-form-group">
-            <label class="fc-label">Target ID</label>
+            <label class="fc-label">{{ t('Target ID') }}</label>
             <input v-model="filters.targetId" class="fc-input" placeholder="Resource ID" @keydown.enter="load" />
           </div>
           <div class="fc-form-group">
-            <label class="fc-label">Limit</label>
+            <label class="fc-label">{{ t('Limit') }}</label>
             <input v-model.number="filters.limit" class="fc-input" type="number" min="1" max="200" />
           </div>
         </div>
         <div class="fc-toolbar">
           <button class="fc-btn-primary fc-btn-sm" :disabled="state.isLoading" @click="load">
             <Search :size="13" />
-            Apply filters
+            {{ t('Apply filters') }}
           </button>
           <button class="fc-btn-ghost fc-btn-sm" @click="clearFilters">
             <X :size="13" />
-            Clear
+            {{ t('Clear') }}
           </button>
         </div>
       </div>
@@ -129,7 +132,7 @@ useAutoReload(load);
 
     <!-- ── Loading ──────────────────────────────────── -->
     <div v-if="state.isLoading" class="fc-loading">
-      <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">Loading audit records…</p>
+      <p style="margin:0 0 12px;font-size:0.875rem;color:var(--fc-text-muted);">{{ t('Loading audit records…') }}</p>
       <SkeletonList />
     </div>
 
@@ -140,17 +143,17 @@ useAutoReload(load);
         <p style="margin:0;">{{ state.errorMessage }}</p>
       </div>
       <button class="fc-btn-secondary fc-btn-sm" @click="load">
-        <RefreshCw :size="13" /> Retry
+        <RefreshCw :size="13" /> {{ t('Retry') }}
       </button>
     </div>
 
     <!-- ── Empty ────────────────────────────────────── -->
     <div v-else-if="state.items.length === 0" class="fc-empty">
       <ShieldCheck :size="36" class="fc-empty-icon" />
-      <h4>No audit records</h4>
-      <p>No events match your current filters.</p>
+      <h4>{{ t('No audit records') }}</h4>
+      <p>{{ t('No events match your current filters.') }}</p>
       <button class="fc-btn-secondary fc-btn-sm" @click="clearFilters">
-        <X :size="13" /> Clear filters
+        <X :size="13" /> {{ t('Clear filters') }}
       </button>
     </div>
 
@@ -194,7 +197,7 @@ useAutoReload(load);
             v-if="expandedId === item.id && item.payload"
             style="padding:0 14px 12px;border-top:1px solid var(--fc-border-subtle);"
           >
-            <p class="fc-list-meta" style="margin:10px 0 6px;font-weight:600;">Payload</p>
+            <p class="fc-list-meta" style="margin:10px 0 6px;font-weight:600;">{{ t('Payload') }}</p>
             <pre style="margin:0;padding:10px;border-radius:var(--fc-control-radius);background:var(--fc-surface-muted);font-size:0.78rem;overflow-x:auto;color:var(--fc-text-main);border:1px solid var(--fc-border-subtle);">{{ JSON.stringify(item.payload, null, 2) }}</pre>
           </div>
         </Transition>
