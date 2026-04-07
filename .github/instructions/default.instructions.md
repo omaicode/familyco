@@ -142,12 +142,17 @@ Khi đang ở trong VSCode (hoặc bất kỳ editor nào) với AI assistance:
 5. **Không thêm log debug thừa**  
    - Log mới phải có ý nghĩa, dùng logger chuẩn (Pino), không `console.log` lung tung.
 
-6. **Luôn chạy test liên quan**  
+6. **Mọi text UI/UX phải đi qua i18n và luôn cập nhật đủ 2 ngôn ngữ**  
+   - Khi sửa hoặc thêm UI trong `apps/renderer/*` hoặc `packages/ui/*`, không để text user-facing hardcode nếu có thể localize.  
+   - Bắt buộc cập nhật cả **English** và **Vietnamese** trong bộ dịch chung hiện hành (hiện tại là `packages/ui/src/i18n/en.ts`, `packages/ui/src/i18n/vi.ts`).  
+   - Áp dụng cho: page title, button, label, tooltip, empty/loading/error state, modal, banner, onboarding copy, và microcopy UX.
+
+7. **Luôn chạy test liên quan**  
    - Nếu sửa core: chạy unit test core.  
    - Nếu sửa API: chạy integration test.  
    - Nếu sửa UI: chạy ít nhất unit test component (nếu có) hoặc manual quick test.
 
-7. **Không để file phình quá dài**  
+8. **Không để file phình quá dài**  
    - Nếu file Vue/TS đã chạm khoảng **220 dòng** mà còn cần thêm logic/UI, phải **dừng và tách ngay**, không đợi Founder nhắc.  
    - Nếu sau khi sửa file vượt khoảng **260 dòng** hoặc ôm hơn 1 trách nhiệm chính, thay đổi **chưa được xem là xong**.  
    - Ưu tiên tách theo hướng: **page → subcomponents/composables/helpers**, **controller → routes/services**, **test lớn → helpers + spec theo domain**.  

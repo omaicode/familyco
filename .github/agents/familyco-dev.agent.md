@@ -111,6 +111,7 @@ Khi repo đã được index bởi GitNexus, **ưu tiên GitNexus trước** cho
 - **Error JSON**: `{ statusCode, code, message }` — dùng lại format có sẵn
 - **Log**: dùng Pino logger, không `console.log`
 - **Không format toàn file** — chỉ format vùng mình chỉnh (giảm diff noise)
+- **Mọi text UI/UX phải dùng i18n** — khi thêm/sửa UI trong `apps/renderer/*` hoặc `packages/ui/*`, luôn cập nhật đủ bản dịch **English** và **Vietnamese** trong bộ dịch chung hiện hành (`packages/ui/src/i18n/en.ts`, `packages/ui/src/i18n/vi.ts`), không để microcopy quan trọng bị hardcode một ngôn ngữ.
 
 ## DB Schema Thực Tế (v1 — `prisma/schema.prisma`)
 
