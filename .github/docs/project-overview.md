@@ -75,8 +75,9 @@ AI Agent khi đọc tài liệu khác (Agent Hierarchy, Technical Architecture) 
 ### 4.3 Agent Management
 
 - Danh sách Agent dưới dạng bảng (admin panel) + tree view (org chart).
-- Xem chi tiết Agent: cấu hình model, tools, approval mode, thống kê.
-- Tạo/Pause/Archive Agent theo wizard chuẩn; Agent mới thường được đề xuất bởi L0 và Founder phê duyệt.
+- Xem chi tiết Agent: cấu hình model, tools, approval mode, thống kê, và health của heartbeat gần nhất.
+- Tạo/Pause/Terminate Agent theo wizard chuẩn; Agent mới thường được đề xuất bởi L0 và Founder phê duyệt.
+- Agents được mô hình hóa như “AI employees” chạy theo từng heartbeat ngắn. UI nên giải thích execution model và session persistence theo dạng on-demand info/modal, không chiếm chỗ thường trực trên trang.
 
 ### 4.4 Project & Task Management
 

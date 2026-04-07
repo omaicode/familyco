@@ -197,6 +197,7 @@ AI Agent phải tái dùng format này, **không tạo kiểu error JSON mới**
 - Load Agent + memory, build system prompt, gọi AI qua Vercel AI SDK với tool-calling.
 - Mỗi khi AI gọi tool: **ApprovalGuard.check** → nếu cần review, tạo `ApprovalRequest` + emit event + dừng.
 - Nếu được phép, `ToolExecutor.execute` thực thi tool tương ứng, log vào `AuditService`.
+- **Lưu ý hiện trạng:** runtime nền hiện hỗ trợ queued/on-demand agent runs; recurring heartbeat scheduling và durable session persistence ở tầng adapter vẫn chưa được nối đầy đủ trong server hiện tại.
 
 AI Agent **không được** bypass ApprovalGuard hoặc call ToolExecutor trực tiếp từ ngoài Engine.
 

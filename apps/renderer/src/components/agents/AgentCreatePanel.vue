@@ -2,6 +2,7 @@
 import type { AgentListItem } from '@familyco/ui';
 import { Plus, ShieldCheck } from 'lucide-vue-next';
 
+import type { CreateTemplateId } from '../../composables/agents-page.config';
 import { useI18n } from '../../composables/useI18n';
 import FcButton from '../FcButton.vue';
 import FcCard from '../FcCard.vue';
@@ -21,7 +22,7 @@ interface DraftState {
 defineProps<{
   draft: DraftState;
   templateCards: Array<{
-    id: string;
+    id: CreateTemplateId;
     title: string;
     description: string;
   }>;
@@ -35,7 +36,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (event: 'apply-template', templateId: string): void;
+  (event: 'apply-template', templateId: CreateTemplateId): void;
   (event: 'create'): void;
   (event: 'close'): void;
 }>();

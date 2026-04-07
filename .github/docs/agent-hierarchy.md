@@ -148,7 +148,7 @@ interface AgentProfile {
   role: string;            // "Chief of Staff", "PM Agent", v.v.
   level: "L0" | "L1" | "L2";
   department: string;      // "Executive", "Engineering", "Marketing", v.v.
-  status: "active" | "idle" | "paused" | "archived";
+  status: "active" | "idle" | "running" | "error" | "paused" | "terminated";
 
   // AI Configuration
   model: string;           // "gpt-4o", "claude-3-5-sonnet", v.v.
@@ -289,13 +289,12 @@ L2 Specialist Agent
 
 | Status | Mô tả | Action của Founder |
 |---|---|---|
-| `active` | Đang nhận và xử lý task bình thường | Pause / Archive |
-| `idle` | Không có task, đang chờ | Assign task / Archive |
-| `paused` | Bị tạm dừng bởi Founder | Resume / Archive |
-| `busy` | Đang xử lý task, không nhận thêm | Xem task hiện tại |
-| `blocked` | Dừng do chờ approval | Approve / Reject |
-| `error` | Gặp lỗi không tự xử lý được | Xem log / Retry / Fix config |
-| `archived` | Không còn hoạt động, dữ liệu vẫn lưu | Restore / Delete |
+| `active` | Sẵn sàng nhận heartbeat mới | Pause / Terminate |
+| `idle` | Đang ngủ giữa các heartbeat, chưa có lượt chạy hiện tại | Manual invoke / Terminate |
+| `running` | Heartbeat đang được xử lý | Xem run hiện tại |
+| `error` | Heartbeat gần nhất thất bại | Xem log / Retry / Fix config |
+| `paused` | Bị tạm dừng thủ công hoặc do guardrail ngân sách | Resume / Terminate |
+| `terminated` | Không còn hoạt động, chỉ giữ lại cho audit/history | View history |
 
 ---
 
@@ -305,8 +304,7 @@ L2 Specialist Agent
 - **View mặc định:** Table view (admin panel style) — tên, level, status, model, tasks đang xử lý.
 - **Secondary view:** Tree view (org chart) để visualize hierarchy.
 - **Filter:** Theo level, status, department, model.
-- **Quick actions:** Pause, Archive, View Inbox, View Tasks — không cần mở detail page.
-
+- **Quick actions:** Pause, View Inbox, View Tasks, Inspect — không cần mở detail page; thao tác terminate nên đi qua confirm flow.
 ### Màn hình Agent Detail
 Chia làm 4 tab:
 1. **Overview** — thông tin cơ bản, status, stats (tasks completed, tokens used, uptime).
@@ -368,16 +366,16 @@ FamilyCo được phân phối dưới **2 distribution mode** phục vụ hai n
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Electron Shell                                     │
-│  ┌───────────────────┐  ┌───────────────────────┐  │
-│  │  Vue 3 Renderer   │  │  Embedded Server       │  │
-│  │  (Main UI)        │◄─►  (Node.js process)    │  │
-│  │                   │  │  - Agent Engine        │  │
-│  │  - Dashboard      │  │  - Task Queue          │  │
-│  │  - Agent Manager  │  │  - AI API Client       │  │
-│  │  - Executive Chat │  │  - DB (SQLite file)    │  │
-│  │  - Settings       │  │  - WebSocket Server    │  │
-│  └───────────────────┘  └───────────────────────┘  │
-│                 localhost:PORT                       │
+│  ┌───────────────────┐  ┌───────────────────────┐   │
+│  │  Vue 3 Renderer   │  │  Embedded Server      │   │
+│  │  (Main UI)        │◄─►  (Node.js process)    │   │
+│  │                   │  │  - Agent Engine       │   │
+│  │  - Dashboard      │  │  - Task Queue         │   │
+│  │  - Agent Manager  │  │  - AI API Client      │   │
+│  │  - Executive Chat │  │  - DB (SQLite file)   │   │
+│  │  - Settings       │  │  - WebSocket Server   │   │
+│  └───────────────────┘  └───────────────────────┘   │
+│                 localhost:PORT                      │
 └─────────────────────────────────────────────────────┘
          │
          ▼

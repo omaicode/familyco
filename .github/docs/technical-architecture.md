@@ -105,7 +105,7 @@ familyco/
 packages/core/src/
 ├── agent/
 │   ├── agent.entity.ts          # AgentProfile interface + type defs
-│   ├── agent.service.ts         # Business logic: create, update, pause, archive
+│   ├── agent.service.ts         # Business logic: create, update, pause, terminate
 │   ├── agent.service.spec.ts
 │   ├── agent.repository.ts      # Abstract repository interface
 │   └── index.ts
@@ -376,14 +376,10 @@ Tất cả routes có prefix `/api/v1`. Auth required trừ `/auth/*`.
 ```
 GET    /agents                    # List agents (filter: level, status, dept)
 POST   /agents                    # Tạo agent mới (founder only)
-GET    /agents/:id                # Agent detail
-PATCH  /agents/:id                # Update config
-DELETE /agents/:id                # Archive agent
-POST   /agents/:id/pause          # Pause
-POST   /agents/:id/resume         # Resume
-GET    /agents/:id/tasks          # Tasks của agent
-GET    /agents/:id/inbox          # Inbox của agent
-GET    /agents/tree               # Trả về toàn bộ hierarchy dạng cây
+POST   /agents/:id/pause          # Pause agent
+GET    /agents/:id/children       # Direct reports của agent
+GET    /agents/:id/path           # Chuỗi reporting line từ L0 -> agent
+PATCH  /agents/:id/parent         # Cập nhật manager / reporting line
 ```
 
 ### Tasks
@@ -625,6 +621,13 @@ REDIS_URL=redis://127.0.0.1:6379
 FAMILYCO_QUEUE_NAME=familyco-jobs
 ENABLE_QUEUE_WORKERS=0
 ```
+
+> **Hiện trạng runtime (2026-04-08):**
+> - Background worker chỉ thực sự xử lý async jobs khi `FAMILYCO_QUEUE_DRIVER=bullmq` **và** `ENABLE_QUEUE_WORKERS=1`.
+> - Với queue driver `memory` mặc định, jobs được giữ trong process để test/dev và **không có scheduler heartbeat định kỳ** tự đánh thức agent.
+> - Setting `agent.defaultHeartbeatMinutes` hiện mới là cấu hình UI/settings; chưa có recurring scheduler phía server dùng setting này để wake agents tự động.
+> - `AgentRunner` hiện lưu context ngắn hạn qua `InMemoryMemoryService`; chưa có adapter-level session serialization/restoration bền vững qua restart process.
+> - Kết quả mỗi lượt chạy hiện được ghi qua `AuditLog` + inbox reports; chưa có bảng `AgentRunRecord` chuyên biệt.
 
 ### Auth & Security
 ```env

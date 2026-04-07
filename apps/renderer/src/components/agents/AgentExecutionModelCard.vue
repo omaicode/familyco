@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { Activity, Clock3, Database } from 'lucide-vue-next';
+import { Activity, Clock3, Database, X } from 'lucide-vue-next';
 
 import { AGENT_STATUS_META } from '../../composables/agents-page.config';
 import { useI18n } from '../../composables/useI18n';
 import FcBadge from '../FcBadge.vue';
-import FcCard from '../FcCard.vue';
+
+defineProps<{
+  open: boolean;
+}>();
+
+const emit = defineEmits<{
+  (event: 'close'): void;
+}>();
 
 const { t } = useI18n();
 
@@ -42,57 +49,85 @@ const statusEntries = (Object.keys(AGENT_STATUS_META) as Array<keyof typeof AGEN
 </script>
 
 <template>
-  <FcCard class="ag-execution-card">
-    <div class="ag-section-head">
-      <div>
-        <h4>{{ t('Heartbeat execution model') }}</h4>
-        <p>{{ t('Agents wake up, work in short bursts, and go back to sleep with context restored on the next wake.') }}</p>
-      </div>
-      <Activity :size="16" class="ag-muted-icon" />
-    </div>
+  <Transition name="fc-page">
+    <div v-if="open" class="ag-modal-wrap" @click.self="emit('close')">
+      <div class="ag-modal" role="dialog" aria-modal="true" :aria-label="t('Heartbeat execution model')">
+        <div class="ag-section-head">
+          <div>
+            <h4>{{ t('Heartbeat execution model') }}</h4>
+            <p>{{ t('Agents wake up, work in short bursts, and go back to sleep with context restored on the next wake.') }}</p>
+          </div>
+          <div class="ag-modal-actions">
+            <Activity :size="16" class="ag-muted-icon" />
+            <button class="fc-btn-ghost fc-btn-icon" type="button" :aria-label="t('Close')" @click="emit('close')">
+              <X :size="14" />
+            </button>
+          </div>
+        </div>
 
-    <div class="ag-pill-row">
-      <div class="ag-pill">
-        <Clock3 :size="14" />
-        <span>{{ t('Short heartbeat bursts instead of always-on workers') }}</span>
-      </div>
-      <div class="ag-pill">
-        <Database :size="14" />
-        <span>{{ t('Session persistence keeps context across heartbeats') }}</span>
-      </div>
-    </div>
+        <div class="ag-pill-row">
+          <div class="ag-pill">
+            <Clock3 :size="14" />
+            <span>{{ t('Short heartbeat bursts instead of always-on workers') }}</span>
+          </div>
+          <div class="ag-pill">
+            <Database :size="14" />
+            <span>{{ t('Session persistence keeps context across heartbeats') }}</span>
+          </div>
+        </div>
 
-    <div class="ag-execution-grid">
-      <ol class="ag-step-list">
-        <li v-for="step in executionSteps" :key="step.title" class="ag-step-item">
-          <strong>{{ t(step.title) }}</strong>
-          <p>{{ t(step.text) }}</p>
-        </li>
-      </ol>
+        <div class="ag-execution-grid">
+          <ol class="ag-step-list">
+            <li v-for="step in executionSteps" :key="step.title" class="ag-step-item">
+              <strong>{{ t(step.title) }}</strong>
+              <p>{{ t(step.text) }}</p>
+            </li>
+          </ol>
 
-      <div class="ag-status-panel">
-        <h5>{{ t('Status reference') }}</h5>
-        <div v-for="entry in statusEntries" :key="entry.status" class="ag-status-row">
-          <FcBadge :status="entry.status">{{ t(entry.label) }}</FcBadge>
-          <p>{{ t(entry.description) }}</p>
+          <div class="ag-status-panel">
+            <h5>{{ t('Status reference') }}</h5>
+            <div v-for="entry in statusEntries" :key="entry.status" class="ag-status-row">
+              <FcBadge :status="entry.status">{{ t(entry.label) }}</FcBadge>
+              <p>{{ t(entry.description) }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="ag-session-note">
+          <strong>{{ t('Session persistence') }}</strong>
+          <p>{{ t('After each heartbeat, the adapter saves session state so the next wake can continue without re-reading the full thread.') }}</p>
+          <small>{{ t('Run outputs, usage, and debugging details should be captured in the audit trail for every heartbeat.') }}</small>
         </div>
       </div>
     </div>
-
-    <div class="ag-session-note">
-      <strong>{{ t('Session persistence') }}</strong>
-      <p>{{ t('After each heartbeat, the adapter saves session state so the next wake can continue without re-reading the full thread.') }}</p>
-      <small>{{ t('Run outputs, usage, and debugging details should be captured in the audit trail for every heartbeat.') }}</small>
-    </div>
-  </FcCard>
+  </Transition>
 </template>
 
 <style scoped>
-.ag-execution-card {
+.ag-modal-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.36);
+  backdrop-filter: blur(3px);
+}
+
+.ag-modal {
+  width: min(860px, 100%);
+  max-height: min(90vh, 820px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: var(--fc-card-radius);
+  background: var(--fc-surface);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
 }
 
 .ag-section-head {

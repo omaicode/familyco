@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { AlertTriangle, Bot, Plus, RefreshCw } from 'lucide-vue-next';
+import { ref } from 'vue';
+import { AlertTriangle, Bot, Info, Plus, RefreshCw } from 'lucide-vue-next';
 
 import { useAgentsPage } from '../composables/useAgentsPage';
 import SkeletonList from '../components/SkeletonList.vue';
@@ -13,6 +14,7 @@ import AgentSummaryCards from '../components/agents/AgentSummaryCards.vue';
 import { useI18n } from '../composables/useI18n';
 
 const { t } = useI18n();
+const heartbeatInfoOpen = ref(false);
 
 const {
   AUTONOMY_GUIDE,
@@ -61,6 +63,15 @@ const {
         <p>{{ t('Manage heartbeat-based AI employees with one required L0 executive by default, then add optional roles as the company grows.') }}</p>
       </div>
       <div class="fc-inline-actions">
+        <FcButton
+          variant="ghost"
+          size="icon"
+          :title="t('Heartbeat execution model')"
+          :aria-label="t('Heartbeat execution model')"
+          @click="heartbeatInfoOpen = true"
+        >
+          <Info :size="14" />
+        </FcButton>
         <FcButton variant="secondary" :disabled="isRefreshing" @click="reload">
           <RefreshCw :size="14" />
           {{ isRefreshing ? t('Refreshing…') : t('Refresh') }}
@@ -86,7 +97,7 @@ const {
 
     <AgentSummaryCards :metrics="summaryMetrics" :attention-summary="attentionSummary" />
 
-    <AgentExecutionModelCard />
+    <AgentExecutionModelCard :open="heartbeatInfoOpen" @close="heartbeatInfoOpen = false" />
 
     <Transition name="fc-banner">
       <AgentCreatePanel
