@@ -276,7 +276,7 @@ const warningMessage = computed(() => {
 }
 
 .ag-modal-tabbar {
-  margin: 0 18px;
+  margin: 16px 18px 0 18px;
 }
 
 .ag-modal-body {
@@ -302,7 +302,7 @@ const warningMessage = computed(() => {
   }
 
   .ag-modal-tabbar {
-    margin: 0 14px;
+    margin: 14px 14px 0 14px;
   }
 
   .ag-modal-body {
