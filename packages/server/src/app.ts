@@ -77,6 +77,8 @@ export interface CreateAppOptions {
   logger?: boolean;
   repositoryDriver?: RepositoryDriver;
   queueDriver?: QueueDriver;
+  agentRunConcurrency?: number;
+  toolExecuteConcurrency?: number;
   authApiKey?: string;
   authApiKeySalt?: string;
   dailyQuotaLimit?: number;
@@ -105,6 +107,14 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const authApiKey = options.authApiKey ?? getAuthApiKey();
   const authApiKeySalt = options.authApiKeySalt ?? getAuthApiKeySalt();
   const queueDriver: QueueDriver = 'memory';
+  const agentRunConcurrency = normalizePositiveInteger(
+    options.agentRunConcurrency ?? Number(process.env.FAMILYCO_QUEUE_AGENT_CONCURRENCY ?? 4),
+    4
+  );
+  const toolExecuteConcurrency = normalizePositiveInteger(
+    options.toolExecuteConcurrency ?? Number(process.env.FAMILYCO_QUEUE_TOOL_CONCURRENCY ?? 8),
+    8
+  );
   const dailyQuotaLimit = options.dailyQuotaLimit ?? Number(process.env.DAILY_QUOTA_LIMIT ?? 50);
   const enableHeartbeatScheduler =
     options.enableHeartbeatScheduler ??
@@ -143,7 +153,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
 
-  const queueService = new InMemoryQueueService();
+  const queueService = new InMemoryQueueService({
+    agentRunConcurrency,
+    toolExecuteConcurrency
+  });
   const heartbeatRuntime = new HeartbeatRuntimeService({
     queueService,
     agentService,
@@ -305,6 +318,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     status: readOnlyMode ? 'degraded' : 'ok',
     mode: readOnlyMode ? 'read_only' : 'normal',
     queueDriver,
+    queue: {
+      agentRunConcurrency,
+      toolExecuteConcurrency
+    },
     migration: migrationState
       ? {
           status: migrationState.status,
@@ -417,6 +434,14 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
 
   return app;
+}
+
+function normalizePositiveInteger(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.floor(value));
 }
 
 function toError(error: unknown): Error {
