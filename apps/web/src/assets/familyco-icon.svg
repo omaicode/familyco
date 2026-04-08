@@ -1,0 +1,51 @@
+<svg width="32" height="32" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="144" y1="96" x2="880" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1A9186"/>
+      <stop offset="1" stop-color="#0E645C"/>
+    </linearGradient>
+    <linearGradient id="ringGradient" x1="220" y1="220" x2="804" y2="804" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5FFFD" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#BFE8E3" stop-opacity="0.78"/>
+    </linearGradient>
+    <filter id="softGlow" x="180" y="140" width="664" height="744" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect x="64" y="64" width="896" height="896" rx="224" fill="url(#bgGradient)"/>
+
+  <g filter="url(#softGlow)">
+    <path d="M512 208C346.314 208 212 342.314 212 508C212 673.686 346.314 808 512 808C677.686 808 812 673.686 812 508C812 342.314 677.686 208 512 208Z" stroke="#D9FFF9" stroke-opacity="0.28" stroke-width="12"/>
+  </g>
+
+  <path d="M512 244C366.735 244 249 361.735 249 507C249 652.265 366.735 770 512 770C657.265 770 775 652.265 775 507C775 361.735 657.265 244 512 244Z" stroke="url(#ringGradient)" stroke-width="18"/>
+
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M512 344V436" stroke="#F5FFFD" stroke-width="28"/>
+    <path d="M512 588V680" stroke="#F5FFFD" stroke-width="28"/>
+    <path d="M344 520H468" stroke="#F5FFFD" stroke-width="28"/>
+    <path d="M556 520H680" stroke="#F5FFFD" stroke-width="28"/>
+    <path d="M430 438L472 480" stroke="#F5FFFD" stroke-width="24"/>
+    <path d="M594 438L552 480" stroke="#F5FFFD" stroke-width="24"/>
+    <path d="M430 602L472 560" stroke="#F5FFFD" stroke-width="24"/>
+    <path d="M594 602L552 560" stroke="#F5FFFD" stroke-width="24"/>
+  </g>
+
+  <g fill="#F5FFFD">
+    <circle cx="512" cy="520" r="74"/>
+    <circle cx="512" cy="312" r="52"/>
+    <circle cx="512" cy="728" r="52"/>
+    <circle cx="296" cy="520" r="52"/>
+    <circle cx="728" cy="520" r="52"/>
+  </g>
+
+  <g fill="#127A70">
+    <path d="M486 492H538V518H486V492Z"/>
+    <path d="M486 530H538V556H486V530Z"/>
+    <path d="M474 518H500V530H474V518Z"/>
+    <path d="M524 518H550V530H524V518Z"/>
+  </g>
+
+  <path d="M512 272L522 294H546L526 308L534 330L512 316L490 330L498 308L478 294H502L512 272Z" fill="#FFE7A0"/>
+</svg>

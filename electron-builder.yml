@@ -1,8 +1,8 @@
-appId: com.familyco.desktop
+appId: com.familyco.app
 productName: FamilyCo
 artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 directories:
-  output: dist/desktop
+  output: dist/packages
 files:
   - from: dist
     to: .
@@ -19,14 +19,17 @@ extraResources:
     filter:
       - "**/*"
 mac:
+  icon: ./icons/mac/icon.icns
   category: public.app-category.business
   target:
     - dmg
     - zip
 win:
+  icon: ./icons/win/icon.ico
   target:
     - nsis
 linux:
+  icon: ./icons/png
   maintainer: FamilyCo <support@familyco.app>
   target:
     - AppImage

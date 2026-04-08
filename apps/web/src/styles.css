@@ -58,23 +58,19 @@ body {
 .fc-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   padding: 20px 18px 16px;
   border-bottom: 1px solid var(--fc-border-subtle);
   flex-shrink: 0;
 }
 
-.fc-brand-logo {
-  width: 34px; height: 34px;
-  border-radius: 10px;
-  background: var(--fc-primary);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  color: var(--fc-primary-foreground);
+.fc-brand-logo svg {
+  width: 36px; 
+  height: 36px;
 }
 
 .fc-brand-text { overflow: hidden; transition: opacity 0.2s, width 0.25s; }
-.fc-brand-text h1 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+.fc-brand-text h1 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; line-height: 1.15; }
 .fc-brand-text p  { margin: 2px 0 0; color: var(--fc-text-muted); font-size: 0.7rem; white-space: nowrap; }
 .collapsed .fc-brand-text { opacity: 0; width: 0; pointer-events: none; }
 
@@ -128,7 +124,7 @@ body {
 .fc-topbar {
   display: flex; justify-content: space-between; align-items: center;
   position: sticky; top: 0;
-  padding: 24px;
+  padding: 21.5px;
   border-bottom: 1px solid var(--fc-border-subtle);
   background: color-mix(in srgb, var(--fc-surface) 88%, transparent);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -441,7 +437,7 @@ body {
 
 /* ─── Splash ────────────────────────────────────────────── */
 .fc-splash { position: fixed; inset: 0; background: var(--fc-background); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
-.fc-splash-logo { width: 68px; height: 68px; border-radius: 20px; background: var(--fc-primary); display: flex; align-items: center; justify-content: center; color: var(--fc-primary-foreground); margin-bottom: 22px; animation: fc-splash-pop 0.55s cubic-bezier(0.34,1.56,0.64,1); }
+.fc-splash-logo svg { width: 68px; height: 68px; margin-bottom: 22px; animation: fc-splash-pop 0.55s cubic-bezier(0.34,1.56,0.64,1); }
 .fc-splash h2 { margin: 0 0 8px; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; animation: fc-splash-up 0.5s 0.12s both ease; }
 .fc-splash p  { margin: 0 0 32px; color: var(--fc-text-muted); font-size: 0.875rem; animation: fc-splash-up 0.5s 0.18s both ease; }
 .fc-splash-bar { width: 200px; height: 3px; border-radius: 999px; background: var(--fc-surface-muted); overflow: hidden; animation: fc-splash-up 0.5s 0.22s both ease; }

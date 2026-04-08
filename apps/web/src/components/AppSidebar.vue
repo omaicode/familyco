@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Zap, PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next';
+import FamilyCoIcon from '../assets/familyco-icon.svg'
 
 import { useI18n } from '../composables/useI18n';
 
@@ -50,7 +51,7 @@ const { t } = useI18n();
     <!-- Brand -->
     <div class="fc-brand">
       <div class="fc-brand-logo">
-        <Zap :size="18" />
+        <FamilyCoIcon/>
       </div>
       <div class="fc-brand-text">
         <h1>{{ t('FamilyCo') }}</h1>

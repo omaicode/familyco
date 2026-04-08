@@ -5,9 +5,9 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "build:desktop": "pnpm --filter @familyco/electron run dist:desktop",
+    "build:desktop": "pnpm --filter @familyco/electron run build:electron",
     "dev": "turbo run dev --parallel --filter=@familyco/server --filter=@familyco/web",
-    "dev:desktop": "turbo run dev --parallel --filter=@familyco/web --filter=@familyco/electron",
+    "dev:electron": "turbo run dev --parallel --filter=@familyco/web --filter=@familyco/electron",
     "dev:p": "turbo run dev --parallel",
     "prisma:generate": "pnpm --filter @familyco/server exec prisma generate --config ../../prisma.config.ts --schema ../../prisma/schema.prisma",
     "prisma:migrate:dev": "pnpm --filter @familyco/server exec prisma migrate dev --config ../../prisma.config.ts --schema ../../prisma/schema.prisma",

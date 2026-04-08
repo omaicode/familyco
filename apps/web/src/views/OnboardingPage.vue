@@ -3,9 +3,10 @@ import type { SupportedLocale } from '@familyco/ui';
 import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-  Zap, Building2, Key, Users, CheckCircle2, ChevronRight, ChevronLeft,
-  Eye, EyeOff, AlertTriangle, ArrowRight, Sparkles
+  Building2, Key, Users, CheckCircle2, ChevronRight, ChevronLeft,
+  Eye, EyeOff, AlertTriangle, ArrowRight, Sparkles, Zap
 } from 'lucide-vue-next';
+import FamilyCoIcon from '../assets/familyco-icon.svg';
 
 import { uiRuntime } from '../runtime';
 import { useI18n } from '../composables/useI18n';
@@ -21,6 +22,9 @@ const isSubmitting = ref(false);
 const errorMessage = ref<string | null>(null);
 const done = ref(false);
 const showApiKey = ref(false);
+const stepStageRef = ref<HTMLElement | null>(null);
+const previousStepHeight = ref<number | null>(null);
+let stepHeightCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
 const createdResult = ref<{ executiveName: string; description: string } | null>(null);
 
@@ -119,13 +123,67 @@ const handleLocaleChange = (event: Event): void => {
   const nextLocale = (event.target as HTMLSelectElement).value as SupportedLocale;
   void setLocale(nextLocale);
 };
+
+const cleanupStepStageHeight = (): void => {
+  if (!stepStageRef.value) {
+    return;
+  }
+
+  stepStageRef.value.style.removeProperty('height');
+  stepStageRef.value.style.removeProperty('overflow');
+  stepStageRef.value.style.removeProperty('transition');
+
+  if (stepHeightCleanupTimer) {
+    clearTimeout(stepHeightCleanupTimer);
+    stepHeightCleanupTimer = null;
+  }
+};
+
+const handleStepBeforeLeave = (el: Element): void => {
+  previousStepHeight.value = (el as HTMLElement).offsetHeight;
+};
+
+const handleStepEnter = (el: Element): void => {
+  const stage = stepStageRef.value;
+  if (!stage) {
+    return;
+  }
+
+  const nextHeight = (el as HTMLElement).offsetHeight;
+  const fromHeight = previousStepHeight.value ?? stage.getBoundingClientRect().height;
+
+  if (Math.abs(fromHeight - nextHeight) < 1) {
+    cleanupStepStageHeight();
+    return;
+  }
+
+  stage.style.height = `${fromHeight}px`;
+  stage.style.overflow = 'hidden';
+  stage.style.transition = 'height 320ms cubic-bezier(0.22, 1, 0.36, 1)';
+
+  requestAnimationFrame(() => {
+    if (!stepStageRef.value) {
+      return;
+    }
+    stepStageRef.value.style.height = `${nextHeight}px`;
+  });
+
+  stepHeightCleanupTimer = setTimeout(() => {
+    cleanupStepStageHeight();
+  }, 360);
+};
+
+const handleStepAfterEnter = (): void => {
+  previousStepHeight.value = null;
+  cleanupStepStageHeight();
+};
 </script>
 
 <template>
   <div class="ob-shell">
     <!-- Brand watermark -->
     <div class="ob-brand">
-      <Zap :size="16" />
+      <FamilyCoIcon />
       <span>{{ t('FamilyCo') }}</span>
     </div>
 
@@ -169,9 +227,17 @@ const handleLocaleChange = (event: Event): void => {
           ></div>
         </div>
 
-        <!-- ── Step 1: Welcome ──────────────────────── -->
-        <Transition name="ob-step" mode="out-in">
-          <div v-if="currentStep === 1" key="step1" class="ob-step-body">
+        <div ref="stepStageRef" class="ob-step-stage">
+          <Transition
+            name="ob-step"
+            mode="out-in"
+            @before-leave="handleStepBeforeLeave"
+            @enter="handleStepEnter"
+            @after-enter="handleStepAfterEnter"
+          >
+            <div :key="`step-${currentStep}`" class="ob-step-body">
+            <!-- ── Step 1: Welcome ──────────────────────── -->
+            <template v-if="currentStep === 1">
             <div class="ob-step-icon ob-step-icon-primary">
               <Sparkles :size="28" />
             </div>
@@ -199,12 +265,10 @@ const handleLocaleChange = (event: Event): void => {
             <button class="ob-btn-primary ob-btn-lg" style="width:100%;margin-top:8px;" @click="next">
               {{ t('Get started') }} <ChevronRight :size="16" />
             </button>
-          </div>
-        </Transition>
+            </template>
 
-        <!-- ── Step 2: Company info ─────────────────── -->
-        <Transition name="ob-step" mode="out-in">
-          <div v-if="currentStep === 2" key="step2" class="ob-step-body">
+            <!-- ── Step 2: Company info ─────────────────── -->
+            <template v-else-if="currentStep === 2">
             <div class="ob-step-icon ob-step-icon-info">
               <Building2 :size="28" />
             </div>
@@ -241,12 +305,10 @@ const handleLocaleChange = (event: Event): void => {
                 {{ t('Next') }} <ChevronRight :size="16" />
               </button>
             </div>
-          </div>
-        </Transition>
+            </template>
 
-        <!-- ── Step 3: AI Provider ──────────────────── -->
-        <Transition name="ob-step" mode="out-in">
-          <div v-if="currentStep === 3" key="step3" class="ob-step-body">
+            <!-- ── Step 3: AI Provider ──────────────────── -->
+            <template v-else-if="currentStep === 3">
             <div class="ob-step-icon ob-step-icon-accent">
               <Key :size="28" />
             </div>
@@ -307,12 +369,10 @@ const handleLocaleChange = (event: Event): void => {
                 {{ t('Next') }} <ChevronRight :size="16" />
               </button>
             </div>
-          </div>
-        </Transition>
+            </template>
 
-        <!-- ── Step 4: Review & Initialize ─────────── -->
-        <Transition name="ob-step" mode="out-in">
-          <div v-if="currentStep === 4" key="step4" class="ob-step-body">
+            <!-- ── Step 4: Review & Initialize ─────────── -->
+            <template v-else>
             <div class="ob-step-icon ob-step-icon-success">
               <Users :size="28" />
             </div>
@@ -358,8 +418,10 @@ const handleLocaleChange = (event: Event): void => {
                 {{ isSubmitting ? t('Initializing…') : t('Initialize workspace') }}
               </button>
             </div>
-          </div>
-        </Transition>
+            </template>
+            </div>
+          </Transition>
+        </div>
       </div>
     </Transition>
   </div>
@@ -386,7 +448,7 @@ const handleLocaleChange = (event: Event): void => {
   align-items: center;
   gap: 6px;
   color: var(--fc-primary);
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
@@ -448,6 +510,11 @@ const handleLocaleChange = (event: Event): void => {
   display: flex;
   flex-direction: column;
   gap: 0;
+  will-change: transform, opacity;
+}
+
+.ob-step-stage {
+  position: relative;
 }
 
 /* ── Step icon ────────────────────────────────────────── */
@@ -787,8 +854,18 @@ const handleLocaleChange = (event: Event): void => {
 .ob-fade-leave-active { transition: opacity 0.2s ease; }
 .ob-fade-enter-from, .ob-fade-leave-to { opacity: 0; }
 
-.ob-step-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
-.ob-step-leave-active { transition: opacity 0.15s ease; }
-.ob-step-enter-from  { opacity: 0; transform: translateX(10px); }
-.ob-step-leave-to    { opacity: 0; }
+.ob-step-enter-active,
+.ob-step-leave-active {
+  transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1), transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ob-step-enter-from {
+  opacity: 0;
+  transform: translateX(18px) scale(0.995);
+}
+
+.ob-step-leave-to {
+  opacity: 0;
+  transform: translateX(-14px) scale(0.995);
+}
 </style>

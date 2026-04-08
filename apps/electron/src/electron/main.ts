@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 
 import { app, BrowserWindow, dialog, Menu, Tray, nativeImage } from 'electron';
 import {
@@ -29,6 +30,48 @@ const resolveRendererTarget = (): { mode: 'url'; value: string } | { mode: 'file
   const defaultDist = path.join(process.resourcesPath, 'renderer', 'index.html');
 
   return { mode: 'file', value: defaultDist };
+};
+
+const resolveWindowIconPath = (): string | undefined => {
+  const candidates = [
+    // Typical dev run from repo root
+    path.resolve(process.cwd(), 'apps/electron/icons/png/256x256.png'),
+    // Typical dev run from apps/electron
+    path.resolve(process.cwd(), 'icons/png/256x256.png'),
+    // Compiled main.js in dist/electron
+    path.resolve(dirname, '../../icons/png/256x256.png'),
+    // Optional packaged resource copy
+    path.join(process.resourcesPath, 'icons/png/256x256.png')
+  ];
+
+  for (const iconPath of candidates) {
+    if (existsSync(iconPath)) {
+      return iconPath;
+    }
+  }
+
+  return undefined;
+};
+
+const resolveWindowIcon = async (): Promise<Electron.NativeImage | undefined> => {
+  const iconPath = resolveWindowIconPath();
+  if (iconPath) {
+    const icon = nativeImage.createFromPath(iconPath);
+    if (!icon.isEmpty()) {
+      return icon;
+    }
+  }
+
+  try {
+    const fallback = await app.getFileIcon(process.execPath, { size: 'normal' });
+    if (!fallback.isEmpty()) {
+      return fallback;
+    }
+  } catch {
+    // Ignore fallback errors and return undefined.
+  }
+
+  return undefined;
 };
 
 let mainWindow: BrowserWindow | null = null;
@@ -107,13 +150,15 @@ const ensureTray = async (): Promise<void> => {
 
 const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<void> => {
   const preloadPath = path.join(dirname, 'preload.cjs');
-
+  const windowIconPath = resolveWindowIconPath();
+  
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1120,
     minHeight: 720,
     title: 'FamilyCo',
+    icon: windowIconPath,
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -124,6 +169,13 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
       ]
     }
   });
+
+  if (windowIconPath) {
+    const linuxIcon = nativeImage.createFromPath(windowIconPath);
+    if (!linuxIcon.isEmpty()) {
+      mainWindow.setIcon(linuxIcon);
+    }
+  }
 
   const rendererTarget = resolveRendererTarget();
   if (rendererTarget.mode === 'url') {

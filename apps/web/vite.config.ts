@@ -3,11 +3,12 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import svgLoader from 'vite-svg-loader'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), svgLoader()],
   resolve: {
     alias: {
       '@familyco/ui': path.resolve(dirname, '../../packages/ui/src/index.ts')

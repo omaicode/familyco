@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Zap } from 'lucide-vue-next';
+import FamilyCoIcon from '../assets/familyco-icon.svg';
 
 defineProps<{
   show: boolean;
@@ -10,7 +10,7 @@ defineProps<{
   <Transition name="fc-splash">
     <div v-if="show" class="fc-splash">
       <div class="fc-splash-logo">
-        <Zap :size="32" />
+        <FamilyCoIcon/>
       </div>
       <h2>FamilyCo</h2>
       <p>AI-native operating system</p>

@@ -18,6 +18,7 @@
     "lucide-vue-next": "^1.0.0",
     "marked": "^17.0.6",
     "pinia": "^3.0.3",
+    "vite-svg-loader": "^5.1.1",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"
   },
