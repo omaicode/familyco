@@ -1,7 +1,8 @@
 import { app } from 'electron';
-import { autoUpdater } from 'electron-updater';
-
+import pkg from 'electron-updater';
 import type { DesktopUpdateEventPayload } from './ipc/ipc.types.js';
+
+const { autoUpdater } = pkg;
 
 export interface DesktopUpdaterRuntime {
   checkForUpdates: () => Promise<boolean>;
