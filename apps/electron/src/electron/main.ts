@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog, Menu, Tray, nativeImage } from 'electron';
 import {
   broadcastDesktopUpdateEvent,
   registerDesktopIpcHandlers
@@ -34,6 +34,7 @@ const resolveRendererTarget = (): { mode: 'url'; value: string } | { mode: 'file
 let mainWindow: BrowserWindow | null = null;
 let embeddedServer: EmbeddedServerRuntime | null = null;
 let updaterRuntime: DesktopUpdaterRuntime | null = null;
+let tray: Tray | null = null;
 let isQuitRequested = false;
 let isShuttingDown = false;
 
@@ -41,6 +42,68 @@ interface DesktopRuntimeConfig {
   apiBaseUrl: string;
   apiKey: string;
 }
+
+const showMainWindow = (): void => {
+  if (!mainWindow) {
+    return;
+  }
+
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.focus();
+};
+
+const resolveTrayIcon = async (): Promise<Electron.NativeImage> => {
+  try {
+    const icon = await app.getFileIcon(process.execPath, { size: 'small' });
+    if (!icon.isEmpty()) {
+      return icon;
+    }
+  } catch {
+    // Fallback below when OS cannot resolve executable icon.
+  }
+
+  return nativeImage.createEmpty();
+};
+
+const ensureTray = async (): Promise<void> => {
+  if (tray) {
+    return;
+  }
+
+  const icon = await resolveTrayIcon();
+  tray = new Tray(icon);
+  tray.setToolTip('FamilyCo');
+
+  tray.on('click', () => {
+    showMainWindow();
+  });
+
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: 'Open',
+        click: () => {
+          showMainWindow();
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Exit',
+        click: () => {
+          isQuitRequested = true;
+          app.quit();
+        }
+      }
+    ])
+  );
+};
 
 const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<void> => {
   const preloadPath = path.join(dirname, 'preload.cjs');
@@ -94,6 +157,7 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
     }
 
     mainWindow?.hide();
+    void ensureTray();
   });
 };
 
@@ -119,13 +183,7 @@ const startDesktop = async (): Promise<void> => {
 
   app.on('second-instance', async () => {
     if (mainWindow) {
-      if (!mainWindow.isVisible()) {
-        mainWindow.show();
-      }
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
-      }
-      mainWindow.focus();
+      showMainWindow();
       return;
     }
 
@@ -198,15 +256,14 @@ app.on('window-all-closed', async () => {
 
 app.on('before-quit', async () => {
   isQuitRequested = true;
+  tray?.destroy();
+  tray = null;
   await shutdownBackgroundServices();
 });
 
 app.on('activate', async () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    if (!mainWindow.isVisible()) {
-      mainWindow.show();
-    }
-    mainWindow.focus();
+    showMainWindow();
     return;
   }
 
