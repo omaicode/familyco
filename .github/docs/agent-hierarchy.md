@@ -484,13 +484,13 @@ Cả 2 phiên bản đều dùng chung **`@familyco/core`** package, tách biệ
 packages/
   @familyco/core/         ← Business logic, Agent Engine, Queue, DB Adapter
   @familyco/server/       ← Express/Fastify server, WebSocket, REST API
-  @familyco/desktop/      ← Electron shell + embedded server bootstrap
+  @familyco/electron/      ← Electron shell + embedded server bootstrap
   @familyco/ui/           ← Vue 3 frontend (dùng cho Desktop)
   @familyco/cli/          ← CLI interface cho Server Only
 ```
 
 **Monorepo approach (pnpm workspaces)** cho phép:
-- Desktop = `@familyco/core` + `@familyco/server` + `@familyco/ui` + `@familyco/desktop`
+- Desktop = `@familyco/core` + `@familyco/server` + `@familyco/ui` + `@familyco/electron`
 - Server Only = `@familyco/core` + `@familyco/server` + `@familyco/cli`
 - Core không phụ thuộc vào Electron hay Vue — có thể test độc lập.
 

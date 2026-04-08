@@ -17,7 +17,7 @@ Bạn **không phải kiến trúc sư**. Bạn là người **thực thi theo k
 - `packages/server` — `@familyco/server`: Fastify v5, REST API, WebSocket, BullMQ queue, Prisma repositories.
 - `packages/ui` — `@familyco/ui`: UI contracts, design tokens, Pinia store abstractions.
 - `apps/renderer` — `@familyco/web`: Vue 3 + Vite + Tailwind CSS 4 runtime.
-- `apps/desktop` — `@familyco/desktop`: Electron 34 shell + embedded server.
+- `apps/desktop` — `@familyco/electron`: Electron 34 shell + embedded server.
 - `packages/cli` — `@familyco/cli`: Server Only console.
 
 **Database**: SQLite via Prisma 7 (file-based, không cần server riêng).

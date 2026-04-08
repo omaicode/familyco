@@ -70,7 +70,7 @@
 familyco/
 ├── apps/
 │   ├── renderer/                # @familyco/web (Vue 3 runtime)
-│   └── desktop/                 # @familyco/desktop (Electron shell)
+│   └── desktop/                 # @familyco/electron (Electron shell)
 ├── packages/
 │   ├── core/                    # @familyco/core
 │   ├── server/                  # @familyco/server
@@ -88,7 +88,7 @@ familyco/
 ```
 @familyco/ui        →  @familyco/core (types only)
 @familyco/web  →  @familyco/ui + @familyco/core (contracts/types)
-@familyco/desktop   →  @familyco/server + @familyco/web
+@familyco/electron   →  @familyco/server + @familyco/web
 @familyco/server    →  @familyco/core
 @familyco/cli       →  @familyco/server (hoặc core trực tiếp)
 @familyco/core      →  (không import package nào trong monorepo)
@@ -201,7 +201,7 @@ packages/server/src/
 
 ---
 
-## 5. Cấu Trúc `@familyco/desktop` (Electron)
+## 5. Cấu Trúc `@familyco/electron` (Electron)
 
 ```
 apps/desktop/src/
@@ -733,10 +733,10 @@ export const useAgentStore = defineStore('agent', () => {
 ### Desktop
 ```bash
 # Dev
-pnpm --filter @familyco/desktop dev
+pnpm --filter @familyco/electron dev
 
 # Build
-pnpm --filter @familyco/desktop build
+pnpm --filter @familyco/electron build
 # Output: apps/desktop/dist/ → desktop runtime bundle
 
 # Package đa nền tảng

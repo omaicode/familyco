@@ -8,7 +8,7 @@ This board maps MVP ownership by package and tracks completion status.
 - Server API package: `@familyco/server` owner = Backend/API stream
 - UI contracts package (`packages/ui`): `@familyco/ui` owner = Frontend design-system stream
 - Renderer app package (`apps/renderer`): `@familyco/web` owner = Frontend app stream
-- Desktop shell package (`apps/desktop`): `@familyco/desktop` owner = Desktop integration stream
+- Desktop shell package (`apps/desktop`): `@familyco/electron` owner = Desktop integration stream
 - CLI package: `@familyco/cli` owner = Ops tooling stream
 
 ## Status Board

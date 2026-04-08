@@ -46,7 +46,7 @@ Start the renderer first, then launch desktop:
 
 ```bash
 pnpm --filter @familyco/web dev
-pnpm --filter @familyco/desktop dev
+pnpm --filter @familyco/electron dev
 ```
 
 ### 5. Validate the workspace

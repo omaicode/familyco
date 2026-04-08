@@ -7,7 +7,7 @@
 ## 1. Nguyên Tắc Vàng Khi Sinh Code
 
 1. **Không đưa business logic vào UI** — mọi xử lý Agent/Task/Project phải nằm trong `@familyco/core`.
-2. **Không import Electron trong `core` hoặc `server`** — Electron chỉ tồn tại trong `@familyco/desktop`.
+2. **Không import Electron trong `core` hoặc `server`** — Electron chỉ tồn tại trong `@familyco/electron`.
 3. **Không gọi AI provider trực tiếp từ Vue/Electron/Controller** — tất cả đi qua Engine (`agent-runner` + `tool-executor`) trong `core`.
 4. **Mọi action có side-effect (email, webhook, DB mutation lớn) phải đi qua `ApprovalGuard`**.
 5. **Tất cả query DB đi qua Repository** — không dùng Prisma client trực tiếp trong service hoặc controller.
@@ -27,7 +27,7 @@ Cấu trúc:
 familyco/
   apps/
     renderer/   → @familyco/web (Vue 3 frontend runtime)
-    desktop/    → @familyco/desktop (Electron shell + embedded server)
+    desktop/    → @familyco/electron (Electron shell + embedded server)
   packages/
     core/       → @familyco/core (business logic)
     server/     → @familyco/server (Fastify API + queue + WS)
@@ -41,7 +41,7 @@ Quan hệ phụ thuộc (bắt buộc):
 - `@familyco/server` → import `@familyco/core`.
 - `@familyco/ui` → cung cấp UI contracts/theme/store abstractions.
 - `@familyco/web` → dùng `@familyco/ui` + API runtime Vue.
-- `@familyco/desktop` → wrap `@familyco/server` + `@familyco/web` + Electron.
+- `@familyco/electron` → wrap `@familyco/server` + `@familyco/web` + Electron.
 - `@familyco/cli` → dùng `@familyco/server` hoặc trực tiếp `@familyco/core`.
 
 AI Agent khi tạo file mới phải đặt đúng package, đúng layer.
@@ -133,7 +133,7 @@ repositories/prisma-agent.repository.ts  → implements AgentRepository
 
 ---
 
-## 7. `@familyco/desktop` — Electron Shell
+## 7. `@familyco/electron` — Electron Shell
 
 - Main process khởi động:
   1. Fastify server embedded (sử dụng code từ `@familyco/server`).
@@ -211,7 +211,7 @@ AI Agent **không được** bypass ApprovalGuard hoặc call ToolExecutor trự
    - Logic nghiệp vụ mới → `@familyco/core`.
    - API mới → thêm route trong `@familyco/server` dùng service của `core`.
    - UI mới → thêm page/component trong `@familyco/ui`.
-   - Chỉ liên quan Electron (window, menu, updater) → `@familyco/desktop`.
+   - Chỉ liên quan Electron (window, menu, updater) → `@familyco/electron`.
 
 2. Kiểm tra xem đã có service/model phù hợp chưa; nếu có, **mở rộng** thay vì tạo cái mới trùng ý nghĩa.
 

@@ -34,9 +34,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build renderer + desktop
-        run: pnpm --filter @familyco/web build && pnpm --filter @familyco/desktop build
+        run: pnpm --filter @familyco/web build && pnpm --filter @familyco/electron build
 
       - name: Publish desktop artifacts
-        run: pnpm --filter @familyco/desktop exec electron-builder --config ../../electron-builder.yml --publish always -c.publish.provider=github
+        run: pnpm --filter @familyco/electron exec electron-builder --config ../../electron-builder.yml --publish always -c.publish.provider=github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -15,7 +15,7 @@ Muc tieu: gate phat hanh giao dien chinh thuc cho FamilyCo Desktop-first.
 
 ## 3. Test Gate
 - Chay tai root: `pnpm test`.
-- Chay them desktop smoke: `pnpm --filter @familyco/desktop smoke`.
+- Chay them desktop smoke: `pnpm --filter @familyco/electron smoke`.
 - Xac nhan smoke pass voi thong diep "health + api routes are ready".
 
 ## 4. Runtime UX Gate

@@ -1,5 +1,5 @@
 {
-  "name": "@familyco/desktop",
+  "name": "@familyco/electron",
   "version": "1.0.0",
   "description": "FamilyCo Electron desktop shell",
   "homepage": "https://github.com/familyco/familyco",
@@ -12,7 +12,7 @@
     "build:renderer": "pnpm --filter @familyco/web build",
     "dist:desktop": "pnpm run build:renderer && pnpm run build && electron-builder --config ../../electron-builder.yml --publish never",
     "smoke": "tsx src/electron/smoke.ts",
-    "test": "node -e \"console.log('No tests yet for @familyco/desktop')\"",
+    "test": "node -e \"console.log('No tests yet for @familyco/electron')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [
