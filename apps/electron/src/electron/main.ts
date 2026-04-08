@@ -79,9 +79,9 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
     const selection = dialog.showMessageBoxSync(mainWindow!, {
       type: 'question',
       title: 'Close FamilyCo',
-      message: 'Bạn muốn đóng ứng dụng như thế nào?',
-      detail: 'Thoát hoàn toàn sẽ dừng toàn bộ service chạy ngầm. Đóng giao diện sẽ giữ service chạy nền.',
-      buttons: ['Thoát hoàn toàn', 'Chỉ đóng giao diện'],
+      message: 'Are you sure you want to quit?',
+      detail: 'Exiting completely will stop all background services. Minimizing to tray will keep the services running in the background.',
+      buttons: ['Exit', 'Minimize to Tray'],
       defaultId: 1,
       cancelId: 1,
       noLink: true
