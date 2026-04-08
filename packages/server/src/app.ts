@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import os from 'node:os';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import {
@@ -107,13 +108,16 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const authApiKey = options.authApiKey ?? getAuthApiKey();
   const authApiKeySalt = options.authApiKeySalt ?? getAuthApiKeySalt();
   const queueDriver: QueueDriver = 'memory';
+  const defaultConcurrency = resolveDefaultQueueConcurrency();
   const agentRunConcurrency = normalizePositiveInteger(
-    options.agentRunConcurrency ?? Number(process.env.FAMILYCO_QUEUE_AGENT_CONCURRENCY ?? 4),
-    4
+    options.agentRunConcurrency ??
+      Number(process.env.FAMILYCO_QUEUE_AGENT_CONCURRENCY ?? defaultConcurrency.agentRunConcurrency),
+    defaultConcurrency.agentRunConcurrency
   );
   const toolExecuteConcurrency = normalizePositiveInteger(
-    options.toolExecuteConcurrency ?? Number(process.env.FAMILYCO_QUEUE_TOOL_CONCURRENCY ?? 8),
-    8
+    options.toolExecuteConcurrency ??
+      Number(process.env.FAMILYCO_QUEUE_TOOL_CONCURRENCY ?? defaultConcurrency.toolExecuteConcurrency),
+    defaultConcurrency.toolExecuteConcurrency
   );
   const dailyQuotaLimit = options.dailyQuotaLimit ?? Number(process.env.DAILY_QUOTA_LIMIT ?? 50);
   const enableHeartbeatScheduler =
@@ -314,23 +318,29 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     await queueService.close();
   });
 
-  app.get('/health', async () => ({
-    status: readOnlyMode ? 'degraded' : 'ok',
-    mode: readOnlyMode ? 'read_only' : 'normal',
-    queueDriver,
-    queue: {
-      agentRunConcurrency,
-      toolExecuteConcurrency
-    },
-    migration: migrationState
-      ? {
-          status: migrationState.status,
-          pendingCount: migrationState.pendingCount,
-          appliedCount: migrationState.appliedCount,
-          errorMessage: migrationState.errorMessage
-        }
-      : null
-  }));
+  app.get('/health', async () => {
+    const jobs = await queueService.listPendingJobs();
+    const queueStats = summarizeQueueJobs(jobs);
+
+    return {
+      status: readOnlyMode ? 'degraded' : 'ok',
+      mode: readOnlyMode ? 'read_only' : 'normal',
+      queueDriver,
+      queue: {
+        agentRunConcurrency,
+        toolExecuteConcurrency,
+        ...queueStats
+      },
+      migration: migrationState
+        ? {
+            status: migrationState.status,
+            pendingCount: migrationState.pendingCount,
+            appliedCount: migrationState.appliedCount,
+            errorMessage: migrationState.errorMessage
+          }
+        : null
+    };
+  });
 
   app.register(
     async (api) => {
@@ -442,6 +452,97 @@ function normalizePositiveInteger(value: number, fallback: number): number {
   }
 
   return Math.max(1, Math.floor(value));
+}
+
+function resolveDefaultQueueConcurrency(): {
+  agentRunConcurrency: number;
+  toolExecuteConcurrency: number;
+} {
+  const cores = os.availableParallelism();
+  return {
+    agentRunConcurrency: Math.max(2, Math.floor(cores / 2)),
+    toolExecuteConcurrency: Math.max(4, cores)
+  };
+}
+
+function summarizeQueueJobs(jobs: unknown[]): {
+  totalJobs: number;
+  queuedJobs: number;
+  runningJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  byType: {
+    agentRun: { queued: number; running: number; completed: number; failed: number };
+    toolExecute: { queued: number; running: number; completed: number; failed: number };
+  };
+} {
+  const byType = {
+    agentRun: { queued: 0, running: 0, completed: 0, failed: 0 },
+    toolExecute: { queued: 0, running: 0, completed: 0, failed: 0 }
+  };
+
+  let queuedJobs = 0;
+  let runningJobs = 0;
+  let completedJobs = 0;
+  let failedJobs = 0;
+
+  for (const job of jobs) {
+    if (!isQueueJobRecord(job)) {
+      continue;
+    }
+
+    const lane = job.type === 'agent.run' ? byType.agentRun : byType.toolExecute;
+
+    if (job.status === 'queued') {
+      queuedJobs += 1;
+      lane.queued += 1;
+      continue;
+    }
+
+    if (job.status === 'running') {
+      runningJobs += 1;
+      lane.running += 1;
+      continue;
+    }
+
+    if (job.status === 'completed') {
+      completedJobs += 1;
+      lane.completed += 1;
+      continue;
+    }
+
+    failedJobs += 1;
+    lane.failed += 1;
+  }
+
+  return {
+    totalJobs: jobs.length,
+    queuedJobs,
+    runningJobs,
+    completedJobs,
+    failedJobs,
+    byType
+  };
+}
+
+function isQueueJobRecord(
+  value: unknown
+): value is { type: 'agent.run' | 'tool.execute'; status: 'queued' | 'running' | 'completed' | 'failed' } {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (record.type !== 'agent.run' && record.type !== 'tool.execute') {
+    return false;
+  }
+
+  return (
+    record.status === 'queued' ||
+    record.status === 'running' ||
+    record.status === 'completed' ||
+    record.status === 'failed'
+  );
 }
 
 function toError(error: unknown): Error {
