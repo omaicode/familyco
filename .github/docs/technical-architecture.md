@@ -47,8 +47,7 @@
 |---|---|---|
 | HTTP Framework | Fastify | v5 — nhanh hơn Express, TypeScript-first |
 | WebSocket | `@fastify/websocket` | Real-time event push |
-| Job Queue | BullMQ | Redis-backed, retry, delay, priority |
-| Redis | ioredis | Queue + pub/sub |
+| Job Queue | In-memory queue service | Concurrent lanes cho `agent.run` + `tool.execute` |
 | ORM | Prisma | 7.x — Schema-first, type-safe |
 | DB mặc định | SQLite (file-based, không cần server) | `prisma/dev.db` dev, `userData/familyco.db` Electron |
 | Auth | JWT + API Key | `@fastify/jwt` |
@@ -185,10 +184,7 @@ packages/server/src/
 │   ├── prisma-inbox.repository.ts
 │   └── prisma-audit.repository.ts
 ├── queue/
-│   ├── bullmq-queue.service.ts  # Implements QueueService từ core
-│   ├── workers/
-│   │   ├── agent-run.worker.ts  # Worker xử lý job AgentRun
-│   │   └── tool-call.worker.ts
+│   ├── in-memory-queue.service.ts  # Implements QueueService với concurrent lanes
 │   └── index.ts
 ├── websocket/
 │   ├── ws-gateway.ts            # Lắng nghe EventBus → push xuống WS clients
@@ -211,8 +207,9 @@ packages/server/src/
 apps/desktop/src/
 ├── electron/
 │   ├── main.ts                  # Electron main process
-│   ├── preload.ts               # contextBridge — expose API lên renderer
+│   ├── preload.cts              # contextBridge — expose API lên renderer
 │   ├── server-bootstrap.ts      # Khởi động embedded @familyco/server
+│   ├── updater.ts               # electron-updater runtime bridge
 │   ├── ipc/
 │   │   ├── ipc-handlers.ts      # IPC handler: forward calls từ renderer → server
 │   │   └── ipc.types.ts         # Typed IPC channel names
@@ -224,7 +221,7 @@ apps/desktop/src/
 // renderer (Vue component) — chỉ dùng window.electronAPI
 const agents = await window.electronAPI.invoke('agent:list')
 
-// preload.ts
+// preload.cts
 contextBridge.exposeInMainWorld('electronAPI', {
   invoke: (channel: IPCChannel, ...args: unknown[]) =>
     ipcRenderer.invoke(channel, ...args)
@@ -615,18 +612,23 @@ DATABASE_URL=file:./prisma/dev.db
 
 ### Queue
 ```env
-# 'memory' (mặc định) hoặc 'bullmq' (cần Redis — Server Only)
+# Memory queue là runtime mặc định.
 FAMILYCO_QUEUE_DRIVER=memory
-REDIS_URL=redis://127.0.0.1:6379
-FAMILYCO_QUEUE_NAME=familyco-jobs
-ENABLE_QUEUE_WORKERS=0
+
+# Mặc định tự scale theo CPU:
+# - agent concurrency = max(2, floor(cpu/2))
+# - tool  concurrency = max(4, cpu)
+# Có thể override cứng cho từng môi trường:
+# FAMILYCO_QUEUE_AGENT_CONCURRENCY=4
+# FAMILYCO_QUEUE_TOOL_CONCURRENCY=8
 ```
 
 > **Hiện trạng runtime (2026-04-08):**
-> - Queue driver `memory` giờ xử lý async jobs ngay trong process cho môi trường dev/Desktop; với `bullmq`, cần thêm `ENABLE_QUEUE_WORKERS=1` để worker tiêu thụ queue từ Redis.
+> - Queue chạy in-memory với concurrent lanes độc lập (`agent.run`, `tool.execute`) và có giới hạn concurrency theo lane.
 > - Server có recurring heartbeat scheduler đọc `agent.defaultHeartbeatMinutes` và `agent.heartbeat.enabled`, rồi tự enqueue các lượt `heartbeat.tick` cho agent đang hoạt động.
 > - Session state của agent được lưu bền qua `SettingsBackedMemoryService` dưới key `agent.memory.<agentId>` khi dùng repository driver `prisma` (với `memory` driver thì chỉ tồn tại trong process test/dev).
 > - Trạng thái và lịch sử heartbeat gần nhất được lưu dưới `agent.heartbeat.state.<agentId>` và `agent.heartbeat.runs.<agentId>`; kết quả cũng tiếp tục được ghi vào `AuditLog` + inbox reports để debug/review.
+> - `GET /health` trả thêm queue metrics (`total/queued/running/completed/failed` + breakdown theo lane) để theo dõi độ ổn định runtime.
 
 ### Auth & Security
 ```env
@@ -736,6 +738,10 @@ pnpm --filter @familyco/desktop dev
 # Build
 pnpm --filter @familyco/desktop build
 # Output: apps/desktop/dist/ → desktop runtime bundle
+
+# Package đa nền tảng
+pnpm build:desktop
+# Output: dist/desktop/
 ```
 
 ### Server Only
@@ -751,7 +757,7 @@ pnpm --filter @familyco/server build
 docker build -f packages/server/Dockerfile -t familyco-server .
 ```
 
-### Docker Compose (Server Only + Redis)
+### Docker Compose (Server Only)
 ```yaml
 # docker-compose.yml
 services:
@@ -762,13 +768,9 @@ services:
       NODE_ENV: production
       DATABASE_URL: file:/data/familyco.db
       FAMILYCO_REPOSITORY_DRIVER: prisma
-      REDIS_URL: redis://redis:6379
+      FAMILYCO_QUEUE_DRIVER: memory
     volumes:
       - dbdata:/data
-    depends_on: [redis]
-
-  redis:
-    image: redis:7-alpine
 
 volumes:
   dbdata:

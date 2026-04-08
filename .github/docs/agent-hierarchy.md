@@ -410,7 +410,7 @@ FamilyCo được phân phối dưới **2 distribution mode** phục vụ hai n
 │  FamilyCo Server (Node.js / headless)    │
 │                                          │
 │  - Agent Engine                          │
-│  - Task Queue (Bull / BullMQ)            │
+│  - Task Queue (In-memory concurrent lanes)│
 │  - AI API Client                         │
 │  - REST API  (Express / Fastify)         │
 │  - WebSocket Server                      │

@@ -14,7 +14,7 @@
 6. **Không dùng `any`** — TypeScript strict, không tắt strict mode.
 7. **Không thay đổi schema Prisma tùy tiện** — nếu cần, mô tả diff rõ ràng.
 8. **Không thêm route API mới trùng ý nghĩa với route cũ** — tái dùng pattern, đặt tên nhất quán.
-9. **Không thêm dependency nặng nếu chưa có lý do** — ưu tiên libs đã dùng (Fastify, Prisma, BullMQ, Vite, Pinia).
+9. **Không thêm dependency nặng nếu chưa có lý do** — ưu tiên libs đã dùng (Fastify, Prisma, Vite, Pinia).
 10. **Nếu không chắc, dừng và hỏi** — tốt hơn là sinh code sai kiến trúc.
 
 ---
@@ -75,7 +75,7 @@ Trong `packages/core/src/` có các module:
 - Framework: **Fastify**.
 - Auth: JWT + API Keys.
 - ORM: Prisma.
-- Queue: BullMQ (Redis).
+- Queue: In-memory queue service (concurrent lanes per job type).
 - WS: `@fastify/websocket`.
 
 ### 4.1 Modules
@@ -198,6 +198,8 @@ AI Agent phải tái dùng format này, **không tạo kiểu error JSON mới**
 - Mỗi khi AI gọi tool: **ApprovalGuard.check** → nếu cần review, tạo `ApprovalRequest` + emit event + dừng.
 - Nếu được phép, `ToolExecutor.execute` thực thi tool tương ứng, log vào `AuditService`.
 - Runtime nền hiện hỗ trợ queued/on-demand agent runs **và** heartbeat scheduler định kỳ từ server; session context được lưu qua settings store để heartbeat sau có thể tiếp tục mà không đọc lại toàn bộ thread.
+- Queue runtime chạy song song theo lane độc lập (`agent.run`, `tool.execute`) với concurrency giới hạn theo lane; mặc định tự scale theo CPU và có thể override qua env.
+- `GET /health` đã trả queue metrics (`total/queued/running/completed/failed` + breakdown theo lane) để theo dõi ổn định khi tải cao.
 
 AI Agent **không được** bypass ApprovalGuard hoặc call ToolExecutor trực tiếp từ ngoài Engine.
 
@@ -223,6 +225,7 @@ AI Agent **không được** bypass ApprovalGuard hoặc call ToolExecutor trự
    - Files bị ảnh hưởng.
    - Các bước migration.
    - Cách rollback nếu cần.
+  - Kết quả load test / benchmark (nếu thay đổi liên quan queue, scheduler, hoặc throughput).
 
 ---
 
