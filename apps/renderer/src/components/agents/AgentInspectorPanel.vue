@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AgentListItem, AuditListItem, TaskListItem } from '@familyco/ui';
 import { ShieldCheck, X } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import FcButton from '../FcButton.vue';
@@ -59,6 +59,20 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+type AgentDetailTab = 'overview' | 'profile' | 'tasks' | 'activity';
+
+const activeTab = ref<AgentDetailTab>('overview');
+
+watch(
+  () => [props.open, props.selectedAgent?.id],
+  ([open]) => {
+    if (open) {
+      activeTab.value = 'overview';
+    }
+  },
+  { immediate: true }
+);
+
 const warningMessage = computed(() => {
   const agent = props.selectedAgent;
   if (!agent) {
@@ -112,25 +126,48 @@ const warningMessage = computed(() => {
           </div>
         </div>
 
+        <div class="ag-modal-tabbar fc-tabs" role="tablist" :aria-label="t('Details')">
+          <button class="fc-tab" :class="{ 'fc-tab-active': activeTab === 'overview' }" @click="activeTab = 'overview'">
+            {{ t('Overview') }}
+          </button>
+          <button class="fc-tab" :class="{ 'fc-tab-active': activeTab === 'profile' }" @click="activeTab = 'profile'">
+            {{ t('Agent profile') }}
+          </button>
+          <button class="fc-tab" :class="{ 'fc-tab-active': activeTab === 'tasks' }" @click="activeTab = 'tasks'">
+            {{ t('Tasks') }}
+          </button>
+          <button class="fc-tab" :class="{ 'fc-tab-active': activeTab === 'activity' }" @click="activeTab = 'activity'">
+            {{ t('Recent activity') }}
+          </button>
+        </div>
+
         <div class="ag-modal-body">
           <div v-if="warningMessage" class="fc-warning">
             <p>{{ warningMessage }}</p>
           </div>
 
-          <AgentTeamSnapshot
-            :selected-agent="selectedAgent"
-            :selected-manager="selectedManager"
-            :selected-direct-reports="selectedDirectReports"
-            :selected-path="selectedPath"
-            :selected-manager-options="selectedManagerOptions"
-            :manager-draft="managerDraft"
-            :is-saving-parent="isSavingParent"
-            :get-agent-initials="getAgentInitials"
-            @update:manager-draft="emit('update:managerDraft', $event)"
-            @save-manager="emit('save-manager')"
-          />
+          <div v-show="activeTab === 'overview'" class="ag-modal-pane">
+            <AgentTeamSnapshot
+              :selected-agent="selectedAgent"
+              :selected-manager="selectedManager"
+              :selected-direct-reports="selectedDirectReports"
+              :selected-path="selectedPath"
+              :selected-manager-options="selectedManagerOptions"
+              :manager-draft="managerDraft"
+              :is-saving-parent="isSavingParent"
+              :get-agent-initials="getAgentInitials"
+              @update:manager-draft="emit('update:managerDraft', $event)"
+              @save-manager="emit('save-manager')"
+            />
+
+            <AgentReadinessChecklist
+              :selected-autonomy="selectedAutonomy"
+              :deployment-checklist="deploymentChecklist"
+            />
+          </div>
 
           <AgentProfileEditorSection
+            v-show="activeTab === 'profile'"
             :selected-agent="selectedAgent"
             :draft="detailDraft"
             :is-saving="isSavingDetails"
@@ -140,6 +177,7 @@ const warningMessage = computed(() => {
           />
 
           <AgentCurrentTasksPanel
+            v-show="activeTab === 'tasks'"
             :tasks="currentTasks"
             :selected-task="selectedTask"
             :selected-task-id="selectedTaskId"
@@ -152,16 +190,12 @@ const warningMessage = computed(() => {
           />
 
           <AgentActivityTimelineSection
+            v-show="activeTab === 'activity'"
             :history="activityHistory"
             :is-loading="isLoadingDetails"
             :error-message="detailError"
             :format-relative="formatRelative"
             :format-timestamp="formatTimestamp"
-          />
-
-          <AgentReadinessChecklist
-            :selected-autonomy="selectedAutonomy"
-            :deployment-checklist="deploymentChecklist"
           />
         </div>
       </div>
@@ -241,11 +275,21 @@ const warningMessage = computed(() => {
   background: color-mix(in srgb, var(--fc-primary) 10%, var(--fc-surface));
 }
 
+.ag-modal-tabbar {
+  margin: 0 18px;
+}
+
 .ag-modal-body {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 16px 18px 18px;
+}
+
+.ag-modal-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 @media (max-width: 720px) {
@@ -255,6 +299,10 @@ const warningMessage = computed(() => {
 
   .ag-modal-header {
     padding: 14px;
+  }
+
+  .ag-modal-tabbar {
+    margin: 0 14px;
   }
 
   .ag-modal-body {
