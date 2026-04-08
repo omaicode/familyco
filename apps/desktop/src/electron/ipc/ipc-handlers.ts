@@ -1,10 +1,17 @@
-import { ipcMain } from 'electron';
+import { BrowserWindow, ipcMain } from 'electron';
 
-import type { DesktopInvokeRequestMap, DesktopInvokeResponseMap } from './ipc.types.js';
+import type {
+  DesktopInvokeRequestMap,
+  DesktopInvokeResponseMap,
+  DesktopSystemEventPayload,
+  DesktopUpdateEventPayload
+} from './ipc.types.js';
 
 export interface IpcHandlerOptions {
   apiBaseUrl: string;
   apiKey?: string;
+  checkForUpdates?: () => Promise<boolean>;
+  installDownloadedUpdate?: () => Promise<boolean>;
 }
 
 const withHeaders = (apiKey?: string): HeadersInit => {
@@ -53,4 +60,34 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
   ipcMain.handle('desktop:agents:list', async () => {
     return requestJson<DesktopInvokeResponseMap['desktop:agents:list']>('/api/v1/agents');
   });
+
+  ipcMain.handle('desktop:update:check', async () => {
+    if (!options.checkForUpdates) {
+      return { accepted: false } satisfies DesktopInvokeResponseMap['desktop:update:check'];
+    }
+
+    const accepted = await options.checkForUpdates();
+    return { accepted } satisfies DesktopInvokeResponseMap['desktop:update:check'];
+  });
+
+  ipcMain.handle('desktop:update:install', async () => {
+    if (!options.installDownloadedUpdate) {
+      return { accepted: false } satisfies DesktopInvokeResponseMap['desktop:update:install'];
+    }
+
+    const accepted = await options.installDownloadedUpdate();
+    return { accepted } satisfies DesktopInvokeResponseMap['desktop:update:install'];
+  });
+};
+
+export const broadcastDesktopUpdateEvent = (payload: DesktopUpdateEventPayload): void => {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('desktop:update:event', payload);
+  }
+};
+
+export const broadcastDesktopSystemEvent = (payload: DesktopSystemEventPayload): void => {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('desktop:system:event', payload);
+  }
 };

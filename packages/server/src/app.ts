@@ -24,6 +24,7 @@ import {
 } from '@familyco/core';
 
 import { prismaClient } from './db/prisma-client.js';
+import { runMigrationsWithSafety, type MigrationRunResult } from './db/migration-runner.js';
 import { registerAgentController } from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
@@ -61,10 +62,7 @@ import {
   PrismaTaskRepository
 } from './repositories/index.js';
 import {
-  BullMqQueueService,
-  createAgentRunWorker,
-  InMemoryQueueService,
-  createToolCallWorker
+  InMemoryQueueService
 } from './queue/index.js';
 import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
 import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
@@ -73,7 +71,7 @@ import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
 
 export type RepositoryDriver = 'memory' | 'prisma';
-export type QueueDriver = 'memory' | 'bullmq';
+export type QueueDriver = 'memory';
 
 export interface CreateAppOptions {
   logger?: boolean;
@@ -106,13 +104,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     'memory';
   const authApiKey = options.authApiKey ?? getAuthApiKey();
   const authApiKeySalt = options.authApiKeySalt ?? getAuthApiKeySalt();
-  const queueDriver =
-    options.queueDriver ??
-    (process.env.FAMILYCO_QUEUE_DRIVER as QueueDriver | undefined) ??
-    'memory';
-  const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
-  const queueName = process.env.FAMILYCO_QUEUE_NAME ?? 'familyco-jobs';
-  const enableQueueWorkers = process.env.ENABLE_QUEUE_WORKERS === '1';
+  const queueDriver: QueueDriver = 'memory';
   const dailyQuotaLimit = options.dailyQuotaLimit ?? Number(process.env.DAILY_QUOTA_LIMIT ?? 50);
   const enableHeartbeatScheduler =
     options.enableHeartbeatScheduler ??
@@ -151,14 +143,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
 
-  const queueService =
-    queueDriver === 'bullmq'
-      ? new BullMqQueueService({
-          queueName,
-          redisUrl
-        })
-      : new InMemoryQueueService();
-  const workers: Array<{ close: () => Promise<void> }> = [];
+  const queueService = new InMemoryQueueService();
   const heartbeatRuntime = new HeartbeatRuntimeService({
     queueService,
     agentService,
@@ -166,7 +151,9 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     pollMs: options.heartbeatPollMs,
     defaultHeartbeatMinutes: options.defaultHeartbeatMinutes
   });
-  const canProcessAsyncJobs = queueDriver === 'memory' || enableQueueWorkers;
+  const canProcessAsyncJobs = true;
+  let migrationState: MigrationRunResult | null = null;
+  let readOnlyMode = false;
 
   const executeAgentRun = async (request: AgentRunRequest): Promise<AgentRunResult> => {
     await heartbeatRuntime.markStarted(request);
@@ -276,6 +263,24 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   }
 
   app.addHook('onReady', async () => {
+    if (repositoryDriver === 'prisma') {
+      migrationState = await runMigrationsWithSafety();
+      readOnlyMode = migrationState.readOnlyMode;
+
+      await auditService.write({
+        actorId: 'system',
+        action: migrationState.status === 'ok' ? 'db.migration.completed' : 'db.migration.failed',
+        payload: {
+          status: migrationState.status,
+          pendingCount: migrationState.pendingCount,
+          appliedCount: migrationState.appliedCount,
+          backupPath: migrationState.backupPath,
+          dbPath: migrationState.dbPath,
+          errorMessage: migrationState.errorMessage
+        }
+      });
+    }
+
     const bootstrapApiKey = await apiKeyService.ensureBootstrapKey('bootstrap', authApiKey);
     await auditService.write({
       actorId: 'system',
@@ -286,47 +291,6 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       }
     });
 
-    if (enableQueueWorkers && queueDriver === 'bullmq') {
-      workers.push(
-        createAgentRunWorker({
-          queueName,
-          redisUrl,
-          executeRun: executeAgentRun,
-          onCompleted: async (job, result) => {
-            await handleAgentRunCompleted(job.data.request, result);
-          },
-          onFailed: async (job, error) => {
-            await handleAgentRunFailed(job.data.request, error);
-          }
-        }),
-        createToolCallWorker({
-          queueName,
-          redisUrl,
-          toolExecutor,
-          onCompleted: async (job, result) => {
-            await auditService.write({
-              actorId: 'system',
-              action: 'engine.tool.run.completed',
-              payload: {
-                toolName: job.data.input.toolName,
-                result
-              }
-            });
-          },
-          onFailed: async (job, error) => {
-            await auditService.write({
-              actorId: 'system',
-              action: 'engine.tool.run.failed',
-              payload: {
-                toolName: job.data.input.toolName,
-                message: error.message
-              }
-            });
-          }
-        })
-      );
-    }
-
     if (enableHeartbeatScheduler && canProcessAsyncJobs) {
       await heartbeatRuntime.start();
     }
@@ -334,11 +298,22 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
 
   app.addHook('onClose', async () => {
     await heartbeatRuntime.stop();
-    await Promise.all(workers.map(async (worker) => worker.close()));
     await queueService.close();
   });
 
-  app.get('/health', async () => ({ status: 'ok' }));
+  app.get('/health', async () => ({
+    status: readOnlyMode ? 'degraded' : 'ok',
+    mode: readOnlyMode ? 'read_only' : 'normal',
+    queueDriver,
+    migration: migrationState
+      ? {
+          status: migrationState.status,
+          pendingCount: migrationState.pendingCount,
+          appliedCount: migrationState.appliedCount,
+          errorMessage: migrationState.errorMessage
+        }
+      : null
+  }));
 
   app.register(
     async (api) => {
@@ -350,6 +325,15 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       });
 
       api.addHook('preHandler', async (request, reply) => {
+        if (readOnlyMode && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+          reply.code(503).send({
+            statusCode: 503,
+            code: 'READ_ONLY_MODE',
+            message: 'Application is in read-only mode because database migration failed'
+          });
+          return;
+        }
+
         await authenticateApiRequest(request, reply, apiKeyService);
       });
 

@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:desktop": "pnpm --filter @familyco/desktop run dist:desktop",
     "dev": "turbo run dev --parallel --filter=@familyco/server --filter=@familyco/renderer",
     "dev:desktop": "turbo run dev --parallel --filter=@familyco/renderer --filter=@familyco/desktop",
     "dev:p": "turbo run dev --parallel",

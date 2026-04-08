@@ -1,4 +1,30 @@
-export type DesktopInvokeChannel = 'desktop:health' | 'desktop:audit:list' | 'desktop:agents:list';
+export type DesktopInvokeChannel =
+  | 'desktop:health'
+  | 'desktop:audit:list'
+  | 'desktop:agents:list'
+  | 'desktop:update:check'
+  | 'desktop:update:install';
+
+export type DesktopEventChannel = 'desktop:update:event' | 'desktop:system:event';
+
+export interface DesktopUpdateEventPayload {
+  status:
+    | 'idle'
+    | 'checking'
+    | 'available'
+    | 'not-available'
+    | 'downloading'
+    | 'downloaded'
+    | 'error';
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
+export interface DesktopSystemEventPayload {
+  type: 'startup-warning';
+  message: string;
+}
 
 export interface DesktopInvokeRequestMap {
   'desktop:health': {
@@ -8,6 +34,8 @@ export interface DesktopInvokeRequestMap {
     limit?: number;
   };
   'desktop:agents:list': Record<string, never>;
+  'desktop:update:check': Record<string, never>;
+  'desktop:update:install': Record<string, never>;
 }
 
 export interface DesktopInvokeResponseMap {
@@ -16,4 +44,10 @@ export interface DesktopInvokeResponseMap {
   };
   'desktop:audit:list': unknown;
   'desktop:agents:list': unknown;
+  'desktop:update:check': {
+    accepted: boolean;
+  };
+  'desktop:update:install': {
+    accepted: boolean;
+  };
 }

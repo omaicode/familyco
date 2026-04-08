@@ -15,14 +15,9 @@ function validateProductionEnvironment(): void {
 
   const requiredVars = ['JWT_SECRET', 'API_KEY_SALT', 'FAMILYCO_API_KEY'];
   const repositoryDriver = process.env.FAMILYCO_REPOSITORY_DRIVER ?? 'prisma';
-  const queueDriver = process.env.FAMILYCO_QUEUE_DRIVER ?? 'memory';
 
   if (repositoryDriver === 'prisma') {
     requiredVars.push('DATABASE_URL');
-  }
-
-  if (queueDriver === 'bullmq') {
-    requiredVars.push('REDIS_URL');
   }
 
   const missingVars = requiredVars.filter((name) => isBlank(process.env[name]));

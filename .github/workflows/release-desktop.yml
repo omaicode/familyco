@@ -1,0 +1,42 @@
+name: Release Desktop
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build renderer + desktop
+        run: pnpm --filter @familyco/renderer build && pnpm --filter @familyco/desktop build
+
+      - name: Publish desktop artifacts
+        run: pnpm --filter @familyco/desktop exec electron-builder --config ../../electron-builder.yml --publish always -c.publish.provider=github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

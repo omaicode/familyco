@@ -1,9 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 import type {
+  DesktopEventChannel,
   DesktopInvokeChannel,
   DesktopInvokeRequestMap,
-  DesktopInvokeResponseMap
+  DesktopInvokeResponseMap,
+  DesktopSystemEventPayload,
+  DesktopUpdateEventPayload
 } from './ipc/ipc.types.js';
 
 export interface DesktopRuntimeConfig {
@@ -16,11 +19,30 @@ export interface DesktopRendererApi {
     channel: TChannel,
     payload: DesktopInvokeRequestMap[TChannel]
   ) => Promise<DesktopInvokeResponseMap[TChannel]>;
+  on: <TChannel extends DesktopEventChannel>(
+    channel: TChannel,
+    handler: (
+      payload: TChannel extends 'desktop:update:event'
+        ? DesktopUpdateEventPayload
+        : DesktopSystemEventPayload
+    ) => void
+  ) => () => void;
 }
 
 const desktopApi: DesktopRendererApi = {
   invoke: async (channel, payload) => {
     return ipcRenderer.invoke(channel, payload);
+  },
+  on: (channel, handler) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+      handler(payload as never);
+    };
+
+    ipcRenderer.on(channel, listener);
+
+    return () => {
+      ipcRenderer.removeListener(channel, listener);
+    };
   }
 };
 

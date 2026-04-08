@@ -11,6 +11,7 @@ declare global {
   interface Window {
     familycoDesktop?: {
       invoke: (channel: string, payload: unknown) => Promise<unknown>;
+      on: (channel: string, handler: (payload: unknown) => void) => () => void;
     };
     familycoDesktopConfig?: {
       apiBaseUrl?: string;
