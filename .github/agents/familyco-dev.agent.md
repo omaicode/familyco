@@ -54,9 +54,9 @@ Trước khi viết code, xác định rõ:
 2. **Layer bị ảnh hưởng:**
    - Logic → `packages/core/*`
    - API/REST/WS → `packages/server/modules/*`
-   - UI components → `apps/renderer/src/*`
+   - UI components → `apps/web/src/*`
    - UI contracts/tokens → `packages/ui/src/*`
-   - Electron shell → `apps/desktop/src/electron/*`
+   - Electron shell → `apps/electron/src/electron/*`
 3. **Dependency graph không bị phá vỡ** — kiểm tra imports trước khi tạo file mới.
 4. **Có cần approval từ Founder không?** — nếu đụng schema, kiến trúc, luồng approval, loại agent mới → mô tả vấn đề + đề xuất, không tự đổi.
 
@@ -111,7 +111,7 @@ Khi repo đã được index bởi GitNexus, **ưu tiên GitNexus trước** cho
 - **Error JSON**: `{ statusCode, code, message }` — dùng lại format có sẵn
 - **Log**: dùng Pino logger, không `console.log`
 - **Không format toàn file** — chỉ format vùng mình chỉnh (giảm diff noise)
-- **Mọi text UI/UX phải dùng i18n** — khi thêm/sửa UI trong `apps/renderer/*` hoặc `packages/ui/*`, luôn cập nhật đủ bản dịch **English** và **Vietnamese** trong bộ dịch chung hiện hành (`packages/ui/src/i18n/en.ts`, `packages/ui/src/i18n/vi.ts`), không để microcopy quan trọng bị hardcode một ngôn ngữ.
+- **Mọi text UI/UX phải dùng i18n** — khi thêm/sửa UI trong `apps/web/*` hoặc `packages/ui/*`, luôn cập nhật đủ bản dịch **English** và **Vietnamese** trong bộ dịch chung hiện hành (`packages/ui/src/i18n/en.ts`, `packages/ui/src/i18n/vi.ts`), không để microcopy quan trọng bị hardcode một ngôn ngữ.
 
 ## DB Schema Thực Tế (v1 — `prisma/schema.prisma`)
 

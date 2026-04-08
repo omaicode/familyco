@@ -10,8 +10,8 @@ files:
       - "**/*"
   - package.json
 extraResources:
-  - from: ../renderer/dist
-    to: renderer
+  - from: ../web/dist
+    to: web
     filter:
       - "**/*"
   - from: ../../prisma/migrations

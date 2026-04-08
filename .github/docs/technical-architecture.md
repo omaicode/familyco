@@ -69,8 +69,8 @@
 ```
 familyco/
 ├── apps/
-│   ├── renderer/                # @familyco/web (Vue 3 runtime)
-│   └── desktop/                 # @familyco/electron (Electron shell)
+│   ├── web/                # @familyco/web (Vue 3 runtime)
+│   └── electron/                 # @familyco/electron (Electron shell)
 ├── packages/
 │   ├── core/                    # @familyco/core
 │   ├── server/                  # @familyco/server
@@ -204,7 +204,7 @@ packages/server/src/
 ## 5. Cấu Trúc `@familyco/electron` (Electron)
 
 ```
-apps/desktop/src/
+apps/electron/src/
 ├── electron/
 │   ├── main.ts                  # Electron main process
 │   ├── preload.cts              # contextBridge — expose API lên renderer
@@ -238,7 +238,7 @@ ipcMain.handle('agent:list', async () => {
 ## 6. Cấu Trúc `@familyco/web` (Vue 3)
 
 ```
-apps/renderer/src/
+apps/web/src/
 ├── main.ts
 ├── App.vue
 ├── router.ts                    # Hash mode routes
@@ -737,11 +737,11 @@ pnpm --filter @familyco/electron dev
 
 # Build
 pnpm --filter @familyco/electron build
-# Output: apps/desktop/dist/ → desktop runtime bundle
+# Output: apps/electron/dist/ → desktop runtime bundle
 
 # Package đa nền tảng
 pnpm build:desktop
-# Output: dist/desktop/
+# Output: dist/electron/
 ```
 
 ### Server Only

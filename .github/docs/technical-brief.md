@@ -26,8 +26,8 @@ Cấu trúc:
 ```
 familyco/
   apps/
-    renderer/   → @familyco/web (Vue 3 frontend runtime)
-    desktop/    → @familyco/electron (Electron shell + embedded server)
+    web/   → @familyco/web (Vue 3 frontend runtime)
+    electron/    → @familyco/electron (Electron shell + embedded server)
   packages/
     core/       → @familyco/core (business logic)
     server/     → @familyco/server (Fastify API + queue + WS)
@@ -152,7 +152,7 @@ Database engine: **SQLite** (file-based, không cần server riêng).
 ORM: **Prisma 7** — schema tại `prisma/schema.prisma`, migrate bằng `pnpm prisma:migrate:dev`.
 
 - Dev DB: `prisma/dev.db` (`DATABASE_URL=file:./prisma/dev.db` trong `.env`)
-- Electron Desktop: `<OS userData>/familyco.db` (set tự động trong `apps/desktop/src/electron/main.ts`)
+- Electron Desktop: `<OS userData>/familyco.db` (set tự động trong `apps/electron/src/electron/main.ts`)
 
 Repository driver (`FAMILYCO_REPOSITORY_DRIVER`): `prisma` (mặc định) hoặc `memory` (chỉ dùng cho test).
 

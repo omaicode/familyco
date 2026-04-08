@@ -74,9 +74,9 @@ Khi nhận một yêu cầu (issue / task / prompt), hãy đi theo checklist sau
 2. **Xác định layer bị ảnh hưởng**  
    - Logic core? → `packages/core/*`  
    - API/REST/WS? → `packages/server/*`  
-   - UI runtime (Vue renderer)? → `apps/renderer/*`  
+   - UI runtime (Vue renderer)? → `apps/web/*`  
    - UI contracts/design tokens? → `packages/ui/*`  
-   - Electron shell / Desktop? → `apps/desktop/*`  
+   - Electron shell / Desktop? → `apps/electron/*`  
    - CLI / Server Only? → `packages/cli/*`
 
 3. **Đọc lại tài liệu liên quan**  
@@ -143,7 +143,7 @@ Khi đang ở trong VSCode (hoặc bất kỳ editor nào) với AI assistance:
    - Log mới phải có ý nghĩa, dùng logger chuẩn (Pino), không `console.log` lung tung.
 
 6. **Mọi text UI/UX phải đi qua i18n và luôn cập nhật đủ 2 ngôn ngữ**  
-   - Khi sửa hoặc thêm UI trong `apps/renderer/*` hoặc `packages/ui/*`, không để text user-facing hardcode nếu có thể localize.  
+   - Khi sửa hoặc thêm UI trong `apps/web/*` hoặc `packages/ui/*`, không để text user-facing hardcode nếu có thể localize.  
    - Bắt buộc cập nhật cả **English** và **Vietnamese** trong bộ dịch chung hiện hành (hiện tại là `packages/ui/src/i18n/en.ts`, `packages/ui/src/i18n/vi.ts`).  
    - Áp dụng cho: page title, button, label, tooltip, empty/loading/error state, modal, banner, onboarding copy, và microcopy UX.
 
