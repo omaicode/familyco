@@ -1,5 +1,5 @@
 {
-  "name": "@familyco/renderer",
+  "name": "@familyco/web",
   "version": "1.0.0",
   "description": "FamilyCo Vue renderer app",
   "private": true,
@@ -7,7 +7,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "test": "node -e \"console.log('No tests yet for @familyco/renderer')\"",
+    "test": "node -e \"console.log('No tests yet for @familyco/web')\"",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

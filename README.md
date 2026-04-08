@@ -37,7 +37,7 @@ Default server URL: http://127.0.0.1:4000
 ### 3. Run the web renderer
 
 ```bash
-pnpm --filter @familyco/renderer dev
+pnpm --filter @familyco/web dev
 ```
 
 ### 4. Run the desktop app (optional)
@@ -45,7 +45,7 @@ pnpm --filter @familyco/renderer dev
 Start the renderer first, then launch desktop:
 
 ```bash
-pnpm --filter @familyco/renderer dev
+pnpm --filter @familyco/web dev
 pnpm --filter @familyco/desktop dev
 ```
 

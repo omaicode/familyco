@@ -69,7 +69,7 @@
 ```
 familyco/
 ├── apps/
-│   ├── renderer/                # @familyco/renderer (Vue 3 runtime)
+│   ├── renderer/                # @familyco/web (Vue 3 runtime)
 │   └── desktop/                 # @familyco/desktop (Electron shell)
 ├── packages/
 │   ├── core/                    # @familyco/core
@@ -87,8 +87,8 @@ familyco/
 
 ```
 @familyco/ui        →  @familyco/core (types only)
-@familyco/renderer  →  @familyco/ui + @familyco/core (contracts/types)
-@familyco/desktop   →  @familyco/server + @familyco/renderer
+@familyco/web  →  @familyco/ui + @familyco/core (contracts/types)
+@familyco/desktop   →  @familyco/server + @familyco/web
 @familyco/server    →  @familyco/core
 @familyco/cli       →  @familyco/server (hoặc core trực tiếp)
 @familyco/core      →  (không import package nào trong monorepo)
@@ -235,7 +235,7 @@ ipcMain.handle('agent:list', async () => {
 
 ---
 
-## 6. Cấu Trúc `@familyco/renderer` (Vue 3)
+## 6. Cấu Trúc `@familyco/web` (Vue 3)
 
 ```
 apps/renderer/src/

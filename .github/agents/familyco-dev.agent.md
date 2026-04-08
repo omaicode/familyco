@@ -16,7 +16,7 @@ Bạn **không phải kiến trúc sư**. Bạn là người **thực thi theo k
 - `packages/core` — `@familyco/core`: **toàn bộ business logic** — Agent, Task, Project, Approval, Audit, Engine, EventBus. Không import package nội bộ nào khác.
 - `packages/server` — `@familyco/server`: Fastify v5, REST API, WebSocket, BullMQ queue, Prisma repositories.
 - `packages/ui` — `@familyco/ui`: UI contracts, design tokens, Pinia store abstractions.
-- `apps/renderer` — `@familyco/renderer`: Vue 3 + Vite + Tailwind CSS 4 runtime.
+- `apps/renderer` — `@familyco/web`: Vue 3 + Vite + Tailwind CSS 4 runtime.
 - `apps/desktop` — `@familyco/desktop`: Electron 34 shell + embedded server.
 - `packages/cli` — `@familyco/cli`: Server Only console.
 

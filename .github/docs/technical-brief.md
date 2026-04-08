@@ -26,7 +26,7 @@ Cấu trúc:
 ```
 familyco/
   apps/
-    renderer/   → @familyco/renderer (Vue 3 frontend runtime)
+    renderer/   → @familyco/web (Vue 3 frontend runtime)
     desktop/    → @familyco/desktop (Electron shell + embedded server)
   packages/
     core/       → @familyco/core (business logic)
@@ -40,8 +40,8 @@ Quan hệ phụ thuộc (bắt buộc):
 - `@familyco/core`: **không** import package nội bộ nào.
 - `@familyco/server` → import `@familyco/core`.
 - `@familyco/ui` → cung cấp UI contracts/theme/store abstractions.
-- `@familyco/renderer` → dùng `@familyco/ui` + API runtime Vue.
-- `@familyco/desktop` → wrap `@familyco/server` + `@familyco/renderer` + Electron.
+- `@familyco/web` → dùng `@familyco/ui` + API runtime Vue.
+- `@familyco/desktop` → wrap `@familyco/server` + `@familyco/web` + Electron.
 - `@familyco/cli` → dùng `@familyco/server` hoặc trực tiếp `@familyco/core`.
 
 AI Agent khi tạo file mới phải đặt đúng package, đúng layer.
@@ -103,7 +103,7 @@ repositories/prisma-agent.repository.ts  → implements AgentRepository
 
 ---
 
-## 5. `@familyco/renderer` — Vue 3 Admin Panel Runtime
+## 5. `@familyco/web` — Vue 3 Admin Panel Runtime
 
 - Framework: Vue 3 + `<script setup>`.
 - State: Pinia.
@@ -129,7 +129,7 @@ repositories/prisma-agent.repository.ts  → implements AgentRepository
 
 - Chứa contracts, route metadata, theme tokens, css-variable helpers, store abstractions.
 - Không chứa runtime Electron hoặc app bootstrapping.
-- Được dùng bởi `@familyco/renderer` để render UI nhất quán.
+- Được dùng bởi `@familyco/web` để render UI nhất quán.
 
 ---
 
@@ -137,7 +137,7 @@ repositories/prisma-agent.repository.ts  → implements AgentRepository
 
 - Main process khởi động:
   1. Fastify server embedded (sử dụng code từ `@familyco/server`).
-  2. Electron BrowserWindow trỏ vào UI runtime từ `@familyco/renderer`.
+  2. Electron BrowserWindow trỏ vào UI runtime từ `@familyco/web`.
 - Preload script expose API sau qua `contextBridge`:
   - `invoke(channel, ...args)` → IPC từ renderer đến main.
   - `on(channel, handler)` → subscribe event.
