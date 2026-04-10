@@ -5,9 +5,13 @@ import { agentDeleteTool } from '../../tools/agent-delete.tool.js';
 import { agentUpdateTool } from '../../tools/agent-update.tool.js';
 import { projectCreateTool } from '../../tools/project-create.tool.js';
 import { projectDeleteTool } from '../../tools/project-delete.tool.js';
+import { projectListTool } from '../../tools/project-list.tool.js';
+import { projectReadTool } from '../../tools/project-read.tool.js';
 import { projectUpdateTool } from '../../tools/project-update.tool.js';
 import { taskCreateTool } from '../../tools/task-create.tool.js';
 import { taskDeleteTool } from '../../tools/task-delete.tool.js';
+import { taskListTool } from '../../tools/task-list.tool.js';
+import { taskReadTool } from '../../tools/task-read.tool.js';
 import { taskUpdateStatusTool } from '../../tools/task-update-status.tool.js';
 import { taskUpdateTool } from '../../tools/task-update.tool.js';
 import type { SlashCommandSpec } from '../../tools/tool.types.js';
@@ -148,10 +152,14 @@ export function buildAgentSlashRegistry(): AgentSlashRegistry {
 
   const toolEntries: ToolSlashEntry[] = [
     taskCreateTool,
+    taskReadTool,
+    taskListTool,
     taskUpdateTool,
     taskUpdateStatusTool,
     taskDeleteTool,
     projectCreateTool,
+    projectReadTool,
+    projectListTool,
     projectUpdateTool,
     projectDeleteTool,
     agentCreateTool,

@@ -89,3 +89,23 @@ export function summarizeSlashDescription(description: string, fallback: string)
 
   return `${normalized.slice(0, 69).trimEnd()}...`;
 }
+
+export function parseKeyValueArgs(input: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const parts = input.split(/\s+/).map((part) => part.trim()).filter((part) => part.length > 0);
+
+  for (const part of parts) {
+    const separatorIndex = part.indexOf('=');
+    if (separatorIndex <= 0 || separatorIndex === part.length - 1) {
+      continue;
+    }
+
+    const key = part.slice(0, separatorIndex).trim();
+    const value = part.slice(separatorIndex + 1).trim();
+    if (key.length > 0 && value.length > 0) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}

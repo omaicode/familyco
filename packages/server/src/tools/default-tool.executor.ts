@@ -9,10 +9,14 @@ import { echoTool } from './echo.tool.js';
 import { jsonExtractTool } from './json-extract.tool.js';
 import { projectCreateTool } from './project-create.tool.js';
 import { projectDeleteTool } from './project-delete.tool.js';
+import { projectListTool } from './project-list.tool.js';
+import { projectReadTool } from './project-read.tool.js';
 import { projectUpdateTool } from './project-update.tool.js';
 import { taskCreateTool } from './task-create.tool.js';
 import { taskDeleteTool } from './task-delete.tool.js';
+import { taskListTool } from './task-list.tool.js';
 import { taskLogTool } from './task-log.tool.js';
+import { taskReadTool } from './task-read.tool.js';
 import { taskUpdateStatusTool } from './task-update-status.tool.js';
 import { taskUpdateTool } from './task-update.tool.js';
 import { toToolSummary } from './tool.helpers.js';
@@ -27,10 +31,14 @@ export class DefaultToolExecutor implements ToolExecutor {
       chatRespondTool,
       companyProfileReadTool,
       taskCreateTool,
+      taskReadTool,
+      taskListTool,
       taskUpdateTool,
       taskUpdateStatusTool,
       taskDeleteTool,
       projectCreateTool,
+      projectReadTool,
+      projectListTool,
       projectUpdateTool,
       projectDeleteTool,
       agentCreateTool,
