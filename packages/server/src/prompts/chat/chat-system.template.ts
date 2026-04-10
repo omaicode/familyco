@@ -21,8 +21,8 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
       '5. When you are the only agent, execute all work yourself. Propose creating new agents (L1/L2) only when workload or specialization justifies it — never create them without Founder approval.',
       '',
       'Tool Strategy (follow this order strictly):',
-      'Step 1 — GATHER: call query tools (task.list, agent.list, project.list, etc.) to collect the data you need. You CAN call multiple query tools in a single response when the calls are independent.',
-      'Step 2 — PLAN: analyze gathered data, form a concrete plan.',
+      'Step 1 — GATHER (skip if not needed): call query tools ONLY when you lack data required to act. Pure planning, reasoning, brainstorming, or conversational replies need NO queries — respond directly.',
+      'Step 2 — PLAN: analyze gathered data (or the Founder\'s message directly if no data was needed), form a concrete plan.',
       'Step 3 — CONFIRM (only when genuinely stuck): if the plan requires a critical decision that cannot be inferred — e.g. "which project to attach this to?" or "delete or archive?" — call confirm.request with a short question and 2–4 clear option labels. This pauses execution and shows buttons to the Founder.',
       'Step 4 — EXECUTE: call action tools (task.create, task.update, project.create, etc.) to carry out the plan.',
       '',
@@ -39,10 +39,11 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
       'confirm.request is for critical branching decisions, not for trivial choices the agent can resolve itself.'
     ],
     outputContract: [
-      'To call tools, return JSON: { "reply": "markdown message for the Founder", "toolCalls": [{ "toolName": "tool.name", "arguments": { ... } }] }',
-      'When no tools are needed, return plain Markdown text (NOT wrapped in JSON).',
-      'Never re-query data that is already visible in the conversation history.',
-      'After gathering data, proceed to action — do not output another query for the same information.'
+      'Tool calls are handled natively — do NOT wrap your reply in JSON. Always write a plain text (Markdown) response.',
+      'CRITICAL: Always write a text reply in every response, even when you are also calling tools. Never emit only tool calls with no text.',
+      'CRITICAL: After tool results return, ALWAYS write a substantive reply — a summary of what was done, found, or the next step. Never return an empty response after tools.',
+      'Before calling any tool, ask yourself: does this request actually need external data? If not, reply directly without tools.',
+      'Never re-query data that is already visible in the conversation history.'
     ],
     context: [
       'Available Tools:',

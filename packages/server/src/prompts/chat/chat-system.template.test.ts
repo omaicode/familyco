@@ -52,14 +52,19 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('Constraints:'), true);
   assert.equal(prompt.includes('Output Contract:'), true);
 
-  // New output contract: JSON tool-calling format instead of "strict Markdown only"
-  assert.equal(prompt.includes('To call tools, return JSON:'), true);
-  assert.equal(prompt.includes('"toolCalls"'), true);
-  assert.equal(prompt.includes('When no tools are needed, return plain Markdown text'), true);
+  // New output contract: native tool calling, always write text, no JSON wrapper
+  assert.equal(prompt.includes('Tool calls are handled natively'), true);
+  assert.equal(prompt.includes('Always write a text reply in every response'), true);
+  assert.equal(prompt.includes('After tool results return, ALWAYS write a substantive reply'), true);
+  assert.equal(prompt.includes('does this request actually need external data?'), true);
 
-  // Tool strategy section
+  // Old JSON contract must be gone
+  assert.equal(prompt.includes('return JSON:'), false);
+  assert.equal(prompt.includes('"toolCalls"'), false);
+
+  // Tool strategy section — GATHER is now optional
   assert.equal(prompt.includes('Tool Strategy (follow this order strictly)'), true);
-  assert.equal(prompt.includes('GATHER'), true);
+  assert.equal(prompt.includes('GATHER (skip if not needed)'), true);
   assert.equal(prompt.includes('PLAN'), true);
   assert.equal(prompt.includes('CONFIRM'), true);
   assert.equal(prompt.includes('EXECUTE'), true);
