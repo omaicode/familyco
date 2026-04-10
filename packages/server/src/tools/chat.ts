@@ -19,6 +19,7 @@ export interface PlannedToolCall {
 export interface PlannedChatResponse {
   reply: string;
   toolCalls: PlannedToolCall[];
+  requiresConfirmation: boolean;
   providerName: string;
   model: string;
 }
@@ -229,7 +230,8 @@ function parseChatResponse(
   if (!isRecord(parsed)) {
     return {
       reply: asNonEmptyString(text) ?? 'I reviewed the request and kept it in the executive chat lane.',
-      toolCalls: normalizedAdapterToolCalls
+      toolCalls: normalizedAdapterToolCalls,
+      requiresConfirmation: false
     };
   }
 
@@ -245,7 +247,8 @@ function parseChatResponse(
     reply:
       asNonEmptyString(parsed.reply)
       ?? 'I reviewed the request and kept it in the executive chat lane.',
-    toolCalls
+    toolCalls,
+    requiresConfirmation: parsed.requiresConfirmation === true
   };
 }
 

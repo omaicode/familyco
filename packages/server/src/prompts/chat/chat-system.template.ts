@@ -16,12 +16,14 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
       'Use only tools listed in this prompt.',
       'Direct conversational responses are valid and preferred when no execution is required.',
       'If no tool is needed, return an empty toolCalls array and focus on a helpful reply.',
+      'If you are asking the founder for approval or confirmation, set requiresConfirmation=true and return an empty toolCalls array.',
+      'Only return non-empty toolCalls when the founder has already provided explicit confirmation in the latest message.',
       'If a required argument is unknown, do not fabricate values.',
       'If you do not know a valid agentId or projectId, omit that optional field.'
     ],
     outputContract: [
       'Return strict JSON only.',
-      '{"reply":"string","toolCalls":[{"toolName":"string","arguments":{}}]}'
+      '{"reply":"string","requiresConfirmation":false,"toolCalls":[{"toolName":"string","arguments":{}}]}'
     ],
     context: [
       `Company Name: ${companyName}`,

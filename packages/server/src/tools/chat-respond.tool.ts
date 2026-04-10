@@ -116,7 +116,11 @@ export const chatRespondTool: ServerToolDefinition = {
                ? (chunk) => publishChatChunk(streamRequestId, chunk)
                : undefined
            }).catch(() => null);
-    const toolCallQueue = requestedToolCalls.length > 0 ? requestedToolCalls : plannedResponse?.toolCalls ?? [];
+    const toolCallQueue = resolveToolCallQueue({
+      requestedToolCalls,
+      plannedToolCalls: plannedResponse?.toolCalls ?? [],
+      plannedRequiresConfirmation: plannedResponse?.requiresConfirmation === true
+    });
     const toolCalls: ChatToolCall[] = [];
     let createdTask: unknown | null = null;
     let createdProject: unknown | null = null;
@@ -324,4 +328,20 @@ function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel):
   );
 
   return tools.filter((tool) => allowedToolNames.has(tool.name));
+}
+
+export function resolveToolCallQueue(input: {
+  requestedToolCalls: ExplicitToolCall[];
+  plannedToolCalls: ExplicitToolCall[];
+  plannedRequiresConfirmation: boolean;
+}): ExplicitToolCall[] {
+  if (input.requestedToolCalls.length > 0) {
+    return input.requestedToolCalls;
+  }
+
+  if (input.plannedRequiresConfirmation) {
+    return [];
+  }
+
+  return input.plannedToolCalls;
 }
