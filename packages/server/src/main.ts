@@ -37,6 +37,10 @@ function validateProductionEnvironment(): void {
   if (process.env.FAMILYCO_API_KEY === DEFAULT_API_KEY) {
     throw new Error('FAMILYCO_API_KEY must not use local development default in production');
   }
+
+  if (isBlank(process.env.SETTINGS_ENCRYPTION_KEY)) {
+    throw new Error('SETTINGS_ENCRYPTION_KEY is required in production to encrypt sensitive settings (provider API keys). Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  }
 }
 
 async function start(): Promise<void> {

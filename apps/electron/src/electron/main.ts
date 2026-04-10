@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 
 import { app, BrowserWindow, dialog, Menu, Tray, nativeImage } from 'electron';
 import {
@@ -258,6 +259,20 @@ const startDesktop = async (): Promise<void> => {
   // Set DATABASE_URL before importing @familyco/server so the Prisma singleton
   // is initialised with the correct path.
   process.env.DATABASE_URL = `file://${dbPath}`;
+
+  // Load or generate the AES-256 encryption key for sensitive settings (provider API keys).
+  // The key is persisted in <userData>/settings.key so it survives app restarts.
+  if (!process.env.SETTINGS_ENCRYPTION_KEY) {
+    const keyPath = path.join(app.getPath('userData'), 'settings.key');
+    if (existsSync(keyPath)) {
+      process.env.SETTINGS_ENCRYPTION_KEY = readFileSync(keyPath, 'utf8').trim();
+    } else {
+      const newKey = randomBytes(32).toString('hex');
+      mkdirSync(app.getPath('userData'), { recursive: true });
+      writeFileSync(keyPath, newKey, { encoding: 'utf8', mode: 0o600 });
+      process.env.SETTINGS_ENCRYPTION_KEY = newKey;
+    }
+  }
 
   // Dynamic import ensures server-bootstrap (and transitively @familyco/server /
   // prisma-client) is not loaded until DATABASE_URL is set above.

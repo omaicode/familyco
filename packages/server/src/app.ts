@@ -70,6 +70,7 @@ import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js'
 import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
 import { DefaultToolExecutor } from './tools/index.js';
 import { createAdapterRegistry } from './adapters/index.js';
+import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
 
@@ -128,6 +129,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       ? process.env.ENABLE_AGENT_HEARTBEATS === '1'
       : repositoryDriver === 'prisma');
 
+  const settingsEncryption = createSettingsEncryption();
+
   const {
     agentRepository,
     apiKeyRepository,
@@ -137,7 +140,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     projectRepository,
     settingsRepository,
     taskRepository
-  } = createRepositories(repositoryDriver);
+  } = createRepositories(repositoryDriver, settingsEncryption);
 
   const eventBus = new EventBus();
   const agentService = new AgentService(agentRepository, eventBus);
@@ -577,7 +580,8 @@ function createCorsOriginMatcher(): (
 }
 
 function createRepositories(
-  repositoryDriver: RepositoryDriver
+  repositoryDriver: RepositoryDriver,
+  settingsEncryption: import('./modules/settings/settings.encryption.js').SettingsEncryption | null = null
 ): {
   agentRepository: AgentRepository;
   apiKeyRepository: import('./modules/auth/api-key.service.js').ApiKeyRepository;
@@ -597,7 +601,7 @@ function createRepositories(
       auditRepository: new PrismaAuditRepository(client),
       inboxRepository: new PrismaInboxRepository(client),
       projectRepository: new PrismaProjectRepository(client),
-      settingsRepository: new PrismaSettingsRepository(client),
+      settingsRepository: new PrismaSettingsRepository(client, settingsEncryption),
       taskRepository: new PrismaTaskRepository(client)
     };
   }
