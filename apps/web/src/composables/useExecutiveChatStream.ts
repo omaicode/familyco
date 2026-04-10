@@ -186,28 +186,18 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
 
     if (event.type === 'chat.tool.complete') {
       const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
-      const toolCall = isToolCallDetails(event.payload) ? event.payload : null;
+      // Server sends { requestId, toolName, ok, output? } — no summary yet.
+      // isToolCallDetails would fail (requires summary), so extract toolName directly.
+      const toolName = typeof event.payload?.toolName === 'string' ? event.payload.toolName : null;
 
-      if (requestId && toolCall) {
-        // Move from in-progress to completed
-        const inProgress = streamToolsInProgress.value[requestId] ?? [];
+      if (requestId && toolName) {
+        // Remove spinner immediately — completed card will appear via chat.tool.used (which has summary)
         streamToolsInProgress.value = {
           ...streamToolsInProgress.value,
-          [requestId]: inProgress.filter((entry) => entry.toolName !== toolCall.toolName)
-        };
-        streamToolCalls.value = {
-          ...streamToolCalls.value,
-          [requestId]: [...(streamToolCalls.value[requestId] ?? []), toolCall]
+          [requestId]: (streamToolsInProgress.value[requestId] ?? []).filter((e) => e.toolName !== toolName)
         };
         const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
         upsertStreamingReply(requestId, existingBody);
-      }
-
-      if (toolCall) {
-        setFeedback(
-          toolCall.ok === false ? 'error' : 'info',
-          formatToolFeedback(toolCall)
-        );
       }
       return;
     }
