@@ -138,7 +138,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       }
 
       const existing = thread.value.find((message) => message.id === requestId)?.body ?? '';
-      upsertStreamingReply(requestId, `${existing}${existing ? ' ' : ''}${chunk}`.trim());
+      upsertStreamingReply(requestId, `${existing}${chunk}`);
       return;
     }
 
@@ -185,12 +185,9 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       isStreaming.value = false;
       activeStreamId.value = null;
       void refreshThread();
-      setFeedback(
-        failedToolCalls.length > 0 ? 'error' : 'success',
-        failedToolCalls.length > 0
-          ? failedToolCalls.map((toolCall) => formatToolFeedback(toolCall)).join(' • ')
-          : 'Streaming response completed.'
-      );
+      if (failedToolCalls.length > 0) {
+        setFeedback('error', failedToolCalls.map((toolCall) => formatToolFeedback(toolCall)).join(' • '));
+      }
       return;
     }
 
