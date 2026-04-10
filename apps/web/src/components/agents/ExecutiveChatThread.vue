@@ -66,7 +66,7 @@ const handleScroll = (): void => {
 };
 
 watch(
-  () => [props.thread.length, props.isStreaming],
+  () => props.thread,
   async () => {
     await nextTick();
     const scroller = scrollRef.value;
@@ -82,7 +82,7 @@ watch(
       return;
     }
 
-    if (stickToBottom || props.isStreaming) {
+    if (stickToBottom) {
       scrollToBottom(props.isStreaming ? 'auto' : 'smooth');
     }
   },

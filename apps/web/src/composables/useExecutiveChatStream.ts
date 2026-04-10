@@ -265,7 +265,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       ? {
           ...(existingMessage?.payload ?? {}),
           toolCalls,
-          ...(toolsInProgress.length > 0 ? { toolsInProgress } : {})
+          toolsInProgress
         }
       : existingMessage?.payload;
 
