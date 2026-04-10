@@ -5,6 +5,7 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
   const companyName = input.companyName.trim().length > 0 ? input.companyName.trim() : 'FamilyCo';
   const companyDescription = input.companyDescription?.trim() || 'Not provided.';
   const toolLines = renderToolLines(input.tools);
+  const historyLines = renderHistoryLines(input.conversationHistory);
 
   return renderRoleGoalConstraintsTemplate({
     role: 'You are the FamilyCo executive agent responsible for operational planning for the founder.',
@@ -25,6 +26,8 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
     context: [
       `Company Name: ${companyName}`,
       `Company Description: ${companyDescription}`,
+      'Recent Conversation Context:',
+      ...historyLines,
       'Available Tools:',
       ...toolLines
     ]
@@ -43,4 +46,26 @@ function renderToolLines(input: ChatSystemPromptInput['tools']): string[] {
 
     return `- ${tool.name}: ${tool.description}${parameters ? ` Parameters => ${parameters}` : ''}`;
   });
+}
+
+function renderHistoryLines(history: ChatSystemPromptInput['conversationHistory']): string[] {
+  if (history.length === 0) {
+    return ['- No prior messages recorded.'];
+  }
+
+  return history.map((entry) => {
+    const speaker = entry.senderId === 'founder' ? 'Founder' : 'Executive agent';
+    const title = entry.title ? `${entry.title}: ` : '';
+    const body = compactText(entry.body, 240);
+    return `- ${speaker}: ${title}${body}`;
+  });
+}
+
+function compactText(value: string, maxLength: number): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, Math.max(maxLength - 1, 0)).trimEnd()}…`;
 }

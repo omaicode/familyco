@@ -71,7 +71,8 @@ export async function sendChat(
   const systemPrompt = renderChatSystemPrompt({
     companyName: input.companyProfile.companyName,
     companyDescription: input.companyProfile.companyDescription,
-    tools: mapToolDefinitions(input.tools)
+    tools: mapToolDefinitions(input.tools),
+    conversationHistory: input.conversationHistory ?? []
   });
   const userPrompt = renderChatUserPrompt({
     message: input.message,

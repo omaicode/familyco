@@ -7,6 +7,13 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   const prompt = renderChatSystemPrompt({
     companyName: 'FamilyCo',
     companyDescription: 'AI-native operating system for founders.',
+    conversationHistory: [
+      {
+        senderId: 'founder',
+        title: 'Last topic',
+        body: 'Need a weekly execution plan with clear priorities.'
+      }
+    ],
     tools: [
       {
         name: 'task.create',
@@ -26,5 +33,7 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('{"reply":"string","toolCalls":[{"toolName":"string","arguments":{}}]}'), true);
   assert.equal(prompt.includes('Direct conversational responses are valid and preferred'), true);
   assert.equal(prompt.includes('Company Name: FamilyCo'), true);
+  assert.equal(prompt.includes('Recent Conversation Context:'), true);
+  assert.equal(prompt.includes('- Founder: Last topic: Need a weekly execution plan with clear priorities.'), true);
   assert.equal(prompt.includes('- task.create: Create a task'), true);
 });

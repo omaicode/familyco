@@ -22,6 +22,7 @@ export interface ChatSystemPromptInput {
   companyName: string;
   companyDescription?: string;
   tools: PromptToolDefinition[];
+  conversationHistory: PromptConversationEntry[];
 }
 
 export interface ChatUserPromptInput {
