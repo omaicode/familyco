@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import os from 'node:os';
 import path from 'node:path';
+
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import {
@@ -146,7 +147,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     settingsRepository,
     taskRepository
   } = createRepositories(repositoryDriver, settingsEncryption);
-
+  
   const eventBus = new EventBus();
   const agentService = new AgentService(agentRepository, eventBus);
   const apiKeyService = new ApiKeyService(apiKeyRepository, authApiKeySalt);
@@ -157,7 +158,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const settingsService = new SettingsService(settingsRepository);
   const skillsService = new SkillsService(
     settingsService,
-    options.skillsRootDir ?? path.join(process.cwd(), 'skills')
+    options.skillsRootDir ?? path.resolve(process.cwd(), 'skills')
   );
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
