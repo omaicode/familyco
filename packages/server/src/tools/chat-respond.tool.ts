@@ -1,5 +1,6 @@
 import type { AgentLevel, ToolExecutionResult } from '@familyco/core';
 
+import { publishChatChunk } from '../modules/agent/agent-chat-stream-broker.js';
 import { buildAgentSlashRegistry } from '../modules/agent/agent-chat.registry.js';
 import type { ToolSlashEntry } from '../modules/agent/agent-chat.registry.js';
 import type { CompanyProfile } from './company-profile-read.tool.js';
@@ -83,6 +84,7 @@ export const chatRespondTool: ServerToolDefinition = {
     const allTools = context.listTools().filter((tool) => tool.name !== 'chat.respond');
     const requestedToolCalls = readExplicitToolCalls(argumentsMap);
     const conversationHistory = readConversationHistory(argumentsMap);
+    const streamRequestId = readStreamRequestId(argumentsMap);
 
     // Look up per-agent AI overrides when agentId is provided
     const agentId = asNonEmptyString(argumentsMap.agentId);
@@ -106,11 +108,14 @@ export const chatRespondTool: ServerToolDefinition = {
             adapterRegistry: context.adapterRegistry,
             agentAdapterId,
             agentModel,
-            message,
-            companyProfile: profile,
-            tools: availableTools,
-            conversationHistory
-          }).catch(() => null);
+             message,
+             companyProfile: profile,
+             tools: availableTools,
+             conversationHistory,
+             onChunk: streamRequestId
+               ? (chunk) => publishChatChunk(streamRequestId, chunk)
+               : undefined
+           }).catch(() => null);
     const toolCallQueue = requestedToolCalls.length > 0 ? requestedToolCalls : plannedResponse?.toolCalls ?? [];
     const toolCalls: ChatToolCall[] = [];
     let createdTask: unknown | null = null;
@@ -245,6 +250,14 @@ function parseConversationEntry(value: unknown): ConversationHistoryEntry | null
     title: asNonEmptyString(value.title),
     createdAt: asNonEmptyString(value.createdAt)
   };
+}
+
+function readStreamRequestId(argumentsMap: Record<string, unknown>): string | undefined {
+  if (!isRecord(argumentsMap.meta)) {
+    return undefined;
+  }
+
+  return asNonEmptyString(argumentsMap.meta.streamRequestId);
 }
 
 function toCompanyProfile(value: unknown): CompanyProfile {

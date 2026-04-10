@@ -6,7 +6,7 @@ import type {
   AdapterTestResult
 } from '@familyco/core';
 
-import { readProviderError, toAdapterErrorMessage } from './adapter.helpers.js';
+import { readJsonLikePayload, readProviderError, readSseStream, toAdapterErrorMessage } from './adapter.helpers.js';
 
 export class OpenAiAdapter implements AiAdapter {
   readonly id = 'openai';
@@ -24,6 +24,7 @@ export class OpenAiAdapter implements AiAdapter {
     const requestBody: Record<string, unknown> = {
       model: input.model,
       temperature: 0.2,
+      stream: true,
       text: {
         format: { type: 'json_object' }
       },
@@ -46,6 +47,10 @@ export class OpenAiAdapter implements AiAdapter {
           }
         }
       ];
+    }
+
+    if (supportsOpenAiReasoning(input.model)) {
+      requestBody.reasoning = { effort: 'medium' };
     }
 
     if (input.tools && input.tools.length > 0) {
@@ -92,35 +97,68 @@ export class OpenAiAdapter implements AiAdapter {
         body: JSON.stringify(requestBody)
       });
 
-      const payload = await response.json();
       if (!response.ok) {
+        const payload = await readJsonLikePayload(response);
         throw new Error(readProviderError('openai', payload));
       }
 
+      let streamedText = '';
+      let completedResponse: unknown = null;
+      await readSseStream(response, (data) => {
+        if (data === '[DONE]') {
+          return;
+        }
+
+        const eventPayload = tryParseJson(data);
+        if (!isRecord(eventPayload)) {
+          return;
+        }
+
+        if (eventPayload.type === 'response.output_text.delta') {
+          const delta = asOptionalString(eventPayload.delta);
+          if (delta) {
+            streamedText += delta;
+            input.onChunk?.(delta);
+          }
+          return;
+        }
+
+        if (eventPayload.type === 'response.completed' && isRecord(eventPayload.response)) {
+          completedResponse = eventPayload.response;
+        }
+      });
+
+      const payload = completedResponse;
       const content =
-        (typeof payload?.output_text === 'string' ? payload.output_text : null) ??
-        (Array.isArray(payload?.output)
-          ? payload.output
-              .flatMap((item: { content?: Array<{ text?: string }> }) => item?.content ?? [])
-              .map((part: { text?: string }) => part?.text ?? '')
-              .join('\n')
-              .trim()
-          : '');
+        streamedText.trim().length > 0
+          ? streamedText
+          : (
+              (typeof (payload as { output_text?: unknown } | null)?.output_text === 'string'
+                ? (payload as { output_text: string }).output_text
+                : null) ??
+              (Array.isArray((payload as { output?: unknown[] } | null)?.output)
+                ? (payload as { output: Array<{ content?: Array<{ text?: string }> }> }).output
+                    .flatMap((item) => item?.content ?? [])
+                    .map((part) => part?.text ?? '')
+                    .join('\n')
+                    .trim()
+                : '')
+            );
 
       const toolCalls = extractToolCalls(payload, toolNameMap);
       if ((typeof content !== 'string' || content.trim().length === 0) && toolCalls.length === 0) {
         throw new Error('PROVIDER_INVALID_RESPONSE:OpenAI returned an empty response');
       }
 
-      const usage = payload?.usage;
+      const usage = readOpenAiUsage(payload);
       return {
         content,
         toolCalls,
         tokenUsage: usage
           ? {
-              prompt: usage.input_tokens ?? usage.prompt_tokens ?? 0,
-              completion: usage.output_tokens ?? usage.completion_tokens ?? 0,
-              total: usage.total_tokens ?? (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0)
+              prompt: usage.prompt,
+              completion: usage.completion,
+              total: usage.total
             }
           : undefined
       };
@@ -168,6 +206,11 @@ export class OpenAiAdapter implements AiAdapter {
       clearTimeout(timeout);
     }
   }
+}
+
+function supportsOpenAiReasoning(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return normalized.startsWith('gpt-5') || normalized.startsWith('o');
 }
 
 function extractToolCalls(payload: unknown, toolNameMap: ReadonlyMap<string, string>): AdapterPlannedToolCall[] {
@@ -262,4 +305,31 @@ function toOpenAiToolName(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function asOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function tryParseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function readOpenAiUsage(payload: unknown): { prompt: number; completion: number; total: number } | undefined {
+  if (!isRecord(payload) || !isRecord(payload.usage)) {
+    return undefined;
+  }
+
+  const prompt = asOptionalNumber(payload.usage.input_tokens) ?? asOptionalNumber(payload.usage.prompt_tokens) ?? 0;
+  const completion = asOptionalNumber(payload.usage.output_tokens) ?? asOptionalNumber(payload.usage.completion_tokens) ?? 0;
+  const total = asOptionalNumber(payload.usage.total_tokens) ?? prompt + completion;
+  return { prompt, completion, total };
+}
+
+function asOptionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }

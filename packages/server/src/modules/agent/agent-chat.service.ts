@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { AgentRunner, AgentService, InboxService, ToolExecutionResult } from '@familyco/core';
 
+import { registerChatChunkListener } from './agent-chat-stream-broker.js';
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
 import type { ParsedSlashEntry } from './agent-chat.registry.js';
 import type {
@@ -29,11 +30,24 @@ export async function handleSocketChatMessage(input: {
       startedAt: new Date().toISOString()
     });
 
+    let chunkIndex = 0;
+    const unregisterChunkListener = registerChatChunkListener(requestId, (chunk) => {
+      sendSocketEvent(input.socket, 'chat.chunk', {
+        requestId,
+        index: chunkIndex,
+        chunk
+      });
+      chunkIndex += 1;
+    });
+
     const result = await processAgentChat({
       agentId: input.agentId,
       body,
       deps: input.deps,
-      actorId: input.actorId
+      actorId: input.actorId,
+      streamRequestId: requestId
+    }).finally(() => {
+      unregisterChunkListener();
     });
 
     for (const toolCall of result.toolCalls) {
@@ -43,7 +57,9 @@ export async function handleSocketChatMessage(input: {
       });
     }
 
-    await streamReply(input.socket, requestId, result.replyMessage.body);
+    if (chunkIndex === 0) {
+      await streamReply(input.socket, requestId, result.replyMessage.body);
+    }
 
     sendSocketEvent(input.socket, 'chat.completed', {
       requestId,
@@ -66,6 +82,7 @@ export async function processAgentChat(input: {
   body: ChatRequestBody;
   deps: AgentModuleDeps;
   actorId: string;
+  streamRequestId?: string;
 }): Promise<ProcessedChatResult> {
   const agent = await input.deps.agentService.getAgentById(input.agentId);
   const registry = buildAgentSlashRegistry();
@@ -77,7 +94,8 @@ export async function processAgentChat(input: {
       body: input.body,
       deps: input.deps,
       actorId: input.actorId,
-      parsedCommand
+      parsedCommand,
+      streamRequestId: input.streamRequestId
     });
   }
 
@@ -97,7 +115,10 @@ export async function processAgentChat(input: {
     toolArguments: {
       agentId: agent.id,
       message: input.body.message,
-      meta: input.body.meta ?? null,
+      meta: {
+        ...(isRecord(input.body.meta) ? input.body.meta : {}),
+        ...(input.streamRequestId ? { streamRequestId: input.streamRequestId } : {})
+      },
       conversationHistory: conversationHistory.map(toConversationHistoryEntry)
     },
     input: input.body.message
@@ -119,6 +140,7 @@ async function runSlashCommand(input: {
   deps: AgentModuleDeps;
   actorId: string;
   parsedCommand: Exclude<ParsedSlashEntry, null>;
+  streamRequestId?: string;
 }): Promise<ProcessedChatResult> {
   const registry = buildAgentSlashRegistry();
   const helpText = registry.buildHelpText(input.agent.level);
@@ -184,7 +206,8 @@ async function runSlashCommand(input: {
         meta: {
           ...(isRecord(input.body.meta) ? input.body.meta : {}),
           slashCommand: entry.name,
-          toolCall: { toolName: entry.toolName, arguments: entry.buildArguments(args) }
+          toolCall: { toolName: entry.toolName, arguments: entry.buildArguments(args) },
+          ...(input.streamRequestId ? { streamRequestId: input.streamRequestId } : {})
         },
         conversationHistory: conversationHistory.map(toConversationHistoryEntry)
       },

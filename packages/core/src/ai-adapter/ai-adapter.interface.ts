@@ -12,6 +12,7 @@ export interface AdapterChatInput {
   userPrompt: string;
   skills?: AdapterSkillDefinition[];
   tools?: AdapterToolDefinition[];
+  onChunk?: (chunk: string) => void;
 }
 
 export interface AdapterSkillDefinition {

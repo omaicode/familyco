@@ -39,6 +39,7 @@ interface SendChatInput {
     title?: string;
     createdAt?: string;
   }>;
+  onChunk?: (chunk: string) => void;
 }
 
 type AdapterId = 'copilot' | 'openai' | 'claude';
@@ -85,7 +86,8 @@ export async function sendChat(
     userPrompt,
     skills: enabledSkills,
     tools: input.tools,
-    adapterRegistry: input.adapterRegistry
+    adapterRegistry: input.adapterRegistry,
+    onChunk: input.onChunk
   });
 
   const parsed = parseChatResponse(adapterResponse.content, input.tools, adapterResponse.toolCalls);
@@ -155,6 +157,7 @@ async function requestAdapterChat(input: {
   skills: EnabledSkillSummary[];
   tools: ToolDefinitionSummary[];
   adapterRegistry?: AiAdapterRegistry;
+  onChunk?: (chunk: string) => void;
 }): Promise<{ content: string; toolCalls: AdapterPlannedToolCall[] }> {
   if (input.adapterRegistry) {
     const adapter = input.adapterRegistry.get(input.adapterConfig.adapterId);
@@ -165,7 +168,8 @@ async function requestAdapterChat(input: {
         systemPrompt: input.systemPrompt,
         userPrompt: input.userPrompt,
         skills: input.skills,
-        tools: mapToolDefinitions(input.tools)
+        tools: mapToolDefinitions(input.tools),
+        onChunk: input.onChunk
       });
       return {
         content: adapterResult.content,

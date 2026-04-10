@@ -1,6 +1,6 @@
 import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult } from '@familyco/core';
 
-import { readProviderError, toAdapterErrorMessage } from './adapter.helpers.js';
+import { readJsonLikePayload, readProviderError, readSseStream, toAdapterErrorMessage } from './adapter.helpers.js';
 
 export class CopilotAdapter implements AiAdapter {
   readonly id = 'copilot';
@@ -25,6 +25,7 @@ export class CopilotAdapter implements AiAdapter {
         body: JSON.stringify({
           model: input.model,
           temperature: 0.2,
+          stream: true,
           messages: [
             { role: 'system', content: input.systemPrompt },
             { role: 'user', content: input.userPrompt }
@@ -32,22 +33,42 @@ export class CopilotAdapter implements AiAdapter {
         })
       });
 
-      const payload = await response.json();
       if (!response.ok) {
+        const payload = await readJsonLikePayload(response);
         throw new Error(readProviderError('copilot', payload));
       }
 
-      const content = payload?.choices?.[0]?.message?.content;
+      let content = '';
+      await readSseStream(response, (data) => {
+        if (data === '[DONE]') {
+          return;
+        }
+
+        const payload = tryParseJson(data);
+        if (!isRecord(payload) || !Array.isArray(payload.choices)) {
+          return;
+        }
+
+        for (const choice of payload.choices) {
+          if (!isRecord(choice) || !isRecord(choice.delta)) {
+            continue;
+          }
+
+          const delta = asOptionalString(choice.delta.content);
+          if (delta) {
+            content += delta;
+            input.onChunk?.(delta);
+          }
+        }
+      });
+
       if (typeof content !== 'string' || content.trim().length === 0) {
         throw new Error('PROVIDER_INVALID_RESPONSE:Copilot returned an empty response');
       }
 
-      const usage = payload?.usage;
       return {
         content,
-        tokenUsage: usage
-          ? { prompt: usage.prompt_tokens, completion: usage.completion_tokens, total: usage.total_tokens }
-          : undefined
+        tokenUsage: undefined
       };
     } finally {
       clearTimeout(timeout);
@@ -101,4 +122,20 @@ function buildCopilotHeaders(apiKey: string): Record<string, string> {
     'authorization': `Bearer ${apiKey}`,
     'x-github-api-version': '2026-03-10'
   };
+}
+
+function tryParseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function asOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
