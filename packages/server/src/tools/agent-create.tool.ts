@@ -1,6 +1,6 @@
 import type { AgentLevel, ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, unavailableTool } from './tool.helpers.js';
+import { asNonEmptyString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const agentCreateSlashSpec: SlashCommandSpec = {
@@ -8,7 +8,13 @@ export const agentCreateSlashSpec: SlashCommandSpec = {
   label: 'Create an agent',
   description: 'Spin up a new agent with a name, role, and department.',
   insertValue: '/create-agent ',
-  levels: ['L0']
+  levels: ['L0'],
+  auditAction: 'agent.chat.create-agent',
+  buildArguments: (args) => ({
+    name: summarizeSlashDescription(args, 'New Agent'),
+    role: summarizeSlashDescription(args, 'Agent'),
+    department: 'General'
+  })
 };
 
 export const agentCreateTool: ServerToolDefinition = {

@@ -1,13 +1,27 @@
 import type { AgentService, ToolExecutionResult } from '@familyco/core';
 
 import { resolveExecutiveAgentId } from '../modules/shared/defaults.js';
-import { asNonEmptyString, unavailableTool } from './tool.helpers.js';
-import type { ServerToolDefinition } from './tool.types.js';
+import { asNonEmptyString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+
+export const projectCreateSlashSpec: SlashCommandSpec = {
+  command: '/create-project',
+  label: 'Create a project',
+  description: 'Spin up a new project workspace from a short description.',
+  insertValue: '/create-project ',
+  levels: ['L0'],
+  auditAction: 'agent.chat.create-project',
+  buildArguments: (args) => ({
+    name: summarizeSlashDescription(args, 'Executive initiative'),
+    description: args
+  })
+};
 
 export const projectCreateTool: ServerToolDefinition = {
   name: 'project.create',
   description:
     'Create a project when the agent explicitly decides a new initiative or workspace should be opened.',
+  slashSpec: projectCreateSlashSpec,
   parameters: [
     {
       name: 'name',

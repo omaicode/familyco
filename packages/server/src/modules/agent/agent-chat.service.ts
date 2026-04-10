@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { AgentRunner, AgentService, InboxService, ToolExecutionResult } from '@familyco/core';
 
-import { buildSlashCommandRegistry } from './slash-commands/index.js';
-import type { ParsedSlashCommand } from './slash-commands/index.js';
+import { buildAgentSlashRegistry } from './agent-chat.registry.js';
+import type { ParsedSlashEntry } from './agent-chat.registry.js';
 import type {
   AgentModuleDeps,
   ChatRequestBody,
@@ -68,7 +68,7 @@ export async function processAgentChat(input: {
   actorId: string;
 }): Promise<ProcessedChatResult> {
   const agent = await input.deps.agentService.getAgentById(input.agentId);
-  const registry = buildSlashCommandRegistry();
+  const registry = buildAgentSlashRegistry();
   const parsedCommand = registry.parse(input.body.message);
 
   if (parsedCommand) {
@@ -118,12 +118,13 @@ async function runSlashCommand(input: {
   body: ChatRequestBody;
   deps: AgentModuleDeps;
   actorId: string;
-  parsedCommand: Exclude<ParsedSlashCommand, null>;
+  parsedCommand: Exclude<ParsedSlashEntry, null>;
 }): Promise<ProcessedChatResult> {
-  const registry = buildSlashCommandRegistry();
+  const registry = buildAgentSlashRegistry();
   const helpText = registry.buildHelpText(input.agent.level);
+  const { entry } = input.parsedCommand;
 
-  if (!input.parsedCommand.definition) {
+  if (!entry) {
     const founderMessage = await createFounderMessage({
       agentId: input.agent.id,
       body: input.body,
@@ -142,16 +143,32 @@ async function runSlashCommand(input: {
     });
   }
 
-  const commandResult = await input.parsedCommand.definition.execute({
-    args: input.parsedCommand.args,
-    helpText
-  });
+  if (entry.kind === 'tool') {
+    const { args } = input.parsedCommand;
 
-  if (commandResult.kind === 'tool') {
+    if (args.trim().length === 0) {
+      const founderMessage = await createFounderMessage({
+        agentId: input.agent.id,
+        body: input.body,
+        slashCommand: entry.name,
+        inboxService: input.deps.inboxService
+      });
+
+      return createDirectChatReply({
+        agent: input.agent,
+        founderMessage,
+        deps: input.deps,
+        actorId: input.actorId,
+        auditAction: `${entry.auditAction}.usage`,
+        replyText: `Usage: ${entry.usage}\n\n${helpText}`,
+        messageType: 'alert'
+      });
+    }
+
     const founderMessage = await createFounderMessage({
       agentId: input.agent.id,
       body: input.body,
-      slashCommand: input.parsedCommand.definition.name,
+      slashCommand: entry.name,
       inboxService: input.deps.inboxService
     });
     const conversationHistory = await input.deps.inboxService.listConversation(input.agent.id, 24);
@@ -159,15 +176,15 @@ async function runSlashCommand(input: {
     const runResult = await input.deps.agentRunner.run({
       agentId: input.agent.id,
       approvalMode: 'auto',
-      action: commandResult.action,
+      action: `chat.command.${entry.name}`,
       toolName: 'chat.respond',
       toolArguments: {
         agentId: input.agent.id,
-        message: commandResult.input,
+        message: args,
         meta: {
           ...(isRecord(input.body.meta) ? input.body.meta : {}),
-          slashCommand: input.parsedCommand.definition.name,
-          toolCall: commandResult.toolCall
+          slashCommand: entry.name,
+          toolCall: { toolName: entry.toolName, arguments: entry.buildArguments(args) }
         },
         conversationHistory: conversationHistory.map(toConversationHistoryEntry)
       },
@@ -180,24 +197,26 @@ async function runSlashCommand(input: {
       runResult,
       deps: input.deps,
       actorId: input.actorId,
-      auditAction: commandResult.auditAction
+      auditAction: entry.auditAction
     });
   }
 
-  if (commandResult.resetConversation) {
+  const builtinResult = entry.execute(input.parsedCommand.args, helpText);
+
+  if (builtinResult.resetConversation) {
     await input.deps.inboxService.clearConversation(input.agent.id);
   }
 
-  if (commandResult.resetMemory) {
+  if (builtinResult.resetMemory) {
     await input.deps.agentRunner.clearMemory(input.agent.id);
   }
 
-  const founderMessage = commandResult.persistFounderMessage === false
+  const founderMessage = builtinResult.persistFounderMessage === false
     ? createEphemeralFounderMessage(input.agent.id, input.body.message)
     : await createFounderMessage({
         agentId: input.agent.id,
         body: input.body,
-        slashCommand: input.parsedCommand.definition.name,
+        slashCommand: entry.name,
         inboxService: input.deps.inboxService
       });
 
@@ -206,9 +225,9 @@ async function runSlashCommand(input: {
     founderMessage,
     deps: input.deps,
     actorId: input.actorId,
-    auditAction: commandResult.auditAction,
-    replyText: commandResult.replyText,
-    messageType: commandResult.messageType
+    auditAction: builtinResult.auditAction,
+    replyText: builtinResult.replyText,
+    messageType: builtinResult.messageType
   });
 }
 

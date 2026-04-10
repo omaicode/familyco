@@ -41,6 +41,8 @@ export interface SlashCommandSpec {
   description: string;
   insertValue: string;
   levels: readonly AgentLevel[];
+  auditAction: string;
+  buildArguments(args: string): Record<string, unknown>;
 }
 
 export interface ServerToolDefinition {

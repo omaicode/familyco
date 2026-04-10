@@ -1,13 +1,27 @@
 import type { AgentService, ProjectService, ToolExecutionResult } from '@familyco/core';
 
 import { resolveDefaultProjectId, resolveExecutiveAgentId } from '../modules/shared/defaults.js';
-import { asNonEmptyString, asTaskPriority, unavailableTool } from './tool.helpers.js';
-import type { ServerToolDefinition } from './tool.types.js';
+import { asNonEmptyString, asTaskPriority, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+
+export const taskCreateSlashSpec: SlashCommandSpec = {
+  command: '/create-task',
+  label: 'Create a task',
+  description: 'Open a new task directly from the executive chat lane.',
+  insertValue: '/create-task ',
+  levels: ['L0', 'L1'],
+  auditAction: 'agent.chat.create-task',
+  buildArguments: (args) => ({
+    title: summarizeSlashDescription(args, 'Executive follow-up'),
+    description: args
+  })
+};
 
 export const taskCreateTool: ServerToolDefinition = {
   name: 'task.create',
   description:
     'Create a tracked task in FamilyCo when the agent explicitly decides the request should become executable work.',
+  slashSpec: taskCreateSlashSpec,
   parameters: [
     {
       name: 'title',
