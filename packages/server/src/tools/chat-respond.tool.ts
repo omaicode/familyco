@@ -51,6 +51,8 @@ interface ChatToolOutput {
   availableTools: ToolDefinitionSummary[];
 }
 
+const MAX_PLANNED_TOOL_ROUNDS = 3;
+
 export const chatRespondTool: ServerToolDefinition = {
   name: 'chat.respond',
   description:
@@ -110,51 +112,74 @@ export const chatRespondTool: ServerToolDefinition = {
       agentLevel = agentProfile?.level ?? 'L0';
     }
     const availableTools = filterToolsForAgent(allTools, agentLevel);
-
-    const plannedResponse =
-      requestedToolCalls.length > 0
-        ? null
-        : await sendChat({
-            settingsService: context.settingsService,
-            skillsService: context.skillsService,
-            adapterRegistry: context.adapterRegistry,
-            agentAdapterId,
-            agentModel,
-             message,
-             companyProfile: profile,
-             tools: availableTools,
-             conversationHistory,
-             onChunk: streamRequestId
-               ? (chunk) => publishChatChunk(streamRequestId, chunk)
-               : undefined
-           }).catch(() => null);
-    const toolCallQueue = resolveToolCallQueue({
-      requestedToolCalls,
-      plannedToolCalls: plannedResponse?.toolCalls ?? [],
-      plannedRequiresConfirmation: plannedResponse?.requiresConfirmation === true
-    });
     const toolCalls: ChatToolCall[] = [];
     let createdTask: unknown | null = null;
     let createdProject: unknown | null = null;
+    let plannedReply: string | null = null;
 
-    for (const requestedToolCall of toolCallQueue) {
-      if (requestedToolCall.toolName === 'chat.respond') {
-        continue;
-      }
-
-      const result = await context.executeTool({
-        toolName: requestedToolCall.toolName,
-        arguments: requestedToolCall.arguments
+    if (requestedToolCalls.length > 0) {
+      const executionResult = await executeToolCallQueue({
+        toolCallQueue: requestedToolCalls,
+        executeTool: context.executeTool
       });
-      const summary = toToolCallSummary(result);
-      toolCalls.push(summary);
+      toolCalls.push(...executionResult.toolCalls);
+      createdTask = executionResult.createdTask;
+      createdProject = executionResult.createdProject;
+    } else {
+      let rollingHistory = [...conversationHistory];
 
-      if (requestedToolCall.toolName === 'task.create' && result.ok) {
-        createdTask = result.output ?? null;
-      }
+      for (let round = 0; round < MAX_PLANNED_TOOL_ROUNDS; round += 1) {
+        const plannedResponse = await sendChat({
+          settingsService: context.settingsService,
+          skillsService: context.skillsService,
+          adapterRegistry: context.adapterRegistry,
+          agentAdapterId,
+          agentModel,
+          message,
+          companyProfile: profile,
+          tools: availableTools,
+          conversationHistory: rollingHistory,
+          onChunk: streamRequestId
+            ? (chunk) => publishChatChunk(streamRequestId, chunk)
+            : undefined
+        }).catch(() => null);
 
-      if (requestedToolCall.toolName === 'project.create' && result.ok) {
-        createdProject = result.output ?? null;
+        if (!plannedResponse) {
+          break;
+        }
+
+        if (plannedResponse.reply.trim().length > 0) {
+          plannedReply = plannedResponse.reply;
+        }
+
+        const toolCallQueue = resolveToolCallQueue({
+          requestedToolCalls: [],
+          plannedToolCalls: plannedResponse.toolCalls,
+          plannedRequiresConfirmation: plannedResponse.requiresConfirmation === true
+        });
+
+        if (toolCallQueue.length === 0) {
+          break;
+        }
+
+        const executionResult = await executeToolCallQueue({
+          toolCallQueue,
+          executeTool: context.executeTool
+        });
+
+        toolCalls.push(...executionResult.toolCalls);
+        if (executionResult.createdTask) {
+          createdTask = executionResult.createdTask;
+        }
+        if (executionResult.createdProject) {
+          createdProject = executionResult.createdProject;
+        }
+
+        rollingHistory = appendToolExecutionHistory(
+          rollingHistory,
+          plannedResponse.reply,
+          executionResult.toolCalls
+        );
       }
     }
 
@@ -165,7 +190,7 @@ export const chatRespondTool: ServerToolDefinition = {
         reply: buildChatReply({
           profile,
           toolCalls,
-          plannedReply: plannedResponse?.reply ?? null
+          plannedReply
         }),
         toolCalls,
         task: createdTask,
@@ -372,6 +397,86 @@ function toToolCallSummary(result: ToolExecutionResult): ChatToolCall {
     summary: label ? `Executed ${result.toolName} for “${label}”.` : `Executed ${result.toolName}.`,
     output: result.output
   };
+}
+
+async function executeToolCallQueue(input: {
+  toolCallQueue: ExplicitToolCall[];
+  executeTool: (value: { toolName: string; arguments: Record<string, unknown> }) => Promise<ToolExecutionResult>;
+}): Promise<{ toolCalls: ChatToolCall[]; createdTask: unknown | null; createdProject: unknown | null; }> {
+  const toolCalls: ChatToolCall[] = [];
+  let createdTask: unknown | null = null;
+  let createdProject: unknown | null = null;
+
+  for (const requestedToolCall of input.toolCallQueue) {
+    if (requestedToolCall.toolName === 'chat.respond') {
+      continue;
+    }
+
+    const result = await input.executeTool({
+      toolName: requestedToolCall.toolName,
+      arguments: requestedToolCall.arguments
+    });
+    const summary = toToolCallSummary(result);
+    toolCalls.push(summary);
+
+    if (requestedToolCall.toolName === 'task.create' && result.ok) {
+      createdTask = result.output ?? null;
+    }
+
+    if (requestedToolCall.toolName === 'project.create' && result.ok) {
+      createdProject = result.output ?? null;
+    }
+  }
+
+  return { toolCalls, createdTask, createdProject };
+}
+
+function appendToolExecutionHistory(
+  history: ConversationHistoryEntry[],
+  plannedReply: string,
+  toolCalls: ChatToolCall[]
+): ConversationHistoryEntry[] {
+  if (toolCalls.length === 0) {
+    return history;
+  }
+
+  const summaryBody = toolCalls.map((toolCall) => toolCall.summary).join(' ');
+  const body = plannedReply.trim().length > 0
+    ? `${plannedReply}\n\n${summaryBody}`.trim()
+    : summaryBody;
+
+  return [
+    ...history,
+    {
+      senderId: 'executive',
+      body,
+      toolCalls: toolCalls.map((toolCall) => {
+        const outputJson = toolCall.output !== undefined ? serializeToolOutput(toolCall.output) : undefined;
+        return {
+          toolName: toolCall.toolName,
+          ok: toolCall.ok,
+          summary: toolCall.summary,
+          ...(outputJson ? { outputJson } : {}),
+          ...(toolCall.error ? { error: toolCall.error } : {})
+        };
+      })
+    }
+  ];
+}
+
+function serializeToolOutput(value: unknown): string {
+  try {
+    const serialized = JSON.stringify(value);
+    if (!serialized || serialized.length === 0) {
+      return '';
+    }
+
+    return serialized.length > 2_000
+      ? `${serialized.slice(0, 1_999).trimEnd()}…`
+      : serialized;
+  } catch {
+    return '';
+  }
 }
 
 function buildChatReply(input: {
