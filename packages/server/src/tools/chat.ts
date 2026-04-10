@@ -17,7 +17,7 @@ export interface PlannedChatResponse {
   model: string;
 }
 
-interface PlanChatInput {
+interface SendChatInput {
   settingsService?: SettingsService;
   skillsService?: SkillsService;
   adapterRegistry?: AiAdapterRegistry;
@@ -50,8 +50,8 @@ interface EnabledSkillSummary {
   description: string;
 }
 
-export async function planChat(
-  input: PlanChatInput
+export async function sendChat(
+  input: SendChatInput
 ): Promise<PlannedChatResponse | null> {
   const adapterConfig = await resolveAdapterConfig(
     input.settingsService,
