@@ -480,5 +480,15 @@ export default {
   'Loading budget report…': 'Loading budget report…',
   'Go to Budget settings': 'Go to Budget settings',
   'budget.alert.warn': '⚠️ You have used {{percent}}% of your monthly budget.',
-  'budget.alert.over': '🚨 Monthly budget exceeded ({{percent}}% used).'
+  'budget.alert.over': '🚨 Monthly budget exceeded ({{percent}}% used).',
+
+  // ── Chat composer ──────────────────────────────────────
+  'chat.composer.placeholder.inline-slash': 'Ask the executive agent for guidance, then type / to get inline command suggestions (Tab to apply) …',
+  'chat.composer.suggest.prefix': 'suggest ›',
+  'chat.composer.suggest.accept': 'Tab to accept',
+  'chat.composer.hint.inline-slash': 'Enter send · Shift + Enter newline · Type / for inline command suggestion',
+  'Message': 'Message',
+  'Send': 'Send',
+  'Sending…': 'Sending…',
+  'Streaming…': 'Streaming…'
 };

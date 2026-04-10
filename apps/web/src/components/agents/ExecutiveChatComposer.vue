@@ -3,7 +3,7 @@ import { computed, toRef } from 'vue';
 import { CornerDownLeft, Send } from 'lucide-vue-next';
 
 import { useExecutiveSlashCommands } from '../../composables/useExecutiveSlashCommands';
-import ExecutiveSlashCommandPalette from './ExecutiveSlashCommandPalette.vue';
+import { useI18n } from '../../composables/useI18n';
 import FcButton from '../FcButton.vue';
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected';
@@ -25,17 +25,12 @@ const draftValue = computed({
   get: () => props.modelValue,
   set: (value: string) => emit('update:modelValue', value)
 });
+const { t } = useI18n();
 
 const {
-  composerRef,
-  activeSlashIndex,
   isSlashMode,
-  isSlashPopoverVisible,
-  filteredSlashCommands,
-  slashPopoverStyle,
-  applySlashCommand,
-  onDraftInput,
-  onCaretInteraction,
+  slashSuggestion,
+  applySlashSuggestion,
   onDraftKeydown
 } = useExecutiveSlashCommands(draftValue, toRef(props, 'agentId'));
 
@@ -46,39 +41,29 @@ const handleDraftKeydown = (event: KeyboardEvent): void => {
 
 <template>
   <div class="chat-compose">
-    <label class="fc-label" for="founder-message">Message</label>
+    <label class="fc-label" for="founder-message">{{ t('Message') }}</label>
 
     <div class="chat-compose-shell">
       <textarea
         id="founder-message"
-        ref="composerRef"
         v-model="draftValue"
         class="chat-textarea"
         rows="5"
-        placeholder="Ask the executive agent for guidance, or type / for commands like /help, /create-task, /create-project, and /reset …"
-        @input="onDraftInput"
-        @click="onCaretInteraction"
-        @keyup="onCaretInteraction"
-        @scroll="onCaretInteraction"
+        :placeholder="t('chat.composer.placeholder.inline-slash')"
         @keydown="handleDraftKeydown"
       ></textarea>
-
-      <ExecutiveSlashCommandPalette
-        v-if="isSlashPopoverVisible"
-        class="chat-slash-floating"
-        :style="slashPopoverStyle"
-        :draft-value="draftValue"
-        :commands="filteredSlashCommands"
-        :active-index="activeSlashIndex"
-        @hover="activeSlashIndex = $event"
-        @select="applySlashCommand"
-      />
     </div>
+
+    <p v-if="isSlashMode && slashSuggestion" class="chat-inline-suggestion" @mousedown.prevent="applySlashSuggestion">
+      <span>{{ t('chat.composer.suggest.prefix') }}</span>
+      <code>{{ slashSuggestion }}</code>
+      <span class="chat-inline-suggestion-meta">{{ t('chat.composer.suggest.accept') }}</span>
+    </p>
 
     <div class="chat-compose-footer">
       <p class="chat-compose-hint">
         <CornerDownLeft :size="13" />
-        <span><strong>Enter</strong> send · <strong>Shift + Enter</strong> newline · Type <code>/</code> to open command</span>
+        <span>{{ t('chat.composer.hint.inline-slash') }}</span>
       </p>
 
       <FcButton
@@ -88,7 +73,7 @@ const handleDraftKeydown = (event: KeyboardEvent): void => {
         @click="emit('send')"
       >
         <Send :size="14" />
-        {{ props.isStreaming ? 'Streaming…' : props.isSending ? 'Sending…' : 'Send' }}
+        {{ props.isStreaming ? t('Streaming…') : props.isSending ? t('Sending…') : t('Send') }}
       </FcButton>
     </div>
   </div>
@@ -124,9 +109,23 @@ const handleDraftKeydown = (event: KeyboardEvent): void => {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--fc-primary) 12%, transparent), 0 18px 36px -28px rgba(59, 130, 246, 0.45);
 }
 
-.chat-slash-floating {
-  position: absolute;
-  z-index: 30;
+.chat-inline-suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 2px;
+  font-size: 0.76rem;
+  color: var(--fc-text-muted);
+  user-select: none;
+}
+
+.chat-inline-suggestion code {
+  font-size: 0.72rem;
+  color: var(--fc-text-main);
+}
+
+.chat-inline-suggestion-meta {
+  color: var(--fc-text-faint);
 }
 
 .chat-compose-footer {

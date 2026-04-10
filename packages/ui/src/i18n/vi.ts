@@ -479,5 +479,15 @@ export default {
   'Loading budget report…': 'Đang tải báo cáo ngân sách…',
   'Go to Budget settings': 'Đến cài đặt ngân sách',
   'budget.alert.warn': '⚠️ Bạn đã sử dụng {{percent}}% ngân sách tháng.',
-  'budget.alert.over': '🚨 Vượt ngân sách tháng ({{percent}}% đã dùng).'
+  'budget.alert.over': '🚨 Vượt ngân sách tháng ({{percent}}% đã dùng).',
+
+  // ── Chat composer ──────────────────────────────────────
+  'chat.composer.placeholder.inline-slash': 'Trao đổi với executive agent, sau đó gõ / để nhận gợi ý command inline (Tab để áp dụng) …',
+  'chat.composer.suggest.prefix': 'gợi ý ›',
+  'chat.composer.suggest.accept': 'Nhấn Tab để dùng',
+  'chat.composer.hint.inline-slash': 'Enter để gửi · Shift + Enter xuống dòng · Gõ / để xem gợi ý command inline',
+  'Message': 'Tin nhắn',
+  'Send': 'Gửi',
+  'Sending…': 'Đang gửi…',
+  'Streaming…': 'Đang phản hồi…'
 }
