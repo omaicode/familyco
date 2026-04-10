@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { AlertTriangle, ArrowDown, CircleCheckBig, LoaderCircle, MessagesSquare } from 'lucide-vue-next';
 
 import type { ChatToolCallDetails, ThreadMessage } from '../../composables/executiveChat.shared';
+import { useI18n } from '../../composables/useI18n';
 
 const props = defineProps<{
   thread: ThreadMessage[];
@@ -11,6 +12,7 @@ const props = defineProps<{
   isLoadingOlder?: boolean;
   hasMoreHistory?: boolean;
 }>();
+const { t } = useI18n();
 
 const emit = defineEmits<{
   (event: 'loadOlder'): void;
@@ -53,6 +55,19 @@ const isStreamingMessage = (message: ThreadMessage): boolean => {
 
   const lastAgentMessage = [...props.thread].reverse().find((entry) => entry.direction === 'agent_to_founder');
   return lastAgentMessage?.id === message.id;
+};
+
+const getStreamingStatusText = (message: ThreadMessage): string => {
+  const toolCalls = getMessageToolCalls(message);
+  if (toolCalls.length > 0) {
+    return t('chat.thread.status.tool');
+  }
+
+  if (message.body.trim().length === 0) {
+    return t('chat.thread.status.reasoning');
+  }
+
+  return t('chat.thread.status.typing');
 };
 
 const scrollToBottom = (behavior: ScrollBehavior = 'smooth'): void => {
@@ -160,7 +175,7 @@ watch(
 
           <div v-if="isStreamingMessage(message)" class="chat-streaming-indicator">
             <LoaderCircle :size="12" class="chat-streaming-spinner" />
-            <span>Agent is responding…</span>
+            <span>{{ getStreamingStatusText(message) }}</span>
           </div>
 
           <div v-if="message.direction === 'agent_to_founder' && getMessageToolCalls(message).length > 0" class="chat-tool-results">
