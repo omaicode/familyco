@@ -9,6 +9,7 @@ import ProjectsPage from './views/ProjectsPage.vue';
 import SettingsPage from './views/SettingsPage.vue';
 import TasksPage from './views/TasksPage.vue';
 import BudgetPage from './views/BudgetPage.vue';
+import SkillsPage from './views/SkillsPage.vue';
 import { uiRuntime } from './runtime';
 import ChatPage from './views/ChatPage.vue';
 
@@ -69,6 +70,11 @@ export const router = createRouter({
       path: '/settings',
       component: SettingsPage,
       meta: { title: 'Settings' }
+    },
+    {
+      path: '/skills',
+      component: SkillsPage,
+      meta: { title: 'Skills' }
     }
   ]
 });

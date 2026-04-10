@@ -397,6 +397,28 @@ export interface BudgetReport {
   dailyBreakdown: BudgetReportDailyEntry[];
 }
 
+export interface SkillListItem {
+  id: string;
+  name: string;
+  description: string;
+  version: string | null;
+  tags: string[];
+  path: string;
+  source: 'local';
+  enabled: boolean;
+}
+
+export interface InvalidSkillItem {
+  id: string;
+  path: string;
+  reason: string;
+}
+
+export interface SkillsListResponse {
+  items: SkillListItem[];
+  invalidSkills: InvalidSkillItem[];
+}
+
 export interface FamilyCoApiContracts {
 
   listAgents: () => Promise<AgentListItem[]>;
@@ -439,6 +461,10 @@ export interface FamilyCoApiContracts {
   getDashboardSummary: (projectId?: string) => Promise<DashboardSummary>;
   listAudit: (query?: ListAuditPayload) => Promise<AuditListItem[]>;
   getBudgetReport: () => Promise<BudgetReport>;
+  listSkills: () => Promise<SkillsListResponse>;
+  getSkill: (skillId: string) => Promise<SkillListItem>;
+  enableSkill: (skillId: string) => Promise<SkillListItem>;
+  disableSkill: (skillId: string) => Promise<SkillListItem>;
 }
 
 export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiContracts => ({
@@ -603,5 +629,9 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     const queryString = params.toString();
     return client.get<AuditListItem[]>(`/api/v1/audit${queryString ? `?${queryString}` : ''}`);
   },
-  getBudgetReport: () => client.get<BudgetReport>('/api/v1/budget/report')
+  getBudgetReport: () => client.get<BudgetReport>('/api/v1/budget/report'),
+  listSkills: () => client.get<SkillsListResponse>('/api/v1/skills'),
+  getSkill: (skillId) => client.get<SkillListItem>(`/api/v1/skills/${skillId}`),
+  enableSkill: (skillId) => client.post<SkillListItem>(`/api/v1/skills/${skillId}/enable`),
+  disableSkill: (skillId) => client.post<SkillListItem>(`/api/v1/skills/${skillId}/disable`)
 });

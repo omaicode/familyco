@@ -7,6 +7,7 @@ export type AppRoutePath =
   | '/inbox'
   | '/audit'
   | '/budget'
+  | '/skills'
   | '/settings';
 
 export interface AppNavigationSection {
@@ -61,6 +62,11 @@ export const appNavigationSections: AppNavigationSection[] = [
     path: '/budget',
     label: 'Budget',
     description: 'Track AI token usage, estimated cost, and monthly spend against your budget limit.'
+  },
+  {
+    path: '/skills',
+    label: 'Skills',
+    description: 'Manage local SKILL.md skills and control which ones are enabled in registry.'
   },
   {
     path: '/settings',

@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import os from 'node:os';
+import path from 'node:path';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import {
@@ -36,6 +37,7 @@ import { registerEngineController } from './modules/engine/index.js';
 import { registerInboxController } from './modules/inbox/index.js';
 import { registerProjectController } from './modules/project/index.js';
 import { registerProviderController } from './modules/provider/index.js';
+import { registerSkillsController } from './modules/skills/index.js';
 import { registerSettingsController } from './modules/settings/index.js';
 import { registerSetupController } from './modules/setup/index.js';
 import { registerTaskController } from './modules/task/index.js';
@@ -72,6 +74,7 @@ import { SettingsBackedMemoryService } from './runtime/settings-memory.service.j
 import { DefaultToolExecutor } from './tools/index.js';
 import { createAdapterRegistry } from './adapters/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
+import { SkillsService } from './modules/skills/skills.service.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
 
@@ -90,6 +93,7 @@ export interface CreateAppOptions {
   enableHeartbeatScheduler?: boolean;
   heartbeatPollMs?: number;
   defaultHeartbeatMinutes?: number;
+  skillsRootDir?: string;
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
@@ -151,6 +155,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const inboxService = new InboxService(inboxRepository);
   const projectService = new ProjectService(projectRepository);
   const settingsService = new SettingsService(settingsRepository);
+  const skillsService = new SkillsService(
+    settingsService,
+    options.skillsRootDir ?? path.join(process.cwd(), 'skills')
+  );
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
@@ -415,6 +423,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       });
       registerSettingsController(api, {
         settingsService,
+        auditService
+      });
+      registerSkillsController(api, {
+        skillsService,
         auditService
       });
       registerSetupController(api, {
