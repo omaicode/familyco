@@ -95,8 +95,9 @@ export const chatRespondTool: ServerToolDefinition = {
     const plannedResponse =
       requestedToolCalls.length > 0
         ? null
-        : await planChatWithProvider({
+          : await planChatWithProvider({
             settingsService: context.settingsService,
+            skillsService: context.skillsService,
             adapterRegistry: context.adapterRegistry,
             agentAdapterId,
             agentModel,

@@ -170,6 +170,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     agentService,
     projectService,
     settingsService,
+    skillsService,
     taskService,
     adapterRegistry
   });

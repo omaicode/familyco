@@ -1,4 +1,5 @@
 import type { AiAdapterRegistry, SettingsService } from '@familyco/core';
+import type { SkillsService } from '../modules/skills/skills.service.js';
 
 import type { CompanyProfile } from './company-profile-read.tool.js';
 import { asNonEmptyString, isRecord } from './tool.helpers.js';
@@ -18,6 +19,7 @@ export interface PlannedChatResponse {
 
 interface PlanChatWithProviderInput {
   settingsService?: SettingsService;
+  skillsService?: SkillsService;
   adapterRegistry?: AiAdapterRegistry;
   /** Override adapter for this specific agent (null = use system default) */
   agentAdapterId?: string | null;
@@ -42,6 +44,12 @@ interface ProviderSettings {
   model: string;
 }
 
+interface EnabledSkillSummary {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export async function planChatWithProvider(
   input: PlanChatWithProviderInput
 ): Promise<PlannedChatResponse | null> {
@@ -54,7 +62,8 @@ export async function planChatWithProvider(
     return null;
   }
 
-  const systemPrompt = buildSystemPrompt(input.companyProfile, input.tools);
+  const enabledSkills = await resolveEnabledSkills(input.settingsService, input.skillsService);
+  const systemPrompt = buildSystemPrompt(input.companyProfile, input.tools, enabledSkills);
   const userPrompt = buildUserPrompt(input.message, input.conversationHistory ?? []);
 
   const rawText = await requestPlannerCompletion({
@@ -124,7 +133,11 @@ function asAdapterId(value: unknown): AdapterId | undefined {
   return undefined;
 }
 
-function buildSystemPrompt(companyProfile: CompanyProfile, tools: ToolDefinitionSummary[]): string {
+function buildSystemPrompt(
+  companyProfile: CompanyProfile,
+  tools: ToolDefinitionSummary[],
+  enabledSkills: EnabledSkillSummary[]
+): string {
   const toolDescriptions = tools.map((tool) => {
     const params = tool.parameters
       .map((parameter) => `${parameter.name}${parameter.required ? '*' : ''}: ${parameter.description}`)
@@ -132,9 +145,16 @@ function buildSystemPrompt(companyProfile: CompanyProfile, tools: ToolDefinition
     return `- ${tool.name}: ${tool.description}${params ? ` Parameters => ${params}` : ''}`;
   }).join('\n');
 
+  const skillDescriptions = enabledSkills.length > 0
+    ? enabledSkills
+      .map((skill) => `- ${skill.name} [${skill.id}]: ${compactText(skill.description, 180)}`)
+      .join('\n')
+    : '- No local skills enabled.';
+
   return [
     'You are the FamilyCo executive agent.',
     'Decide whether the founder message needs one or more tools. Never guess hidden tools and never invent tool names.',
+    'Use enabled local skills as additional company capabilities/context while deciding tool calls and composing replies.',
     'If no tool is needed, return an empty toolCalls array.',
     'If a tool is needed, choose from the provided tool list and include concrete arguments for every required field.',
     'If you do not know a valid agentId or projectId, omit that optional field instead of inventing a database identifier.',
@@ -142,6 +162,8 @@ function buildSystemPrompt(companyProfile: CompanyProfile, tools: ToolDefinition
     '{"reply":"string","toolCalls":[{"toolName":"string","arguments":{}}]}',
     `Company name: ${companyProfile.companyName}`,
     `Company description: ${companyProfile.companyDescription || 'Not provided.'}`,
+    'Enabled local skills:',
+    skillDescriptions,
     'Available tools:',
     toolDescriptions
   ].join('\n');
@@ -204,6 +226,44 @@ async function requestPlannerCompletion(input: {
   }
 
   throw new Error(`ADAPTER_NOT_FOUND:${input.providerSettings.providerName}`);
+}
+
+async function resolveEnabledSkills(
+  settingsService?: SettingsService,
+  skillsService?: SkillsService
+): Promise<EnabledSkillSummary[]> {
+  if (skillsService) {
+    const listed = await skillsService.list().catch(() => null);
+    if (listed) {
+      return listed.items
+        .filter((skill) => skill.enabled)
+        .map((skill) => ({
+          id: skill.id,
+          name: skill.name,
+          description: skill.description
+        }));
+    }
+  }
+
+  const registry = await readSkillsRegistryFallback(settingsService);
+  return registry.map((skillId) => ({
+    id: skillId,
+    name: skillId,
+    description: 'Enabled local skill'
+  }));
+}
+
+async function readSkillsRegistryFallback(settingsService?: SettingsService): Promise<string[]> {
+  if (!settingsService) {
+    return [];
+  }
+
+  const setting = await settingsService.get('skills.registry');
+  if (!isRecord(setting?.value) || !Array.isArray(setting.value.enabled)) {
+    return [];
+  }
+
+  return setting.value.enabled.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
 }
 
 function parsePlannerResponse(text: string, tools: ToolDefinitionSummary[]): Omit<PlannedChatResponse, 'providerName' | 'model'> {

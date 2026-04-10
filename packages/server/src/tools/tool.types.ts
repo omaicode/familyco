@@ -8,11 +8,13 @@ import type {
   ToolExecutionInput,
   ToolExecutionResult
 } from '@familyco/core';
+import type { SkillsService } from '../modules/skills/skills.service.js';
 
 export interface DefaultToolExecutorDeps {
   agentService?: AgentService;
   projectService?: ProjectService;
   settingsService?: SettingsService;
+  skillsService?: SkillsService;
   taskService?: TaskService;
   adapterRegistry?: AiAdapterRegistry;
 }
