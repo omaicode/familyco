@@ -283,7 +283,7 @@ function parseChatResponse(
 
   if (!isRecord(parsed)) {
     return {
-      reply: 'I reviewed the request and kept it in the executive chat lane.',
+      reply: asNonEmptyString(text) ?? 'I reviewed the request and kept it in the executive chat lane.',
       toolCalls: normalizedAdapterToolCalls
     };
   }

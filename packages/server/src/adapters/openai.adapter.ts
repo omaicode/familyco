@@ -20,6 +20,7 @@ export class OpenAiAdapter implements AiAdapter {
   private static readonly TIMEOUT_MS = 25_000;
 
   async chat(input: AdapterChatInput): Promise<AdapterChatResult> {
+    const toolNameMap = new Map<string, string>();
     const requestBody: Record<string, unknown> = {
       model: input.model,
       temperature: 0.2,
@@ -48,25 +49,29 @@ export class OpenAiAdapter implements AiAdapter {
     }
 
     if (input.tools && input.tools.length > 0) {
-      const functionTools = input.tools.map((tool) => ({
-        type: 'function',
-        name: tool.name,
-        description: tool.description,
-        parameters: {
-          type: 'object',
-          properties: Object.fromEntries(
-            tool.parameters.map((parameter) => [
-              parameter.name,
-              {
-                type: mapJsonSchemaType(parameter.type),
-                description: parameter.description
-              }
-            ])
-          ),
-          required: tool.parameters.filter((parameter) => parameter.required).map((parameter) => parameter.name),
-          additionalProperties: true
-        }
-      }));
+      const functionTools = input.tools.map((tool) => {
+        const openAiToolName = toOpenAiToolName(tool.name, toolNameMap);
+
+        return {
+          type: 'function',
+          name: openAiToolName,
+          description: tool.description,
+          parameters: {
+            type: 'object',
+            properties: Object.fromEntries(
+              tool.parameters.map((parameter) => [
+                parameter.name,
+                {
+                  type: mapJsonSchemaType(parameter.type),
+                  description: parameter.description
+                }
+              ])
+            ),
+            required: tool.parameters.filter((parameter) => parameter.required).map((parameter) => parameter.name),
+            additionalProperties: true
+          }
+        };
+      });
 
       requestBody.tools = Array.isArray(requestBody.tools)
         ? [...requestBody.tools, ...functionTools]
@@ -102,7 +107,7 @@ export class OpenAiAdapter implements AiAdapter {
               .trim()
           : '');
 
-      const toolCalls = extractToolCalls(payload);
+      const toolCalls = extractToolCalls(payload, toolNameMap);
       if ((typeof content !== 'string' || content.trim().length === 0) && toolCalls.length === 0) {
         throw new Error('PROVIDER_INVALID_RESPONSE:OpenAI returned an empty response');
       }
@@ -165,17 +170,20 @@ export class OpenAiAdapter implements AiAdapter {
   }
 }
 
-function extractToolCalls(payload: unknown): AdapterPlannedToolCall[] {
+function extractToolCalls(payload: unknown, toolNameMap: ReadonlyMap<string, string>): AdapterPlannedToolCall[] {
   if (!isRecord(payload) || !Array.isArray(payload.output)) {
     return [];
   }
 
   return payload.output
-    .map((entry) => extractToolCallFromOutput(entry))
+    .map((entry) => extractToolCallFromOutput(entry, toolNameMap))
     .filter((entry): entry is AdapterPlannedToolCall => entry !== null);
 }
 
-function extractToolCallFromOutput(value: unknown): AdapterPlannedToolCall | null {
+function extractToolCallFromOutput(
+  value: unknown,
+  toolNameMap: ReadonlyMap<string, string>
+): AdapterPlannedToolCall | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -195,7 +203,7 @@ function extractToolCallFromOutput(value: unknown): AdapterPlannedToolCall | nul
   }
 
   return {
-    name,
+    name: toolNameMap.get(name) ?? name,
     arguments: parsedArguments
   };
 }
@@ -229,6 +237,27 @@ function mapJsonSchemaType(type: string): string {
     default:
       return 'string';
   }
+}
+
+function toOpenAiToolName(
+  originalName: string,
+  toolNameMap: Map<string, string>
+): string {
+  const base = originalName
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/^[^a-zA-Z_]+/, '');
+  const normalizedBase = base.length > 0 ? base : 'tool';
+  let candidate = normalizedBase.slice(0, 64);
+  let suffix = 1;
+
+  while (toolNameMap.has(candidate) && toolNameMap.get(candidate) !== originalName) {
+    const suffixText = `_${suffix}`;
+    candidate = `${normalizedBase.slice(0, Math.max(64 - suffixText.length, 1))}${suffixText}`;
+    suffix += 1;
+  }
+
+  toolNameMap.set(candidate, originalName);
+  return candidate;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
