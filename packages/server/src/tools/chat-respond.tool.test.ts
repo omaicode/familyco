@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveToolCallQueue } from './chat-respond.tool.js';
+import { parseConversationHistory, resolveToolCallQueue } from './chat-respond.tool.js';
 
 test('resolveToolCallQueue blocks planned calls while waiting for confirmation', () => {
   const queue = resolveToolCallQueue({
@@ -31,4 +31,22 @@ test('resolveToolCallQueue executes planned calls after confirmation', () => {
   });
 
   assert.deepEqual(queue, [{ toolName: 'task.create', arguments: { title: 'Run weekly review' } }]);
+});
+
+test('parseConversationHistory keeps toolCalls from prior messages', () => {
+  const history = parseConversationHistory([
+    {
+      senderId: 'agent-l0',
+      body: 'Created project.',
+      toolCalls: [
+        { toolName: 'project.create', ok: true, summary: 'Project created' },
+        { toolName: 'task.create', ok: false, summary: 'Task failed', error: { message: 'INVALID_PROJECT' } }
+      ]
+    }
+  ]);
+
+  assert.equal(history.length, 1);
+  assert.equal(history[0]?.toolCalls?.length, 2);
+  assert.equal(history[0]?.toolCalls?.[0]?.toolName, 'project.create');
+  assert.equal(history[0]?.toolCalls?.[1]?.error?.message, 'INVALID_PROJECT');
 });

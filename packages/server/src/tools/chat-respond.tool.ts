@@ -29,6 +29,17 @@ interface ConversationHistoryEntry {
   body: string;
   title?: string;
   createdAt?: string;
+  toolCalls?: ConversationHistoryToolCall[];
+}
+
+interface ConversationHistoryToolCall {
+  toolName: string;
+  ok: boolean;
+  summary: string;
+  error?: {
+    code?: string;
+    message: string;
+  };
 }
 
 interface ChatToolOutput {
@@ -227,7 +238,7 @@ function readConversationHistory(argumentsMap: Record<string, unknown>): Convers
   return parseConversationHistory(argumentsMap.meta.conversationHistory);
 }
 
-function parseConversationHistory(value: unknown): ConversationHistoryEntry[] {
+export function parseConversationHistory(value: unknown): ConversationHistoryEntry[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -252,7 +263,46 @@ function parseConversationEntry(value: unknown): ConversationHistoryEntry | null
     senderId,
     body,
     title: asNonEmptyString(value.title),
-    createdAt: asNonEmptyString(value.createdAt)
+    createdAt: asNonEmptyString(value.createdAt),
+    ...(Array.isArray(value.toolCalls)
+      ? {
+          toolCalls: parseConversationHistoryToolCalls(value.toolCalls)
+        }
+      : {})
+  };
+}
+
+function parseConversationHistoryToolCalls(value: unknown[]): ConversationHistoryToolCall[] {
+  return value
+    .map((entry) => parseConversationHistoryToolCall(entry))
+    .filter((entry): entry is ConversationHistoryToolCall => entry !== null);
+}
+
+function parseConversationHistoryToolCall(value: unknown): ConversationHistoryToolCall | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const toolName = asNonEmptyString(value.toolName);
+  const summary = asNonEmptyString(value.summary);
+  if (!toolName || typeof value.ok !== 'boolean' || !summary) {
+    return null;
+  }
+
+  const errorMessage = isRecord(value.error) ? asNonEmptyString(value.error.message) : undefined;
+  const errorCode = isRecord(value.error) ? asNonEmptyString(value.error.code) : undefined;
+  const error = errorMessage
+    ? {
+        message: errorMessage,
+        ...(errorCode ? { code: errorCode } : {})
+      }
+    : undefined;
+
+  return {
+    toolName,
+    ok: value.ok,
+    summary,
+    ...(error ? { error } : {})
   };
 }
 
