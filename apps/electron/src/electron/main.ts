@@ -27,7 +27,7 @@ const resolveRendererTarget = (): { mode: 'url'; value: string } | { mode: 'file
     return { mode: 'file', value: path.join(rendererDistOverride, 'index.html') };
   }
 
-  const defaultDist = path.join(process.resourcesPath, 'renderer', 'index.html');
+  const defaultDist = path.join(app.getAppPath(), 'web', 'index.html');
 
   return { mode: 'file', value: defaultDist };
 };

@@ -1,6 +1,7 @@
 appId: com.familyco.app
 productName: FamilyCo
 artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+executableName: "familyco"
 directories:
   output: dist/packages
 files:
@@ -8,12 +9,22 @@ files:
     to: .
     filter:
       - "**/*"
-  - package.json
-extraResources:
+      - "!packages/*"
+  - from: ../../node_modules
+    to: node_modules
+    filter:
+      - "**/*"
+      - "!electron*/"
+      - "!@electron*/"
+      - "!vite*/"
+      - "!@vite*/"
+      - "!vue*/"
   - from: ../web/dist
     to: web
     filter:
       - "**/*"
+  - package.json
+extraResources:
   - from: ../../prisma/migrations
     to: prisma/migrations
     filter:

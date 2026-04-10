@@ -8,6 +8,7 @@ import svgLoader from 'vite-svg-loader'
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  base: './',
   plugins: [vue(), svgLoader()],
   resolve: {
     alias: {
