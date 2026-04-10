@@ -9,7 +9,7 @@ export const agentListSlashSpec: SlashCommandSpec = {
   label: 'List agents',
   description: 'List agents with optional filters.',
   insertValue: '/agents ',
-  levels: ['L1', 'L2'],
+  levels: ['L0', 'L1', 'L2'],
   auditAction: 'agent.chat.agents',
   buildArguments: (args) => {
     const kv = parseKeyValueArgs(args);

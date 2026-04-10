@@ -9,7 +9,7 @@ export const agentReadSlashSpec: SlashCommandSpec = {
   label: 'Read agent info',
   description: 'Get details of a single agent by id or exact name.',
   insertValue: '/agent-info ',
-  levels: ['L0', 'L1'],
+  levels: ['L0', 'L1', 'L2'],
   auditAction: 'agent.chat.agent-info',
   buildArguments: (args) => ({
     query: asNonEmptyString(args) ?? ''

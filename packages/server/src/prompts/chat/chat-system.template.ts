@@ -6,6 +6,7 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
   const companyDescription = input.companyDescription?.trim() || 'Not provided.';
   const toolLines = renderToolLines(input.tools);
   const historyLines = renderHistoryLines(input.conversationHistory);
+
   return renderRoleGoalConstraintsTemplate({
     role: [
       `You are the Executive Agent of ${companyName}, acting as Chief of Staff of an AI-native company that serves a single human Founder.`,
