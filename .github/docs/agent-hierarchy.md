@@ -52,7 +52,7 @@ Executive Agent là "bộ não điều hành" của công ty AI. Đây là agent
 ```yaml
 name: "Chief of Staff"
 level: L0
-model: GPT-4o / Claude 3.5 Sonnet (do Founder chọn)
+model: gpt-5-mini / Claude 3.5 Sonnet (do Founder chọn)
 tone: professional, concise
 memory: long-term (công ty context, lịch sử quyết định)
 tools: [task_manager, project_manager, agent_spawner, report_generator, inbox_reader]
@@ -151,7 +151,7 @@ interface AgentProfile {
   status: "active" | "idle" | "running" | "error" | "paused" | "terminated";
 
   // AI Configuration
-  model: string;           // "gpt-4o", "claude-3-5-sonnet", v.v.
+  model: string;           // "gpt-5-mini", "claude-3-5-sonnet", v.v.
   systemPrompt: string;    // prompt hệ thống tùy chỉnh
   temperature: number;
   maxTokensPerRun: number;

@@ -19,9 +19,9 @@ interface AdapterOption {
 }
 
 const adapterOptions: AdapterOption[] = [
-  { value: 'copilot', label: 'GitHub Copilot', models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3.5-sonnet'], keyHint: 'ghp_… or ghu_…' },
-  { value: 'openai',  label: 'OpenAI',         models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'],               keyHint: 'sk-…' },
-  { value: 'claude',  label: 'Claude',         models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'], keyHint: 'sk-ant-…' },
+  { value: 'copilot', label: 'GitHub Copilot', models: ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5', 'gpt-5.4', 'claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5'], keyHint: 'ghp_… or ghu_…' },
+  { value: 'openai',  label: 'OpenAI',         models: ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5', 'gpt-5.4'], keyHint: 'sk-…' },
+  { value: 'claude',  label: 'Claude',         models: ['claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-5', 'claude-opus-4-6', 'claude-haiku-4-5'], keyHint: 'sk-ant-…' }
 ];
 
 const { t } = useI18n();
@@ -32,14 +32,14 @@ const emit = defineEmits<{
 
 // ── Primary adapter state ─────────────────────────────────
 const providerName = ref<AdapterId>('openai');
-const providerModel = ref('gpt-4o');
+const providerModel = ref('gpt-5-mini');
 const providerSaving = ref(false);
 const providerTesting = ref(false);
 const providerTestResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
 
 const providerDraft = reactive<Record<AdapterId, { apiKey: string; model: string }>>({
-  copilot: { apiKey: '', model: 'gpt-4o' },
-  openai:  { apiKey: '', model: 'gpt-4o' },
+  copilot: { apiKey: '', model: 'gpt-5-mini' },
+  openai:  { apiKey: '', model: 'gpt-5-mini' },
   claude:  { apiKey: '', model: 'claude-sonnet-4-5' },
 });
 

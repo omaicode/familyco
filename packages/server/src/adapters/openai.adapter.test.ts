@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { OpenAiAdapter } from './openai.adapter.js';
 
-test('OpenAiAdapter sends gpt-4o payload without reasoning', async () => {
+test('OpenAiAdapter sends gpt-5-mini payload without reasoning', async () => {
   const adapter = new OpenAiAdapter();
   const restoreFetch = globalThis.fetch;
   let requestBody: Record<string, unknown> | null = null;
@@ -16,7 +16,7 @@ test('OpenAiAdapter sends gpt-4o payload without reasoning', async () => {
   try {
     const result = await adapter.chat({
       apiKey: 'sk-test',
-      model: 'gpt-4o',
+      model: 'gpt-5-mini',
       systemPrompt: 'system',
       userPrompt: 'hello'
     });

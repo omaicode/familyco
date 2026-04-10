@@ -11,10 +11,10 @@ import { readJsonLikePayload, readProviderError, readSseStream, toAdapterErrorMe
 export class OpenAiAdapter implements AiAdapter {
   readonly id = 'openai';
   readonly name = 'OpenAI';
-  readonly description = 'OpenAI GPT-4o — best for general-purpose agents';
+  readonly description = 'OpenAI gpt-5-mini — best for general-purpose agents';
   readonly keyHint = 'sk-…';
-  readonly defaultModel = 'gpt-4o';
-  readonly availableModels = ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'] as const;
+  readonly defaultModel = 'gpt-5-mini';
+  readonly availableModels = ['gpt-5-mini', 'gpt-5.4-mini', 'o3-mini', 'o1'] as const;
 
   private static readonly RESPONSES_ENDPOINT = 'https://api.openai.com/v1/responses';
   private static readonly TIMEOUT_MS = 25_000;
@@ -88,7 +88,10 @@ export class OpenAiAdapter implements AiAdapter {
     const timeout = setTimeout(() => controller.abort(), OpenAiAdapter.TIMEOUT_MS);
 
     try {
-      console.debug(`[OpenAiAdapter] Sending request to OpenAI with body: ${JSON.stringify(requestBody)}`);
+      if(process.env.NODE_ENV === 'development') {
+        console.debug(`[OpenAiAdapter] Sending request to OpenAI with body: ${JSON.stringify(requestBody)}`);
+      }
+
       const response = await fetch(OpenAiAdapter.RESPONSES_ENDPOINT, {
         method: 'POST',
         signal: controller.signal,
@@ -98,7 +101,11 @@ export class OpenAiAdapter implements AiAdapter {
         },
         body: JSON.stringify(requestBody)
       });
-      console.debug(`[OpenAiAdapter] Received response`, response);
+
+      if(process.env.NODE_ENV === 'development') {
+        console.debug(`[OpenAiAdapter] Received response`, response);
+      }
+      
       if (!response.ok) {
         const payload = await readJsonLikePayload(response);
         throw new Error(readProviderError('openai', payload));
@@ -183,7 +190,7 @@ export class OpenAiAdapter implements AiAdapter {
           'authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5.4-mini',
           max_output_tokens: 1,
           temperature: 0,
           input: [{ role: 'user', content: 'ping' }]
@@ -197,7 +204,7 @@ export class OpenAiAdapter implements AiAdapter {
         return { ok: false, latencyMs, error: readProviderError('openai', payload) };
       }
 
-      return { ok: true, latencyMs, model: 'gpt-4o-mini' };
+      return { ok: true, latencyMs, model: 'gpt-5.4-mini' };
     } catch (error) {
       return {
         ok: false,

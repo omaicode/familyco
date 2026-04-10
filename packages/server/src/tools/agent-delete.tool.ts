@@ -52,6 +52,9 @@ export const agentDeleteTool: ServerToolDefinition = {
     if (!target) {
       return invalidArguments('agent.delete', `agent not found: ${agentIdOrName}`);
     }
+    if(target.level === 'L0') {
+      return invalidArguments('agent.delete', `cannot delete executive agents: ${agentIdOrName}`);
+    }
 
     const result = await context.agentService.deleteAgent(target.id);
     return {

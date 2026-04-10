@@ -7,8 +7,8 @@ export class CopilotAdapter implements AiAdapter {
   readonly name = 'GitHub Copilot';
   readonly description = 'GitHub Copilot / GitHub Models inference API';
   readonly keyHint = 'ghp_… or ghu_…';
-  readonly defaultModel = 'gpt-4o';
-  readonly availableModels = ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3.5-sonnet'] as const;
+  readonly defaultModel = 'gpt-5-mini';
+  readonly availableModels = ['gpt-5-mini', 'gpt-5.4-mini', 'o3-mini', 'claude-3.5-sonnet'] as const;
 
   private static readonly ENDPOINT = 'https://models.github.ai/inference/chat/completions';
   private static readonly TIMEOUT_MS = 25_000;

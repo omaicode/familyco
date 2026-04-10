@@ -37,7 +37,7 @@ const form = reactive({
   companyDescription: '',
   provider: 'openai' as AdapterId,
   apiKey: '',
-  defaultModel: 'gpt-4o',
+  defaultModel: 'gpt-5-mini',
 });
 
 interface AdapterOption {
@@ -55,16 +55,16 @@ const adapterOptions = computed<AdapterOption[]>(() => [
     label: 'GitHub Copilot',
     description: t('GitHub Copilot — code-aware reasoning powered by GitHub models'),
     keyHint: 'ghp_… or ghu_…',
-    defaultModel: 'gpt-4o',
-    models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3.5-sonnet'],
+    defaultModel: 'gpt-5-mini',
+    models: ['gpt-5-mini', 'gpt-5.4-mini', 'o3-mini', 'claude-3.5-sonnet'],
   },
   {
     value: 'openai',
     label: 'OpenAI',
-    description: t('OpenAI GPT-4o — best for general-purpose agents'),
+    description: t('OpenAI gpt-5-mini — best for general-purpose agents'),
     keyHint: 'sk-…',
-    defaultModel: 'gpt-4o',
-    models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'],
+    defaultModel: 'gpt-5-mini',
+    models: ['gpt-5-mini', 'gpt-5.4-mini', 'o3-mini', 'o1'],
   },
   {
     value: 'claude',

@@ -9,7 +9,7 @@ export const agentListSlashSpec: SlashCommandSpec = {
   label: 'List agents',
   description: 'List agents with optional filters.',
   insertValue: '/agents ',
-  levels: ['L0', 'L1'],
+  levels: ['L1', 'L2'],
   auditAction: 'agent.chat.agents',
   buildArguments: (args) => {
     const kv = parseKeyValueArgs(args);
@@ -28,7 +28,7 @@ export const agentListTool: ServerToolDefinition = {
   description: 'List agents with optional filters by level, status, department, parent, and keyword.',
   slashSpec: agentListSlashSpec,
   parameters: [
-    { name: 'level', type: 'L0 | L1 | L2', required: false, description: 'Agent level filter.' },
+    { name: 'level', type: 'L1 | L2', required: false, description: 'Agent level filter.' },
     { name: 'status', type: 'active | idle | running | error | paused | terminated', required: false, description: 'Agent status filter.' },
     { name: 'department', type: 'string', required: false, description: 'Department filter.' },
     { name: 'parentAgentId', type: 'string', required: false, description: 'Parent agent id or name.' },
@@ -53,6 +53,10 @@ export const agentListTool: ServerToolDefinition = {
 
     const agents = await context.agentService.listAgents();
     const filtered = agents.filter((agent) => {
+      if (agent.level === 'L0') {
+        return false; // Exclude executive agents
+      }
+      
       if (level && agent.level !== level) {
         return false;
       }
@@ -97,7 +101,7 @@ export const agentListTool: ServerToolDefinition = {
 };
 
 function asAgentLevel(value: unknown): AgentLevel | undefined {
-  if (value === 'L0' || value === 'L1' || value === 'L2') {
+  if (value === 'L1' || value === 'L2') {
     return value;
   }
 

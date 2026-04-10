@@ -4,8 +4,8 @@
  */
 const MODEL_COST_PER_1K: Record<string, { input: number; output: number }> = {
   // OpenAI
-  'gpt-4o':           { input: 0.0025,  output: 0.01 },
-  'gpt-4o-mini':      { input: 0.000150, output: 0.000600 },
+  'gpt-5-mini':           { input: 0.0025,  output: 0.01 },
+  'gpt-5.4-mini':      { input: 0.000150, output: 0.000600 },
   'o3-mini':          { input: 0.0011,  output: 0.0044 },
   'o1':               { input: 0.015,   output: 0.06 },
   // Claude

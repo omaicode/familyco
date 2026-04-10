@@ -17,9 +17,9 @@ interface AdapterOption {
 }
 
 const adapterOptions: AdapterOption[] = [
-  { value: 'copilot', label: 'GitHub Copilot', models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3.5-sonnet'] },
-  { value: 'openai',  label: 'OpenAI',         models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'] },
-  { value: 'claude',  label: 'Claude',         models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'] },
+  { value: 'copilot', label: 'GitHub Copilot', models: ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5', 'gpt-5.4', 'claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5'] },
+  { value: 'openai',  label: 'OpenAI',         models: ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5', 'gpt-5.4'] },
+  { value: 'claude',  label: 'Claude',         models: ['claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-5', 'claude-opus-4-6', 'claude-haiku-4-5'] },
 ];
 
 const props = defineProps<{
