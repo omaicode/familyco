@@ -33,11 +33,15 @@ export async function handleSocketChatMessage(input: {
   deps: AgentModuleDeps;
   actorId: string;
 }): Promise<void> {
+  const requestId = randomUUID();
+  // Wrap in a mutable proxy so the socket can be repointed if the client reconnects mid-stream.
+  const proxy = input.deps.chatStreamRegistry.createProxy(input.socket);
+  input.deps.chatStreamRegistry.register(requestId, input.agentId, proxy);
+
   try {
     const body = JSON.parse(input.raw) as ChatRequestBody;
-    const requestId = randomUUID();
 
-    sendSocketEvent(input.socket, 'chat.started', {
+    sendSocketEvent(proxy, 'chat.started', {
       requestId,
       agentId: input.agentId,
       startedAt: new Date().toISOString()
@@ -52,12 +56,12 @@ export async function handleSocketChatMessage(input: {
       actorId: input.actorId,
       onEvent: (event) => {
         if (event.type === 'chunk') {
-          sendSocketEvent(input.socket, 'chat.chunk', { requestId, index: chunkIndex, chunk: event.text });
+          sendSocketEvent(proxy, 'chat.chunk', { requestId, index: chunkIndex, chunk: event.text });
           chunkIndex += 1;
         } else if (event.type === 'tool_start') {
-          sendSocketEvent(input.socket, 'chat.tool.start', { requestId, toolName: event.toolName });
+          sendSocketEvent(proxy, 'chat.tool.start', { requestId, toolName: event.toolName });
         } else if (event.type === 'tool_result') {
-          sendSocketEvent(input.socket, 'chat.tool.complete', {
+          sendSocketEvent(proxy, 'chat.tool.complete', {
             requestId,
             toolName: event.toolName,
             ok: event.ok,
@@ -68,14 +72,14 @@ export async function handleSocketChatMessage(input: {
     });
 
     for (const toolCall of result.toolCalls) {
-      sendSocketEvent(input.socket, 'chat.tool.used', { requestId, ...toolCall });
+      sendSocketEvent(proxy, 'chat.tool.used', { requestId, ...toolCall });
     }
 
     if (chunkIndex === 0) {
-      await streamReply(input.socket, requestId, result.replyMessage.body);
+      await streamReply(proxy, requestId, result.replyMessage.body);
     }
 
-    sendSocketEvent(input.socket, 'chat.completed', {
+    sendSocketEvent(proxy, 'chat.completed', {
       requestId,
       founderMessage: result.founderMessage,
       replyMessage: result.replyMessage,
@@ -86,7 +90,9 @@ export async function handleSocketChatMessage(input: {
       ...(result.confirmRequest ? { confirmRequest: result.confirmRequest } : {})
     });
   } catch (error) {
-    sendSocketEvent(input.socket, 'chat.error', { message: toErrorMessage(error) });
+    sendSocketEvent(proxy, 'chat.error', { message: toErrorMessage(error) });
+  } finally {
+    input.deps.chatStreamRegistry.complete(requestId);
   }
 }
 

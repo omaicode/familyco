@@ -8,6 +8,7 @@ import type {
   ToolExecutor
 } from '@familyco/core';
 import type { ChatEngineService } from './chat-engine.service.js';
+import type { ChatStreamRegistry } from './chat-stream-registry.js';
 import type { ToolDefinitionSummary } from '../../tools/tool.types.js';
 
 export interface ChatToolCall {
@@ -54,6 +55,7 @@ export interface AgentModuleDeps {
   chatEngineService: ChatEngineService;
   toolExecutor: ToolExecutor;
   listTools: () => ToolDefinitionSummary[];
+  chatStreamRegistry: ChatStreamRegistry;
 }
 
 export interface ChatSocketClient {

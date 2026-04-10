@@ -44,6 +44,9 @@ const hasError = (message: ThreadMessage): boolean => {
 };
 
 const getStreamingStatus = (message: ThreadMessage): string => {
+  if (message.payload?.resuming === true) {
+    return t('chat.thread.status.resuming');
+  }
   if (getToolsInProgress(message).length > 0) {
     return t('chat.thread.status.tool');
   }

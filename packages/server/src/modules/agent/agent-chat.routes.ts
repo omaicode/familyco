@@ -50,7 +50,15 @@ export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleD
       const { id } = pauseAgentParamsSchema.parse(request.params);
 
       void deps.agentService.getAgentById(id).then(() => {
-        sendSocketEvent(socket, 'chat.ready', { agentId: id });
+        // Re-attach if there's an active stream for this agent (client reconnected mid-stream).
+        // The proxy is repointed to the new socket so remaining events continue flowing.
+        const resumedRequestId = deps.chatStreamRegistry.reattach(id, socket);
+
+        if (resumedRequestId) {
+          sendSocketEvent(socket, 'chat.resumed', { requestId: resumedRequestId });
+        } else {
+          sendSocketEvent(socket, 'chat.ready', { agentId: id });
+        }
       }).catch((error) => {
         sendSocketEvent(socket, 'chat.error', { message: toErrorMessage(error) });
         socket.close();

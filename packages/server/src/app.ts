@@ -30,7 +30,7 @@ import {
 
 import { prismaClient } from './db/prisma-client.js';
 import { runMigrationsWithSafety, type MigrationRunResult } from './db/migration-runner.js';
-import { registerAgentController } from './modules/agent/index.js';
+import { ChatStreamRegistry, registerAgentController } from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
@@ -178,6 +178,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
   const chatEngineService = new ChatEngineService(settingsService, adapterRegistry, skillsService);
+  const chatStreamRegistry = new ChatStreamRegistry();
 
   const queueService = new InMemoryQueueService({
     agentRunConcurrency,
@@ -395,7 +396,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         agentRunner,
         chatEngineService,
         toolExecutor,
-        listTools: () => toolExecutor.listToolDefinitions()
+        listTools: () => toolExecutor.listToolDefinitions(),
+        chatStreamRegistry
       });
       registerApprovalController(api, {
         approvalService,

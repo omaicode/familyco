@@ -122,6 +122,25 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
   const handleSocketEvent = (event: ChatSocketEvent): void => {
     if (event.type === 'chat.ready') {
       connectionState.value = 'connected';
+      // Refresh the thread to catch any messages that completed while disconnected.
+      // Only safe when we're not about to receive chat.resumed (the server sends one or the other).
+      void refreshThread();
+      return;
+    }
+
+    if (event.type === 'chat.resumed') {
+      // The server has an active stream for this agent — reconnect mid-flight.
+      const requestId = typeof event.payload?.requestId === 'string'
+        ? event.payload.requestId
+        : `resumed-${Date.now()}`;
+
+      activeStreamId.value = requestId;
+      streamToolCalls.value = { ...streamToolCalls.value, [requestId]: [] };
+      streamToolsInProgress.value = { ...streamToolsInProgress.value, [requestId]: [] };
+      pendingConfirmRequestId.value = null;
+      isSending.value = false;
+      isStreaming.value = true;
+      upsertStreamingReply(requestId, '', undefined, true);
       return;
     }
 
@@ -259,7 +278,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
     }
   };
 
-  const upsertStreamingReply = (requestId: string, body: string, confirmRequest?: ChatConfirmRequest): void => {
+  const upsertStreamingReply = (requestId: string, body: string, confirmRequest?: ChatConfirmRequest, resuming?: boolean): void => {
     if (!selectedAgent.value) {
       return;
     }
@@ -267,10 +286,15 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
     const existingMessage = thread.value.find((message) => message.id === requestId);
     const toolCalls = streamToolCalls.value[requestId] ?? [];
     const toolsInProgress = streamToolsInProgress.value[requestId] ?? [];
+
+    // Keep resuming flag unless explicitly cleared (body arriving means stream resumed)
+    const isResuming = resuming ?? (body.length === 0 && (existingMessage?.payload?.resuming === true));
+
     const payload = {
       ...(existingMessage?.payload ?? {}),
       toolCalls,
       toolsInProgress,
+      resuming: isResuming,
       ...(confirmRequest !== undefined ? { confirmRequest } : {})
     };
 

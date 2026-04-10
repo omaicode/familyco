@@ -6,3 +6,4 @@ export * from './agent-chat.registry.js';
 export * from './agent-management.routes.js';
 export * from './agent-chat.service.js';
 export * from './chat-engine.service.js';
+export * from './chat-stream-registry.js';

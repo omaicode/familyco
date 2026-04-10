@@ -82,6 +82,7 @@ export default {
   'chat.thread.status.reasoning': 'Agent is thinking…',
   'chat.thread.status.typing': 'Agent is typing…',
   'chat.thread.status.tool': 'Agent is calling tools…',
+  'chat.thread.status.resuming': 'Reconnected — waiting for reply…',
   'chat.thread.loadingOlder': 'Loading earlier messages…',
   'chat.thread.jumpLatest': 'Latest',
   'chat.confirm.chooseOption': 'Choose an option',

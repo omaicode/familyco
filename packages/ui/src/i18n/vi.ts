@@ -81,6 +81,7 @@ export default {
   'chat.thread.status.reasoning': 'Agent đang suy luận…',
   'chat.thread.status.typing': 'Agent đang gõ…',
   'chat.thread.status.tool': 'Agent đang gọi công cụ…',
+  'chat.thread.status.resuming': 'Đã kết nối lại — đang chờ phản hồi…',
   'chat.thread.loadingOlder': 'Đang tải tin nhắn cũ hơn…',
   'chat.thread.jumpLatest': 'Mới nhất',
   'chat.confirm.chooseOption': 'Chọn một tùy chọn',

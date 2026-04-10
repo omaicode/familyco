@@ -32,6 +32,7 @@ export type ThreadMessage = AgentChatMessage & {
     toolCalls?: ChatToolCallDetails[];
     toolsInProgress?: ChatToolInProgress[];
     confirmRequest?: ChatConfirmRequest;
+    resuming?: boolean;
     [key: string]: unknown;
   };
 };
