@@ -157,7 +157,6 @@ function buildUserPrompt(
   }>
 ): string {
   const historyLines = conversationHistory
-    .slice(-12)
     .map((entry) => {
       const speaker = entry.senderId === 'founder' ? 'Founder' : 'Executive agent';
       const title = entry.title ? `${entry.title}: ` : '';

@@ -9,7 +9,8 @@ const DEFAULT_API_KEY_SALT = 'local-dev-salt';
 
 export function registerAuthPlugin(app: FastifyInstance): void {
   app.register(jwt, {
-    secret: process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET
+    secret: process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET,
+    sign: { expiresIn: '8h' }
   });
 }
 
@@ -31,21 +32,8 @@ export async function authenticateApiRequest(
     return;
   }
 
-  if (routeUrl === '/provider/test' || routeUrl.endsWith('/provider/test')) {
-    return;
-  }
-
   const apiKeyHeader = request.headers['x-api-key'];
-  const apiKeyFromQuery =
-    typeof request.query === 'object' && request.query !== null && 'apiKey' in request.query
-      ? request.query.apiKey
-      : undefined;
-  const apiKey =
-    typeof apiKeyHeader === 'string'
-      ? apiKeyHeader
-      : typeof apiKeyFromQuery === 'string'
-        ? apiKeyFromQuery
-        : undefined;
+  const apiKey = typeof apiKeyHeader === 'string' ? apiKeyHeader : undefined;
 
   if (apiKey) {
     const apiKeyRecord = await apiKeyService.verify(apiKey);

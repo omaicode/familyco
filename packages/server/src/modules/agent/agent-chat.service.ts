@@ -87,7 +87,7 @@ export async function processAgentChat(input: {
     slashCommand: null,
     inboxService: input.deps.inboxService
   });
-  const conversationHistory = await input.deps.inboxService.listConversation(agent.id, 24);
+  const conversationHistory = await input.deps.inboxService.listConversation(agent.id, 12);
 
   const runResult = await input.deps.agentRunner.run({
     agentId: agent.id,
@@ -171,7 +171,7 @@ async function runSlashCommand(input: {
       slashCommand: entry.name,
       inboxService: input.deps.inboxService
     });
-    const conversationHistory = await input.deps.inboxService.listConversation(input.agent.id, 24);
+    const conversationHistory = await input.deps.inboxService.listConversation(input.agent.id, 12);
 
     const runResult = await input.deps.agentRunner.run({
       agentId: input.agent.id,

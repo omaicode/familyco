@@ -1,5 +1,7 @@
 import type { AiAdapter, AdapterChatInput, AdapterTestResult } from '@familyco/core';
 
+import { readProviderError, toAdapterErrorMessage } from './adapter.helpers.js';
+
 export class CopilotAdapter implements AiAdapter {
   readonly id = 'copilot';
   readonly name = 'GitHub Copilot';
@@ -78,7 +80,7 @@ export class CopilotAdapter implements AiAdapter {
       return {
         ok: false,
         latencyMs: Date.now() - start,
-        error: toErrorMessage(error)
+        error: toAdapterErrorMessage(error)
       };
     } finally {
       clearTimeout(timeout);
@@ -93,31 +95,4 @@ function buildCopilotHeaders(apiKey: string): Record<string, string> {
     'editor-version': 'vscode/1.85.0',
     'copilot-integration-id': 'vscode-chat'
   };
-}
-
-function readProviderError(providerName: string, payload: unknown): string {
-  if (isRecord(payload)) {
-    if (isRecord(payload.error)) {
-      const nestedMessage = asNonEmptyString(payload.error.message);
-      if (nestedMessage) return `PROVIDER_REQUEST_FAILED:${providerName}:${nestedMessage}`;
-    }
-
-    const message = asNonEmptyString(payload.message);
-    if (message) return `PROVIDER_REQUEST_FAILED:${providerName}:${message}`;
-  }
-
-  return `PROVIDER_REQUEST_FAILED:${providerName}:Unknown provider error`;
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function asNonEmptyString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }

@@ -132,10 +132,17 @@ const builtinReset: BuiltinSlashEntry = {
   }
 };
 
+let _registryCache: AgentSlashRegistry | undefined;
+
 export function buildAgentSlashRegistry(): AgentSlashRegistry {
+  if (_registryCache) {
+    return _registryCache;
+  }
+
   const toolEntries: ToolSlashEntry[] = [taskCreateTool, projectCreateTool, agentCreateTool]
     .filter((tool): tool is typeof tool & { slashSpec: SlashCommandSpec } => tool.slashSpec !== undefined)
     .map((tool) => toolSpecToEntry(tool.name, tool.slashSpec));
 
-  return new AgentSlashRegistry([builtinHelp, builtinReset, ...toolEntries]);
+  _registryCache = new AgentSlashRegistry([builtinHelp, builtinReset, ...toolEntries]);
+  return _registryCache;
 }
