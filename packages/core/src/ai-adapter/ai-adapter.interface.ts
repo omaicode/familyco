@@ -12,6 +12,17 @@ export interface AdapterChatInput {
   userPrompt: string;
 }
 
+export interface AdapterTokenUsage {
+  prompt: number;
+  completion: number;
+  total: number;
+}
+
+export interface AdapterChatResult {
+  content: string;
+  tokenUsage?: AdapterTokenUsage;
+}
+
 export interface AiAdapter {
   readonly id: string;
   readonly name: string;
@@ -20,6 +31,6 @@ export interface AiAdapter {
   readonly defaultModel: string;
   readonly availableModels: readonly string[];
 
-  chat(input: AdapterChatInput): Promise<string>;
+  chat(input: AdapterChatInput): Promise<AdapterChatResult>;
   testConnection(apiKey: string): Promise<AdapterTestResult>;
 }

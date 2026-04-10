@@ -194,12 +194,12 @@ async function requestPlannerCompletion(input: {
   if (input.adapterRegistry) {
     const adapter = input.adapterRegistry.get(input.providerSettings.providerName);
     if (adapter) {
-      return adapter.chat({
+      return (await adapter.chat({
         apiKey: input.providerSettings.apiKey,
         model: input.providerSettings.model,
         systemPrompt: input.systemPrompt,
         userPrompt: input.userPrompt
-      });
+      })).content;
     }
   }
 

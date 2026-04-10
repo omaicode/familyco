@@ -1,4 +1,4 @@
-import type { AiAdapter, AdapterChatInput, AdapterTestResult } from '@familyco/core';
+import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult } from '@familyco/core';
 
 import { readProviderError, toAdapterErrorMessage } from './adapter.helpers.js';
 
@@ -13,7 +13,7 @@ export class ClaudeAdapter implements AiAdapter {
   private static readonly ENDPOINT = 'https://api.anthropic.com/v1/messages';
   private static readonly TIMEOUT_MS = 25_000;
 
-  async chat(input: AdapterChatInput): Promise<string> {
+  async chat(input: AdapterChatInput): Promise<AdapterChatResult> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), ClaudeAdapter.TIMEOUT_MS);
 
@@ -51,7 +51,13 @@ export class ClaudeAdapter implements AiAdapter {
         throw new Error('PROVIDER_INVALID_RESPONSE:Claude returned an empty response');
       }
 
-      return content;
+      const usage = payload?.usage;
+      return {
+        content,
+        tokenUsage: usage
+          ? { prompt: usage.input_tokens, completion: usage.output_tokens, total: usage.input_tokens + usage.output_tokens }
+          : undefined
+      };
     } finally {
       clearTimeout(timeout);
     }

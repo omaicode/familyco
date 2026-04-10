@@ -1,4 +1,4 @@
-import type { AiAdapter, AdapterChatInput, AdapterTestResult } from '@familyco/core';
+import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult } from '@familyco/core';
 
 import { readProviderError, toAdapterErrorMessage } from './adapter.helpers.js';
 
@@ -13,7 +13,7 @@ export class CopilotAdapter implements AiAdapter {
   private static readonly ENDPOINT = 'https://api.githubcopilot.com/chat/completions';
   private static readonly TIMEOUT_MS = 25_000;
 
-  async chat(input: AdapterChatInput): Promise<string> {
+  async chat(input: AdapterChatInput): Promise<AdapterChatResult> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CopilotAdapter.TIMEOUT_MS);
 
@@ -42,7 +42,13 @@ export class CopilotAdapter implements AiAdapter {
         throw new Error('PROVIDER_INVALID_RESPONSE:Copilot returned an empty response');
       }
 
-      return content;
+      const usage = payload?.usage;
+      return {
+        content,
+        tokenUsage: usage
+          ? { prompt: usage.prompt_tokens, completion: usage.completion_tokens, total: usage.total_tokens }
+          : undefined
+      };
     } finally {
       clearTimeout(timeout);
     }

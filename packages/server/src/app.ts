@@ -153,7 +153,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
-  const adapterRegistry = createAdapterRegistry();
+  const adapterRegistry = createAdapterRegistry({ logger: app.log, auditService });
   const toolExecutor = new DefaultToolExecutor({
     agentService,
     projectService,
