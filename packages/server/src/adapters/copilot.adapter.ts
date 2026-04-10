@@ -5,12 +5,12 @@ import { readProviderError, toAdapterErrorMessage } from './adapter.helpers.js';
 export class CopilotAdapter implements AiAdapter {
   readonly id = 'copilot';
   readonly name = 'GitHub Copilot';
-  readonly description = 'GitHub Copilot — code-aware reasoning powered by GitHub models';
+  readonly description = 'GitHub Copilot / GitHub Models inference API';
   readonly keyHint = 'ghp_… or ghu_…';
   readonly defaultModel = 'gpt-4o';
   readonly availableModels = ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3.5-sonnet'] as const;
 
-  private static readonly ENDPOINT = 'https://api.githubcopilot.com/chat/completions';
+  private static readonly ENDPOINT = 'https://models.github.ai/inference/chat/completions';
   private static readonly TIMEOUT_MS = 25_000;
 
   async chat(input: AdapterChatInput): Promise<AdapterChatResult> {
@@ -96,9 +96,9 @@ export class CopilotAdapter implements AiAdapter {
 
 function buildCopilotHeaders(apiKey: string): Record<string, string> {
   return {
+    accept: 'application/vnd.github+json',
     'content-type': 'application/json',
     'authorization': `Bearer ${apiKey}`,
-    'editor-version': 'vscode/1.85.0',
-    'copilot-integration-id': 'vscode-chat'
+    'x-github-api-version': '2026-03-10'
   };
 }
