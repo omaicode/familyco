@@ -10,7 +10,7 @@ import type { SkillListItem } from '@familyco/ui';
 const { t } = useI18n();
 const isRefreshing = ref(false);
 const pendingSkillId = ref<string | null>(null);
-const selectedSkillId = ref<string | null>(null);
+const selectedSkill = ref<SkillListItem | null>(null);
 
 const state = computed(() => uiRuntime.stores.skills.state);
 const skills = computed(() => state.value.data.items);
@@ -40,12 +40,12 @@ const toggleSkill = async (skill: SkillListItem): Promise<void> => {
 };
 
 const viewSkill = (skill: SkillListItem): void => {
-  selectedSkillId.value = selectedSkillId.value === skill.id ? null : skill.id;
+  selectedSkill.value = skill;
 };
 
-const selectedSkill = computed(() =>
-  skills.value.find((item) => item.id === selectedSkillId.value) ?? null
-);
+const closeSkillModal = (): void => {
+  selectedSkill.value = null;
+};
 
 onMounted(() => {
   void uiRuntime.stores.skills.load();
@@ -108,13 +108,13 @@ onMounted(() => {
               <td>
                 <div style="display:flex; flex-direction:column; gap:4px;">
                   <strong>{{ skill.name }}</strong>
-                  <span class="fc-list-meta">{{ skill.description }}</span>
+                  <span class="fc-list-meta skills-description">{{ skill.description }}</span>
                 </div>
               </td>
               <td>
                 <div class="fc-inline-actions">
                   <button class="fc-btn-secondary" @click="viewSkill(skill)">
-                    {{ selectedSkillId === skill.id ? t('Close') : t('View') }}
+                    {{ t('View') }}
                   </button>
                   <button
                     class="fc-btn-secondary"
@@ -135,8 +135,24 @@ onMounted(() => {
           </tbody>
         </table>
 
-        <section v-if="selectedSkill" class="fc-card" style="margin-top: 12px;">
-          <h4 class="fc-card-title">{{ selectedSkill.name }}</h4>
+      </article>
+
+      <div
+        v-if="selectedSkill"
+        class="skills-modal-wrap"
+        @click.self="closeSkillModal"
+      >
+        <div class="skills-modal" role="dialog" aria-modal="true" :aria-label="selectedSkill.name">
+          <div class="skills-modal-header">
+            <div>
+              <h4 class="fc-card-title">{{ selectedSkill.name }}</h4>
+              <p class="fc-list-meta">{{ t('Details') }}</p>
+            </div>
+            <button class="fc-btn-secondary" @click="closeSkillModal">{{ t('Close') }}</button>
+          </div>
+
+          <p class="skills-modal-description">{{ selectedSkill.description }}</p>
+
           <dl class="fc-list-meta" style="display:grid; grid-template-columns: auto 1fr; gap:4px 10px; margin-top: 10px;">
             <dt>{{ t('ID') }}</dt><dd>{{ selectedSkill.id }}</dd>
             <dt>{{ t('Version') }}</dt><dd>{{ selectedSkill.version ?? '—' }}</dd>
@@ -146,8 +162,51 @@ onMounted(() => {
             <dt>{{ t('Status') }}</dt>
             <dd>{{ selectedSkill.enabled ? t('Enabled') : t('Disabled') }}</dd>
           </dl>
-        </section>
-      </article>
+        </div>
+      </div>
     </template>
   </section>
 </template>
+
+<style scoped>
+.skills-description {
+  max-width: 620px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.skills-modal-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.skills-modal {
+  width: min(760px, 100%);
+  max-height: min(85vh, 760px);
+  overflow: auto;
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  background: var(--fc-surface);
+  padding: 16px;
+}
+
+.skills-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skills-modal-description {
+  margin-top: 10px;
+  max-width: 640px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+</style>
