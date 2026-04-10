@@ -15,6 +15,8 @@ export * from './project-list.tool.js';
 export * from './project-update.tool.js';
 export * from './project-delete.tool.js';
 export * from './agent-create.tool.js';
+export * from './agent-read.tool.js';
+export * from './agent-list.tool.js';
 export * from './agent-update.tool.js';
 export * from './agent-delete.tool.js';
 export * from './echo.tool.js';

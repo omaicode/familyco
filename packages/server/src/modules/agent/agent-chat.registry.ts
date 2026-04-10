@@ -2,6 +2,8 @@ import type { AgentLevel } from '@familyco/core';
 
 import { agentCreateTool } from '../../tools/agent-create.tool.js';
 import { agentDeleteTool } from '../../tools/agent-delete.tool.js';
+import { agentListTool } from '../../tools/agent-list.tool.js';
+import { agentReadTool } from '../../tools/agent-read.tool.js';
 import { agentUpdateTool } from '../../tools/agent-update.tool.js';
 import { projectCreateTool } from '../../tools/project-create.tool.js';
 import { projectDeleteTool } from '../../tools/project-delete.tool.js';
@@ -163,6 +165,8 @@ export function buildAgentSlashRegistry(): AgentSlashRegistry {
     projectUpdateTool,
     projectDeleteTool,
     agentCreateTool,
+    agentReadTool,
+    agentListTool,
     agentUpdateTool,
     agentDeleteTool
   ]

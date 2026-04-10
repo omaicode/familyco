@@ -2,6 +2,8 @@ import type { ToolExecutionInput, ToolExecutionResult, ToolExecutor } from '@fam
 
 import { agentCreateTool } from './agent-create.tool.js';
 import { agentDeleteTool } from './agent-delete.tool.js';
+import { agentListTool } from './agent-list.tool.js';
+import { agentReadTool } from './agent-read.tool.js';
 import { agentUpdateTool } from './agent-update.tool.js';
 import { chatRespondTool } from './chat-respond.tool.js';
 import { companyProfileReadTool } from './company-profile-read.tool.js';
@@ -42,6 +44,8 @@ export class DefaultToolExecutor implements ToolExecutor {
       projectUpdateTool,
       projectDeleteTool,
       agentCreateTool,
+      agentReadTool,
+      agentListTool,
       agentUpdateTool,
       agentDeleteTool,
       echoTool,
