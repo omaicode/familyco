@@ -39,7 +39,7 @@ test('parseConversationHistory keeps toolCalls from prior messages', () => {
       senderId: 'agent-l0',
       body: 'Created project.',
       toolCalls: [
-        { toolName: 'project.create', ok: true, summary: 'Project created' },
+        { toolName: 'project.create', ok: true, summary: 'Project created', outputJson: '{"id":"proj-1"}' },
         { toolName: 'task.create', ok: false, summary: 'Task failed', error: { message: 'INVALID_PROJECT' } }
       ]
     }
@@ -48,5 +48,6 @@ test('parseConversationHistory keeps toolCalls from prior messages', () => {
   assert.equal(history.length, 1);
   assert.equal(history[0]?.toolCalls?.length, 2);
   assert.equal(history[0]?.toolCalls?.[0]?.toolName, 'project.create');
+  assert.equal(history[0]?.toolCalls?.[0]?.outputJson, '{"id":"proj-1"}');
   assert.equal(history[0]?.toolCalls?.[1]?.error?.message, 'INVALID_PROJECT');
 });

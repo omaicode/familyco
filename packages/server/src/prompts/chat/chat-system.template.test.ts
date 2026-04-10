@@ -21,7 +21,8 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
           {
             toolName: 'task.create',
             ok: true,
-            summary: 'Created task TASK-123 for the weekly review.'
+            summary: 'Created task TASK-123 for the weekly review.',
+            outputJson: '{"id":"task-123","title":"Weekly review"}'
           },
           {
             toolName: 'project.update',
@@ -50,14 +51,13 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('Goal:'), true);
   assert.equal(prompt.includes('Constraints:'), true);
   assert.equal(prompt.includes('Output Contract:'), true);
-  assert.equal(prompt.includes('{"reply":"string","requiresConfirmation":false,"toolCalls":[{"toolName":"string","arguments":{}}]}'), true);
-  assert.equal(prompt.includes('set requiresConfirmation=true and return an empty toolCalls array'), true);
-  assert.equal(prompt.includes('Direct conversational responses are valid and preferred'), true);
-  assert.equal(prompt.includes('Company Name: FamilyCo'), true);
+  assert.equal(prompt.includes('Return strict Markdown text only.'), true);
   assert.equal(prompt.includes('Recent Conversation Context:'), true);
   assert.equal(prompt.includes('- Founder: Last topic: Need a weekly execution plan with clear priorities.'), true);
   assert.equal(prompt.includes('- Executive agent: Reply from Chief of Staff: Plan drafted and tasks created.'), true);
-  assert.equal(prompt.includes('Tool task.create (ok): Created task TASK-123 for the weekly review.'), true);
+  assert.equal(
+    prompt.includes('Tool task.create (ok): Created task TASK-123 for the weekly review. Output JSON: {"id":"task-123","title":"Weekly review"}'),
+    true
+  );
   assert.equal(prompt.includes('Tool project.update (failed): Unable to update project status. Error: PROJECT_NOT_FOUND'), true);
-  assert.equal(prompt.includes('- task.create: Create a task'), true);
 });

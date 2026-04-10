@@ -23,6 +23,7 @@ export interface PromptConversationToolCall {
   toolName: string;
   ok: boolean;
   summary: string;
+  outputJson?: string;
   error?: {
     code?: string;
     message: string;

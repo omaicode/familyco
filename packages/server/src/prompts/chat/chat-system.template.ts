@@ -6,7 +6,6 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
   const companyDescription = input.companyDescription?.trim() || 'Not provided.';
   const toolLines = renderToolLines(input.tools);
   const historyLines = renderHistoryLines(input.conversationHistory);
-
   return renderRoleGoalConstraintsTemplate({
     role: [
       `You are the Executive Agent of the company named ${companyName}, acting as the Chief of Staff of an AI-only company that serves a single human Founder.`,
@@ -85,8 +84,11 @@ function renderHistoryLines(history: ChatSystemPromptInput['conversationHistory'
     for (const toolCall of entry.toolCalls) {
       const status = toolCall.ok ? 'ok' : 'failed';
       const summary = compactText(toolCall.summary, 180);
+      const output = toolCall.outputJson
+        ? ` Output JSON: ${compactText(toolCall.outputJson, 420)}`
+        : '';
       const error = toolCall.error?.message ? ` Error: ${compactText(toolCall.error.message, 120)}` : '';
-      lines.push(`  - Tool ${toolCall.toolName} (${status}): ${summary}${error}`);
+      lines.push(`  - Tool ${toolCall.toolName} (${status}): ${summary}${output}${error}`);
     }
   }
 

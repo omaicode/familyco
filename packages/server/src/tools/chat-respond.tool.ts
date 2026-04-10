@@ -36,6 +36,7 @@ interface ConversationHistoryToolCall {
   toolName: string;
   ok: boolean;
   summary: string;
+  outputJson?: string;
   error?: {
     code?: string;
     message: string;
@@ -291,6 +292,7 @@ function parseConversationHistoryToolCall(value: unknown): ConversationHistoryTo
 
   const errorMessage = isRecord(value.error) ? asNonEmptyString(value.error.message) : undefined;
   const errorCode = isRecord(value.error) ? asNonEmptyString(value.error.code) : undefined;
+  const outputJson = readOutputJson(value);
   const error = errorMessage
     ? {
         message: errorMessage,
@@ -302,8 +304,33 @@ function parseConversationHistoryToolCall(value: unknown): ConversationHistoryTo
     toolName,
     ok: value.ok,
     summary,
+    ...(outputJson ? { outputJson } : {}),
     ...(error ? { error } : {})
   };
+}
+
+function readOutputJson(value: Record<string, unknown>): string | undefined {
+  const direct = asNonEmptyString(value.outputJson);
+  if (direct) {
+    return direct;
+  }
+
+  if (!('output' in value)) {
+    return undefined;
+  }
+
+  try {
+    const serialized = JSON.stringify(value.output);
+    if (!serialized || serialized.length === 0) {
+      return undefined;
+    }
+
+    return serialized.length > 2_000
+      ? `${serialized.slice(0, 1_999).trimEnd()}…`
+      : serialized;
+  } catch {
+    return undefined;
+  }
 }
 
 function readStreamRequestId(argumentsMap: Record<string, unknown>): string | undefined {

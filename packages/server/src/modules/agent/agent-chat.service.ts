@@ -435,6 +435,7 @@ function toConversationHistoryEntry(message: Awaited<ReturnType<InboxService['cr
     toolName: string;
     ok: boolean;
     summary: string;
+    outputJson?: string;
     error?: {
       code?: string;
       message: string;
@@ -574,6 +575,7 @@ function readToolCallsFromPayload(payload: Record<string, unknown> | undefined):
   toolName: string;
   ok: boolean;
   summary: string;
+  outputJson?: string;
   error?: {
     code?: string;
     message: string;
@@ -589,6 +591,7 @@ function readToolCallsFromPayload(payload: Record<string, unknown> | undefined):
       toolName: string;
       ok: boolean;
       summary: string;
+      outputJson?: string;
       error?: {
         code?: string;
         message: string;
@@ -600,6 +603,7 @@ function normalizeHistoryToolCall(value: unknown): {
   toolName: string;
   ok: boolean;
   summary: string;
+  outputJson?: string;
   error?: {
     code?: string;
     message: string;
@@ -619,11 +623,32 @@ function normalizeHistoryToolCall(value: unknown): {
         ...(typeof value.error.code === 'string' ? { code: value.error.code } : {})
       }
     : undefined;
+  const outputJson = toJsonString(value.output);
 
   return {
     toolName: value.toolName,
     ok: value.ok,
     summary: value.summary,
+    ...(outputJson ? { outputJson } : {}),
     ...(error ? { error } : {})
   };
+}
+
+function toJsonString(value: unknown, maxLength = 2_000): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    if (!serialized) {
+      return undefined;
+    }
+
+    return serialized.length > maxLength
+      ? `${serialized.slice(0, Math.max(maxLength - 1, 0)).trimEnd()}…`
+      : serialized;
+  } catch {
+    return undefined;
+  }
 }
