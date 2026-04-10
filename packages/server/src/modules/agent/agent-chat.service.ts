@@ -38,6 +38,11 @@ export async function handleSocketChatMessage(input: {
   const proxy = input.deps.chatStreamRegistry.createProxy(input.socket);
   input.deps.chatStreamRegistry.register(requestId, input.agentId, proxy);
 
+  // Minimum ms a tool spinner must be visible so the client renders the start state
+  // before the complete event arrives.
+  const MIN_TOOL_VISIBLE_MS = 350;
+  const toolStartTimes = new Map<string, number>(); // callId → performance.now()
+
   try {
     const body = JSON.parse(input.raw) as ChatRequestBody;
 
@@ -59,14 +64,25 @@ export async function handleSocketChatMessage(input: {
           sendSocketEvent(proxy, 'chat.chunk', { requestId, index: chunkIndex, chunk: event.text });
           chunkIndex += 1;
         } else if (event.type === 'tool_start') {
+          toolStartTimes.set(event.callId, performance.now());
           sendSocketEvent(proxy, 'chat.tool.start', { requestId, toolName: event.toolName });
         } else if (event.type === 'tool_result') {
-          sendSocketEvent(proxy, 'chat.tool.complete', {
+          const elapsed = performance.now() - (toolStartTimes.get(event.callId) ?? 0);
+          const delay = Math.max(0, MIN_TOOL_VISIBLE_MS - elapsed);
+          toolStartTimes.delete(event.callId);
+
+          const completePayload = {
             requestId,
             toolName: event.toolName,
             ok: event.ok,
             ...(event.output ? { output: event.output } : {})
-          });
+          };
+
+          if (delay > 0) {
+            setTimeout(() => sendSocketEvent(proxy, 'chat.tool.complete', completePayload), delay);
+          } else {
+            sendSocketEvent(proxy, 'chat.tool.complete', completePayload);
+          }
         }
       }
     });
