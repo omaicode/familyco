@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
-  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert,
+  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, Loader2, CheckCircle2, AlertTriangle,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -17,7 +17,7 @@ import FcSelect from '../components/FcSelect.vue';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
-type Provider = 'openai' | 'anthropic' | 'google';
+type AdapterId = 'copilot' | 'openai' | 'claude';
 type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'system';
 
 // ── State ─────────────────────────────────────────────────
@@ -45,16 +45,18 @@ const agentsSaving = ref(false);
 
 
 // ── Provider form ─────────────────────────────────────────
-const providerName = ref<Provider>('openai');
+const providerName = ref<AdapterId>('openai');
 const providerApiKey = ref('');
 const providerModel = ref('gpt-4o');
 const providerSaving = ref(false);
+const providerTesting = ref(false);
+const providerTestResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
 
 // Per-provider form cache (so switching back restores entered data)
-const providerDraft = reactive<Record<Provider, { apiKey: string; model: string }>>({  
-  openai:    { apiKey: '', model: 'gpt-4o' },
-  anthropic: { apiKey: '', model: 'claude-sonnet-4-5' },
-  google:    { apiKey: '', model: 'gemini-2.5-pro' },
+const providerDraft = reactive<Record<AdapterId, { apiKey: string; model: string }>>({
+  copilot:  { apiKey: '', model: 'gpt-4o' },
+  openai:   { apiKey: '', model: 'gpt-4o' },
+  claude:   { apiKey: '', model: 'claude-sonnet-4-5' },
 });
 
 // ── Appearance ────────────────────────────────────────────
@@ -73,13 +75,13 @@ const systemInfo = reactive({
 });
 
 // ── Helpers ───────────────────────────────────────────────
-interface ProviderOption { value: Provider; label: string; models: string[]; keyHint: string; }
-const providerOptions: ProviderOption[] = [
-  { value: 'openai',    label: 'OpenAI',      models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'],                       keyHint: 'sk-…' },
-  { value: 'anthropic', label: 'Anthropic',   models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'],      keyHint: 'sk-ant-…' },
-  { value: 'google',    label: 'Google AI',   models: ['gemini-2.5-pro', 'gemini-2.5-flash'],                            keyHint: 'AIza…' },
+interface AdapterOption { value: AdapterId; label: string; models: string[]; keyHint: string; }
+const adapterOptions: AdapterOption[] = [
+  { value: 'copilot', label: 'GitHub Copilot', models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3.5-sonnet'], keyHint: 'ghp_… or ghu_…' },
+  { value: 'openai',  label: 'OpenAI',         models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'],               keyHint: 'sk-…' },
+  { value: 'claude',  label: 'Claude',         models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'], keyHint: 'sk-ant-…' },
 ];
-const selectedProvider = computed(() => providerOptions.find(p => p.value === providerName.value)!);
+const selectedAdapter = computed(() => adapterOptions.find(p => p.value === providerName.value)!);
 
 const parseThemePreference = (v: unknown): ThemePreference | null =>
   (v === 'system' || v === 'light' || v === 'dark') ? v : null;
@@ -104,18 +106,20 @@ const reload = async () => {
   await uiRuntime.stores.settings.load();
 
   const storedProvider = getSetting('provider.name');
-  const activeProvider: Provider =
-    (storedProvider === 'openai' || storedProvider === 'anthropic' || storedProvider === 'google')
-      ? storedProvider
+  // Backward compat: anthropic → claude; google → no longer supported, default to openai
+  const normalised = storedProvider === 'anthropic' ? 'claude' : storedProvider;
+  const activeAdapter: AdapterId =
+    (normalised === 'copilot' || normalised === 'openai' || normalised === 'claude')
+      ? normalised
       : 'openai';
 
   const loadedApiKey = typeof getSetting('provider.apiKey') === 'string' ? getSetting('provider.apiKey') as string : '';
-  const loadedModel  = typeof getSetting('provider.defaultModel') === 'string' ? getSetting('provider.defaultModel') as string : providerOptions.find(p => p.value === activeProvider)!.models[0];
+  const loadedModel  = typeof getSetting('provider.defaultModel') === 'string' ? getSetting('provider.defaultModel') as string : adapterOptions.find(p => p.value === activeAdapter)!.models[0];
 
   // Persist loaded values into the per-provider draft so switching away and back doesn't lose them
-  providerDraft[activeProvider] = { apiKey: loadedApiKey, model: loadedModel };
+  providerDraft[activeAdapter] = { apiKey: loadedApiKey, model: loadedModel };
 
-  providerName.value    = activeProvider;
+  providerName.value    = activeAdapter;
   providerApiKey.value  = loadedApiKey;
   providerModel.value   = loadedModel;
 
@@ -161,6 +165,25 @@ const applyTheme = (pref: ThemePreference) => {
   const dark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
   uiRuntime.stores.app.applyThemePreference(pref, dark);
   applyRuntimeTheme();
+};
+
+// ── Test connection (settings) ────────────────────────────
+const testProviderInSettings = async () => {
+  if (!providerApiKey.value.trim()) return;
+  providerTesting.value = true;
+  providerTestResult.value = null;
+  try {
+    const result = await uiRuntime.api.testProviderAdapter({
+      adapterId: providerName.value,
+      apiKey: providerApiKey.value.trim(),
+      model: providerModel.value,
+    });
+    providerTestResult.value = { ok: result.ok, latencyMs: result.latencyMs, error: result.error };
+  } catch (err) {
+    providerTestResult.value = { ok: false, error: err instanceof Error ? err.message : 'Connection test failed' };
+  } finally {
+    providerTesting.value = false;
+  }
 };
 
 // ── Save: provider ────────────────────────────────────────
@@ -289,9 +312,10 @@ const clearProviderKey = async () => {
   try {
     await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: '' });
     providerApiKey.value = '';
+    providerDraft.copilot.apiKey = '';
     providerDraft.openai.apiKey = '';
-    providerDraft.anthropic.apiKey = '';
-    providerDraft.google.apiKey = '';
+    providerDraft.claude.apiKey = '';
+    providerTestResult.value = null;
     await reload();
     setFeedback('success', 'Stored provider key cleared');
   } catch (err) {
@@ -316,7 +340,7 @@ const restartOnboarding = async () => {
 };
 
 // ── Provider change ───────────────────────────────────────
-const onProviderChange = (newProvider: Provider) => {
+const onProviderChange = (newProvider: AdapterId) => {
   // Save current values into the draft cache before switching
   providerDraft[providerName.value] = {
     apiKey: providerApiKey.value,
@@ -326,6 +350,7 @@ const onProviderChange = (newProvider: Provider) => {
   providerName.value   = newProvider;
   providerApiKey.value = providerDraft[newProvider].apiKey;
   providerModel.value  = providerDraft[newProvider].model;
+  providerTestResult.value = null;
 };
 
 // ── Masked key display ────────────────────────────────────
@@ -627,17 +652,17 @@ useAutoReload(reload);
             <div class="st-pane-header">
               <Key :size="16" class="st-pane-icon" />
               <div>
-                <h4>AI Provider</h4>
-                <p>Select your AI provider and set your API key. Used by all agents to reason and act.</p>
+                <h4>AI Adapter</h4>
+                <p>Select your AI adapter and set your API key. Used by all agents to reason and act.</p>
               </div>
             </div>
 
-            <!-- Provider selector -->
+            <!-- Adapter selector -->
             <div class="st-field-group">
-              <label class="st-label">Provider</label>
+              <label class="st-label">Adapter</label>
               <div class="st-provider-grid">
                 <button
-                  v-for="opt in providerOptions"
+                  v-for="opt in adapterOptions"
                   :key="opt.value"
                   class="st-provider-btn"
                   :class="{ 'st-provider-selected': providerName === opt.value }"
@@ -653,7 +678,7 @@ useAutoReload(reload);
             <div class="st-field-group">
               <label class="st-label" for="st-model">Default model</label>
               <FcSelect id="st-model" v-model="providerModel">
-                <option v-for="m in selectedProvider.models" :key="m" :value="m">{{ m }}</option>
+                <option v-for="m in selectedAdapter.models" :key="m" :value="m">{{ m }}</option>
               </FcSelect>
             </div>
 
@@ -669,10 +694,33 @@ useAutoReload(reload);
               <FcPasswordInput
                 id="st-apikey"
                 v-model="providerApiKey"
-                :placeholder="selectedProvider.keyHint"
+                :placeholder="selectedAdapter.keyHint"
+                @input="providerTestResult = null"
               />
               <p v-if="maskedKey" class="st-hint">{{ maskedKey }}</p>
               <p class="st-hint">Stored locally in your workspace database. Never logged or sent externally.</p>
+            </div>
+
+            <!-- Test connection -->
+            <div class="st-field-group">
+              <button
+                type="button"
+                class="st-btn-test"
+                :disabled="!providerApiKey.trim() || providerTesting"
+                @click="testProviderInSettings"
+              >
+                <Loader2 v-if="providerTesting" :size="13" class="st-spin" />
+                <span>{{ providerTesting ? 'Testing…' : 'Test connection' }}</span>
+              </button>
+              <div v-if="providerTestResult" class="st-test-result" :class="providerTestResult.ok ? 'st-test-ok' : 'st-test-fail'">
+                <CheckCircle2 v-if="providerTestResult.ok" :size="13" />
+                <AlertTriangle v-else :size="13" />
+                <span v-if="providerTestResult.ok">
+                  API key is valid and connection is live.
+                  <span v-if="providerTestResult.latencyMs" class="st-test-latency">{{ providerTestResult.latencyMs }}ms</span>
+                </span>
+                <span v-else>{{ providerTestResult.error ?? 'Connection failed' }}</span>
+              </div>
             </div>
 
             <div class="st-actions">
@@ -1030,6 +1078,39 @@ useAutoReload(reload);
   color: var(--fc-text-muted);
   font-family: monospace;
 }
+
+/* ── Test connection (settings) ────────────────────────── */
+.st-btn-test {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-text-muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.st-btn-test:not(:disabled):hover { border-color: var(--fc-accent); color: var(--fc-text); }
+.st-btn-test:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.st-test-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-size: 12.5px;
+}
+.st-test-ok { background: color-mix(in srgb, var(--fc-success, #22c55e) 12%, transparent); color: #16a34a; }
+.st-test-fail { background: color-mix(in srgb, #ef4444 12%, transparent); color: #dc2626; }
+.st-test-latency { margin-left: 6px; opacity: 0.65; font-size: 11px; }
+
+@keyframes st-spin { to { transform: rotate(360deg); } }
+.st-spin { animation: st-spin 0.8s linear infinite; }
 
 /* ── Theme grid ──────────────────────────────────────────── */
 .st-theme-grid {

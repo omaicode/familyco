@@ -1,5 +1,6 @@
 import type {
   AgentService,
+  AiAdapterRegistry,
   ProjectService,
   SettingsService,
   TaskService,
@@ -12,6 +13,7 @@ export interface DefaultToolExecutorDeps {
   projectService?: ProjectService;
   settingsService?: SettingsService;
   taskService?: TaskService;
+  adapterRegistry?: AiAdapterRegistry;
 }
 
 export interface ToolParameterDefinition {

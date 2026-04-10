@@ -407,5 +407,16 @@ export default {
   'Optimized for fast delivery on scoped tasks with clear ownership and guardrails.': 'Tối ưu cho việc giao nhanh các task có phạm vi rõ ràng cùng trách nhiệm và rào chắn cụ thể.',
   'Default pattern: suggest-only with the Founder, auto-delegate to department leads.': 'Mặc định: chỉ đề xuất với Founder, tự động giao cho trưởng bộ phận.',
   'Default pattern: suggest-only for strategic changes, auto for internal coordination.': 'Mặc định: chỉ đề xuất với thay đổi chiến lược, tự động cho phối hợp nội bộ.',
-  'Default pattern: auto for internal work, require review for external side effects.': 'Mặc định: tự động với công việc nội bộ, yêu cầu xem xét cho tác động ra bên ngoài.'
+  'Default pattern: auto for internal work, require review for external side effects.': 'Mặc định: tự động với công việc nội bộ, yêu cầu xem xét cho tác động ra bên ngoài.',
+  'Connect AI adapter': 'Kết nối AI adapter',
+  'Test connection': 'Kiểm tra kết nối',
+  'Testing…': 'Đang kiểm tra…',
+  'Connection failed': 'Kết nối thất bại',
+  'API key is valid and connection is live.': 'API key hợp lệ và kết nối đang hoạt động.',
+  'Adapter not found': 'Không tìm thấy adapter',
+  'GitHub Copilot — code-aware reasoning powered by GitHub models': 'GitHub Copilot — suy luận nhận biết code từ GitHub models',
+  'OpenAI GPT-4o — best for general-purpose agents': 'OpenAI GPT-4o — tốt nhất cho agent đa năng',
+  'Anthropic Claude — great for reasoning and long-context tasks': 'Anthropic Claude — xuất sắc cho suy luận và tác vụ ngữ cảnh dài',
+  'Latency': 'Độ trễ',
+  'ms': 'ms'
 }

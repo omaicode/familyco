@@ -1,4 +1,5 @@
 export * from './agent/index.js';
+export * from './ai-adapter/index.js';
 export * from './approval/index.js';
 export * from './audit/index.js';
 export * from './engine/index.js';

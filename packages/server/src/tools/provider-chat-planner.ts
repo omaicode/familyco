@@ -1,4 +1,4 @@
-import type { SettingsService } from '@familyco/core';
+import type { AiAdapterRegistry, SettingsService } from '@familyco/core';
 
 import type { CompanyProfile } from './company-profile-read.tool.js';
 import { asNonEmptyString, isRecord } from './tool.helpers.js';
@@ -18,6 +18,7 @@ export interface PlannedChatResponse {
 
 interface PlanChatWithProviderInput {
   settingsService?: SettingsService;
+  adapterRegistry?: AiAdapterRegistry;
   message: string;
   companyProfile: CompanyProfile;
   tools: ToolDefinitionSummary[];
@@ -29,8 +30,10 @@ interface PlanChatWithProviderInput {
   }>;
 }
 
+type AdapterId = 'copilot' | 'openai' | 'claude';
+
 interface ProviderSettings {
-  providerName: 'openai' | 'anthropic' | 'google';
+  providerName: AdapterId;
   apiKey: string;
   model: string;
 }
@@ -49,7 +52,8 @@ export async function planChatWithProvider(
   const rawText = await requestPlannerCompletion({
     providerSettings,
     systemPrompt,
-    userPrompt
+    userPrompt,
+    adapterRegistry: input.adapterRegistry
   });
 
   const parsed = parsePlannerResponse(rawText, input.tools);
@@ -71,7 +75,7 @@ async function readProviderSettings(settingsService?: SettingsService): Promise<
     settingsService.get('provider.defaultModel')
   ]);
 
-  const providerName = asProviderName(providerSetting?.value);
+  const providerName = asAdapterId(providerSetting?.value);
   const apiKey = asNonEmptyString(apiKeySetting?.value);
   const model = asNonEmptyString(modelSetting?.value);
 
@@ -79,17 +83,18 @@ async function readProviderSettings(settingsService?: SettingsService): Promise<
     return null;
   }
 
-  return {
-    providerName,
-    apiKey,
-    model
-  };
+  return { providerName, apiKey, model };
 }
 
-function asProviderName(value: unknown): ProviderSettings['providerName'] | undefined {
-  return value === 'openai' || value === 'anthropic' || value === 'google'
-    ? value
-    : undefined;
+function asAdapterId(value: unknown): AdapterId | undefined {
+  if (value === 'copilot' || value === 'openai' || value === 'claude') {
+    return value;
+  }
+
+  // Backward compat: old settings stored 'anthropic' or 'google'
+  if (value === 'anthropic') return 'claude';
+
+  return undefined;
 }
 
 function buildSystemPrompt(companyProfile: CompanyProfile, tools: ToolDefinitionSummary[]): string {
@@ -158,166 +163,21 @@ async function requestPlannerCompletion(input: {
   providerSettings: ProviderSettings;
   systemPrompt: string;
   userPrompt: string;
+  adapterRegistry?: AiAdapterRegistry;
 }): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25000);
-
-  try {
-    if (input.providerSettings.providerName === 'openai') {
-      return requestOpenAIPlan(input, controller.signal);
+  if (input.adapterRegistry) {
+    const adapter = input.adapterRegistry.get(input.providerSettings.providerName);
+    if (adapter) {
+      return adapter.chat({
+        apiKey: input.providerSettings.apiKey,
+        model: input.providerSettings.model,
+        systemPrompt: input.systemPrompt,
+        userPrompt: input.userPrompt
+      });
     }
-
-    if (input.providerSettings.providerName === 'anthropic') {
-      return requestAnthropicPlan(input, controller.signal);
-    }
-
-    return requestGooglePlan(input, controller.signal);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function requestOpenAIPlan(
-  input: {
-    providerSettings: ProviderSettings;
-    systemPrompt: string;
-    userPrompt: string;
-  },
-  signal: AbortSignal
-): Promise<string> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    signal,
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${input.providerSettings.apiKey}`
-    },
-    body: JSON.stringify({
-      model: input.providerSettings.model,
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: input.systemPrompt },
-        { role: 'user', content: input.userPrompt }
-      ]
-    })
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(readProviderError('openai', payload));
   }
 
-  const content = payload?.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || content.trim().length === 0) {
-    throw new Error('PROVIDER_INVALID_RESPONSE:OpenAI returned an empty planning response');
-  }
-
-  return content;
-}
-
-async function requestAnthropicPlan(
-  input: {
-    providerSettings: ProviderSettings;
-    systemPrompt: string;
-    userPrompt: string;
-  },
-  signal: AbortSignal
-): Promise<string> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    signal,
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': input.providerSettings.apiKey,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: input.providerSettings.model,
-      max_tokens: 800,
-      temperature: 0.2,
-      system: input.systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: input.userPrompt
-        }
-      ]
-    })
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(readProviderError('anthropic', payload));
-  }
-
-  const content = Array.isArray(payload?.content)
-    ? payload.content
-        .map((part: { text?: string }) => part?.text ?? '')
-        .join('\n')
-        .trim()
-    : '';
-
-  if (content.length === 0) {
-    throw new Error('PROVIDER_INVALID_RESPONSE:Anthropic returned an empty planning response');
-  }
-
-  return content;
-}
-
-async function requestGooglePlan(
-  input: {
-    providerSettings: ProviderSettings;
-    systemPrompt: string;
-    userPrompt: string;
-  },
-  signal: AbortSignal
-): Promise<string> {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    input.providerSettings.model
-  )}:generateContent?key=${encodeURIComponent(input.providerSettings.apiKey)}`;
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    signal,
-    headers: {
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: `${input.systemPrompt}\n\n${input.userPrompt}`
-            }
-          ]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: 'application/json'
-      }
-    })
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(readProviderError('google', payload));
-  }
-
-  const content = Array.isArray(payload?.candidates?.[0]?.content?.parts)
-    ? payload.candidates[0].content.parts
-        .map((part: { text?: string }) => part?.text ?? '')
-        .join('\n')
-        .trim()
-    : '';
-
-  if (content.length === 0) {
-    throw new Error('PROVIDER_INVALID_RESPONSE:Google returned an empty planning response');
-  }
-
-  return content;
+  throw new Error(`ADAPTER_NOT_FOUND:${input.providerSettings.providerName}`);
 }
 
 function parsePlannerResponse(text: string, tools: ToolDefinitionSummary[]): Omit<PlannedChatResponse, 'providerName' | 'model'> {
@@ -391,22 +251,4 @@ function tryParseJsonObject(text: string): unknown {
 
     return null;
   }
-}
-
-function readProviderError(providerName: string, payload: unknown): string {
-  if (isRecord(payload)) {
-    if (isRecord(payload.error)) {
-      const nestedMessage = asNonEmptyString(payload.error.message);
-      if (nestedMessage) {
-        return `PROVIDER_REQUEST_FAILED:${providerName}:${nestedMessage}`;
-      }
-    }
-
-    const message = asNonEmptyString(payload.message);
-    if (message) {
-      return `PROVIDER_REQUEST_FAILED:${providerName}:${message}`;
-    }
-  }
-
-  return `PROVIDER_REQUEST_FAILED:${providerName}:Unknown provider error`;
 }

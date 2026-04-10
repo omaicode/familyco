@@ -323,6 +323,19 @@ export interface ArchiveInboxMessagePayload {
   id: string;
 }
 
+export interface TestAdapterPayload {
+  adapterId: string;
+  apiKey: string;
+  model?: string;
+}
+
+export interface AdapterTestResult {
+  ok: boolean;
+  latencyMs: number;
+  model?: string;
+  error?: string;
+}
+
 export interface UpsertSettingPayload {
   key: string;
   value: unknown;
@@ -363,6 +376,7 @@ export interface FamilyCoApiContracts {
   archiveInboxMessage: (payload: ArchiveInboxMessagePayload) => Promise<InboxMessageItem>;
   listSettings: () => Promise<SettingItem[]>;
   upsertSetting: (payload: UpsertSettingPayload) => Promise<SettingItem>;
+  testProviderAdapter: (payload: TestAdapterPayload) => Promise<AdapterTestResult>;
   initializeSetup: (payload: InitializeSetupPayload) => Promise<{
     companyName: string;
     companyDescription: string;
@@ -492,6 +506,8 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   archiveInboxMessage: (payload) => client.post<InboxMessageItem>(`/api/v1/inbox/${payload.id}/archive`),
   listSettings: () => client.get<SettingItem[]>('/api/v1/settings'),
   upsertSetting: (payload) => client.post<SettingItem, UpsertSettingPayload>('/api/v1/settings', payload),
+  testProviderAdapter: (payload) =>
+    client.post<AdapterTestResult, TestAdapterPayload>('/api/v1/provider/test', payload),
   initializeSetup: (payload) =>
     client.post<
       {

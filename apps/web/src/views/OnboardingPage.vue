@@ -4,14 +4,14 @@ import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Building2, Key, Users, CheckCircle2, ChevronRight, ChevronLeft,
-  Eye, EyeOff, AlertTriangle, ArrowRight, Sparkles, Zap
+  Eye, EyeOff, AlertTriangle, ArrowRight, Sparkles, Zap, Loader2
 } from 'lucide-vue-next';
 import FamilyCoIcon from '../assets/familyco-icon.svg';
 
 import { uiRuntime } from '../runtime';
 import { useI18n } from '../composables/useI18n';
 
-type Provider = 'openai' | 'anthropic' | 'google';
+type AdapterId = 'copilot' | 'openai' | 'claude';
 
 const router = useRouter();
 const { locale, setLocale, supportedLocales, t } = useI18n();
@@ -28,16 +28,20 @@ let stepHeightCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
 const createdResult = ref<{ executiveName: string; description: string } | null>(null);
 
+// ── Adapter test state ───────────────────────────────────
+const isTesting = ref(false);
+const testResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
+
 const form = reactive({
   companyName: '',
   companyDescription: '',
-  provider: 'openai' as Provider,
+  provider: 'openai' as AdapterId,
   apiKey: '',
   defaultModel: 'gpt-4o',
 });
 
-interface ProviderOption {
-  value: Provider;
+interface AdapterOption {
+  value: AdapterId;
   label: string;
   description: string;
   keyHint: string;
@@ -45,49 +49,68 @@ interface ProviderOption {
   models: string[];
 }
 
-const providerOptions = computed<ProviderOption[]>(() => [
+const adapterOptions = computed<AdapterOption[]>(() => [
+  {
+    value: 'copilot',
+    label: 'GitHub Copilot',
+    description: t('GitHub Copilot — code-aware reasoning powered by GitHub models'),
+    keyHint: 'ghp_… or ghu_…',
+    defaultModel: 'gpt-4o',
+    models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3.5-sonnet'],
+  },
   {
     value: 'openai',
     label: 'OpenAI',
-    description: t('GPT-4o, o1, o3 — best for general-purpose agents'),
+    description: t('OpenAI GPT-4o — best for general-purpose agents'),
     keyHint: 'sk-…',
     defaultModel: 'gpt-4o',
     models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'],
   },
   {
-    value: 'anthropic',
-    label: 'Anthropic',
-    description: t('Claude — great for reasoning and long-context tasks'),
+    value: 'claude',
+    label: 'Claude',
+    description: t('Anthropic Claude — great for reasoning and long-context tasks'),
     keyHint: 'sk-ant-…',
     defaultModel: 'claude-sonnet-4-5',
     models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'],
   },
-  {
-    value: 'google',
-    label: 'Google AI',
-    description: t('Gemini — multimodal and fast for structured tasks'),
-    keyHint: 'AIza…',
-    defaultModel: 'gemini-2.5-pro',
-    models: ['gemini-2.5-pro', 'gemini-2.5-flash'],
-  },
 ]);
 
-const selectedProvider = computed(() => providerOptions.value.find(p => p.value === form.provider)!);
+const selectedAdapter = computed(() => adapterOptions.value.find(p => p.value === form.provider)!);
 
 const canNext = computed(() => {
   if (currentStep.value === 2) {
     return form.companyName.trim().length > 0 && form.companyDescription.trim().length > 0;
   }
 
-  if (currentStep.value === 3) return form.apiKey.trim().length > 0;
+  if (currentStep.value === 3) return testResult.value?.ok === true;
   return true;
 });
 
-const selectProvider = (p: Provider) => {
-  form.provider = p;
-  form.defaultModel = providerOptions.value.find(o => o.value === p)!.defaultModel;
+const selectAdapter = (id: AdapterId) => {
+  form.provider = id;
+  form.defaultModel = adapterOptions.value.find(o => o.value === id)!.defaultModel;
   showApiKey.value = false;
   form.apiKey = '';
+  testResult.value = null;
+};
+
+const testConnection = async () => {
+  if (!form.apiKey.trim()) return;
+  isTesting.value = true;
+  testResult.value = null;
+  try {
+    const result = await uiRuntime.api.testProviderAdapter({
+      adapterId: form.provider,
+      apiKey: form.apiKey.trim(),
+      model: form.defaultModel,
+    });
+    testResult.value = { ok: result.ok, latencyMs: result.latencyMs, error: result.error };
+  } catch (err) {
+    testResult.value = { ok: false, error: err instanceof Error ? err.message : 'Connection test failed' };
+  } finally {
+    isTesting.value = false;
+  }
 };
 
 const next = () => { if (currentStep.value < TOTAL_STEPS) currentStep.value++; };
@@ -312,17 +335,17 @@ const handleStepAfterEnter = (): void => {
             <div class="ob-step-icon ob-step-icon-accent">
               <Key :size="28" />
             </div>
-            <h2 class="ob-title">{{ t('AI provider') }}</h2>
+            <h2 class="ob-title">{{ t('Connect AI adapter') }}</h2>
             <p class="ob-subtitle">{{ t('Choose your AI provider and paste your API key. This is used by your agents to reason and act.') }}</p>
 
-            <!-- Provider selector -->
+            <!-- Adapter selector -->
             <div class="ob-provider-grid">
               <button
-                v-for="opt in providerOptions"
+                v-for="opt in adapterOptions"
                 :key="opt.value"
                 class="ob-provider-card"
                 :class="{ 'ob-provider-selected': form.provider === opt.value }"
-                @click="selectProvider(opt.value)"
+                @click="selectAdapter(opt.value)"
               >
                 <span class="ob-provider-name">{{ opt.label }}</span>
                 <span class="ob-provider-desc">{{ opt.description }}</span>
@@ -337,9 +360,10 @@ const handleStepAfterEnter = (): void => {
                   v-model="form.apiKey"
                   :type="showApiKey ? 'text' : 'password'"
                   class="ob-input ob-input-password"
-                  :placeholder="selectedProvider.keyHint"
+                  :placeholder="selectedAdapter.keyHint"
                   autocomplete="off"
                   spellcheck="false"
+                  @input="testResult = null"
                 />
                 <button
                   type="button"
@@ -357,8 +381,30 @@ const handleStepAfterEnter = (): void => {
             <div class="ob-form-group">
               <label class="ob-label">{{ t('Default model') }}</label>
               <select v-model="form.defaultModel" class="ob-input ob-select">
-                <option v-for="m in selectedProvider.models" :key="m" :value="m">{{ m }}</option>
+                <option v-for="m in selectedAdapter.models" :key="m" :value="m">{{ m }}</option>
               </select>
+            </div>
+
+            <!-- Test connection -->
+            <div class="ob-form-group">
+              <button
+                type="button"
+                class="ob-btn-test"
+                :disabled="!form.apiKey.trim() || isTesting"
+                @click="testConnection"
+              >
+                <Loader2 v-if="isTesting" :size="14" class="ob-spin" />
+                <span>{{ isTesting ? t('Testing…') : t('Test connection') }}</span>
+              </button>
+              <div v-if="testResult" class="ob-test-result" :class="testResult.ok ? 'ob-test-ok' : 'ob-test-fail'">
+                <CheckCircle2 v-if="testResult.ok" :size="14" />
+                <AlertTriangle v-else :size="14" />
+                <span v-if="testResult.ok">
+                  {{ t('API key is valid and connection is live.') }}
+                  <span v-if="testResult.latencyMs" class="ob-test-latency">{{ testResult.latencyMs }}{{ t('ms') }}</span>
+                </span>
+                <span v-else>{{ testResult.error ?? t('Connection failed') }}</span>
+              </div>
             </div>
 
             <div class="ob-actions">
@@ -391,7 +437,7 @@ const handleStepAfterEnter = (): void => {
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">{{ t('AI provider') }}</span>
-                <span class="ob-summary-value">{{ selectedProvider.label }}</span>
+                <span class="ob-summary-value">{{ selectedAdapter.label }}</span>
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">{{ t('Default model') }}</span>
@@ -848,6 +894,39 @@ const handleStepAfterEnter = (): void => {
 
 .ob-btn-ghost:hover { color: var(--fc-text); border-color: var(--fc-border); }
 .ob-btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Test connection button ───────────────────────────── */
+.ob-btn-test {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ob-btn-test:not(:disabled):hover { border-color: var(--fc-accent); color: var(--fc-text); }
+.ob-btn-test:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ob-test-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.ob-test-ok { background: color-mix(in srgb, var(--fc-success, #22c55e) 12%, transparent); color: #16a34a; }
+.ob-test-fail { background: color-mix(in srgb, #ef4444 12%, transparent); color: #dc2626; }
+.ob-test-latency { margin-left: 6px; opacity: 0.65; font-size: 11px; }
+
+@keyframes ob-spin { to { transform: rotate(360deg); } }
+.ob-spin { animation: ob-spin 0.8s linear infinite; }
 
 /* ── Transitions ──────────────────────────────────────── */
 .ob-fade-enter-active { transition: opacity 0.3s ease; }

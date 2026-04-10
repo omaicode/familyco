@@ -34,6 +34,7 @@ import { registerDashboardController } from './modules/dashboard/index.js';
 import { registerEngineController } from './modules/engine/index.js';
 import { registerInboxController } from './modules/inbox/index.js';
 import { registerProjectController } from './modules/project/index.js';
+import { registerProviderController } from './modules/provider/index.js';
 import { registerSettingsController } from './modules/settings/index.js';
 import { registerSetupController } from './modules/setup/index.js';
 import { registerTaskController } from './modules/task/index.js';
@@ -68,6 +69,7 @@ import {
 import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
 import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
 import { DefaultToolExecutor } from './tools/index.js';
+import { createAdapterRegistry } from './adapters/index.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
 
@@ -148,11 +150,13 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
+  const adapterRegistry = createAdapterRegistry();
   const toolExecutor = new DefaultToolExecutor({
     agentService,
     projectService,
     settingsService,
-    taskService
+    taskService,
+    adapterRegistry
   });
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
@@ -414,6 +418,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         settingsService,
         auditService
       });
+      registerProviderController(api, { adapterRegistry });
       registerTaskController(api, {
         taskService,
         agentService,

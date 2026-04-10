@@ -31,6 +31,10 @@ export async function authenticateApiRequest(
     return;
   }
 
+  if (routeUrl === '/provider/test' || routeUrl.endsWith('/provider/test')) {
+    return;
+  }
+
   const apiKeyHeader = request.headers['x-api-key'];
   const apiKeyFromQuery =
     typeof request.query === 'object' && request.query !== null && 'apiKey' in request.query

@@ -408,5 +408,16 @@ export default {
   'Optimized for fast delivery on scoped tasks with clear ownership and guardrails.': 'Optimized for fast delivery on scoped tasks with clear ownership and guardrails.',
   'Default pattern: suggest-only with the Founder, auto-delegate to department leads.': 'Default pattern: suggest-only with the Founder, auto-delegate to department leads.',
   'Default pattern: suggest-only for strategic changes, auto for internal coordination.': 'Default pattern: suggest-only for strategic changes, auto for internal coordination.',
-  'Default pattern: auto for internal work, require review for external side effects.': 'Default pattern: auto for internal work, require review for external side effects.'
+  'Default pattern: auto for internal work, require review for external side effects.': 'Default pattern: auto for internal work, require review for external side effects.',
+  'Connect AI adapter': 'Connect AI adapter',
+  'Test connection': 'Test connection',
+  'Testing…': 'Testing…',
+  'Connection failed': 'Connection failed',
+  'API key is valid and connection is live.': 'API key is valid and connection is live.',
+  'Adapter not found': 'Adapter not found',
+  'GitHub Copilot — code-aware reasoning powered by GitHub models': 'GitHub Copilot — code-aware reasoning powered by GitHub models',
+  'OpenAI GPT-4o — best for general-purpose agents': 'OpenAI GPT-4o — best for general-purpose agents',
+  'Anthropic Claude — great for reasoning and long-context tasks': 'Anthropic Claude — great for reasoning and long-context tasks',
+  'Latency': 'Latency',
+  'ms': 'ms'
 };

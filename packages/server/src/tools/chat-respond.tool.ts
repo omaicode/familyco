@@ -86,6 +86,7 @@ export const chatRespondTool: ServerToolDefinition = {
         ? null
         : await planChatWithProvider({
             settingsService: context.settingsService,
+            adapterRegistry: context.adapterRegistry,
             message,
             companyProfile: profile,
             tools: availableTools,
