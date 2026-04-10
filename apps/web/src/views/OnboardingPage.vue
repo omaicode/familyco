@@ -902,7 +902,7 @@ const handleStepAfterEnter = (): void => {
   gap: 6px;
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid var(--fc-border);
+  border: 1px solid var(--fc-border-subtle);
   background: var(--fc-surface);
   color: var(--fc-text-muted);
   font-size: 13px;
