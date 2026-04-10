@@ -212,7 +212,7 @@ export class OpenAiAdapter implements AiAdapter {
 
 function supportsOpenAiReasoning(model: string): boolean {
   const normalized = model.trim().toLowerCase();
-  return normalized.startsWith('gpt-5') || normalized.startsWith('o1') || normalized.startsWith('o3') || normalized.startsWith('o4');
+  return normalized.startsWith('gpt-5') || normalized.startsWith('o3') || normalized.startsWith('o4');
 }
 
 function supportsOpenAiTemperature(model: string): boolean {
