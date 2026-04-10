@@ -1,8 +1,15 @@
 import type { AgentLevel } from '@familyco/core';
 
 import { agentCreateTool } from '../../tools/agent-create.tool.js';
+import { agentDeleteTool } from '../../tools/agent-delete.tool.js';
+import { agentUpdateTool } from '../../tools/agent-update.tool.js';
 import { projectCreateTool } from '../../tools/project-create.tool.js';
+import { projectDeleteTool } from '../../tools/project-delete.tool.js';
+import { projectUpdateTool } from '../../tools/project-update.tool.js';
 import { taskCreateTool } from '../../tools/task-create.tool.js';
+import { taskDeleteTool } from '../../tools/task-delete.tool.js';
+import { taskUpdateStatusTool } from '../../tools/task-update-status.tool.js';
+import { taskUpdateTool } from '../../tools/task-update.tool.js';
 import type { SlashCommandSpec } from '../../tools/tool.types.js';
 
 export interface BuiltinSlashResult {
@@ -85,7 +92,7 @@ function toolSpecToEntry(toolName: string, spec: SlashCommandSpec): ToolSlashEnt
     name: spec.command.replace(/^\//, ''),
     aliases: [],
     description: spec.description,
-    usage: `${spec.command} {desc}`,
+    usage: spec.usage ?? `${spec.command} {desc}`,
     insertValue: spec.insertValue,
     levels: spec.levels,
     toolName,
@@ -139,7 +146,18 @@ export function buildAgentSlashRegistry(): AgentSlashRegistry {
     return _registryCache;
   }
 
-  const toolEntries: ToolSlashEntry[] = [taskCreateTool, projectCreateTool, agentCreateTool]
+  const toolEntries: ToolSlashEntry[] = [
+    taskCreateTool,
+    taskUpdateTool,
+    taskUpdateStatusTool,
+    taskDeleteTool,
+    projectCreateTool,
+    projectUpdateTool,
+    projectDeleteTool,
+    agentCreateTool,
+    agentUpdateTool,
+    agentDeleteTool
+  ]
     .filter((tool): tool is typeof tool & { slashSpec: SlashCommandSpec } => tool.slashSpec !== undefined)
     .map((tool) => toolSpecToEntry(tool.name, tool.slashSpec));
 

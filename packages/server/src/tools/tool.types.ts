@@ -37,6 +37,7 @@ export interface ServerToolContext extends DefaultToolExecutorDeps {
 
 export interface SlashCommandSpec {
   command: string;
+  usage?: string;
   label: string;
   description: string;
   insertValue: string;

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
+  AgentDeleteResult,
   AgentProfile,
   AgentRepository,
   AgentStatus,
@@ -96,5 +97,38 @@ export class InMemoryAgentRepository implements AgentRepository {
 
     this.agents.set(id, updated);
     return updated;
+  }
+
+  async deleteCascade(id: string): Promise<AgentDeleteResult> {
+    if (!this.agents.has(id)) {
+      throw new Error(`AGENT_NOT_FOUND:${id}`);
+    }
+
+    const deletedAgentIds: string[] = [];
+    const stack = [id];
+
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      if (deletedAgentIds.includes(current)) {
+        continue;
+      }
+
+      deletedAgentIds.push(current);
+      const children = Array.from(this.agents.values())
+        .filter((agent) => agent.parentAgentId === current)
+        .map((agent) => agent.id);
+      stack.push(...children);
+    }
+
+    for (const agentId of deletedAgentIds) {
+      this.agents.delete(agentId);
+    }
+
+    return {
+      deletedAgentIds,
+      deletedProjectIds: [],
+      deletedTaskIds: [],
+      deletedApprovalIds: []
+    };
   }
 }

@@ -15,6 +15,13 @@ export interface AgentProfile {
   updatedAt: Date;
 }
 
+export interface AgentDeleteResult {
+  deletedAgentIds: string[];
+  deletedProjectIds: string[];
+  deletedTaskIds: string[];
+  deletedApprovalIds: string[];
+}
+
 export interface CreateAgentInput {
   name: string;
   role: string;

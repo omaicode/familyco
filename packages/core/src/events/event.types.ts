@@ -2,6 +2,7 @@ export interface FamilyCoEvents {
   'agent.created': { agentId: string };
   'agent.paused': { agentId: string };
   'agent.updated': { agentId: string };
+  'agent.deleted': { agentId: string };
   'task.created': { taskId: string; projectId: string };
   'task.updated': { taskId: string; projectId: string };
   'task.status.updated': { taskId: string; status: string };

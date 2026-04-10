@@ -1,4 +1,10 @@
-import type { AgentProfile, AgentStatus, CreateAgentInput, UpdateAgentInput } from './agent.entity.js';
+import type {
+  AgentDeleteResult,
+  AgentProfile,
+  AgentStatus,
+  CreateAgentInput,
+  UpdateAgentInput
+} from './agent.entity.js';
 import type { AgentRepository } from './agent.repository.js';
 import type { EventBus } from '../events/event-bus.js';
 
@@ -78,5 +84,24 @@ export class AgentService {
     const agent = await this.repository.updateParent(id, parentAgentId);
     this.eventBus?.emit('agent.updated', { agentId: agent.id });
     return agent;
+  }
+
+  async deleteAgent(id: string): Promise<AgentDeleteResult> {
+    const target = await this.getAgentById(id);
+
+    if (target.level === 'L0' && target.status !== 'terminated') {
+      const l0Agents = await this.repository.list();
+      const remainingActiveExecutives = l0Agents.filter(
+        (agent) => agent.id !== id && agent.level === 'L0' && agent.status !== 'terminated'
+      );
+
+      if (remainingActiveExecutives.length === 0) {
+        throw new Error('AGENT_DELETE_LAST_EXECUTIVE');
+      }
+    }
+
+    const deleted = await this.repository.deleteCascade(id);
+    this.eventBus?.emit('agent.deleted', { agentId: id });
+    return deleted;
   }
 }

@@ -103,6 +103,41 @@ test('AgentService updates editable profile fields for an existing agent', async
   assert.equal(updated.parentAgentId, null);
 });
 
+test('AgentService blocks deleting the last active L0 executive', async () => {
+  const repository = new InMemoryAgentRepositoryStub();
+  const service = new AgentService(repository);
+
+  const executive = await service.createAgent({
+    name: 'Chief of Staff',
+    role: 'Executive',
+    level: 'L0',
+    department: 'Executive'
+  });
+
+  await assert.rejects(() => service.deleteAgent(executive.id), /AGENT_DELETE_LAST_EXECUTIVE/);
+});
+
+test('AgentService deletes an L0 executive when another active L0 exists', async () => {
+  const repository = new InMemoryAgentRepositoryStub();
+  const service = new AgentService(repository);
+
+  const a = await service.createAgent({
+    name: 'Executive A',
+    role: 'Executive',
+    level: 'L0',
+    department: 'Executive'
+  });
+  await service.createAgent({
+    name: 'Executive B',
+    role: 'Executive',
+    level: 'L0',
+    department: 'Executive'
+  });
+
+  const result = await service.deleteAgent(a.id);
+  assert.equal(result.deletedAgentIds.includes(a.id), true);
+});
+
 class InMemoryAgentRepositoryStub implements AgentRepository {
   private readonly agents = new Map<string, AgentProfile>();
 
@@ -193,5 +228,25 @@ class InMemoryAgentRepositoryStub implements AgentRepository {
     };
     this.agents.set(id, updated);
     return updated;
+  }
+
+  async deleteCascade(id: string): Promise<{
+    deletedAgentIds: string[];
+    deletedProjectIds: string[];
+    deletedTaskIds: string[];
+    deletedApprovalIds: string[];
+  }> {
+    const existing = this.agents.get(id);
+    if (!existing) {
+      throw new Error(`AGENT_NOT_FOUND:${id}`);
+    }
+
+    this.agents.delete(id);
+    return {
+      deletedAgentIds: [id],
+      deletedProjectIds: [],
+      deletedTaskIds: [],
+      deletedApprovalIds: []
+    };
   }
 }

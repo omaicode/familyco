@@ -1,4 +1,5 @@
 import type {
+  AgentDeleteResult,
   AgentLevel,
   AgentProfile,
   AgentRepository,
@@ -99,6 +100,132 @@ export class PrismaAgentRepository implements AgentRepository {
     });
 
     return toAgentProfile(agent);
+  }
+
+  async deleteCascade(id: string): Promise<AgentDeleteResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const root = await tx.agent.findUnique({ where: { id } });
+      if (!root) {
+        throw new Error(`AGENT_NOT_FOUND:${id}`);
+      }
+
+      const deletedAgentIds = new Set<string>();
+      let agentFrontier = [id];
+      while (agentFrontier.length > 0) {
+        agentFrontier.forEach((agentId) => deletedAgentIds.add(agentId));
+        const children = await tx.agent.findMany({
+          where: { parentAgentId: { in: agentFrontier } },
+          select: { id: true }
+        });
+        agentFrontier = children
+          .map((child) => child.id)
+          .filter((agentId) => !deletedAgentIds.has(agentId));
+      }
+
+      const deletedProjectIds = new Set<string>();
+      const rootProjects = await tx.project.findMany({
+        where: {
+          ownerAgentId: { in: Array.from(deletedAgentIds) }
+        },
+        select: { id: true }
+      });
+      rootProjects.forEach((project) => deletedProjectIds.add(project.id));
+      let projectFrontier = Array.from(deletedProjectIds);
+      while (projectFrontier.length > 0) {
+        const children = await tx.project.findMany({
+          where: {
+            parentProjectId: { in: projectFrontier }
+          },
+          select: { id: true }
+        });
+        projectFrontier = [];
+        for (const child of children) {
+          if (!deletedProjectIds.has(child.id)) {
+            deletedProjectIds.add(child.id);
+            projectFrontier.push(child.id);
+          }
+        }
+      }
+
+      const deletedTaskIds = await tx.task.findMany({
+        where: {
+          OR: [
+            { createdBy: { in: Array.from(deletedAgentIds) } },
+            { assigneeAgentId: { in: Array.from(deletedAgentIds) } },
+            { projectId: { in: Array.from(deletedProjectIds) } }
+          ]
+        },
+        select: { id: true }
+      }).then((tasks) => tasks.map((task) => task.id));
+
+      if (deletedTaskIds.length > 0) {
+        await tx.task.deleteMany({
+          where: { id: { in: deletedTaskIds } }
+        });
+      }
+
+      const deletedApprovalIds = await tx.approvalRequest.findMany({
+        where: {
+          actorId: { in: Array.from(deletedAgentIds) }
+        },
+        select: { id: true }
+      }).then((approvals) => approvals.map((approval) => approval.id));
+
+      if (deletedApprovalIds.length > 0) {
+        await tx.approvalRequest.deleteMany({
+          where: {
+            id: { in: deletedApprovalIds }
+          }
+        });
+      }
+
+      const remainingProjects = new Set(deletedProjectIds);
+      while (remainingProjects.size > 0) {
+        const projectRows = await tx.project.findMany({
+          where: { id: { in: Array.from(remainingProjects) } },
+          select: { id: true, parentProjectId: true }
+        });
+        const parentIds = new Set(
+          projectRows.map((project) => project.parentProjectId).filter((value): value is string => Boolean(value))
+        );
+        const leafIds = projectRows.filter((project) => !parentIds.has(project.id)).map((project) => project.id);
+        if (leafIds.length === 0) {
+          throw new Error('PROJECT_DELETE_CASCADE_FAILED');
+        }
+
+        await tx.project.deleteMany({
+          where: { id: { in: leafIds } }
+        });
+        leafIds.forEach((projectId) => remainingProjects.delete(projectId));
+      }
+
+      const remainingAgents = new Set(deletedAgentIds);
+      while (remainingAgents.size > 0) {
+        const agentRows = await tx.agent.findMany({
+          where: { id: { in: Array.from(remainingAgents) } },
+          select: { id: true, parentAgentId: true }
+        });
+        const parentIds = new Set(
+          agentRows.map((agent) => agent.parentAgentId).filter((value): value is string => Boolean(value))
+        );
+        const leafIds = agentRows.filter((agent) => !parentIds.has(agent.id)).map((agent) => agent.id);
+        if (leafIds.length === 0) {
+          throw new Error('AGENT_DELETE_CASCADE_FAILED');
+        }
+
+        await tx.agent.deleteMany({
+          where: { id: { in: leafIds } }
+        });
+        leafIds.forEach((agentId) => remainingAgents.delete(agentId));
+      }
+
+      return {
+        deletedAgentIds: Array.from(deletedAgentIds),
+        deletedProjectIds: Array.from(deletedProjectIds),
+        deletedTaskIds,
+        deletedApprovalIds
+      };
+    });
   }
 }
 
