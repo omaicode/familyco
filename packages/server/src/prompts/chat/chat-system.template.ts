@@ -20,18 +20,23 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
       '4. Keep the Founder in control with concise, structured updates.',
       '5. When you are the only agent, execute all work yourself. Propose creating new agents (L1/L2) only when workload or specialization justifies it — never create them without Founder approval.',
       '',
-      'Tool Strategy (CRITICAL — follow this order):',
-      'Step 1 — GATHER: call query tools (task.list, agent.list, project.list, etc.) to collect the data you need. You CAN call multiple tools in a single response when the calls are independent.',
-      'Step 2 — PLAN: analyze the gathered data and decide what actions to take.',
-      'Step 3 — EXECUTE: call action tools (task.create, task.update, project.create, agent.update, etc.) to carry out the plan.',
-      'RULE: NEVER repeat a tool call whose results already appear in the conversation history below. Use those results.',
-      'RULE: After you have the data you need, PROCEED to action in the same or next response — do not keep re-querying.'
+      'Tool Strategy (follow this order strictly):',
+      'Step 1 — GATHER: call query tools (task.list, agent.list, project.list, etc.) to collect the data you need. You CAN call multiple query tools in a single response when the calls are independent.',
+      'Step 2 — PLAN: analyze gathered data, form a concrete plan.',
+      'Step 3 — CONFIRM (only when genuinely stuck): if the plan requires a critical decision that cannot be inferred — e.g. "which project to attach this to?" or "delete or archive?" — call confirm.request with a short question and 2–4 clear option labels. This pauses execution and shows buttons to the Founder.',
+      'Step 4 — EXECUTE: call action tools (task.create, task.update, project.create, etc.) to carry out the plan.',
+      '',
+      'RULE: NEVER repeat a tool call whose results already appear in the conversation history. Use those results directly.',
+      'RULE: After you have the data you need, PROCEED to action — do not keep re-querying.',
+      'RULE: Use confirm.request sparingly. If intent is clear from context, just act. Over-asking breaks Founder flow.',
+      'RULE: When you call confirm.request, write a brief conversational reply first explaining why you are asking, THEN call the tool.'
     ].join('\n'),
     constraints: [
       'No direct side effects (email, webhook, external API) without Founder approval.',
       'Do not create agents directly — propose to the Founder for approval.',
       'Escalate important decisions, trade-offs, and irreversible actions to the Founder.',
-      'Maintain safety, transparency, and auditability in all operations.'
+      'Maintain safety, transparency, and auditability in all operations.',
+      'confirm.request is for critical branching decisions, not for trivial choices the agent can resolve itself.'
     ],
     outputContract: [
       'To call tools, return JSON: { "reply": "markdown message for the Founder", "toolCalls": [{ "toolName": "tool.name", "arguments": { ... } }] }',
@@ -56,7 +61,12 @@ function renderToolLines(input: ChatSystemPromptInput['tools']): string[] {
 
   return input.map((tool) => {
     const parameters = tool.parameters
-      .map((parameter) => `${parameter.name}${parameter.required ? '*' : ''}: ${parameter.description}`)
+      .map((parameter) => {
+        const typeLabel = parameter.type === 'array'
+          ? `array of ${(parameter as { items?: { type: string } }).items?.type ?? 'values'}`
+          : parameter.type;
+        return `${parameter.name}${parameter.required ? '*' : ''} (${typeLabel}): ${parameter.description}`;
+      })
       .join('; ');
 
     return `- ${tool.name}: ${tool.description}${parameters ? ` Parameters => ${parameters}` : ''}`;

@@ -58,11 +58,16 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('When no tools are needed, return plain Markdown text'), true);
 
   // Tool strategy section
-  assert.equal(prompt.includes('Tool Strategy (CRITICAL'), true);
+  assert.equal(prompt.includes('Tool Strategy (follow this order strictly)'), true);
   assert.equal(prompt.includes('GATHER'), true);
   assert.equal(prompt.includes('PLAN'), true);
+  assert.equal(prompt.includes('CONFIRM'), true);
   assert.equal(prompt.includes('EXECUTE'), true);
   assert.equal(prompt.includes('NEVER repeat a tool call'), true);
+
+  // confirm.request guidance
+  assert.equal(prompt.includes('confirm.request'), true);
+  assert.equal(prompt.includes('sparingly'), true);
 
   // Tools are now listed in context
   assert.equal(prompt.includes('Available Tools:'), true);
