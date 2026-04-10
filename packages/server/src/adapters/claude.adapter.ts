@@ -2,6 +2,8 @@ import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult 
 
 import { readProviderError, toAdapterErrorMessage } from './adapter.helpers.js';
 
+const CLAUDE_SKILLS_BETA_HEADER = 'code-execution-2025-08-25,skills-2025-10-02';
+
 export class ClaudeAdapter implements AiAdapter {
   readonly id = 'claude';
   readonly name = 'Claude';
@@ -21,22 +23,21 @@ export class ClaudeAdapter implements AiAdapter {
       const response = await fetch(ClaudeAdapter.ENDPOINT, {
         method: 'POST',
         signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': input.apiKey,
-          'anthropic-version': '2023-06-01'
-        },
+        headers: buildClaudeHeaders(input.apiKey, Boolean(input.skills && input.skills.length > 0)),
         body: JSON.stringify({
           model: input.model,
           max_tokens: 800,
           temperature: 0.2,
           ...(input.skills && input.skills.length > 0
             ? {
-                skills: input.skills.map((skill) => ({
-                  id: skill.id,
-                  name: skill.name,
-                  description: skill.description
-                }))
+                container: {
+                  skills: input.skills.map((skill) => ({
+                    type: 'custom',
+                    skill_id: skill.id,
+                    version: 'latest'
+                  }))
+                },
+                tools: [{ type: 'code_execution_20250825', name: 'code_execution' }]
               }
             : {}),
           system: input.systemPrompt,
@@ -81,11 +82,7 @@ export class ClaudeAdapter implements AiAdapter {
       const response = await fetch(ClaudeAdapter.ENDPOINT, {
         method: 'POST',
         signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
+        headers: buildClaudeHeaders(apiKey, false),
         body: JSON.stringify({
           model: 'claude-haiku-3-5',
           max_tokens: 1,
@@ -112,4 +109,13 @@ export class ClaudeAdapter implements AiAdapter {
       clearTimeout(timeout);
     }
   }
+}
+
+function buildClaudeHeaders(apiKey: string, withSkills: boolean): Record<string, string> {
+  return {
+    'content-type': 'application/json',
+    'x-api-key': apiKey,
+    'anthropic-version': '2023-06-01',
+    ...(withSkills ? { 'anthropic-beta': CLAUDE_SKILLS_BETA_HEADER } : {})
+  };
 }

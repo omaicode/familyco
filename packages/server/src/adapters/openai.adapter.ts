@@ -11,9 +11,18 @@ export class OpenAiAdapter implements AiAdapter {
   readonly availableModels = ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'] as const;
 
   private static readonly ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+  private static readonly RESPONSES_ENDPOINT = 'https://api.openai.com/v1/responses';
   private static readonly TIMEOUT_MS = 25_000;
 
   async chat(input: AdapterChatInput): Promise<AdapterChatResult> {
+    if (input.skills && input.skills.length > 0) {
+      return this.chatWithSkills(input);
+    }
+
+    return this.chatWithoutSkills(input);
+  }
+
+  private async chatWithoutSkills(input: AdapterChatInput): Promise<AdapterChatResult> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), OpenAiAdapter.TIMEOUT_MS);
 
@@ -29,15 +38,6 @@ export class OpenAiAdapter implements AiAdapter {
           model: input.model,
           temperature: 0.2,
           response_format: { type: 'json_object' },
-          ...(input.skills && input.skills.length > 0
-            ? {
-                skills: input.skills.map((skill) => ({
-                  id: skill.id,
-                  name: skill.name,
-                  description: skill.description
-                }))
-              }
-            : {}),
           messages: [
             { role: 'system', content: input.systemPrompt },
             { role: 'user', content: input.userPrompt }
@@ -60,6 +60,77 @@ export class OpenAiAdapter implements AiAdapter {
         content,
         tokenUsage: usage
           ? { prompt: usage.prompt_tokens, completion: usage.completion_tokens, total: usage.total_tokens }
+          : undefined
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private async chatWithSkills(input: AdapterChatInput): Promise<AdapterChatResult> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OpenAiAdapter.TIMEOUT_MS);
+
+    try {
+      const response = await fetch(OpenAiAdapter.RESPONSES_ENDPOINT, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'content-type': 'application/json',
+          'authorization': `Bearer ${input.apiKey}`
+        },
+        body: JSON.stringify({
+          model: input.model,
+          text: {
+            format: { type: 'json_object' }
+          },
+          tools: [
+            {
+              type: 'shell',
+              environment: {
+                type: 'container_auto',
+                skills: input.skills?.map((skill) => ({
+                  type: 'skill_reference',
+                  skill_id: skill.id
+                }))
+              }
+            }
+          ],
+          input: [
+            { role: 'system', content: input.systemPrompt },
+            { role: 'user', content: input.userPrompt }
+          ]
+        })
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(readProviderError('openai', payload));
+      }
+
+      const content =
+        (typeof payload?.output_text === 'string' ? payload.output_text : null) ??
+        (Array.isArray(payload?.output)
+          ? payload.output
+              .flatMap((item: { content?: Array<{ text?: string }> }) => item?.content ?? [])
+              .map((part: { text?: string }) => part?.text ?? '')
+              .join('\n')
+              .trim()
+          : '');
+
+      if (typeof content !== 'string' || content.trim().length === 0) {
+        throw new Error('PROVIDER_INVALID_RESPONSE:OpenAI returned an empty response');
+      }
+
+      const usage = payload?.usage;
+      return {
+        content,
+        tokenUsage: usage
+          ? {
+              prompt: usage.input_tokens ?? usage.prompt_tokens ?? 0,
+              completion: usage.output_tokens ?? usage.completion_tokens ?? 0,
+              total: usage.total_tokens ?? (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0)
+            }
           : undefined
       };
     } finally {
