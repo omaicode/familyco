@@ -34,6 +34,7 @@ const sidebarCollapsed = ref(false);
 const mobileMenuOpen = ref(false);
 const showSplash = ref(true);
 const splashVisible = ref(true);
+const pendingTour = ref(false);
 
 // ── Navigation + icons ────────────────────────────────────
 const navIcons: Record<string, typeof LayoutDashboard> = {
@@ -119,7 +120,7 @@ const loadThemePreference = async (): Promise<void> => {
           s => s.key === 'tour.seen' && s.value === true
         );
         if (!tourSeen) {
-          window.dispatchEvent(new CustomEvent('fc:start-tour'));
+          pendingTour.value = true;
         }
       }
     }
@@ -234,7 +235,13 @@ onMounted(async () => {
   // Dismiss splash after boot delay + loading animation
   setTimeout(() => {
     splashVisible.value = false;
-    setTimeout(() => { showSplash.value = false; }, 350);
+    setTimeout(() => {
+      showSplash.value = false;
+      if (pendingTour.value) {
+        pendingTour.value = false;
+        window.dispatchEvent(new CustomEvent('fc:start-tour'));
+      }
+    }, 350);
   }, 1600);
 
   healthCheckTimer = setInterval(() => void checkHealth(), 15000);
