@@ -3,6 +3,7 @@ import type {
   AiAdapterRegistry,
   SettingsService
 } from '@familyco/core';
+import type { PromptConversationEntry } from '../prompts/prompt.types.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
 import { renderChatSystemPrompt, renderChatUserPrompt } from '../prompts/index.js';
 
@@ -33,12 +34,7 @@ interface SendChatInput {
   message: string;
   companyProfile: CompanyProfile;
   tools: ToolDefinitionSummary[];
-  conversationHistory?: Array<{
-    senderId: string;
-    body: string;
-    title?: string;
-    createdAt?: string;
-  }>;
+  conversationHistory?: PromptConversationEntry[];
   onChunk?: (chunk: string) => void;
 }
 

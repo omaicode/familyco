@@ -16,6 +16,17 @@ export interface PromptConversationEntry {
   body: string;
   title?: string;
   createdAt?: string;
+  toolCalls?: PromptConversationToolCall[];
+}
+
+export interface PromptConversationToolCall {
+  toolName: string;
+  ok: boolean;
+  summary: string;
+  error?: {
+    code?: string;
+    message: string;
+  };
 }
 
 export interface ChatSystemPromptInput {

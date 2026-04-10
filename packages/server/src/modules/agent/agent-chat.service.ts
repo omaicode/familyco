@@ -431,12 +431,24 @@ function toConversationHistoryEntry(message: Awaited<ReturnType<InboxService['cr
   title: string;
   body: string;
   createdAt: string;
+  toolCalls?: Array<{
+    toolName: string;
+    ok: boolean;
+    summary: string;
+    error?: {
+      code?: string;
+      message: string;
+    };
+  }>;
 } {
+  const toolCalls = readToolCallsFromPayload(message.payload);
+
   return {
     senderId: message.senderId,
     title: message.title,
     body: message.body,
-    createdAt: message.createdAt.toISOString()
+    createdAt: message.createdAt.toISOString(),
+    ...(toolCalls.length > 0 ? { toolCalls } : {})
   };
 }
 
@@ -549,4 +561,62 @@ export function toErrorMessage(error: unknown): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function readToolCallsFromPayload(payload: Record<string, unknown> | undefined): Array<{
+  toolName: string;
+  ok: boolean;
+  summary: string;
+  error?: {
+    code?: string;
+    message: string;
+  };
+}> {
+  if (!isRecord(payload) || !Array.isArray(payload.toolCalls)) {
+    return [];
+  }
+
+  return payload.toolCalls
+    .map((entry) => normalizeHistoryToolCall(entry))
+    .filter((entry): entry is {
+      toolName: string;
+      ok: boolean;
+      summary: string;
+      error?: {
+        code?: string;
+        message: string;
+      };
+    } => entry !== null);
+}
+
+function normalizeHistoryToolCall(value: unknown): {
+  toolName: string;
+  ok: boolean;
+  summary: string;
+  error?: {
+    code?: string;
+    message: string;
+  };
+} | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (typeof value.toolName !== 'string' || typeof value.ok !== 'boolean' || typeof value.summary !== 'string') {
+    return null;
+  }
+
+  const error = isRecord(value.error) && typeof value.error.message === 'string'
+    ? {
+        message: value.error.message,
+        ...(typeof value.error.code === 'string' ? { code: value.error.code } : {})
+      }
+    : undefined;
+
+  return {
+    toolName: value.toolName,
+    ok: value.ok,
+    summary: value.summary,
+    ...(error ? { error } : {})
+  };
 }

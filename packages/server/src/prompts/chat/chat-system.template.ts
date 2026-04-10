@@ -53,12 +53,27 @@ function renderHistoryLines(history: ChatSystemPromptInput['conversationHistory'
     return ['- No prior messages recorded.'];
   }
 
-  return history.map((entry) => {
+  const lines: string[] = [];
+
+  for (const entry of history) {
     const speaker = entry.senderId === 'founder' ? 'Founder' : 'Executive agent';
     const title = entry.title ? `${entry.title}: ` : '';
     const body = compactText(entry.body, 240);
-    return `- ${speaker}: ${title}${body}`;
-  });
+    lines.push(`- ${speaker}: ${title}${body}`);
+
+    if (!Array.isArray(entry.toolCalls) || entry.toolCalls.length === 0) {
+      continue;
+    }
+
+    for (const toolCall of entry.toolCalls) {
+      const status = toolCall.ok ? 'ok' : 'failed';
+      const summary = compactText(toolCall.summary, 180);
+      const error = toolCall.error?.message ? ` Error: ${compactText(toolCall.error.message, 120)}` : '';
+      lines.push(`  - Tool ${toolCall.toolName} (${status}): ${summary}${error}`);
+    }
+  }
+
+  return lines;
 }
 
 function compactText(value: string, maxLength: number): string {

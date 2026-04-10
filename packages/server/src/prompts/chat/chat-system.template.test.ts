@@ -12,6 +12,26 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
         senderId: 'founder',
         title: 'Last topic',
         body: 'Need a weekly execution plan with clear priorities.'
+      },
+      {
+        senderId: 'agent-l0',
+        title: 'Reply from Chief of Staff',
+        body: 'Plan drafted and tasks created.',
+        toolCalls: [
+          {
+            toolName: 'task.create',
+            ok: true,
+            summary: 'Created task TASK-123 for the weekly review.'
+          },
+          {
+            toolName: 'project.update',
+            ok: false,
+            summary: 'Unable to update project status.',
+            error: {
+              message: 'PROJECT_NOT_FOUND'
+            }
+          }
+        ]
       }
     ],
     tools: [
@@ -35,5 +55,8 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('Company Name: FamilyCo'), true);
   assert.equal(prompt.includes('Recent Conversation Context:'), true);
   assert.equal(prompt.includes('- Founder: Last topic: Need a weekly execution plan with clear priorities.'), true);
+  assert.equal(prompt.includes('- Executive agent: Reply from Chief of Staff: Plan drafted and tasks created.'), true);
+  assert.equal(prompt.includes('Tool task.create (ok): Created task TASK-123 for the weekly review.'), true);
+  assert.equal(prompt.includes('Tool project.update (failed): Unable to update project status. Error: PROJECT_NOT_FOUND'), true);
   assert.equal(prompt.includes('- task.create: Create a task'), true);
 });
