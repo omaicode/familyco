@@ -51,8 +51,25 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('Goal:'), true);
   assert.equal(prompt.includes('Constraints:'), true);
   assert.equal(prompt.includes('Output Contract:'), true);
-  assert.equal(prompt.includes('Return strict Markdown text only.'), true);
-  assert.equal(prompt.includes('Recent Conversation Context:'), true);
+
+  // New output contract: JSON tool-calling format instead of "strict Markdown only"
+  assert.equal(prompt.includes('To call tools, return JSON:'), true);
+  assert.equal(prompt.includes('"toolCalls"'), true);
+  assert.equal(prompt.includes('When no tools are needed, return plain Markdown text'), true);
+
+  // Tool strategy section
+  assert.equal(prompt.includes('Tool Strategy (CRITICAL'), true);
+  assert.equal(prompt.includes('GATHER'), true);
+  assert.equal(prompt.includes('PLAN'), true);
+  assert.equal(prompt.includes('EXECUTE'), true);
+  assert.equal(prompt.includes('NEVER repeat a tool call'), true);
+
+  // Tools are now listed in context
+  assert.equal(prompt.includes('Available Tools:'), true);
+  assert.equal(prompt.includes('- task.create: Create a task'), true);
+
+  // Conversation history
+  assert.equal(prompt.includes('Recent Conversation History'), true);
   assert.equal(prompt.includes('- Founder: Last topic: Need a weekly execution plan with clear priorities.'), true);
   assert.equal(prompt.includes('- Executive agent: Reply from Chief of Staff: Plan drafted and tasks created.'), true);
   assert.equal(
