@@ -140,7 +140,7 @@ const initialize = async () => {
   }
 };
 
-const goToDashboard = () => router.replace('/chat');
+const goToDashboard = () => router.replace('/dashboard');
 
 const handleLocaleChange = (event: Event): void => {
   const nextLocale = (event.target as HTMLSelectElement).value as SupportedLocale;

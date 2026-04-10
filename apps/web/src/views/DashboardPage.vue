@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
   Bot, AlertOctagon, Clock, Zap, CheckCircle2, TrendingUp,
@@ -11,10 +11,12 @@ import { uiRuntime } from '../runtime';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useAutoReload } from '../composables/useAutoReload';
 import { useI18n } from '../composables/useI18n';
+import { useTutorialTour } from '../composables/useTutorialTour';
 
 const projectId = ref(import.meta.env.VITE_DEFAULT_PROJECT_ID || 'demo-project');
 const isRefreshing = ref(false);
 const { t } = useI18n();
+const tour = useTutorialTour();
 
 const refresh = async () => {
   isRefreshing.value = true;
@@ -59,6 +61,15 @@ const formatRelative = (iso: string): string => {
 };
 
 useAutoReload(refresh);
+
+const handleStartTour = () => { tour.start(t); };
+
+onMounted(() => {
+  window.addEventListener('fc:start-tour', handleStartTour);
+});
+onUnmounted(() => {
+  window.removeEventListener('fc:start-tour', handleStartTour);
+});
 </script>
 
 <template>

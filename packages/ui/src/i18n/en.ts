@@ -431,5 +431,26 @@ export default {
   'Per-adapter API keys': 'Per-adapter API keys',
   'Configure an API key for each adapter you want to use. Agents with an adapter override will use the matching key.': 'Configure an API key for each adapter you want to use. Agents with an adapter override will use the matching key.',
   'AI adapter override': 'AI adapter override',
-  'Model override': 'Model override'
+  'Model override': 'Model override',
+
+  // ── Tutorial tour ──────────────────────────────────────
+  'tour.progress': '{{current}} of {{total}}',
+  'tour.next': 'Next →',
+  'tour.back': '← Back',
+  'tour.done': 'Get started',
+  'Take a tour': 'Take a tour',
+  'tour.step.dashboard.title': '🏠 Your command center',
+  'tour.step.dashboard.desc': 'This is your Dashboard — a real-time view of decisions waiting for your attention, active agents, and task throughput. Start here every morning.',
+  'tour.step.inbox.title': '📥 Decision queue',
+  'tour.step.inbox.desc': 'Your Inbox holds all pending approvals. Agents pause and wait here whenever they need your sign-off before taking action.',
+  'tour.step.chat.title': '💬 Talk to your AI team',
+  'tour.step.chat.desc': 'Open Chat to speak directly with your executive AI agent. Ask it to create tasks, summarize progress, or delegate work — in plain language.',
+  'tour.step.agents.title': '🤖 Your AI team',
+  'tour.step.agents.desc': 'The Agents page shows every AI agent in your company. Each agent has a role, a level, and its own execution history.',
+  'tour.step.projects.title': '📁 Projects',
+  'tour.step.projects.desc': 'Projects group related tasks under a common goal. Create a project and let agents break it down into smaller tasks automatically.',
+  'tour.step.tasks.title': '✅ Tasks',
+  'tour.step.tasks.desc': 'Tasks are the individual units of work your agents execute. You can track status, filter by owner, and review output all in one place.',
+  'tour.step.settings.title': '⚙️ Settings',
+  'tour.step.settings.desc': 'Manage your AI provider connection, company profile, budget limits, and appearance preferences here.'
 };

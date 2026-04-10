@@ -73,6 +73,7 @@ const { t } = useI18n();
             class="fc-nav-item"
             active-class="fc-nav-item-active"
             :data-tooltip="t(section.label)"
+            :id="'tour-' + section.path.replace('/', '')"
           >
             <component
               :is="props.navIcons[section.path]"

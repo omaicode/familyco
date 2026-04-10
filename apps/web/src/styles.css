@@ -562,3 +562,82 @@ body {
   opacity: 1; transform: translateY(-50%) translateX(0);
 }
 .fc-sidebar.collapsed .fc-nav-item[data-tooltip]:hover::before { opacity: 1; }
+
+/* ─── Driver.js tutorial tour overrides ─────────────────── */
+#driver-popover-content {
+  font-family: inherit;
+  background: var(--fc-surface) !important;
+  border: 1px solid var(--fc-border-subtle) !important;
+  border-radius: calc(var(--fc-control-radius) * 2) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18) !important;
+  max-width: 340px !important;
+  padding: 20px 22px 18px !important;
+}
+#driver-popover-title {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: var(--fc-text-main) !important;
+  margin-bottom: 8px !important;
+}
+#driver-popover-description {
+  font-size: 0.875rem !important;
+  color: var(--fc-text-muted) !important;
+  line-height: 1.6 !important;
+}
+#driver-popover-progress-text {
+  font-size: 0.75rem !important;
+  color: var(--fc-text-faint) !important;
+}
+.driver-popover-footer {
+  margin-top: 16px !important;
+  gap: 8px !important;
+}
+.driver-popover-prev-btn,
+.driver-popover-next-btn,
+.driver-popover-close-btn {
+  font-family: inherit !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  border-radius: var(--fc-control-radius) !important;
+  padding: 6px 14px !important;
+  border: 1px solid var(--fc-border-subtle) !important;
+  cursor: pointer !important;
+  transition: background 0.15s, border-color 0.15s !important;
+}
+.driver-popover-prev-btn {
+  background: var(--fc-surface-muted) !important;
+  color: var(--fc-text-muted) !important;
+}
+.driver-popover-prev-btn:hover {
+  background: var(--fc-border-subtle) !important;
+  color: var(--fc-text-main) !important;
+}
+.driver-popover-next-btn {
+  background: var(--fc-primary) !important;
+  border-color: var(--fc-primary) !important;
+  color: #fff !important;
+}
+.driver-popover-next-btn:hover {
+  filter: brightness(1.1) !important;
+}
+.driver-popover-close-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--fc-text-faint) !important;
+  padding: 4px 8px !important;
+}
+.driver-popover-close-btn:hover {
+  color: var(--fc-text-main) !important;
+}
+.driver-popover-arrow-side-left .driver-popover-arrow {
+  border-right-color: var(--fc-surface) !important;
+}
+.driver-popover-arrow-side-right .driver-popover-arrow {
+  border-left-color: var(--fc-surface) !important;
+}
+.driver-popover-arrow-side-top .driver-popover-arrow {
+  border-bottom-color: var(--fc-surface) !important;
+}
+.driver-popover-arrow-side-bottom .driver-popover-arrow {
+  border-top-color: var(--fc-surface) !important;
+}

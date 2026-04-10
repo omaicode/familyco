@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
-  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert,
+  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -14,6 +14,8 @@ import FcButton from '../components/FcButton.vue';
 import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
 import ProviderSettingsSection from '../components/settings/ProviderSettingsSection.vue';
+import { useTutorialTour } from '../composables/useTutorialTour';
+import { useI18n } from '../composables/useI18n';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -21,6 +23,9 @@ type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'sy
 
 // ── State ─────────────────────────────────────────────────
 const router = useRouter();
+const { t } = useI18n();
+const tour = useTutorialTour();
+const replayTour = () => { router.push('/dashboard').then(() => tour.start(t)); };
 
 const activeSection = ref<Section>('company');
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -674,6 +679,10 @@ useAutoReload(reload);
                   <FcButton variant="secondary" size="sm" :disabled="systemBusy || visibleSettings.length === 0" @click="exportSettings">
                     <Download :size="13" />
                     Export settings
+                  </FcButton>
+                  <FcButton variant="secondary" size="sm" @click="replayTour">
+                    <MapPin :size="13" />
+                    {{ t('Take a tour') }}
                   </FcButton>
                 </div>
                 <p class="st-hint">Exports a JSON snapshot of the current workspace settings. Provider API keys are excluded for safety.</p>

@@ -114,6 +114,13 @@ const loadThemePreference = async (): Promise<void> => {
       );
       if (!isOnboarded && route.path !== '/setup') {
         await router.replace('/setup');
+      } else if (isOnboarded) {
+        const tourSeen = uiRuntime.stores.settings.state.data.some(
+          s => s.key === 'tour.seen' && s.value === true
+        );
+        if (!tourSeen) {
+          window.dispatchEvent(new CustomEvent('fc:start-tour'));
+        }
       }
     }
   } catch {

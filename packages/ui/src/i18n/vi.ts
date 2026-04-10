@@ -430,5 +430,26 @@ export default {
   'Per-adapter API keys': 'API key theo adapter',
   'Configure an API key for each adapter you want to use. Agents with an adapter override will use the matching key.': 'Cấu hình API key cho từng adapter bạn muốn dùng. Agent có ghi đè adapter sẽ dùng key tương ứng.',
   'AI adapter override': 'Ghi đè AI adapter',
-  'Model override': 'Ghi đè model'
+  'Model override': 'Ghi đè model',
+
+  // ── Tutorial tour ──────────────────────────────────────
+  'tour.progress': '{{current}} / {{total}}',
+  'tour.next': 'Tiếp →',
+  'tour.back': '← Quay lại',
+  'tour.done': 'Bắt đầu thôi',
+  'Take a tour': 'Xem hướng dẫn',
+  'tour.step.dashboard.title': '🏠 Trung tâm điều hành',
+  'tour.step.dashboard.desc': 'Đây là Dashboard — nơi hiển thị các quyết định đang chờ bạn phê duyệt, các agent đang hoạt động và tiến độ công việc. Bắt đầu ngày làm việc của bạn tại đây.',
+  'tour.step.inbox.title': '📥 Hàng chờ quyết định',
+  'tour.step.inbox.desc': 'Hộp thư chứa tất cả các yêu cầu phê duyệt. Agent sẽ tạm dừng và chờ ở đây khi cần bạn xác nhận trước khi thực hiện hành động.',
+  'tour.step.chat.title': '💬 Nói chuyện với AI',
+  'tour.step.chat.desc': 'Mở Chat để trò chuyện trực tiếp với agent AI điều hành. Bạn chỉ cần ra lệnh bằng ngôn ngữ tự nhiên — tạo task, tóm tắt tiến độ, hay giao việc cho agent khác.',
+  'tour.step.agents.title': '🤖 Đội ngũ AI của bạn',
+  'tour.step.agents.desc': 'Trang Agents hiển thị toàn bộ đội AI trong công ty. Mỗi agent có vai trò, cấp bậc và lịch sử thực thi riêng.',
+  'tour.step.projects.title': '📁 Dự án',
+  'tour.step.projects.desc': 'Dự án nhóm các công việc liên quan lại với nhau theo một mục tiêu chung. Tạo dự án và để agent tự động phân chia thành các task nhỏ hơn.',
+  'tour.step.tasks.title': '✅ Công việc',
+  'tour.step.tasks.desc': 'Task là đơn vị công việc cụ thể mà agent thực thi. Bạn có thể theo dõi trạng thái, lọc theo người phụ trách và xem kết quả tại đây.',
+  'tour.step.settings.title': '⚙️ Cài đặt',
+  'tour.step.settings.desc': 'Quản lý kết nối AI provider, thông tin công ty, giới hạn ngân sách và tùy chỉnh giao diện tại đây.'
 }
