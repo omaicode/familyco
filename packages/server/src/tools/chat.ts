@@ -17,7 +17,7 @@ export interface PlannedChatResponse {
   model: string;
 }
 
-interface PlanChatWithProviderInput {
+interface PlanChatInput {
   settingsService?: SettingsService;
   skillsService?: SkillsService;
   adapterRegistry?: AiAdapterRegistry;
@@ -38,8 +38,8 @@ interface PlanChatWithProviderInput {
 
 type AdapterId = 'copilot' | 'openai' | 'claude';
 
-interface ProviderSettings {
-  providerName: AdapterId;
+interface AdapterConfig {
+  adapterId: AdapterId;
   apiKey: string;
   model: string;
 }
@@ -51,14 +51,14 @@ interface EnabledSkillSummary {
 }
 
 export async function planChat(
-  input: PlanChatWithProviderInput
+  input: PlanChatInput
 ): Promise<PlannedChatResponse | null> {
-  const providerSettings = await readProviderSettings(
+  const adapterConfig = await resolveAdapterConfig(
     input.settingsService,
     input.agentAdapterId,
     input.agentModel
   );
-  if (!providerSettings) {
+  if (!adapterConfig) {
     return null;
   }
 
@@ -66,31 +66,31 @@ export async function planChat(
   const systemPrompt = buildSystemPrompt(input.companyProfile, input.tools, enabledSkills);
   const userPrompt = buildUserPrompt(input.message, input.conversationHistory ?? []);
 
-  const rawText = await requestPlannerCompletion({
-    providerSettings,
+  const rawText = await requestAdapterChat({
+    adapterConfig,
     systemPrompt,
     userPrompt,
     adapterRegistry: input.adapterRegistry
   });
 
-  const parsed = parsePlannerResponse(rawText, input.tools);
+  const parsed = parseChatResponse(rawText, input.tools);
   return {
     ...parsed,
-    providerName: providerSettings.providerName,
-    model: providerSettings.model
+    providerName: adapterConfig.adapterId,
+    model: adapterConfig.model
   };
 }
 
-async function readProviderSettings(
+async function resolveAdapterConfig(
   settingsService?: SettingsService,
   agentAdapterId?: string | null,
   agentModel?: string | null
-): Promise<ProviderSettings | null> {
+): Promise<AdapterConfig | null> {
   if (!settingsService) {
     return null;
   }
 
-  const overrideAdapterId = agentAdapterId ? asAdapterId(agentAdapterId) : undefined;
+  const overrideAdapterId = agentAdapterId ? toAdapterId(agentAdapterId) : undefined;
 
   const [providerSetting, globalApiKeySetting, modelSetting] = await Promise.all([
     settingsService.get('provider.name'),
@@ -99,8 +99,8 @@ async function readProviderSettings(
   ]);
 
   // Resolve adapter: agent override > global setting
-  const providerName = overrideAdapterId ?? asAdapterId(providerSetting?.value);
-  if (!providerName) {
+  const adapterId = overrideAdapterId ?? toAdapterId(providerSetting?.value);
+  if (!adapterId) {
     return null;
   }
 
@@ -111,7 +111,7 @@ async function readProviderSettings(
   }
 
   // Resolve API key: per-adapter key > global fallback
-  const perAdapterKeySetting = await settingsService.get(`provider.${providerName}.apiKey`);
+  const perAdapterKeySetting = await settingsService.get(`provider.${adapterId}.apiKey`);
   const apiKey =
     asNonEmptyString(perAdapterKeySetting?.value) ??
     asNonEmptyString(globalApiKeySetting?.value);
@@ -119,10 +119,10 @@ async function readProviderSettings(
     return null;
   }
 
-  return { providerName, apiKey, model };
+  return { adapterId, apiKey, model };
 }
 
-function asAdapterId(value: unknown): AdapterId | undefined {
+function toAdapterId(value: unknown): AdapterId | undefined {
   if (value === 'copilot' || value === 'openai' || value === 'claude') {
     return value;
   }
@@ -207,25 +207,25 @@ function compactText(value: string, maxLength: number): string {
   return `${normalized.slice(0, Math.max(maxLength - 1, 0)).trimEnd()}…`;
 }
 
-async function requestPlannerCompletion(input: {
-  providerSettings: ProviderSettings;
+async function requestAdapterChat(input: {
+  adapterConfig: AdapterConfig;
   systemPrompt: string;
   userPrompt: string;
   adapterRegistry?: AiAdapterRegistry;
 }): Promise<string> {
   if (input.adapterRegistry) {
-    const adapter = input.adapterRegistry.get(input.providerSettings.providerName);
+    const adapter = input.adapterRegistry.get(input.adapterConfig.adapterId);
     if (adapter) {
       return (await adapter.chat({
-        apiKey: input.providerSettings.apiKey,
-        model: input.providerSettings.model,
+        apiKey: input.adapterConfig.apiKey,
+        model: input.adapterConfig.model,
         systemPrompt: input.systemPrompt,
         userPrompt: input.userPrompt
       })).content;
     }
   }
 
-  throw new Error(`ADAPTER_NOT_FOUND:${input.providerSettings.providerName}`);
+  throw new Error(`ADAPTER_NOT_FOUND:${input.adapterConfig.adapterId}`);
 }
 
 async function resolveEnabledSkills(
@@ -266,7 +266,7 @@ async function readSkillsRegistryFallback(settingsService?: SettingsService): Pr
   return setting.value.enabled.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
 }
 
-function parsePlannerResponse(text: string, tools: ToolDefinitionSummary[]): Omit<PlannedChatResponse, 'providerName' | 'model'> {
+function parseChatResponse(text: string, tools: ToolDefinitionSummary[]): Omit<PlannedChatResponse, 'providerName' | 'model'> {
   const parsed = tryParseJsonObject(text);
   const availableToolNames = new Set(tools.map((tool) => tool.name));
 
