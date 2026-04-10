@@ -30,7 +30,8 @@ const {
   selectedAgent,
   reload,
   loadOlderMessages,
-  sendMessage
+  sendMessage,
+  sendConfirmOption
 } = useExecutiveChat();
 </script>
 
@@ -102,6 +103,7 @@ const {
               :is-streaming="isStreaming"
               :is-loading-older="isLoadingOlder"
               :has-more-history="hasMoreHistory"
+              :on-select-option="sendConfirmOption"
               @load-older="loadOlderMessages"
             />
             <ExecutiveChatComposer

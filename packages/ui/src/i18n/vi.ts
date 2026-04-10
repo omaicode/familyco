@@ -83,6 +83,7 @@ export default {
   'chat.thread.status.tool': 'Agent đang gọi công cụ…',
   'chat.thread.loadingOlder': 'Đang tải tin nhắn cũ hơn…',
   'chat.thread.jumpLatest': 'Mới nhất',
+  'chat.confirm.chooseOption': 'Chọn một tùy chọn',
   'chat.empty.title': 'Bắt đầu cuộc trò chuyện đầu tiên',
   'chat.empty.copy': 'Dùng chat để lên kế hoạch và ra chỉ thị. Hãy yêu cầu rõ ràng khi bạn muốn agent gọi công cụ tạo task hoặc project.',
   'chat.bubble.founder': 'Founder',

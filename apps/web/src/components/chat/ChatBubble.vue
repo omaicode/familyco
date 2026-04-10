@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ChatToolCallDetails, ChatToolInProgress, ThreadMessage } from '../../composables/executiveChat.shared';
-import { isRecord, isToolCallDetails } from '../../composables/executiveChat.shared';
+import type { ChatConfirmRequest, ChatToolCallDetails, ChatToolInProgress, ThreadMessage } from '../../composables/executiveChat.shared';
+import { isChatConfirmRequest, isRecord, isToolCallDetails } from '../../composables/executiveChat.shared';
 import { useI18n } from '../../composables/useI18n';
 import MarkdownPreview from '../MarkdownPreview.vue';
 import ChatStreamingIndicator from './ChatStreamingIndicator.vue';
@@ -10,6 +10,7 @@ const props = defineProps<{
   message: ThreadMessage;
   agentName: string;
   streaming: boolean;
+  onSelectOption?: (option: string) => void;
 }>();
 
 const { t } = useI18n();
@@ -29,6 +30,13 @@ const getToolsInProgress = (message: ThreadMessage): ChatToolInProgress[] => {
     (entry): entry is ChatToolInProgress =>
       isRecord(entry) && typeof entry.toolName === 'string' && typeof entry.startedAt === 'string'
   );
+};
+
+const getConfirmRequest = (message: ThreadMessage): ChatConfirmRequest | null => {
+  if (!isRecord(message.payload) || !isChatConfirmRequest(message.payload.confirmRequest)) {
+    return null;
+  }
+  return message.payload.confirmRequest;
 };
 
 const hasError = (message: ThreadMessage): boolean => {
@@ -87,6 +95,25 @@ const formatTime = (date: string): string => {
       :in-progress-calls="getToolsInProgress(message)"
       :message-id="message.id"
     />
+
+    <div
+      v-if="message.direction === 'agent_to_founder' && getConfirmRequest(message)"
+      class="chat-confirm-options"
+    >
+      <p class="chat-confirm-label">{{ t('chat.confirm.chooseOption') }}</p>
+      <div class="chat-confirm-buttons">
+        <button
+          v-for="option in getConfirmRequest(message)!.options"
+          :key="option"
+          type="button"
+          class="chat-confirm-btn"
+          :disabled="props.streaming"
+          @click="props.onSelectOption?.(option)"
+        >
+          {{ option }}
+        </button>
+      </div>
+    </div>
   </article>
 </template>
 
@@ -171,5 +198,53 @@ const formatTime = (date: string): string => {
 @keyframes chat-sheen {
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
+}
+
+.chat-confirm-options {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--fc-border-subtle) 60%, transparent);
+}
+
+.chat-confirm-label {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chat-confirm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chat-confirm-btn {
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--fc-primary) 40%, var(--fc-border-subtle));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fc-primary) 8%, var(--fc-surface));
+  color: var(--fc-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.chat-confirm-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fc-primary) 16%, var(--fc-surface));
+  border-color: var(--fc-primary);
+  transform: translateY(-1px);
+}
+
+.chat-confirm-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.chat-confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 </style>

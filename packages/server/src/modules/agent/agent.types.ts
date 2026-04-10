@@ -28,6 +28,7 @@ export interface ProcessedChatResult {
   toolCalls: ChatToolCall[];
   task: unknown | null;
   project: unknown | null;
+  confirmRequest?: { question: string; options: string[] };
 }
 
 export interface ChatRequestMeta {

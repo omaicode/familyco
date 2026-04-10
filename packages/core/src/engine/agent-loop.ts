@@ -36,6 +36,7 @@ export interface AgentLoopInput {
     ok: boolean;
     output?: unknown;
     error?: { code: string; message: string };
+    haltSignal?: unknown;
   }>;
 }
 
@@ -43,6 +44,7 @@ export interface AgentLoopResult {
   finalReply: string;
   turns: AgentLoopTurn[];
   totalTurns: number;
+  haltSignal?: unknown;
 }
 
 export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResult> {
@@ -51,6 +53,7 @@ export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResu
   const previousTurns: AdapterPreviousTurn[] = [...(input.previousTurns ?? [])];
   const executedCallSignatures = new Set<string>();
   let finalReply = '';
+  let loopHaltSignal: unknown = undefined;
 
   for (let round = 0; round < maxRounds; round += 1) {
     const response = await input.adapter.chat({
@@ -109,6 +112,11 @@ export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResu
       });
 
       executedCallSignatures.add(JSON.stringify({ t: toolCall.name, a: toolCall.arguments }));
+
+      if (result.haltSignal !== undefined) {
+        loopHaltSignal = result.haltSignal;
+        break;
+      }
     }
 
     turns.push({ turn: round, assistantText: response.content, toolResults: turnResults });
@@ -126,10 +134,14 @@ export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResu
         };
       })
     });
+
+    if (loopHaltSignal !== undefined) {
+      break;
+    }
   }
 
   input.onEvent?.({ type: 'done', finalReply, totalTurns: turns.length });
-  return { finalReply, turns, totalTurns: turns.length };
+  return { finalReply, turns, totalTurns: turns.length, ...(loopHaltSignal !== undefined ? { haltSignal: loopHaltSignal } : {}) };
 }
 
 function serializeOutput(value: unknown): string {

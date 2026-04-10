@@ -21,4 +21,5 @@ export * from './echo.tool.js';
 export * from './task-log.tool.js';
 export * from './json-extract.tool.js';
 export * from './web-search.tool.js';
+export * from './confirm-request.tool.js';
 export * from './default-tool.executor.js';

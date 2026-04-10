@@ -27,6 +27,7 @@ export interface ChatEngineResult {
   toolCalls: ChatToolCall[];
   task: unknown | null;
   project: unknown | null;
+  confirmRequest?: { question: string; options: string[] };
 }
 
 type AdapterId = 'openai' | 'claude';
@@ -72,6 +73,7 @@ export class ChatEngineService {
     const toolCalls: ChatToolCall[] = [];
     let task: unknown | null = null;
     let project: unknown | null = null;
+    let confirmRequest: { question: string; options: string[] } | undefined;
 
     const loopResult = await runAgentLoop({
       adapter,
@@ -83,6 +85,19 @@ export class ChatEngineService {
       onEvent: input.onEvent,
       executeTool: async (toolInput) => {
         const result = await input.executeTool(toolInput);
+
+        if (toolInput.toolName === 'confirm.request' && result.ok && isRecord(result.output)) {
+          const question = typeof result.output.question === 'string' ? result.output.question : '';
+          const rawOptions = result.output.options;
+          const options = Array.isArray(rawOptions)
+            ? rawOptions.filter((o): o is string => typeof o === 'string')
+            : [];
+
+          if (question.length > 0 && options.length > 0) {
+            confirmRequest = { question, options };
+            return { ok: true, output: result.output, haltSignal: confirmRequest };
+          }
+        }
 
         toolCalls.push(toToolCallSummary(result));
 
@@ -98,7 +113,7 @@ export class ChatEngineService {
       }
     });
 
-    return { reply: loopResult.finalReply, toolCalls, task, project };
+    return { reply: loopResult.finalReply, toolCalls, task, project, confirmRequest };
   }
 
   private async resolveAdapterConfig(
@@ -168,6 +183,8 @@ function toAdapterId(value: unknown): AdapterId | undefined {
   return undefined;
 }
 
+const INTERNAL_TOOLS_ALWAYS_ALLOWED = new Set(['confirm.request']);
+
 function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel): ToolDefinitionSummary[] {
   const registry = buildAgentSlashRegistry();
   const allowedToolNames = new Set(
@@ -177,7 +194,7 @@ function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel):
       .map((entry) => entry.toolName)
   );
 
-  return tools.filter((tool) => allowedToolNames.has(tool.name));
+  return tools.filter((tool) => allowedToolNames.has(tool.name) || INTERNAL_TOOLS_ALWAYS_ALLOWED.has(tool.name));
 }
 
 function toToolCallSummary(result: ToolExecutionResult): ChatToolCall {

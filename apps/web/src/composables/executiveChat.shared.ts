@@ -20,12 +20,18 @@ export interface ChatToolInProgress {
   startedAt: string;
 }
 
+export interface ChatConfirmRequest {
+  question: string;
+  options: string[];
+}
+
 export type ThreadMessage = AgentChatMessage & {
   payload?: {
     taskId?: string;
     projectId?: string;
     toolCalls?: ChatToolCallDetails[];
     toolsInProgress?: ChatToolInProgress[];
+    confirmRequest?: ChatConfirmRequest;
     [key: string]: unknown;
   };
 };
@@ -46,6 +52,13 @@ export function isToolCallDetails(value: unknown): value is ChatToolCallDetails 
     && typeof value.toolName === 'string'
     && typeof value.ok === 'boolean'
     && typeof value.summary === 'string';
+}
+
+export function isChatConfirmRequest(value: unknown): value is ChatConfirmRequest {
+  return isRecord(value)
+    && typeof value.question === 'string'
+    && Array.isArray(value.options)
+    && (value.options as unknown[]).every((o) => typeof o === 'string');
 }
 
 export function formatToolFeedback(toolCall: ChatToolCallDetails): string {

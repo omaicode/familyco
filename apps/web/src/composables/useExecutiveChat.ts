@@ -88,7 +88,7 @@ export function useExecutiveChat() {
     }
   };
 
-  const { isSending, isStreaming, connectionState, connectSocket, sendMessage } = useExecutiveChatStream({
+  const { isSending, isStreaming, connectionState, connectSocket, sendMessage, sendConfirmOption } = useExecutiveChatStream({
     selectedAgent,
     draftMessage,
     thread,
@@ -167,6 +167,7 @@ export function useExecutiveChat() {
     selectedAgent,
     reload,
     loadOlderMessages,
-    sendMessage
+    sendMessage,
+    sendConfirmOption
   };
 }

@@ -6,6 +6,7 @@ import { agentListTool } from './agent-list.tool.js';
 import { agentReadTool } from './agent-read.tool.js';
 import { agentUpdateTool } from './agent-update.tool.js';
 import { companyProfileReadTool } from './company-profile-read.tool.js';
+import { confirmRequestTool } from './confirm-request.tool.js';
 import { echoTool } from './echo.tool.js';
 import { jsonExtractTool } from './json-extract.tool.js';
 import { projectCreateTool } from './project-create.tool.js';
@@ -49,7 +50,8 @@ export class DefaultToolExecutor implements ToolExecutor {
       echoTool,
       taskLogTool,
       jsonExtractTool,
-      webSearchTool
+      webSearchTool,
+      confirmRequestTool
     ];
 
     for (const definition of definitions) {

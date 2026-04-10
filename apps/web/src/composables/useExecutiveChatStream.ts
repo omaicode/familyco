@@ -4,8 +4,10 @@ import { uiRuntime } from '../runtime';
 import {
   buildChatTitle,
   formatToolFeedback,
+  isChatConfirmRequest,
   isToolCallDetails,
   sortThread,
+  type ChatConfirmRequest,
   type ChatConnectionState,
   type ChatSocketEvent,
   type ChatToolCallDetails,
@@ -36,6 +38,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
   const activeStreamId = ref<string | null>(null);
   const streamToolCalls = ref<Record<string, ChatToolCallDetails[]>>({});
   const streamToolsInProgress = ref<Record<string, ChatToolInProgress[]>>({});
+  const pendingConfirmRequestId = ref<string | null>(null);
 
   const closeSocket = (): void => {
     socket.value?.close();
@@ -126,6 +129,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : `stream-${Date.now()}`;
       activeStreamId.value = requestId;
       streamToolCalls.value = { ...streamToolCalls.value, [requestId]: [] };
+      pendingConfirmRequestId.value = null;
       isSending.value = false;
       isStreaming.value = true;
       upsertStreamingReply(requestId, '');
@@ -214,12 +218,20 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
         ? event.payload.toolCalls.filter(isToolCallDetails)
         : [];
       const failedToolCalls = completedToolCalls.filter((toolCall) => !toolCall.ok);
+      const confirmRequest = isChatConfirmRequest(event.payload?.confirmRequest)
+        ? (event.payload.confirmRequest as ChatConfirmRequest)
+        : undefined;
 
       if (requestId) {
         if (completedToolCalls.length > 0) {
           streamToolCalls.value = { ...streamToolCalls.value, [requestId]: completedToolCalls };
-          const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
-          upsertStreamingReply(requestId, existingBody);
+        }
+
+        const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
+        upsertStreamingReply(requestId, existingBody, confirmRequest);
+
+        if (confirmRequest) {
+          pendingConfirmRequestId.value = requestId;
         }
 
         const nextToolCalls = { ...streamToolCalls.value };
@@ -234,7 +246,11 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       isSending.value = false;
       isStreaming.value = false;
       activeStreamId.value = null;
-      void refreshThread();
+
+      if (!confirmRequest) {
+        void refreshThread();
+      }
+
       if (failedToolCalls.length > 0) {
         setFeedback('error', failedToolCalls.map((toolCall) => formatToolFeedback(toolCall)).join(' • '));
       }
@@ -253,7 +269,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
     }
   };
 
-  const upsertStreamingReply = (requestId: string, body: string): void => {
+  const upsertStreamingReply = (requestId: string, body: string, confirmRequest?: ChatConfirmRequest): void => {
     if (!selectedAgent.value) {
       return;
     }
@@ -261,13 +277,12 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
     const existingMessage = thread.value.find((message) => message.id === requestId);
     const toolCalls = streamToolCalls.value[requestId] ?? [];
     const toolsInProgress = streamToolsInProgress.value[requestId] ?? [];
-    const payload = (toolCalls.length > 0 || toolsInProgress.length > 0)
-      ? {
-          ...(existingMessage?.payload ?? {}),
-          toolCalls,
-          toolsInProgress
-        }
-      : existingMessage?.payload;
+    const payload = {
+      ...(existingMessage?.payload ?? {}),
+      toolCalls,
+      toolsInProgress,
+      ...(confirmRequest !== undefined ? { confirmRequest } : {})
+    };
 
     thread.value = sortThread([
       ...thread.value.filter((message) => message.id !== requestId),
@@ -283,6 +298,41 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
         payload
       }
     ]);
+  };
+
+  const sendConfirmOption = (option: string): void => {
+    if (!selectedAgent.value || !socket.value || connectionState.value !== 'connected') {
+      return;
+    }
+
+    if (pendingConfirmRequestId.value) {
+      const confirmedId = pendingConfirmRequestId.value;
+      pendingConfirmRequestId.value = null;
+      thread.value = thread.value.map((msg) => {
+        if (msg.id !== confirmedId || !msg.payload) {
+          return msg;
+        }
+        const { confirmRequest: _removed, ...rest } = msg.payload;
+        return { ...msg, payload: rest };
+      });
+    }
+
+    thread.value = sortThread([
+      ...thread.value,
+      {
+        id: `local-confirm-${Date.now()}`,
+        senderId: 'founder',
+        recipientId: selectedAgent.value.id,
+        type: 'info',
+        title: buildChatTitle(option),
+        body: option,
+        createdAt: new Date().toISOString(),
+        direction: 'founder_to_agent'
+      }
+    ]);
+
+    socket.value.send(JSON.stringify({ message: option }));
+    isSending.value = true;
   };
 
   const appendLocalIssueMessage = (message: string): void => {
@@ -312,7 +362,8 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
     isStreaming,
     connectionState,
     connectSocket,
-    sendMessage
+    sendMessage,
+    sendConfirmOption
   };
 }
 

@@ -82,7 +82,8 @@ export async function handleSocketChatMessage(input: {
       reply: result.reply,
       task: result.task,
       project: result.project,
-      toolCalls: result.toolCalls
+      toolCalls: result.toolCalls,
+      ...(result.confirmRequest ? { confirmRequest: result.confirmRequest } : {})
     });
   } catch (error) {
     sendSocketEvent(input.socket, 'chat.error', { message: toErrorMessage(error) });

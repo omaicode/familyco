@@ -11,7 +11,7 @@ export async function buildProcessedChatResult(input: {
   actorId: string;
   auditAction: string;
 }): Promise<ProcessedChatResult> {
-  const { reply, toolCalls, task, project } = input.engineResult;
+  const { reply, toolCalls, task, project, confirmRequest } = input.engineResult;
 
   const replyMessage = await input.inboxService.createMessage({
     recipientId: 'founder',
@@ -40,7 +40,7 @@ export async function buildProcessedChatResult(input: {
     }
   });
 
-  return { founderMessage: input.founderMessage, replyMessage, reply, toolCalls, task, project };
+  return { founderMessage: input.founderMessage, replyMessage, reply, toolCalls, task, project, confirmRequest };
 }
 
 export async function createDirectChatReply(input: {
@@ -79,7 +79,8 @@ export async function createDirectChatReply(input: {
     reply: input.replyText,
     toolCalls: [],
     task: null,
-    project: null
+    project: null,
+    confirmRequest: undefined
   };
 }
 
