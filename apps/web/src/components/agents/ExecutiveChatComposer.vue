@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 import { CornerDownLeft, Send } from 'lucide-vue-next';
 
 import { useExecutiveSlashCommands } from '../../composables/useExecutiveSlashCommands';
@@ -10,6 +10,7 @@ type ConnectionState = 'connecting' | 'connected' | 'disconnected';
 
 const props = defineProps<{
   modelValue: string;
+  agentId: string;
   connectionState: ConnectionState;
   isSending: boolean;
   isStreaming: boolean;
@@ -36,7 +37,7 @@ const {
   onDraftInput,
   onCaretInteraction,
   onDraftKeydown
-} = useExecutiveSlashCommands(draftValue);
+} = useExecutiveSlashCommands(draftValue, toRef(props, 'agentId'));
 
 const handleDraftKeydown = (event: KeyboardEvent): void => {
   onDraftKeydown(event, () => emit('send'));

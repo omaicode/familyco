@@ -1,4 +1,7 @@
-import { computed, nextTick, onBeforeUnmount, ref, type CSSProperties, type WritableComputedRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, type CSSProperties, type Ref, type WritableComputedRef, watch } from 'vue';
+
+import { uiRuntime } from '../runtime';
+import type { SlashCommandItem } from '@familyco/ui';
 
 export interface SlashCommandSuggestion {
   command: string;
@@ -7,37 +10,30 @@ export interface SlashCommandSuggestion {
   insertValue: string;
 }
 
-const slashCommandCatalog: SlashCommandSuggestion[] = [
-  {
-    command: '/help',
-    label: 'Show help',
-    description: 'List the available chat commands and how to use them.',
-    insertValue: '/help'
-  },
-  {
-    command: '/create-task',
-    label: 'Create a task',
-    description: 'Open a new task directly from the executive chat lane.',
-    insertValue: '/create-task '
-  },
-  {
-    command: '/create-project',
-    label: 'Create a project',
-    description: 'Spin up a new project workspace from a short description.',
-    insertValue: '/create-project '
-  },
-  {
-    command: '/reset',
-    label: 'Start fresh',
-    description: 'Clear the current conversation history and working memory.',
-    insertValue: '/reset'
-  }
-];
-
-export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string>) {
+export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string>, agentId: Ref<string>) {
   const composerRef = ref<HTMLTextAreaElement | null>(null);
   const activeSlashIndex = ref(0);
   const slashPopoverStyle = ref<CSSProperties>({ left: '12px', top: '58px', width: '280px' });
+  const slashCommands = ref<SlashCommandSuggestion[]>([]);
+
+  const loadSlashCommands = async (id: string): Promise<void> => {
+    if (!id) {
+      slashCommands.value = [];
+      return;
+    }
+
+    try {
+      const items = await uiRuntime.api.getAgentSlashCommands(id);
+      slashCommands.value = items.map((item: SlashCommandItem) => ({
+        command: item.command,
+        label: item.label,
+        description: item.description,
+        insertValue: item.insertValue
+      }));
+    } catch {
+      slashCommands.value = [];
+    }
+  };
 
   const slashDraft = computed(() => draftValue.value.trimStart());
   const isSlashMode = computed(() => slashDraft.value.startsWith('/'));
@@ -51,7 +47,7 @@ export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string
     const normalized = slashDraft.value.toLowerCase();
     const query = normalized.replace(/^\//, '');
 
-    return slashCommandCatalog.filter((command) => {
+    return slashCommands.value.filter((command) => {
       return command.command.includes(normalized)
         || command.label.toLowerCase().includes(query)
         || command.description.toLowerCase().includes(query);
@@ -89,7 +85,7 @@ export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string
 
   const draftMatchesKnownCommand = (): boolean => {
     const normalized = draftValue.value.trim();
-    return slashCommandCatalog.some((command) => {
+    return slashCommands.value.some((command) => {
       return normalized === command.command || normalized.startsWith(`${command.command} `);
     });
   };
@@ -181,6 +177,10 @@ export function useExecutiveSlashCommands(draftValue: WritableComputedRef<string
     schedulePopoverUpdate();
   });
 
+  watch(agentId, (nextId) => {
+    void loadSlashCommands(nextId);
+  }, { immediate: true });
+
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', schedulePopoverUpdate);
   }
@@ -266,3 +266,4 @@ function getTextareaCaretPosition(textarea: HTMLTextAreaElement, selectionIndex:
   document.body.removeChild(mirror);
   return { top, left };
 }
+

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { AgentRunner, AgentService, InboxService, ToolExecutionResult } from '@familyco/core';
 
-import { buildSlashCommandHelp, parseSlashCommand } from './slash-commands/index.js';
+import { buildSlashCommandRegistry, parseSlashCommand } from './slash-commands/index.js';
 import type {
   AgentModuleDeps,
   ChatRequestBody,
@@ -118,7 +118,8 @@ async function runSlashCommand(input: {
   actorId: string;
   parsedCommand: ReturnType<typeof parseSlashCommand> extends infer T ? Exclude<T, null> : never;
 }): Promise<ProcessedChatResult> {
-  const helpText = buildSlashCommandHelp();
+  const registry = buildSlashCommandRegistry();
+  const helpText = registry.buildHelpText(input.agent.level);
 
   if (!input.parsedCommand.definition) {
     const founderMessage = await createFounderMessage({

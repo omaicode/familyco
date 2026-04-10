@@ -1,5 +1,6 @@
 import type { ToolExecutionInput, ToolExecutionResult, ToolExecutor } from '@familyco/core';
 
+import { agentCreateTool } from './agent-create.tool.js';
 import { chatRespondTool } from './chat-respond.tool.js';
 import { companyProfileReadTool } from './company-profile-read.tool.js';
 import { echoTool } from './echo.tool.js';
@@ -20,6 +21,7 @@ export class DefaultToolExecutor implements ToolExecutor {
       companyProfileReadTool,
       taskCreateTool,
       projectCreateTool,
+      agentCreateTool,
       echoTool,
       taskLogTool,
       jsonExtractTool,

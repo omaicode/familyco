@@ -106,6 +106,7 @@ const {
             />
             <ExecutiveChatComposer
               v-model="draftMessage"
+              :agent-id="selectedAgent?.id ?? ''"
               :connection-state="connectionState"
               :is-sending="isSending"
               :is-streaming="isStreaming"

@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { agentChatBodySchema, agentChatQuerySchema, pauseAgentParamsSchema } from './agent.schema.js';
 import { handleSocketChatMessage, processAgentChat, resolveSocketClient, sendSocketEvent, toErrorMessage } from './agent-chat.service.js';
+import { buildSlashCommandRegistry } from './slash-commands/index.js';
 import type { AgentModuleDeps } from './agent.types.js';
 
 export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleDeps): void {
@@ -68,5 +69,20 @@ export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleD
       sendSocketEvent(socket, 'chat.error', { message: toErrorMessage(error) });
       socket.close();
     }
+  });
+
+  app.get('/agents/:id/slash-commands', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+    const agent = await deps.agentService.getAgentById(id);
+    const registry = buildSlashCommandRegistry();
+
+    return registry.listForLevel(agent.level).map((definition) => ({
+      command: `/${definition.name}`,
+      label: definition.name,
+      description: definition.description,
+      insertValue: definition.insertValue,
+      levels: definition.levels
+    }));
   });
 }

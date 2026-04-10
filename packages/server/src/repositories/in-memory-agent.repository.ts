@@ -21,6 +21,8 @@ export class InMemoryAgentRepository implements AgentRepository {
       department: input.department,
       status: 'active',
       parentAgentId: input.parentAgentId ?? null,
+      aiAdapterId: null,
+      aiModel: null,
       createdAt: now,
       updatedAt: now
     };

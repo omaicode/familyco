@@ -5,6 +5,7 @@ export * from './company-profile-read.tool.js';
 export * from './chat-respond.tool.js';
 export * from './task-create.tool.js';
 export * from './project-create.tool.js';
+export * from './agent-create.tool.js';
 export * from './echo.tool.js';
 export * from './task-log.tool.js';
 export * from './json-extract.tool.js';

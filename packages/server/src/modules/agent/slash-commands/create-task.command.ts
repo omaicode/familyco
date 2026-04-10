@@ -6,6 +6,8 @@ export const createTaskSlashCommand: SlashCommandDefinition = {
   aliases: [],
   description: 'Create a new task from the description you provide.',
   usage: '/create-task {desc}',
+  insertValue: '/create-task ',
+  levels: ['L0', 'L1'],
   async execute({ args, helpText }) {
     if (args.trim().length === 0) {
       return {

@@ -5,6 +5,8 @@ export const helpSlashCommand: SlashCommandDefinition = {
   aliases: ['h'],
   description: 'Show the list of available chat commands. Alias: `/h`.',
   usage: '/help',
+  insertValue: '/help',
+  levels: ['L0', 'L1', 'L2'],
   async execute({ helpText }) {
     return {
       kind: 'direct',

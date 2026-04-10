@@ -1,5 +1,6 @@
 import type {
   AgentService,
+  AgentLevel,
   AiAdapterRegistry,
   ProjectService,
   SettingsService,
@@ -34,9 +35,18 @@ export interface ServerToolContext extends DefaultToolExecutorDeps {
   listTools: () => ToolDefinitionSummary[];
 }
 
+export interface SlashCommandSpec {
+  command: string;
+  label: string;
+  description: string;
+  insertValue: string;
+  levels: readonly AgentLevel[];
+}
+
 export interface ServerToolDefinition {
   readonly name: string;
   readonly description: string;
   readonly parameters: readonly ToolParameterDefinition[];
+  readonly slashSpec?: SlashCommandSpec;
   execute(argumentsMap: Record<string, unknown>, context: ServerToolContext): Promise<ToolExecutionResult>;
 }

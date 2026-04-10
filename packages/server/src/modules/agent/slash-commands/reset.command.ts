@@ -5,6 +5,8 @@ export const resetSlashCommand: SlashCommandDefinition = {
   aliases: ['new'],
   description: 'Clear the current chat history and start a fresh session. Alias: `/new`.',
   usage: '/reset',
+  insertValue: '/reset',
+  levels: ['L0', 'L1', 'L2'],
   async execute() {
     return {
       kind: 'direct',

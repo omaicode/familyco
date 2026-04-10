@@ -1,4 +1,8 @@
+import type { AgentLevel } from '@familyco/core';
+
 export type SlashCommandMessageType = 'alert' | 'info' | 'report';
+
+export type { AgentLevel };
 
 export interface SlashCommandToolCall {
   toolName: string;
@@ -33,6 +37,8 @@ export interface SlashCommandDefinition {
   readonly aliases: readonly string[];
   readonly description: string;
   readonly usage: string;
+  readonly insertValue: string;
+  readonly levels: readonly AgentLevel[];
   execute(context: SlashCommandExecutionContext): Promise<SlashCommandExecutionResult>;
 }
 

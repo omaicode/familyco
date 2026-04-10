@@ -1,44 +1,34 @@
+import { createAgentSlashCommand } from './create-agent.command.js';
 import { createProjectSlashCommand } from './create-project.command.js';
 import { createTaskSlashCommand } from './create-task.command.js';
 import { helpSlashCommand } from './help.command.js';
+import { SlashCommandRegistry } from './registry.js';
 import { resetSlashCommand } from './reset.command.js';
-import type { ParsedSlashCommand, SlashCommandDefinition } from './types.js';
+import type { ParsedSlashCommand } from './types.js';
 
-const slashCommandDefinitions: SlashCommandDefinition[] = [
-  helpSlashCommand,
-  resetSlashCommand,
-  createProjectSlashCommand,
-  createTaskSlashCommand
-];
+export { SlashCommandRegistry } from './registry.js';
+export * from './types.js';
 
-export function listSlashCommands(): SlashCommandDefinition[] {
-  return [...slashCommandDefinitions];
+export function buildSlashCommandRegistry(): SlashCommandRegistry {
+  return new SlashCommandRegistry([
+    helpSlashCommand,
+    resetSlashCommand,
+    createProjectSlashCommand,
+    createTaskSlashCommand,
+    createAgentSlashCommand
+  ]);
+}
+
+const defaultRegistry = buildSlashCommandRegistry();
+
+export function listSlashCommands() {
+  return defaultRegistry.listAll();
 }
 
 export function buildSlashCommandHelp(): string {
-  return [
-    'Available slash commands:',
-    ...slashCommandDefinitions.map((definition) => `- \`${definition.usage}\`: ${definition.description}`)
-  ].join('\n');
+  return defaultRegistry.buildHelpText('L0');
 }
 
 export function parseSlashCommand(message: string): ParsedSlashCommand | null {
-  const trimmed = message.trim();
-  if (!trimmed.startsWith('/')) {
-    return null;
-  }
-
-  const [raw, ...rest] = trimmed.split(/\s+/);
-  const normalized = raw.replace(/^\//, '').toLowerCase();
-  const definition = slashCommandDefinitions.find((entry) => {
-    return entry.name === normalized || entry.aliases.includes(normalized);
-  });
-
-  return {
-    raw,
-    args: rest.join(' ').trim(),
-    definition
-  };
+  return defaultRegistry.parse(message);
 }
-
-export * from './types.js';

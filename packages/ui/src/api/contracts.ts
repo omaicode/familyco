@@ -345,6 +345,14 @@ export interface UpsertSettingPayload {
   value: unknown;
 }
 
+export interface SlashCommandItem {
+  command: string;
+  label: string;
+  description: string;
+  insertValue: string;
+  levels: string[];
+}
+
 export interface GetAgentChatQuery {
   limit?: number;
   before?: string;
@@ -355,6 +363,7 @@ export interface FamilyCoApiContracts {
   listAgentChildren: (agentId: string) => Promise<AgentListItem[]>;
   getAgentPath: (agentId: string) => Promise<AgentListItem[]>;
   getAgentChat: (agentId: string, query?: GetAgentChatQuery) => Promise<AgentChatMessage[]>;
+  getAgentSlashCommands: (agentId: string) => Promise<SlashCommandItem[]>;
   sendAgentChat: (payload: SendAgentChatPayload) => Promise<SendAgentChatResult>;
   createAgent: (payload: CreateAgentPayload) => Promise<CreateAgentResult>;
   pauseAgent: (payload: PauseAgentPayload) => Promise<PauseAgentResult>;
@@ -407,6 +416,8 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     const suffix = params.size > 0 ? `?${params.toString()}` : '';
     return client.get<AgentChatMessage[]>(`/api/v1/agents/${agentId}/chat${suffix}`);
   },
+  getAgentSlashCommands: (agentId) =>
+    client.get<SlashCommandItem[]>(`/api/v1/agents/${agentId}/slash-commands`),
   sendAgentChat: (payload) =>
     client.post<SendAgentChatResult, Omit<SendAgentChatPayload, 'agentId'>>(
       `/api/v1/agents/${payload.agentId}/chat`,

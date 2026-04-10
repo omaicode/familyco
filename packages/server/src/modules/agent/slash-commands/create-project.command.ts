@@ -6,6 +6,8 @@ export const createProjectSlashCommand: SlashCommandDefinition = {
   aliases: [],
   description: 'Open a new project from the description you provide.',
   usage: '/create-project {desc}',
+  insertValue: '/create-project ',
+  levels: ['L0'],
   async execute({ args, helpText }) {
     if (args.trim().length === 0) {
       return {
