@@ -216,7 +216,7 @@ async function readSkillsRegistryFallback(settingsService?: SettingsService): Pr
   return setting.value.enabled.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
 }
 
-function parseChatResponse(
+export function parseChatResponse(
   text: string,
   tools: ToolDefinitionSummary[],
   adapterToolCalls: AdapterPlannedToolCall[]
@@ -229,7 +229,7 @@ function parseChatResponse(
 
   if (!isRecord(parsed)) {
     return {
-      reply: asNonEmptyString(text) ?? 'I reviewed the request and kept it in the executive chat lane.',
+      reply: readNonEmptyText(text) ?? 'I reviewed the request and kept it in the executive chat lane.',
       toolCalls: normalizedAdapterToolCalls,
       requiresConfirmation: false
     };
@@ -245,7 +245,7 @@ function parseChatResponse(
 
   return {
     reply:
-      asNonEmptyString(parsed.reply)
+      readNonEmptyText(parsed.reply)
       ?? 'I reviewed the request and kept it in the executive chat lane.',
     toolCalls,
     requiresConfirmation: parsed.requiresConfirmation === true
@@ -334,4 +334,13 @@ function tryParseJsonObject(text: string): unknown {
 
     return null;
   }
+}
+
+function readNonEmptyText(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
