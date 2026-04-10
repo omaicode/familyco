@@ -641,3 +641,101 @@ body {
 .driver-popover-arrow-side-bottom .driver-popover-arrow {
   border-top-color: var(--fc-surface) !important;
 }
+
+/* ── Budget analytics ───────────────────────────────────── */
+.fc-budget-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--fc-warning) 35%, var(--fc-border-subtle));
+  border-radius: var(--fc-card-radius);
+  background: color-mix(in srgb, var(--fc-warning) 12%, var(--fc-surface));
+  color: var(--fc-text-main);
+  font-size: 0.875rem;
+}
+
+.fc-budget-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fc-budget-split {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.fc-budget-metric {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.fc-budget-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--fc-surface-muted);
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.fc-budget-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fc-primary);
+}
+
+.fc-budget-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.fc-budget-table th,
+.fc-budget-table td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--fc-border-subtle);
+}
+
+.fc-budget-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.fc-budget-bar-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 72px;
+  align-items: center;
+  gap: 8px;
+}
+
+.fc-budget-bar-date,
+.fc-budget-bar-value {
+  font-size: 0.75rem;
+  color: var(--fc-text-muted);
+}
+
+.fc-budget-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--fc-surface-muted);
+  overflow: hidden;
+}
+
+.fc-budget-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fc-primary);
+}
+
+@media (max-width: 1100px) {
+  .fc-budget-grid,
+  .fc-budget-split {
+    grid-template-columns: 1fr;
+  }
+}

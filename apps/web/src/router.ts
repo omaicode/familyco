@@ -8,6 +8,7 @@ import OnboardingPage from './views/OnboardingPage.vue';
 import ProjectsPage from './views/ProjectsPage.vue';
 import SettingsPage from './views/SettingsPage.vue';
 import TasksPage from './views/TasksPage.vue';
+import BudgetPage from './views/BudgetPage.vue';
 import { uiRuntime } from './runtime';
 import ChatPage from './views/ChatPage.vue';
 
@@ -58,6 +59,11 @@ export const router = createRouter({
       path: '/audit',
       component: AuditPage,
       meta: { title: 'Audit Inspector' }
+    },
+    {
+      path: '/budget',
+      component: BudgetPage,
+      meta: { title: 'Budget & Usage' }
     },
     {
       path: '/settings',

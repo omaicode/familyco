@@ -6,6 +6,7 @@ import { pageUXBlueprints } from '../pages/page-blueprints.js';
 import { uiRoutes } from '../router/app-router.js';
 import { createAgentStore, type AgentStore } from '../stores/agent.store.js';
 import { createAppStore, type AppStore } from '../stores/app.store.js';
+import { createBudgetStore, type BudgetStore } from '../stores/budget.store.js';
 import { createDashboardStore, type DashboardStore } from '../stores/dashboard.store.js';
 import { createInboxStore, type InboxStore } from '../stores/inbox.store.js';
 import { createProjectStore, type ProjectStore } from '../stores/project.store.js';
@@ -24,6 +25,7 @@ export interface UIBootstrap {
   stores: {
     app: AppStore;
     agents: AgentStore;
+    budget: BudgetStore;
     dashboard: DashboardStore;
     inbox: InboxStore;
     projects: ProjectStore;
@@ -49,6 +51,7 @@ export const bootstrapFamilyCoUI = (options: UIBootstrapOptions): UIBootstrap =>
     stores: {
       app: appStore,
       agents: createAgentStore(api),
+      budget: createBudgetStore(api),
       dashboard: createDashboardStore(api),
       inbox: createInboxStore(api),
       projects: createProjectStore(api),

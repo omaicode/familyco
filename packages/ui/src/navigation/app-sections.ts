@@ -6,6 +6,7 @@ export type AppRoutePath =
   | '/tasks'
   | '/inbox'
   | '/audit'
+  | '/budget'
   | '/settings';
 
 export interface AppNavigationSection {
@@ -55,6 +56,11 @@ export const appNavigationSections: AppNavigationSection[] = [
     path: '/audit',
     label: 'Audit',
     description: 'Inspect mutation logs and governance actions.'
+  },
+  {
+    path: '/budget',
+    label: 'Budget',
+    description: 'Track AI token usage, estimated cost, and monthly spend against your budget limit.'
   },
   {
     path: '/settings',

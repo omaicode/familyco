@@ -30,6 +30,7 @@ import { registerAgentController } from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
+import { registerBudgetController } from './modules/budget/index.js';
 import { registerDashboardController } from './modules/dashboard/index.js';
 import { registerEngineController } from './modules/engine/index.js';
 import { registerInboxController } from './modules/inbox/index.js';
@@ -389,6 +390,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         inboxService
       });
       registerAuditController(api, { auditService });
+      registerBudgetController(api, { auditService, settingsService });
       registerDashboardController(api, {
         agentService,
         approvalService,

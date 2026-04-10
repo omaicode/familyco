@@ -11,6 +11,7 @@ export * from './router/app-router.js';
 export * from './stores/async-state.js';
 export * from './stores/app.store.js';
 export * from './stores/agent.store.js';
+export * from './stores/budget.store.js';
 export * from './stores/dashboard.store.js';
 export * from './stores/inbox.store.js';
 export * from './stores/project.store.js';

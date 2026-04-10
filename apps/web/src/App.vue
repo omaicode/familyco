@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard, MessagesSquare, Bot, FolderKanban, ListChecks,
-  Inbox, ShieldCheck, Settings,
+  Inbox, ShieldCheck, Settings, Wallet,
   Wifi, WifiOff, RefreshCw, AlertTriangle,
 } from 'lucide-vue-next';
 
@@ -45,6 +45,7 @@ const navIcons: Record<string, typeof LayoutDashboard> = {
   '/tasks':     ListChecks,
   '/inbox':     Inbox,
   '/audit':     ShieldCheck,
+  '/budget':    Wallet,
   '/settings':  Settings,
 };
 
@@ -59,7 +60,7 @@ const navGroups = [
   },
   {
     label: 'Governance',
-    items: uiRuntime.navigation.filter(n => ['/inbox', '/audit'].includes(n.path)),
+    items: uiRuntime.navigation.filter(n => ['/inbox', '/audit', '/budget'].includes(n.path)),
   },
   {
     label: 'System',

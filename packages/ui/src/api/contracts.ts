@@ -358,7 +358,47 @@ export interface GetAgentChatQuery {
   before?: string;
 }
 
+export interface BudgetReportTotals {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUSD: number;
+  requestCount: number;
+}
+
+export interface BudgetReportByAdapter {
+  adapterId: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUSD: number;
+  requestCount: number;
+}
+
+export interface BudgetReportDailyEntry {
+  date: string;
+  totalTokens: number;
+  estimatedCostUSD: number;
+  requestCount: number;
+}
+
+export interface BudgetReportBudgetStatus {
+  monthlyLimitUSD: number | null;
+  alertThresholdPercent: number;
+  enforceMode: 'block' | 'warn' | 'off';
+  usedPercent: number | null;
+}
+
+export interface BudgetReport {
+  period: { from: string; to: string };
+  totals: BudgetReportTotals;
+  budget: BudgetReportBudgetStatus;
+  byAdapter: BudgetReportByAdapter[];
+  dailyBreakdown: BudgetReportDailyEntry[];
+}
+
 export interface FamilyCoApiContracts {
+
   listAgents: () => Promise<AgentListItem[]>;
   listAgentChildren: (agentId: string) => Promise<AgentListItem[]>;
   getAgentPath: (agentId: string) => Promise<AgentListItem[]>;
@@ -398,6 +438,7 @@ export interface FamilyCoApiContracts {
   }>;
   getDashboardSummary: (projectId?: string) => Promise<DashboardSummary>;
   listAudit: (query?: ListAuditPayload) => Promise<AuditListItem[]>;
+  getBudgetReport: () => Promise<BudgetReport>;
 }
 
 export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiContracts => ({
@@ -561,5 +602,6 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
 
     const queryString = params.toString();
     return client.get<AuditListItem[]>(`/api/v1/audit${queryString ? `?${queryString}` : ''}`);
-  }
+  },
+  getBudgetReport: () => client.get<BudgetReport>('/api/v1/budget/report')
 });
