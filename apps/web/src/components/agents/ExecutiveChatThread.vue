@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import { AlertTriangle, ArrowDown, CircleCheckBig, LoaderCircle, MessagesSquare } from 'lucide-vue-next';
 
+import MarkdownPreview from '../MarkdownPreview.vue';
 import type { ChatToolCallDetails, ThreadMessage } from '../../composables/executiveChat.shared';
 import { useI18n } from '../../composables/useI18n';
 
@@ -171,7 +172,12 @@ watch(
             <span>{{ message.direction === 'founder_to_agent' ? 'Founder' : props.selectedAgentName }}</span>
             <span>{{ new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
           </div>
-          <p class="chat-bubble-body">{{ message.body }}</p>
+          <MarkdownPreview
+            v-if="message.body.trim().length > 0"
+            class="chat-bubble-body"
+            :source="message.body"
+            empty-text=""
+          />
 
           <div v-if="isStreamingMessage(message)" class="chat-streaming-indicator">
             <LoaderCircle :size="12" class="chat-streaming-spinner" />
@@ -347,9 +353,29 @@ watch(
 
 .chat-bubble-body {
   margin: 0;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  font-size: 0.875rem;
+  font-size: 0.95rem;
+}
+
+.chat-bubble-body :deep(.fc-markdown) {
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.chat-bubble-body :deep(.fc-markdown p) {
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.chat-bubble-body :deep(.fc-markdown h1),
+.chat-bubble-body :deep(.fc-markdown h2),
+.chat-bubble-body :deep(.fc-markdown h3) {
+  margin-top: 0.65rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.35;
+}
+
+.chat-bubble-body :deep(.fc-markdown code) {
+  font-size: 0.86em;
 }
 
 .chat-streaming-indicator {
