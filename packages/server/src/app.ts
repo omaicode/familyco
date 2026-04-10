@@ -1,6 +1,8 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import os from 'node:os';
-import path from 'node:path';
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
+globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url))
 
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
@@ -158,7 +160,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const settingsService = new SettingsService(settingsRepository);
   const skillsService = new SkillsService(
     settingsService,
-    options.skillsRootDir ?? path.resolve(process.cwd(), 'skills')
+    options.skillsRootDir ?? path.join(__dirname, '../../../', 'skills')
   );
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
