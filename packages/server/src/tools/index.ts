@@ -1,6 +1,6 @@
 export * from './tool.types.js';
 export * from './tool.helpers.js';
-export * from './provider-chat-planner.js';
+export * from './chat.js';
 export * from './company-profile-read.tool.js';
 export * from './chat-respond.tool.js';
 export * from './task-create.tool.js';

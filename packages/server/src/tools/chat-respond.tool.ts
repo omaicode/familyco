@@ -1,7 +1,7 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
 import type { CompanyProfile } from './company-profile-read.tool.js';
-import { planChatWithProvider } from './provider-chat-planner.js';
+import { planChat } from './chat.js';
 import { asNonEmptyString, extractEntityLabel, invalidArguments, isRecord } from './tool.helpers.js';
 import type { ServerToolDefinition, ToolDefinitionSummary } from './tool.types.js';
 
@@ -95,7 +95,7 @@ export const chatRespondTool: ServerToolDefinition = {
     const plannedResponse =
       requestedToolCalls.length > 0
         ? null
-          : await planChatWithProvider({
+        : await planChat({
             settingsService: context.settingsService,
             skillsService: context.skillsService,
             adapterRegistry: context.adapterRegistry,
