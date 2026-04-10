@@ -24,6 +24,7 @@ export interface ToolParameterDefinition {
   type: string;
   required: boolean;
   description: string;
+  items?: { type: string };
 }
 
 export interface ToolDefinitionSummary {

@@ -102,10 +102,16 @@ function buildJsonSchemaObject(
   const required: string[] = [];
 
   for (const p of params) {
-    properties[p.name] = {
+    const prop: Record<string, unknown> = {
       type: mapJsonSchemaType(p.type),
       description: p.description
     };
+
+    if (p.type === 'array') {
+      prop.items = p.items ? { type: mapJsonSchemaType(p.items.type) } : {};
+    }
+
+    properties[p.name] = prop;
     if (p.required) {
       required.push(p.name);
     }

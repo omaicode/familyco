@@ -27,6 +27,7 @@ export interface AdapterToolParameterDefinition {
   type: string;
   required: boolean;
   description: string;
+  items?: { type: string };
 }
 
 export interface AdapterToolDefinition {

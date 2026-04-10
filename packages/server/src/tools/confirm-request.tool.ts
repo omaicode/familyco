@@ -16,6 +16,7 @@ export const confirmRequestTool: ServerToolDefinition = {
     {
       name: 'options',
       type: 'array',
+      items: { type: 'string' },
       required: true,
       description: 'The list of option strings for the Founder to choose from.'
     }
