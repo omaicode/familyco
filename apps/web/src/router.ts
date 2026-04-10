@@ -17,7 +17,7 @@ export const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/chat'
+      redirect: '/dashboard'
     },
     {
       path: '/setup',
@@ -73,6 +73,6 @@ router.beforeEach((to) => {
   const isOnboarded = uiRuntime.stores.settings.state.data.some(
     s => s.key === 'onboarding.complete' && s.value === true
   );
-  if (isOnboarded) return { path: '/chat', replace: true };
+  if (isOnboarded) return { path: '/dashboard', replace: true };
   return true;
 });
