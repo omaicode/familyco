@@ -4,6 +4,7 @@ import type {
   SettingsService
 } from '@familyco/core';
 import type { SkillsService } from '../modules/skills/skills.service.js';
+import { renderChatSystemPrompt, renderChatUserPrompt } from '../prompts/index.js';
 
 import type { CompanyProfile } from './company-profile-read.tool.js';
 import { asNonEmptyString, isRecord } from './tool.helpers.js';
@@ -67,8 +68,15 @@ export async function sendChat(
   }
 
   const enabledSkills = await resolveEnabledSkills(input.settingsService, input.skillsService);
-  const systemPrompt = buildSystemPrompt(input.companyProfile, input.tools);
-  const userPrompt = buildUserPrompt(input.message, input.conversationHistory ?? []);
+  const systemPrompt = renderChatSystemPrompt({
+    companyName: input.companyProfile.companyName,
+    companyDescription: input.companyProfile.companyDescription,
+    tools: mapToolDefinitions(input.tools)
+  });
+  const userPrompt = renderChatUserPrompt({
+    message: input.message,
+    conversationHistory: input.conversationHistory ?? []
+  });
 
   const adapterResponse = await requestAdapterChat({
     adapterConfig,
@@ -137,70 +145,6 @@ function toAdapterId(value: unknown): AdapterId | undefined {
   if (value === 'anthropic') return 'claude';
 
   return undefined;
-}
-
-function buildSystemPrompt(
-  companyProfile: CompanyProfile,
-  tools: ToolDefinitionSummary[]
-): string {
-  const toolDescriptions = tools.map((tool) => {
-    const params = tool.parameters
-      .map((parameter) => `${parameter.name}${parameter.required ? '*' : ''}: ${parameter.description}`)
-      .join('; ');
-    return `- ${tool.name}: ${tool.description}${params ? ` Parameters => ${params}` : ''}`;
-  }).join('\n');
-
-  return [
-    'You are the FamilyCo executive agent.',
-    'Decide whether the founder message needs one or more tools. Never guess hidden tools and never invent tool names.',
-    'If no tool is needed, return an empty toolCalls array.',
-    'If a tool is needed, choose from the provided tool list and include concrete arguments for every required field.',
-    'If you do not know a valid agentId or projectId, omit that optional field instead of inventing a database identifier.',
-    'Return strict JSON only with this shape:',
-    '{"reply":"string","toolCalls":[{"toolName":"string","arguments":{}}]}',
-    `Company name: ${companyProfile.companyName}`,
-    `Company description: ${companyProfile.companyDescription || 'Not provided.'}`,
-    'Available tools:',
-    toolDescriptions
-  ].join('\n');
-}
-
-function buildUserPrompt(
-  message: string,
-  conversationHistory: Array<{
-    senderId: string;
-    body: string;
-    title?: string;
-    createdAt?: string;
-  }>
-): string {
-  const historyLines = conversationHistory
-    .map((entry) => {
-      const speaker = entry.senderId === 'founder' ? 'Founder' : 'Executive agent';
-      const title = entry.title ? `${entry.title}: ` : '';
-      const body = compactText(entry.body, 240);
-      return `- ${speaker}: ${title}${body}`;
-    })
-    .join('\n');
-
-  return [
-    historyLines.length > 0 ? 'Recent conversation context:' : 'Recent conversation context: none',
-    historyLines || '- No prior messages recorded.',
-    '',
-    'Latest founder message:',
-    message,
-    '',
-    'Return JSON only.'
-  ].join('\n');
-}
-
-function compactText(value: string, maxLength: number): string {
-  const normalized = value.replace(/\s+/g, ' ').trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, Math.max(maxLength - 1, 0)).trimEnd()}…`;
 }
 
 async function requestAdapterChat(input: {

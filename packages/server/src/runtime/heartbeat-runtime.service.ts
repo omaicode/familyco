@@ -5,6 +5,7 @@ import type {
   QueueService,
   SettingsService
 } from '@familyco/core';
+import { renderHeartbeatRunPrompt } from '../prompts/index.js';
 
 const DEFAULT_HEARTBEAT_MINUTES = 60;
 const DEFAULT_POLL_MS = 30_000;
@@ -125,7 +126,12 @@ export class HeartbeatRuntimeService {
           toolArguments: {
             message: `Heartbeat check for ${agent.name} at ${now.toISOString()}`
           },
-          input: `Scheduled heartbeat for ${agent.name} (${agent.role}) in ${agent.department}. Resume from the saved session context and report progress.`
+          input: renderHeartbeatRunPrompt({
+            agentName: agent.name,
+            agentRole: agent.role,
+            agentDepartment: agent.department,
+            timestamp: now.toISOString()
+          })
         };
 
         try {
