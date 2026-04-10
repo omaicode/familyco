@@ -29,6 +29,15 @@ export class OpenAiAdapter implements AiAdapter {
           model: input.model,
           temperature: 0.2,
           response_format: { type: 'json_object' },
+          ...(input.skills && input.skills.length > 0
+            ? {
+                skills: input.skills.map((skill) => ({
+                  id: skill.id,
+                  name: skill.name,
+                  description: skill.description
+                }))
+              }
+            : {}),
           messages: [
             { role: 'system', content: input.systemPrompt },
             { role: 'user', content: input.userPrompt }

@@ -160,7 +160,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const settingsService = new SettingsService(settingsRepository);
   const skillsService = new SkillsService(
     settingsService,
-    options.skillsRootDir ?? path.join(__dirname, '../../../', 'skills')
+    options.skillsRootDir ?? path.resolve(process.cwd(), 'skills')
   );
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();

@@ -30,6 +30,15 @@ export class ClaudeAdapter implements AiAdapter {
           model: input.model,
           max_tokens: 800,
           temperature: 0.2,
+          ...(input.skills && input.skills.length > 0
+            ? {
+                skills: input.skills.map((skill) => ({
+                  id: skill.id,
+                  name: skill.name,
+                  description: skill.description
+                }))
+              }
+            : {}),
           system: input.systemPrompt,
           messages: [{ role: 'user', content: input.userPrompt }]
         })
@@ -104,4 +113,3 @@ export class ClaudeAdapter implements AiAdapter {
     }
   }
 }
-

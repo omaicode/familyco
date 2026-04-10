@@ -10,6 +10,13 @@ export interface AdapterChatInput {
   model: string;
   systemPrompt: string;
   userPrompt: string;
+  skills?: AdapterSkillDefinition[];
+}
+
+export interface AdapterSkillDefinition {
+  id: string;
+  name: string;
+  description: string;
 }
 
 export interface AdapterTokenUsage {

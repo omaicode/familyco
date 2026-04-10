@@ -63,13 +63,14 @@ export async function sendChat(
   }
 
   const enabledSkills = await resolveEnabledSkills(input.settingsService, input.skillsService);
-  const systemPrompt = buildSystemPrompt(input.companyProfile, input.tools, enabledSkills);
+  const systemPrompt = buildSystemPrompt(input.companyProfile, input.tools);
   const userPrompt = buildUserPrompt(input.message, input.conversationHistory ?? []);
 
   const rawText = await requestAdapterChat({
     adapterConfig,
     systemPrompt,
     userPrompt,
+    skills: enabledSkills,
     adapterRegistry: input.adapterRegistry
   });
 
@@ -135,8 +136,7 @@ function toAdapterId(value: unknown): AdapterId | undefined {
 
 function buildSystemPrompt(
   companyProfile: CompanyProfile,
-  tools: ToolDefinitionSummary[],
-  enabledSkills: EnabledSkillSummary[]
+  tools: ToolDefinitionSummary[]
 ): string {
   const toolDescriptions = tools.map((tool) => {
     const params = tool.parameters
@@ -145,16 +145,9 @@ function buildSystemPrompt(
     return `- ${tool.name}: ${tool.description}${params ? ` Parameters => ${params}` : ''}`;
   }).join('\n');
 
-  const skillDescriptions = enabledSkills.length > 0
-    ? enabledSkills
-      .map((skill) => `- ${skill.name} [${skill.id}]: ${compactText(skill.description, 180)}`)
-      .join('\n')
-    : '- No local skills enabled.';
-
   return [
     'You are the FamilyCo executive agent.',
     'Decide whether the founder message needs one or more tools. Never guess hidden tools and never invent tool names.',
-    'Use enabled local skills as additional company capabilities/context while deciding tool calls and composing replies.',
     'If no tool is needed, return an empty toolCalls array.',
     'If a tool is needed, choose from the provided tool list and include concrete arguments for every required field.',
     'If you do not know a valid agentId or projectId, omit that optional field instead of inventing a database identifier.',
@@ -162,8 +155,6 @@ function buildSystemPrompt(
     '{"reply":"string","toolCalls":[{"toolName":"string","arguments":{}}]}',
     `Company name: ${companyProfile.companyName}`,
     `Company description: ${companyProfile.companyDescription || 'Not provided.'}`,
-    'Enabled local skills:',
-    skillDescriptions,
     'Available tools:',
     toolDescriptions
   ].join('\n');
@@ -211,6 +202,7 @@ async function requestAdapterChat(input: {
   adapterConfig: AdapterConfig;
   systemPrompt: string;
   userPrompt: string;
+  skills: EnabledSkillSummary[];
   adapterRegistry?: AiAdapterRegistry;
 }): Promise<string> {
   if (input.adapterRegistry) {
@@ -220,7 +212,8 @@ async function requestAdapterChat(input: {
         apiKey: input.adapterConfig.apiKey,
         model: input.adapterConfig.model,
         systemPrompt: input.systemPrompt,
-        userPrompt: input.userPrompt
+        userPrompt: input.userPrompt,
+        skills: input.skills
       })).content;
     }
   }
