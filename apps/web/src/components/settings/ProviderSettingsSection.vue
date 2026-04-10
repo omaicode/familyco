@@ -377,7 +377,7 @@ watch(() => uiRuntime.stores.settings.state.data, load, { immediate: true });
   gap: 5px;
   padding: 7px 13px;
   border-radius: 7px;
-  border: 1px solid var(--fc-border);
+  border: 1px solid var(--fc-border-subtle);
   background: var(--fc-surface);
   color: var(--fc-text-muted);
   font-size: 12px;
