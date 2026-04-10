@@ -23,16 +23,17 @@ export class OpenAiAdapter implements AiAdapter {
     const toolNameMap = new Map<string, string>();
     const requestBody: Record<string, unknown> = {
       model: input.model,
-      temperature: 0.2,
       stream: true,
-      text: {
-        format: { type: 'json_object' }
-      },
+      max_tool_calls: 5,
       input: [
         { role: 'system', content: input.systemPrompt },
         { role: 'user', content: input.userPrompt }
       ]
     };
+
+    if (supportsOpenAiTemperature(input.model)) {
+      requestBody.temperature = 0.5;
+    }
 
     if (input.skills && input.skills.length > 0) {
       requestBody.tools = [
@@ -87,6 +88,7 @@ export class OpenAiAdapter implements AiAdapter {
     const timeout = setTimeout(() => controller.abort(), OpenAiAdapter.TIMEOUT_MS);
 
     try {
+      console.debug(`[OpenAiAdapter] Sending request to OpenAI with body: ${JSON.stringify(requestBody)}`);
       const response = await fetch(OpenAiAdapter.RESPONSES_ENDPOINT, {
         method: 'POST',
         signal: controller.signal,
@@ -96,7 +98,7 @@ export class OpenAiAdapter implements AiAdapter {
         },
         body: JSON.stringify(requestBody)
       });
-
+      console.debug(`[OpenAiAdapter] Received response`, response);
       if (!response.ok) {
         const payload = await readJsonLikePayload(response);
         throw new Error(readProviderError('openai', payload));
@@ -210,7 +212,11 @@ export class OpenAiAdapter implements AiAdapter {
 
 function supportsOpenAiReasoning(model: string): boolean {
   const normalized = model.trim().toLowerCase();
-  return normalized.startsWith('gpt-5') || normalized.startsWith('o');
+  return normalized.startsWith('gpt-5') || normalized.startsWith('o1') || normalized.startsWith('o3') || normalized.startsWith('o4');
+}
+
+function supportsOpenAiTemperature(model: string): boolean {
+  return !supportsOpenAiReasoning(model);
 }
 
 function extractToolCalls(payload: unknown, toolNameMap: ReadonlyMap<string, string>): AdapterPlannedToolCall[] {
