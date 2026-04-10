@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "build:desktop": "pnpm --filter @familyco/electron run build:electron",
+    "build:electron": "pnpm --filter @familyco/electron run build:electron",
     "dev": "turbo run dev --parallel --filter=@familyco/server --filter=@familyco/web",
     "dev:electron": "turbo run dev --parallel --filter=@familyco/web --filter=@familyco/electron",
     "dev:p": "turbo run dev --parallel",
