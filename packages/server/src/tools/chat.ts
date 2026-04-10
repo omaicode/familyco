@@ -229,7 +229,7 @@ export function parseChatResponse(
 
   if (!isRecord(parsed)) {
     return {
-      reply: readNonEmptyText(text) ?? 'I reviewed the request and kept it in the executive chat lane.',
+      reply: readNonEmptyText(text) ?? '',
       toolCalls: normalizedAdapterToolCalls,
       requiresConfirmation: false
     };
@@ -246,7 +246,8 @@ export function parseChatResponse(
   return {
     reply:
       readNonEmptyText(parsed.reply)
-      ?? 'I reviewed the request and kept it in the executive chat lane.',
+      ?? readNonEmptyText(text)
+      ?? '',
     toolCalls,
     requiresConfirmation: parsed.requiresConfirmation === true
   };

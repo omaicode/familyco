@@ -389,7 +389,7 @@ function normalizeChatOutput(output: unknown): {
 } {
   if (!isRecord(output)) {
     return {
-      reply: 'I reviewed the request and kept it in the executive chat lane.',
+      reply: '',
       toolCalls: [],
       task: null,
       project: null
@@ -404,7 +404,7 @@ function normalizeChatOutput(output: unknown): {
     reply:
       typeof output.reply === 'string' && output.reply.trim().length > 0
         ? output.reply.trim()
-        : 'I reviewed the request and kept it in the executive chat lane.',
+        : '',
     toolCalls,
     task: 'task' in output ? output.task ?? null : null,
     project: 'project' in output ? output.project ?? null : null
