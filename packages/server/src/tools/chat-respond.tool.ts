@@ -1,6 +1,6 @@
 import type { AgentLevel, ToolExecutionResult } from '@familyco/core';
 
-import { publishChatChunk } from '../modules/agent/agent-chat-stream-broker.js';
+import { publishChatChunk, publishToolStart, publishToolComplete } from '../modules/agent/agent-chat-stream-broker.js';
 import { buildAgentSlashRegistry } from '../modules/agent/agent-chat.registry.js';
 import type { ToolSlashEntry } from '../modules/agent/agent-chat.registry.js';
 import type { CompanyProfile } from './company-profile-read.tool.js';
@@ -51,7 +51,7 @@ interface ChatToolOutput {
   availableTools: ToolDefinitionSummary[];
 }
 
-const MAX_PLANNED_TOOL_ROUNDS = 3;
+const MAX_PLANNED_TOOL_ROUNDS = 6;
 
 export const chatRespondTool: ServerToolDefinition = {
   name: 'chat.respond',
@@ -120,7 +120,8 @@ export const chatRespondTool: ServerToolDefinition = {
     if (requestedToolCalls.length > 0) {
       const executionResult = await executeToolCallQueue({
         toolCallQueue: requestedToolCalls,
-        executeTool: context.executeTool
+        executeTool: context.executeTool,
+        streamRequestId
       });
       toolCalls.push(...executionResult.toolCalls);
       createdTask = executionResult.createdTask;
@@ -163,7 +164,8 @@ export const chatRespondTool: ServerToolDefinition = {
 
         const executionResult = await executeToolCallQueue({
           toolCallQueue,
-          executeTool: context.executeTool
+          executeTool: context.executeTool,
+          streamRequestId
         });
 
         toolCalls.push(...executionResult.toolCalls);
@@ -401,6 +403,7 @@ function toToolCallSummary(result: ToolExecutionResult): ChatToolCall {
 async function executeToolCallQueue(input: {
   toolCallQueue: ExplicitToolCall[];
   executeTool: (value: { toolName: string; arguments: Record<string, unknown> }) => Promise<ToolExecutionResult>;
+  streamRequestId?: string;
 }): Promise<{ toolCalls: ChatToolCall[]; createdTask: unknown | null; createdProject: unknown | null; }> {
   const toolCalls: ChatToolCall[] = [];
   let createdTask: unknown | null = null;
@@ -411,12 +414,26 @@ async function executeToolCallQueue(input: {
       continue;
     }
 
+    if (input.streamRequestId) {
+      publishToolStart(input.streamRequestId, requestedToolCall.toolName, requestedToolCall.arguments);
+    }
+
     const result = await input.executeTool({
       toolName: requestedToolCall.toolName,
       arguments: requestedToolCall.arguments
     });
     const summary = toToolCallSummary(result);
     toolCalls.push(summary);
+
+    if (input.streamRequestId) {
+      publishToolComplete(
+        input.streamRequestId,
+        summary.toolName,
+        summary.ok,
+        summary.summary,
+        summary.error
+      );
+    }
 
     if (requestedToolCall.toolName === 'task.create' && result.ok) {
       createdTask = result.output ?? null;

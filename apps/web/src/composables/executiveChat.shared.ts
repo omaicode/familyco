@@ -15,11 +15,17 @@ export interface ChatToolCallDetails {
   };
 }
 
+export interface ChatToolInProgress {
+  toolName: string;
+  startedAt: string;
+}
+
 export type ThreadMessage = AgentChatMessage & {
   payload?: {
     taskId?: string;
     projectId?: string;
     toolCalls?: ChatToolCallDetails[];
+    toolsInProgress?: ChatToolInProgress[];
     [key: string]: unknown;
   };
 };

@@ -9,6 +9,7 @@ import {
   type ChatConnectionState,
   type ChatSocketEvent,
   type ChatToolCallDetails,
+  type ChatToolInProgress,
   type ThreadMessage
 } from './executiveChat.shared';
 
@@ -34,6 +35,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
   const socket = ref<WebSocket | null>(null);
   const activeStreamId = ref<string | null>(null);
   const streamToolCalls = ref<Record<string, ChatToolCallDetails[]>>({});
+  const streamToolsInProgress = ref<Record<string, ChatToolInProgress[]>>({});
 
   const closeSocket = (): void => {
     socket.value?.close();
@@ -162,6 +164,50 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       return;
     }
 
+    if (event.type === 'chat.tool.start') {
+      const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
+      const toolName = typeof event.payload?.toolName === 'string' ? event.payload.toolName : null;
+
+      if (requestId && toolName) {
+        const entry: ChatToolInProgress = { toolName, startedAt: new Date().toISOString() };
+        streamToolsInProgress.value = {
+          ...streamToolsInProgress.value,
+          [requestId]: [...(streamToolsInProgress.value[requestId] ?? []), entry]
+        };
+        const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
+        upsertStreamingReply(requestId, existingBody);
+      }
+      return;
+    }
+
+    if (event.type === 'chat.tool.complete') {
+      const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
+      const toolCall = isToolCallDetails(event.payload) ? event.payload : null;
+
+      if (requestId && toolCall) {
+        // Move from in-progress to completed
+        const inProgress = streamToolsInProgress.value[requestId] ?? [];
+        streamToolsInProgress.value = {
+          ...streamToolsInProgress.value,
+          [requestId]: inProgress.filter((entry) => entry.toolName !== toolCall.toolName)
+        };
+        streamToolCalls.value = {
+          ...streamToolCalls.value,
+          [requestId]: [...(streamToolCalls.value[requestId] ?? []), toolCall]
+        };
+        const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
+        upsertStreamingReply(requestId, existingBody);
+      }
+
+      if (toolCall) {
+        setFeedback(
+          toolCall.ok === false ? 'error' : 'info',
+          formatToolFeedback(toolCall)
+        );
+      }
+      return;
+    }
+
     if (event.type === 'chat.completed') {
       const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
       const completedToolCalls = Array.isArray(event.payload?.toolCalls)
@@ -179,6 +225,10 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
         const nextToolCalls = { ...streamToolCalls.value };
         delete nextToolCalls[requestId];
         streamToolCalls.value = nextToolCalls;
+
+        const nextInProgress = { ...streamToolsInProgress.value };
+        delete nextInProgress[requestId];
+        streamToolsInProgress.value = nextInProgress;
       }
 
       isSending.value = false;
@@ -210,7 +260,14 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
 
     const existingMessage = thread.value.find((message) => message.id === requestId);
     const toolCalls = streamToolCalls.value[requestId] ?? [];
-    const payload = toolCalls.length > 0 ? { ...(existingMessage?.payload ?? {}), toolCalls } : existingMessage?.payload;
+    const toolsInProgress = streamToolsInProgress.value[requestId] ?? [];
+    const payload = (toolCalls.length > 0 || toolsInProgress.length > 0)
+      ? {
+          ...(existingMessage?.payload ?? {}),
+          toolCalls,
+          ...(toolsInProgress.length > 0 ? { toolsInProgress } : {})
+        }
+      : existingMessage?.payload;
 
     thread.value = sortThread([
       ...thread.value.filter((message) => message.id !== requestId),

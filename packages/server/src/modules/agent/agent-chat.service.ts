@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { AgentRunner, AgentService, InboxService, ToolExecutionResult } from '@familyco/core';
 
-import { registerChatChunkListener } from './agent-chat-stream-broker.js';
+import { registerChatStreamListener } from './agent-chat-stream-broker.js';
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
 import type { ParsedSlashEntry } from './agent-chat.registry.js';
 import type {
@@ -31,13 +31,30 @@ export async function handleSocketChatMessage(input: {
     });
 
     let chunkIndex = 0;
-    const unregisterChunkListener = registerChatChunkListener(requestId, (chunk) => {
-      sendSocketEvent(input.socket, 'chat.chunk', {
-        requestId,
-        index: chunkIndex,
-        chunk
-      });
-      chunkIndex += 1;
+    const toolCallsInProgress: Array<{ toolName: string; arguments: Record<string, unknown> }> = [];
+    const unregisterStreamListener = registerChatStreamListener(requestId, (event) => {
+      if (event.type === 'chunk') {
+        sendSocketEvent(input.socket, 'chat.chunk', {
+          requestId,
+          index: chunkIndex,
+          chunk: event.chunk
+        });
+        chunkIndex += 1;
+      } else if (event.type === 'tool.start') {
+        toolCallsInProgress.push({ toolName: event.toolName, arguments: event.arguments });
+        sendSocketEvent(input.socket, 'chat.tool.start', {
+          requestId,
+          toolName: event.toolName
+        });
+      } else if (event.type === 'tool.complete') {
+        sendSocketEvent(input.socket, 'chat.tool.complete', {
+          requestId,
+          toolName: event.toolName,
+          ok: event.ok,
+          summary: event.summary,
+          ...(event.error ? { error: event.error } : {})
+        });
+      }
     });
 
     const result = await processAgentChat({
@@ -47,7 +64,7 @@ export async function handleSocketChatMessage(input: {
       actorId: input.actorId,
       streamRequestId: requestId
     }).finally(() => {
-      unregisterChunkListener();
+      unregisterStreamListener();
     });
 
     for (const toolCall of result.toolCalls) {
