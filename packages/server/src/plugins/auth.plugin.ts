@@ -33,7 +33,9 @@ export async function authenticateApiRequest(
   }
 
   const apiKeyHeader = request.headers['x-api-key'];
-  const apiKey = typeof apiKeyHeader === 'string' ? apiKeyHeader : undefined;
+  const apiKeyFromHeader = typeof apiKeyHeader === 'string' ? apiKeyHeader : undefined;
+  const apiKeyFromQuery = readApiKeyFromQuery(request.query);
+  const apiKey = apiKeyFromHeader ?? apiKeyFromQuery;
 
   if (apiKey) {
     const apiKeyRecord = await apiKeyService.verify(apiKey);
@@ -63,4 +65,17 @@ export async function authenticateApiRequest(
       message: 'Unauthorized'
     });
   }
+}
+
+function readApiKeyFromQuery(query: unknown): string | undefined {
+  if (!isRecord(query)) {
+    return undefined;
+  }
+
+  const value = query.apiKey;
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
