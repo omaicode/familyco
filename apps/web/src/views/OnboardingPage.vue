@@ -10,8 +10,7 @@ import FamilyCoIcon from '../assets/familyco-icon.svg';
 
 import { uiRuntime } from '../runtime';
 import { useI18n } from '../composables/useI18n';
-
-type AdapterId = 'copilot' | 'openai' | 'claude';
+import { ADAPTER_OPTIONS, getDefaultAdapterModel, type AdapterId } from '../constants/adapter-options';
 
 const router = useRouter();
 const { locale, setLocale, supportedLocales, t } = useI18n();
@@ -40,41 +39,15 @@ const form = reactive({
   defaultModel: 'gpt-5-mini',
 });
 
-interface AdapterOption {
-  value: AdapterId;
-  label: string;
-  description: string;
-  keyHint: string;
-  defaultModel: string;
-  models: string[];
-}
-
-const adapterOptions = computed<AdapterOption[]>(() => [
-  {
-    value: 'copilot',
-    label: 'GitHub Copilot',
-    description: t('GitHub Copilot — code-aware reasoning powered by GitHub models'),
-    keyHint: 'ghp_… or ghu_…',
-    defaultModel: 'gpt-5-mini',
-    models: ['gpt-5-mini', 'gpt-5.4-mini', 'o3-mini', 'claude-3.5-sonnet'],
-  },
-  {
-    value: 'openai',
-    label: 'OpenAI',
-    description: t('OpenAI gpt-5-mini — best for general-purpose agents'),
-    keyHint: 'sk-…',
-    defaultModel: 'gpt-5-mini',
-    models: ['gpt-5-mini', 'gpt-5.4-mini', 'o3-mini', 'o1'],
-  },
-  {
-    value: 'claude',
-    label: 'Claude',
-    description: t('Anthropic Claude — great for reasoning and long-context tasks'),
-    keyHint: 'sk-ant-…',
-    defaultModel: 'claude-sonnet-4-5',
-    models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'],
-  },
-]);
+const adapterOptions = computed(() => ADAPTER_OPTIONS.map((option) => ({
+  ...option,
+  description: option.value === 'copilot'
+    ? t('GitHub Copilot — code-aware reasoning powered by GitHub models')
+    : option.value === 'openai'
+      ? t('OpenAI gpt-5-mini — best for general-purpose agents')
+      : t('Anthropic Claude — great for reasoning and long-context tasks'),
+  defaultModel: getDefaultAdapterModel(option.value),
+})));
 
 const selectedAdapter = computed(() => adapterOptions.value.find(p => p.value === form.provider)!);
 
@@ -89,7 +62,7 @@ const canNext = computed(() => {
 
 const selectAdapter = (id: AdapterId) => {
   form.provider = id;
-  form.defaultModel = adapterOptions.value.find(o => o.value === id)!.defaultModel;
+  form.defaultModel = getDefaultAdapterModel(id);
   showApiKey.value = false;
   form.apiKey = '';
   testResult.value = null;

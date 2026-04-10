@@ -8,21 +8,7 @@ import FcPasswordInput from '../FcPasswordInput.vue';
 import FcSelect from '../FcSelect.vue';
 import { uiRuntime } from '../../runtime';
 import { useI18n } from '../../composables/useI18n';
-
-type AdapterId = 'copilot' | 'openai' | 'claude';
-
-interface AdapterOption {
-  value: AdapterId;
-  label: string;
-  models: string[];
-  keyHint: string;
-}
-
-const adapterOptions: AdapterOption[] = [
-  { value: 'copilot', label: 'GitHub Copilot', models: ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5', 'gpt-5.4', 'claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5'], keyHint: 'ghp_… or ghu_…' },
-  { value: 'openai',  label: 'OpenAI',         models: ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5', 'gpt-5.4'], keyHint: 'sk-…' },
-  { value: 'claude',  label: 'Claude',         models: ['claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-5', 'claude-opus-4-6', 'claude-haiku-4-5'], keyHint: 'sk-ant-…' }
-];
+import { ADAPTER_OPTIONS, getDefaultAdapterModel, type AdapterId } from '../../constants/adapter-options';
 
 const { t } = useI18n();
 
@@ -50,7 +36,7 @@ const adapterKeys = reactive<Record<AdapterId, { key: string; saving: boolean; t
   claude:  { key: '', saving: false, testing: false, testResult: null },
 });
 
-const selectedAdapter = computed(() => adapterOptions.find(p => p.value === providerName.value)!);
+const selectedAdapter = computed(() => ADAPTER_OPTIONS.find(p => p.value === providerName.value)!);
 const maskedKey = computed(() => {
   const k = providerDraft[providerName.value].apiKey;
   if (!k) return '';
@@ -73,13 +59,13 @@ const load = () => {
   const globalKey = typeof getSetting('provider.apiKey') === 'string' ? getSetting('provider.apiKey') as string : '';
   const loadedModel = typeof getSetting('provider.defaultModel') === 'string'
     ? getSetting('provider.defaultModel') as string
-    : adapterOptions.find(p => p.value === activeAdapter)!.models[0];
+    : getDefaultAdapterModel(activeAdapter);
 
   providerDraft[activeAdapter] = { apiKey: globalKey, model: loadedModel };
   providerName.value = activeAdapter;
   providerModel.value = loadedModel;
 
-  for (const adapter of adapterOptions) {
+  for (const adapter of ADAPTER_OPTIONS) {
     const perKey = getSetting(`provider.${adapter.value}.apiKey`);
     adapterKeys[adapter.value].key = typeof perKey === 'string' ? perKey : '';
     adapterKeys[adapter.value].testResult = null;
@@ -125,7 +111,7 @@ const testAdapterKey = async (adapterId: AdapterId) => {
   if (!key.trim()) return;
   adapterKeys[adapterId].testing = true;
   adapterKeys[adapterId].testResult = null;
-  const model = adapterOptions.find(a => a.value === adapterId)!.models[0];
+  const model = getDefaultAdapterModel(adapterId);
   try {
     const result = await uiRuntime.api.testProviderAdapter({ adapterId, apiKey: key.trim(), model });
     adapterKeys[adapterId].testResult = { ok: result.ok, latencyMs: result.latencyMs, error: result.error };
@@ -158,7 +144,7 @@ const saveAdapterKey = async (adapterId: AdapterId) => {
   try {
     await uiRuntime.api.upsertSetting({ key: `provider.${adapterId}.apiKey`, value: adapterKeys[adapterId].key });
     await uiRuntime.stores.settings.load();
-    emit('feedback', 'success', `${adapterOptions.find(a => a.value === adapterId)!.label} API key saved`);
+    emit('feedback', 'success', `${ADAPTER_OPTIONS.find(a => a.value === adapterId)!.label} API key saved`);
   } catch (err) {
     emit('feedback', 'error', err instanceof Error ? err.message : 'Failed to save API key');
   } finally {
@@ -182,7 +168,7 @@ watch(() => uiRuntime.stores.settings.state.data, load, { immediate: true });
     <label class="pss-label">{{ t('AI adapter') }}</label>
     <div class="pss-adapter-grid">
       <button
-        v-for="opt in adapterOptions"
+        v-for="opt in ADAPTER_OPTIONS"
         :key="opt.value"
         class="pss-adapter-btn"
         :class="{ 'pss-adapter-selected': providerName === opt.value }"
@@ -254,7 +240,7 @@ watch(() => uiRuntime.stores.settings.state.data, load, { immediate: true });
     </div>
   </div>
 
-  <div v-for="adapter in adapterOptions" :key="adapter.value" class="pss-field-group">
+  <div v-for="adapter in ADAPTER_OPTIONS" :key="adapter.value" class="pss-field-group">
     <label class="pss-label" :for="`pss-key-${adapter.value}`">
       {{ adapter.label }}
       <span v-if="adapterKeys[adapter.value].key" class="pss-badge pss-badge-success">Saved</span>

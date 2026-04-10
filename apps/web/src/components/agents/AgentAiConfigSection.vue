@@ -5,22 +5,9 @@ import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import { uiRuntime } from '../../runtime';
+import { ADAPTER_OPTIONS, type AdapterId } from '../../constants/adapter-options';
 import FcButton from '../FcButton.vue';
 import FcSelect from '../FcSelect.vue';
-
-type AdapterId = 'copilot' | 'openai' | 'claude';
-
-interface AdapterOption {
-  value: AdapterId;
-  label: string;
-  models: string[];
-}
-
-const adapterOptions: AdapterOption[] = [
-  { value: 'copilot', label: 'GitHub Copilot', models: ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5', 'gpt-5.4', 'claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5'] },
-  { value: 'openai',  label: 'OpenAI',         models: ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5', 'gpt-5.4'] },
-  { value: 'claude',  label: 'Claude',         models: ['claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-5', 'claude-opus-4-6', 'claude-haiku-4-5'] },
-];
 
 const props = defineProps<{
   agent: AgentListItem;
@@ -39,7 +26,7 @@ const saved = ref(false);
 
 const availableModels = computed<string[]>(() => {
   if (!draftAdapterId.value) return [];
-  return adapterOptions.find(a => a.value === draftAdapterId.value)?.models ?? [];
+  return ADAPTER_OPTIONS.find(a => a.value === draftAdapterId.value)?.models ?? [];
 });
 
 const hasOverride = computed(() => !!draftAdapterId.value);
@@ -56,7 +43,7 @@ watch(() => props.agent.id, load, { immediate: true });
 const onAdapterChange = (newId: AdapterId | '') => {
   draftAdapterId.value = newId;
   if (newId) {
-    const models = adapterOptions.find(a => a.value === newId)?.models ?? [];
+    const models = ADAPTER_OPTIONS.find(a => a.value === newId)?.models ?? [];
     if (!models.includes(draftModel.value)) draftModel.value = models[0] ?? '';
   } else {
     draftModel.value = '';
@@ -109,7 +96,7 @@ const isDirty = computed(() => {
       <label class="aac-label" for="aac-adapter">{{ t('AI adapter') }}</label>
       <FcSelect id="aac-adapter" :model-value="draftAdapterId" @update:model-value="onAdapterChange($event as AdapterId | '')">
         <option value="">{{ t('Default (system setting)') }}</option>
-        <option v-for="opt in adapterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        <option v-for="opt in ADAPTER_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </FcSelect>
       <p class="aac-hint">{{ t('Agents without an override will use the system-level adapter.') }}</p>
     </div>
