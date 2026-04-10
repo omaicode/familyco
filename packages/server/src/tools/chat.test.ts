@@ -11,7 +11,7 @@ test('parseChatResponse preserves markdown line breaks in plain text fallback', 
 });
 
 test('parseChatResponse preserves markdown line breaks in JSON reply field', () => {
-  const source = '{"reply":"# Weekly Plan\\n\\n1. Kickoff\\n2. Review","toolCalls":[],"requiresConfirmation":false}';
+  const source = '{"reply":"# Weekly Plan\\n\\n1. Kickoff\\n2. Review","toolCalls":[]}';
   const parsed = parseChatResponse(source, [], []);
 
   assert.equal(parsed.reply, '# Weekly Plan\n\n1. Kickoff\n2. Review');

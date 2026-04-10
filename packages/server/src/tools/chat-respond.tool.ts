@@ -154,8 +154,7 @@ export const chatRespondTool: ServerToolDefinition = {
 
         const toolCallQueue = resolveToolCallQueue({
           requestedToolCalls: [],
-          plannedToolCalls: plannedResponse.toolCalls,
-          plannedRequiresConfirmation: plannedResponse.requiresConfirmation === true
+          plannedToolCalls: plannedResponse.toolCalls
         });
 
         if (toolCallQueue.length === 0) {
@@ -515,14 +514,9 @@ function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel):
 export function resolveToolCallQueue(input: {
   requestedToolCalls: ExplicitToolCall[];
   plannedToolCalls: ExplicitToolCall[];
-  plannedRequiresConfirmation: boolean;
 }): ExplicitToolCall[] {
   if (input.requestedToolCalls.length > 0) {
     return input.requestedToolCalls;
-  }
-
-  if (input.plannedRequiresConfirmation) {
-    return [];
   }
 
   return input.plannedToolCalls;

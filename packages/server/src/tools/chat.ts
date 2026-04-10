@@ -19,7 +19,6 @@ export interface PlannedToolCall {
 export interface PlannedChatResponse {
   reply: string;
   toolCalls: PlannedToolCall[];
-  requiresConfirmation: boolean;
   providerName: string;
   model: string;
 }
@@ -230,8 +229,7 @@ export function parseChatResponse(
   if (!isRecord(parsed)) {
     return {
       reply: readNonEmptyText(text) ?? '',
-      toolCalls: normalizedAdapterToolCalls,
-      requiresConfirmation: false
+      toolCalls: normalizedAdapterToolCalls
     };
   }
 
@@ -248,8 +246,7 @@ export function parseChatResponse(
       readNonEmptyText(parsed.reply)
       ?? readNonEmptyText(text)
       ?? '',
-    toolCalls,
-    requiresConfirmation: parsed.requiresConfirmation === true
+    toolCalls
   };
 }
 

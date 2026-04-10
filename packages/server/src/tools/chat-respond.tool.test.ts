@@ -4,31 +4,28 @@ import { AiAdapterRegistry, type AiAdapter } from '@familyco/core';
 
 import { chatRespondTool, parseConversationHistory, resolveToolCallQueue } from './chat-respond.tool.js';
 
-test('resolveToolCallQueue blocks planned calls while waiting for confirmation', () => {
+test('resolveToolCallQueue executes planned calls', () => {
   const queue = resolveToolCallQueue({
     requestedToolCalls: [],
-    plannedToolCalls: [{ toolName: 'project.create', arguments: { name: 'Q2 Workspace' } }],
-    plannedRequiresConfirmation: true
-  });
-
-  assert.deepEqual(queue, []);
-});
-
-test('resolveToolCallQueue keeps explicit requested calls', () => {
-  const queue = resolveToolCallQueue({
-    requestedToolCalls: [{ toolName: 'project.create', arguments: { name: 'Q2 Workspace' } }],
-    plannedToolCalls: [{ toolName: 'task.create', arguments: { title: 'ignored' } }],
-    plannedRequiresConfirmation: true
+    plannedToolCalls: [{ toolName: 'project.create', arguments: { name: 'Q2 Workspace' } }]
   });
 
   assert.deepEqual(queue, [{ toolName: 'project.create', arguments: { name: 'Q2 Workspace' } }]);
 });
 
-test('resolveToolCallQueue executes planned calls after confirmation', () => {
+test('resolveToolCallQueue keeps explicit requested calls', () => {
+  const queue = resolveToolCallQueue({
+    requestedToolCalls: [{ toolName: 'project.create', arguments: { name: 'Q2 Workspace' } }],
+    plannedToolCalls: [{ toolName: 'task.create', arguments: { title: 'ignored' } }]
+  });
+
+  assert.deepEqual(queue, [{ toolName: 'project.create', arguments: { name: 'Q2 Workspace' } }]);
+});
+
+test('resolveToolCallQueue executes planned calls when no explicit call is provided', () => {
   const queue = resolveToolCallQueue({
     requestedToolCalls: [],
-    plannedToolCalls: [{ toolName: 'task.create', arguments: { title: 'Run weekly review' } }],
-    plannedRequiresConfirmation: false
+    plannedToolCalls: [{ toolName: 'task.create', arguments: { title: 'Run weekly review' } }]
   });
 
   assert.deepEqual(queue, [{ toolName: 'task.create', arguments: { title: 'Run weekly review' } }]);
