@@ -356,31 +356,31 @@ watch(
   font-size: 0.95rem;
 }
 
-.chat-bubble-body :deep(.fc-markdown) {
+.chat-bubble-body {
   font-size: 0.95rem;
   line-height: 1.65;
 }
 
-.chat-bubble-body :deep(.fc-markdown p) {
+.chat-bubble-body :deep(p) {
   margin-top: 0.22rem;
   margin-bottom: 0.22rem;
 }
 
-.chat-bubble-body :deep(.fc-markdown h1),
-.chat-bubble-body :deep(.fc-markdown h2),
-.chat-bubble-body :deep(.fc-markdown h3) {
+.chat-bubble-body :deep(h1),
+.chat-bubble-body :deep(h2),
+.chat-bubble-body :deep(h3) {
   margin-top: 0.42rem;
   margin-bottom: 0.18rem;
   line-height: 1.35;
 }
 
-.chat-bubble-body :deep(.fc-markdown h1 + p),
-.chat-bubble-body :deep(.fc-markdown h2 + p),
-.chat-bubble-body :deep(.fc-markdown h3 + p) {
+.chat-bubble-body :deep(h1 + p),
+.chat-bubble-body :deep(h2 + p),
+.chat-bubble-body :deep(h3 + p) {
   margin-top: 0.14rem;
 }
 
-.chat-bubble-body :deep(.fc-markdown code) {
+.chat-bubble-body :deep(code) {
   font-size: 0.86em;
 }
 
