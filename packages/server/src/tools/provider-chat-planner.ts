@@ -19,6 +19,10 @@ export interface PlannedChatResponse {
 interface PlanChatWithProviderInput {
   settingsService?: SettingsService;
   adapterRegistry?: AiAdapterRegistry;
+  /** Override adapter for this specific agent (null = use system default) */
+  agentAdapterId?: string | null;
+  /** Override model for this specific agent (null = use system default) */
+  agentModel?: string | null;
   message: string;
   companyProfile: CompanyProfile;
   tools: ToolDefinitionSummary[];
@@ -41,7 +45,11 @@ interface ProviderSettings {
 export async function planChatWithProvider(
   input: PlanChatWithProviderInput
 ): Promise<PlannedChatResponse | null> {
-  const providerSettings = await readProviderSettings(input.settingsService);
+  const providerSettings = await readProviderSettings(
+    input.settingsService,
+    input.agentAdapterId,
+    input.agentModel
+  );
   if (!providerSettings) {
     return null;
   }
@@ -64,22 +72,41 @@ export async function planChatWithProvider(
   };
 }
 
-async function readProviderSettings(settingsService?: SettingsService): Promise<ProviderSettings | null> {
+async function readProviderSettings(
+  settingsService?: SettingsService,
+  agentAdapterId?: string | null,
+  agentModel?: string | null
+): Promise<ProviderSettings | null> {
   if (!settingsService) {
     return null;
   }
 
-  const [providerSetting, apiKeySetting, modelSetting] = await Promise.all([
+  const overrideAdapterId = agentAdapterId ? asAdapterId(agentAdapterId) : undefined;
+
+  const [providerSetting, globalApiKeySetting, modelSetting] = await Promise.all([
     settingsService.get('provider.name'),
     settingsService.get('provider.apiKey'),
     settingsService.get('provider.defaultModel')
   ]);
 
-  const providerName = asAdapterId(providerSetting?.value);
-  const apiKey = asNonEmptyString(apiKeySetting?.value);
-  const model = asNonEmptyString(modelSetting?.value);
+  // Resolve adapter: agent override > global setting
+  const providerName = overrideAdapterId ?? asAdapterId(providerSetting?.value);
+  if (!providerName) {
+    return null;
+  }
 
-  if (!providerName || !apiKey || !model) {
+  // Resolve model: agent override > global setting
+  const model = (agentModel ? agentModel : null) ?? asNonEmptyString(modelSetting?.value);
+  if (!model) {
+    return null;
+  }
+
+  // Resolve API key: per-adapter key > global fallback
+  const perAdapterKeySetting = await settingsService.get(`provider.${providerName}.apiKey`);
+  const apiKey =
+    asNonEmptyString(perAdapterKeySetting?.value) ??
+    asNonEmptyString(globalApiKeySetting?.value);
+  if (!apiKey) {
     return null;
   }
 

@@ -122,7 +122,14 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     requireMinimumLevel(request, 'L0');
     const { id } = updateAgentParamsSchema.parse(request.params);
     const body = updateAgentBodySchema.parse(request.body);
-    const updated = await deps.agentService.updateAgent(id, body);
+    const updated = await deps.agentService.updateAgent(id, {
+      name: body.name,
+      role: body.role,
+      department: body.department,
+      status: body.status,
+      aiAdapterId: body.aiAdapterId,
+      aiModel: body.aiModel
+    });
     await deps.auditService.write({
       actorId: request.authContext?.subject ?? 'system',
       action: 'agent.update',

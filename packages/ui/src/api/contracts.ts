@@ -8,6 +8,8 @@ export interface AgentListItem {
   department: string;
   status: 'active' | 'idle' | 'running' | 'error' | 'paused' | 'terminated';
   parentAgentId: string | null;
+  aiAdapterId: string | null;
+  aiModel: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -267,6 +269,8 @@ export interface UpdateAgentPayload {
   role: string;
   department: string;
   status: AgentListItem['status'];
+  aiAdapterId?: string | null;
+  aiModel?: string | null;
 }
 
 export interface UpdateAgentParentPayload {
@@ -418,7 +422,9 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
       name: payload.name,
       role: payload.role,
       department: payload.department,
-      status: payload.status
+      status: payload.status,
+      aiAdapterId: payload.aiAdapterId,
+      aiModel: payload.aiModel
     }),
   updateAgentParent: (payload) =>
     client.patch<AgentListItem, { parentAgentId: string | null }>(

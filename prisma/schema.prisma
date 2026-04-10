@@ -15,6 +15,8 @@ model Agent {
 	department    String
 	status        String
 	parentAgentId String?
+	aiAdapterId   String?
+	aiModel       String?
 	createdAt     DateTime @default(now())
 	updatedAt     DateTime @updatedAt
 

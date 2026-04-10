@@ -9,8 +9,8 @@
  * 🟢 You can import this file directly.
  */
 import type * as runtime from "@prisma/client/runtime/client"
-import type * as $Enums from "../enums.js"
-import type * as Prisma from "../internal/prismaNamespace.js"
+import type * as $Enums from "../enums"
+import type * as Prisma from "../internal/prismaNamespace"
 
 /**
  * Model Agent
@@ -32,6 +32,8 @@ export type AgentMinAggregateOutputType = {
   department: string | null
   status: string | null
   parentAgentId: string | null
+  aiAdapterId: string | null
+  aiModel: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -44,6 +46,8 @@ export type AgentMaxAggregateOutputType = {
   department: string | null
   status: string | null
   parentAgentId: string | null
+  aiAdapterId: string | null
+  aiModel: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -56,6 +60,8 @@ export type AgentCountAggregateOutputType = {
   department: number
   status: number
   parentAgentId: number
+  aiAdapterId: number
+  aiModel: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -70,6 +76,8 @@ export type AgentMinAggregateInputType = {
   department?: true
   status?: true
   parentAgentId?: true
+  aiAdapterId?: true
+  aiModel?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -82,6 +90,8 @@ export type AgentMaxAggregateInputType = {
   department?: true
   status?: true
   parentAgentId?: true
+  aiAdapterId?: true
+  aiModel?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -94,6 +104,8 @@ export type AgentCountAggregateInputType = {
   department?: true
   status?: true
   parentAgentId?: true
+  aiAdapterId?: true
+  aiModel?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -179,6 +191,8 @@ export type AgentGroupByOutputType = {
   department: string
   status: string
   parentAgentId: string | null
+  aiAdapterId: string | null
+  aiModel: string | null
   createdAt: Date
   updatedAt: Date
   _count: AgentCountAggregateOutputType | null
@@ -212,6 +226,8 @@ export type AgentWhereInput = {
   department?: Prisma.StringFilter<"Agent"> | string
   status?: Prisma.StringFilter<"Agent"> | string
   parentAgentId?: Prisma.StringNullableFilter<"Agent"> | string | null
+  aiAdapterId?: Prisma.StringNullableFilter<"Agent"> | string | null
+  aiModel?: Prisma.StringNullableFilter<"Agent"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agent"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agent"> | Date | string
   parent?: Prisma.XOR<Prisma.AgentNullableScalarRelationFilter, Prisma.AgentWhereInput> | null
@@ -230,6 +246,8 @@ export type AgentOrderByWithRelationInput = {
   department?: Prisma.SortOrder
   status?: Prisma.SortOrder
   parentAgentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  aiAdapterId?: Prisma.SortOrderInput | Prisma.SortOrder
+  aiModel?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   parent?: Prisma.AgentOrderByWithRelationInput
@@ -251,6 +269,8 @@ export type AgentWhereUniqueInput = Prisma.AtLeast<{
   department?: Prisma.StringFilter<"Agent"> | string
   status?: Prisma.StringFilter<"Agent"> | string
   parentAgentId?: Prisma.StringNullableFilter<"Agent"> | string | null
+  aiAdapterId?: Prisma.StringNullableFilter<"Agent"> | string | null
+  aiModel?: Prisma.StringNullableFilter<"Agent"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agent"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agent"> | Date | string
   parent?: Prisma.XOR<Prisma.AgentNullableScalarRelationFilter, Prisma.AgentWhereInput> | null
@@ -269,6 +289,8 @@ export type AgentOrderByWithAggregationInput = {
   department?: Prisma.SortOrder
   status?: Prisma.SortOrder
   parentAgentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  aiAdapterId?: Prisma.SortOrderInput | Prisma.SortOrder
+  aiModel?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.AgentCountOrderByAggregateInput
@@ -287,6 +309,8 @@ export type AgentScalarWhereWithAggregatesInput = {
   department?: Prisma.StringWithAggregatesFilter<"Agent"> | string
   status?: Prisma.StringWithAggregatesFilter<"Agent"> | string
   parentAgentId?: Prisma.StringNullableWithAggregatesFilter<"Agent"> | string | null
+  aiAdapterId?: Prisma.StringNullableWithAggregatesFilter<"Agent"> | string | null
+  aiModel?: Prisma.StringNullableWithAggregatesFilter<"Agent"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Agent"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Agent"> | Date | string
 }
@@ -298,6 +322,8 @@ export type AgentCreateInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
@@ -316,6 +342,8 @@ export type AgentUncheckedCreateInput = {
   department: string
   status: string
   parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
@@ -332,6 +360,8 @@ export type AgentUpdateInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
@@ -350,6 +380,8 @@ export type AgentUncheckedUpdateInput = {
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
@@ -367,6 +399,8 @@ export type AgentCreateManyInput = {
   department: string
   status: string
   parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -378,6 +412,8 @@ export type AgentUpdateManyMutationInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -390,6 +426,8 @@ export type AgentUncheckedUpdateManyInput = {
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -417,6 +455,8 @@ export type AgentCountOrderByAggregateInput = {
   department?: Prisma.SortOrder
   status?: Prisma.SortOrder
   parentAgentId?: Prisma.SortOrder
+  aiAdapterId?: Prisma.SortOrder
+  aiModel?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -429,6 +469,8 @@ export type AgentMaxOrderByAggregateInput = {
   department?: Prisma.SortOrder
   status?: Prisma.SortOrder
   parentAgentId?: Prisma.SortOrder
+  aiAdapterId?: Prisma.SortOrder
+  aiModel?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -441,6 +483,8 @@ export type AgentMinOrderByAggregateInput = {
   department?: Prisma.SortOrder
   status?: Prisma.SortOrder
   parentAgentId?: Prisma.SortOrder
+  aiAdapterId?: Prisma.SortOrder
+  aiModel?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -474,6 +518,10 @@ export type StringFieldUpdateOperationsInput = {
   set?: string
 }
 
+export type NullableStringFieldUpdateOperationsInput = {
+  set?: string | null
+}
+
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
 }
@@ -500,10 +548,6 @@ export type AgentUpdateManyWithoutParentNestedInput = {
   update?: Prisma.AgentUpdateWithWhereUniqueWithoutParentInput | Prisma.AgentUpdateWithWhereUniqueWithoutParentInput[]
   updateMany?: Prisma.AgentUpdateManyWithWhereWithoutParentInput | Prisma.AgentUpdateManyWithWhereWithoutParentInput[]
   deleteMany?: Prisma.AgentScalarWhereInput | Prisma.AgentScalarWhereInput[]
-}
-
-export type NullableStringFieldUpdateOperationsInput = {
-  set?: string | null
 }
 
 export type AgentUncheckedUpdateManyWithoutParentNestedInput = {
@@ -585,6 +629,8 @@ export type AgentCreateWithoutChildrenInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
@@ -602,6 +648,8 @@ export type AgentUncheckedCreateWithoutChildrenInput = {
   department: string
   status: string
   parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   ownedProjects?: Prisma.ProjectUncheckedCreateNestedManyWithoutOwnerInput
@@ -622,6 +670,8 @@ export type AgentCreateWithoutParentInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.AgentCreateNestedManyWithoutParentInput
@@ -638,6 +688,8 @@ export type AgentUncheckedCreateWithoutParentInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
@@ -674,6 +726,8 @@ export type AgentUpdateWithoutChildrenInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
@@ -691,6 +745,8 @@ export type AgentUncheckedUpdateWithoutChildrenInput = {
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ownedProjects?: Prisma.ProjectUncheckedUpdateManyWithoutOwnerNestedInput
@@ -726,6 +782,8 @@ export type AgentScalarWhereInput = {
   department?: Prisma.StringFilter<"Agent"> | string
   status?: Prisma.StringFilter<"Agent"> | string
   parentAgentId?: Prisma.StringNullableFilter<"Agent"> | string | null
+  aiAdapterId?: Prisma.StringNullableFilter<"Agent"> | string | null
+  aiModel?: Prisma.StringNullableFilter<"Agent"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Agent"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Agent"> | Date | string
 }
@@ -737,6 +795,8 @@ export type AgentCreateWithoutOwnedProjectsInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
@@ -754,6 +814,8 @@ export type AgentUncheckedCreateWithoutOwnedProjectsInput = {
   department: string
   status: string
   parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
@@ -785,6 +847,8 @@ export type AgentUpdateWithoutOwnedProjectsInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
@@ -802,6 +866,8 @@ export type AgentUncheckedUpdateWithoutOwnedProjectsInput = {
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
@@ -817,6 +883,8 @@ export type AgentCreateWithoutAssignedTasksInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
@@ -834,6 +902,8 @@ export type AgentUncheckedCreateWithoutAssignedTasksInput = {
   department: string
   status: string
   parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
@@ -854,6 +924,8 @@ export type AgentCreateWithoutCreatedTasksInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
@@ -871,6 +943,8 @@ export type AgentUncheckedCreateWithoutCreatedTasksInput = {
   department: string
   status: string
   parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
@@ -902,6 +976,8 @@ export type AgentUpdateWithoutAssignedTasksInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
@@ -919,6 +995,8 @@ export type AgentUncheckedUpdateWithoutAssignedTasksInput = {
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
@@ -945,6 +1023,8 @@ export type AgentUpdateWithoutCreatedTasksInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
@@ -962,6 +1042,8 @@ export type AgentUncheckedUpdateWithoutCreatedTasksInput = {
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
@@ -977,6 +1059,8 @@ export type AgentCreateWithoutApprovalRequestsInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
@@ -994,6 +1078,8 @@ export type AgentUncheckedCreateWithoutApprovalRequestsInput = {
   department: string
   status: string
   parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
@@ -1025,6 +1111,8 @@ export type AgentUpdateWithoutApprovalRequestsInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
@@ -1042,6 +1130,8 @@ export type AgentUncheckedUpdateWithoutApprovalRequestsInput = {
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
@@ -1057,6 +1147,8 @@ export type AgentCreateManyParentInput = {
   level: string
   department: string
   status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1068,6 +1160,8 @@ export type AgentUpdateWithoutParentInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.AgentUpdateManyWithoutParentNestedInput
@@ -1084,6 +1178,8 @@ export type AgentUncheckedUpdateWithoutParentInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
@@ -1100,6 +1196,8 @@ export type AgentUncheckedUpdateManyWithoutParentInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
   department?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1179,6 +1277,8 @@ export type AgentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   department?: boolean
   status?: boolean
   parentAgentId?: boolean
+  aiAdapterId?: boolean
+  aiModel?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   parent?: boolean | Prisma.Agent$parentArgs<ExtArgs>
@@ -1198,6 +1298,8 @@ export type AgentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   department?: boolean
   status?: boolean
   parentAgentId?: boolean
+  aiAdapterId?: boolean
+  aiModel?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   parent?: boolean | Prisma.Agent$parentArgs<ExtArgs>
@@ -1211,6 +1313,8 @@ export type AgentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   department?: boolean
   status?: boolean
   parentAgentId?: boolean
+  aiAdapterId?: boolean
+  aiModel?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   parent?: boolean | Prisma.Agent$parentArgs<ExtArgs>
@@ -1224,11 +1328,13 @@ export type AgentSelectScalar = {
   department?: boolean
   status?: boolean
   parentAgentId?: boolean
+  aiAdapterId?: boolean
+  aiModel?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AgentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "role" | "level" | "department" | "status" | "parentAgentId" | "createdAt" | "updatedAt", ExtArgs["result"]["agent"]>
+export type AgentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "role" | "level" | "department" | "status" | "parentAgentId" | "aiAdapterId" | "aiModel" | "createdAt" | "updatedAt", ExtArgs["result"]["agent"]>
 export type AgentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   parent?: boolean | Prisma.Agent$parentArgs<ExtArgs>
   children?: boolean | Prisma.Agent$childrenArgs<ExtArgs>
@@ -1263,6 +1369,8 @@ export type $AgentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     department: string
     status: string
     parentAgentId: string | null
+    aiAdapterId: string | null
+    aiModel: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["agent"]>
@@ -1701,6 +1809,8 @@ export interface AgentFieldRefs {
   readonly department: Prisma.FieldRef<"Agent", 'String'>
   readonly status: Prisma.FieldRef<"Agent", 'String'>
   readonly parentAgentId: Prisma.FieldRef<"Agent", 'String'>
+  readonly aiAdapterId: Prisma.FieldRef<"Agent", 'String'>
+  readonly aiModel: Prisma.FieldRef<"Agent", 'String'>
   readonly createdAt: Prisma.FieldRef<"Agent", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Agent", 'DateTime'>
 }

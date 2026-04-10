@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
-  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, Loader2, CheckCircle2, AlertTriangle,
+  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -12,12 +12,11 @@ import { useAutoReload } from '../composables/useAutoReload';
 import FcBanner from '../components/FcBanner.vue';
 import FcButton from '../components/FcButton.vue';
 import FcInput from '../components/FcInput.vue';
-import FcPasswordInput from '../components/FcPasswordInput.vue';
 import FcSelect from '../components/FcSelect.vue';
+import ProviderSettingsSection from '../components/settings/ProviderSettingsSection.vue';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
-type AdapterId = 'copilot' | 'openai' | 'claude';
 type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'system';
 
 // ── State ─────────────────────────────────────────────────
@@ -44,20 +43,8 @@ const agentDefaultApprovalMode = ref<'auto' | 'suggest' | 'review'>('suggest');
 const agentsSaving = ref(false);
 
 
-// ── Provider form ─────────────────────────────────────────
-const providerName = ref<AdapterId>('openai');
-const providerApiKey = ref('');
-const providerModel = ref('gpt-4o');
-const providerSaving = ref(false);
-const providerTesting = ref(false);
-const providerTestResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
-
-// Per-provider form cache (so switching back restores entered data)
-const providerDraft = reactive<Record<AdapterId, { apiKey: string; model: string }>>({
-  copilot:  { apiKey: '', model: 'gpt-4o' },
-  openai:   { apiKey: '', model: 'gpt-4o' },
-  claude:   { apiKey: '', model: 'claude-sonnet-4-5' },
-});
+// ── Provider section ref ──────────────────────────────────
+const providerSectionRef = ref<InstanceType<typeof ProviderSettingsSection> | null>(null);
 
 // ── Appearance ────────────────────────────────────────────
 const themePreference = ref<ThemePreference>('system');
@@ -75,14 +62,6 @@ const systemInfo = reactive({
 });
 
 // ── Helpers ───────────────────────────────────────────────
-interface AdapterOption { value: AdapterId; label: string; models: string[]; keyHint: string; }
-const adapterOptions: AdapterOption[] = [
-  { value: 'copilot', label: 'GitHub Copilot', models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'claude-3.5-sonnet'], keyHint: 'ghp_… or ghu_…' },
-  { value: 'openai',  label: 'OpenAI',         models: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'],               keyHint: 'sk-…' },
-  { value: 'claude',  label: 'Claude',         models: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'], keyHint: 'sk-ant-…' },
-];
-const selectedAdapter = computed(() => adapterOptions.find(p => p.value === providerName.value)!);
-
 const parseThemePreference = (v: unknown): ThemePreference | null =>
   (v === 'system' || v === 'light' || v === 'dark') ? v : null;
 
@@ -104,24 +83,6 @@ const formatDateTime = (iso: string): string => {
 const reload = async () => {
   feedback.value = null;
   await uiRuntime.stores.settings.load();
-
-  const storedProvider = getSetting('provider.name');
-  // Backward compat: anthropic → claude; google → no longer supported, default to openai
-  const normalised = storedProvider === 'anthropic' ? 'claude' : storedProvider;
-  const activeAdapter: AdapterId =
-    (normalised === 'copilot' || normalised === 'openai' || normalised === 'claude')
-      ? normalised
-      : 'openai';
-
-  const loadedApiKey = typeof getSetting('provider.apiKey') === 'string' ? getSetting('provider.apiKey') as string : '';
-  const loadedModel  = typeof getSetting('provider.defaultModel') === 'string' ? getSetting('provider.defaultModel') as string : adapterOptions.find(p => p.value === activeAdapter)!.models[0];
-
-  // Persist loaded values into the per-provider draft so switching away and back doesn't lose them
-  providerDraft[activeAdapter] = { apiKey: loadedApiKey, model: loadedModel };
-
-  providerName.value    = activeAdapter;
-  providerApiKey.value  = loadedApiKey;
-  providerModel.value   = loadedModel;
 
   themePreference.value = parseThemePreference(getSetting('ui.theme.preference')) ?? 'system';
   applyTheme(themePreference.value);
@@ -165,42 +126,6 @@ const applyTheme = (pref: ThemePreference) => {
   const dark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
   uiRuntime.stores.app.applyThemePreference(pref, dark);
   applyRuntimeTheme();
-};
-
-// ── Test connection (settings) ────────────────────────────
-const testProviderInSettings = async () => {
-  if (!providerApiKey.value.trim()) return;
-  providerTesting.value = true;
-  providerTestResult.value = null;
-  try {
-    const result = await uiRuntime.api.testProviderAdapter({
-      adapterId: providerName.value,
-      apiKey: providerApiKey.value.trim(),
-      model: providerModel.value,
-    });
-    providerTestResult.value = { ok: result.ok, latencyMs: result.latencyMs, error: result.error };
-  } catch (err) {
-    providerTestResult.value = { ok: false, error: err instanceof Error ? err.message : 'Connection test failed' };
-  } finally {
-    providerTesting.value = false;
-  }
-};
-
-// ── Save: provider ────────────────────────────────────────
-const saveProvider = async () => {
-  providerSaving.value = true;
-  feedback.value = null;
-  try {
-    await uiRuntime.api.upsertSetting({ key: 'provider.name', value: providerName.value });
-    await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: providerApiKey.value });
-    await uiRuntime.api.upsertSetting({ key: 'provider.defaultModel', value: providerModel.value });
-    await uiRuntime.stores.settings.load();
-    setFeedback('success', 'Provider settings saved');
-  } catch (err) {
-    setFeedback('error', err instanceof Error ? err.message : 'Failed to save provider settings');
-  } finally {
-    providerSaving.value = false;
-  }
 };
 
 // ── Save: appearance ──────────────────────────────────────
@@ -311,13 +236,11 @@ const clearProviderKey = async () => {
   feedback.value = null;
   try {
     await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: '' });
-    providerApiKey.value = '';
-    providerDraft.copilot.apiKey = '';
-    providerDraft.openai.apiKey = '';
-    providerDraft.claude.apiKey = '';
-    providerTestResult.value = null;
+    await uiRuntime.api.upsertSetting({ key: 'provider.copilot.apiKey', value: '' });
+    await uiRuntime.api.upsertSetting({ key: 'provider.openai.apiKey', value: '' });
+    await uiRuntime.api.upsertSetting({ key: 'provider.claude.apiKey', value: '' });
     await reload();
-    setFeedback('success', 'Stored provider key cleared');
+    setFeedback('success', 'All stored API keys cleared');
   } catch (err) {
     setFeedback('error', err instanceof Error ? err.message : 'Failed to clear provider key');
   } finally {
@@ -339,31 +262,9 @@ const restartOnboarding = async () => {
   }
 };
 
-// ── Provider change ───────────────────────────────────────
-const onProviderChange = (newProvider: AdapterId) => {
-  // Save current values into the draft cache before switching
-  providerDraft[providerName.value] = {
-    apiKey: providerApiKey.value,
-    model:  providerModel.value,
-  };
-  // Restore draft for the new provider
-  providerName.value   = newProvider;
-  providerApiKey.value = providerDraft[newProvider].apiKey;
-  providerModel.value  = providerDraft[newProvider].model;
-  providerTestResult.value = null;
-};
-
-// ── Masked key display ────────────────────────────────────
-const maskedKey = computed(() => {
-  const k = providerApiKey.value;
-  if (!k) return '';
-  if (k.length <= 8) return '•'.repeat(k.length);
-  return k.slice(0, 6) + '•'.repeat(Math.min(k.length - 8, 20)) + k.slice(-4);
-});
-
 // ── Visible settings (hide secrets) ───────────────────────
 const visibleSettings = computed(() =>
-  uiRuntime.stores.settings.state.data.filter(s => s.key !== 'provider.apiKey')
+  uiRuntime.stores.settings.state.data.filter(s => !s.key.toLowerCase().includes('apikey'))
 );
 
 useAutoReload(reload);
@@ -379,7 +280,7 @@ useAutoReload(reload);
       </div>
       <button
         class="fc-btn-secondary"
-        :disabled="providerSaving || themeSaving || companySaving || budgetSaving || agentsSaving || systemBusy"
+        :disabled="themeSaving || companySaving || budgetSaving || agentsSaving || systemBusy"
         @click="reload"
       >
         <RefreshCw :size="14" />
@@ -656,79 +557,10 @@ useAutoReload(reload);
                 <p>Select your AI adapter and set your API key. Used by all agents to reason and act.</p>
               </div>
             </div>
-
-            <!-- Adapter selector -->
-            <div class="st-field-group">
-              <label class="st-label">Adapter</label>
-              <div class="st-provider-grid">
-                <button
-                  v-for="opt in adapterOptions"
-                  :key="opt.value"
-                  class="st-provider-btn"
-                  :class="{ 'st-provider-selected': providerName === opt.value }"
-                  @click="onProviderChange(opt.value)"
-                >
-                  <span class="st-provider-name">{{ opt.label }}</span>
-                  <span class="st-provider-hint">{{ opt.keyHint }}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Default model -->
-            <div class="st-field-group">
-              <label class="st-label" for="st-model">Default model</label>
-              <FcSelect id="st-model" v-model="providerModel">
-                <option v-for="m in selectedAdapter.models" :key="m" :value="m">{{ m }}</option>
-              </FcSelect>
-            </div>
-
-            <!-- API Key -->
-            <div class="st-field-group">
-              <label class="st-label" for="st-apikey">
-                API Key
-                <span
-                  v-if="providerApiKey"
-                  class="st-label-badge st-label-badge-success"
-                >Saved</span>
-              </label>
-              <FcPasswordInput
-                id="st-apikey"
-                v-model="providerApiKey"
-                :placeholder="selectedAdapter.keyHint"
-                @input="providerTestResult = null"
-              />
-              <p v-if="maskedKey" class="st-hint">{{ maskedKey }}</p>
-              <p class="st-hint">Stored locally in your workspace database. Never logged or sent externally.</p>
-            </div>
-
-            <!-- Test connection -->
-            <div class="st-field-group">
-              <button
-                type="button"
-                class="st-btn-test"
-                :disabled="!providerApiKey.trim() || providerTesting"
-                @click="testProviderInSettings"
-              >
-                <Loader2 v-if="providerTesting" :size="13" class="st-spin" />
-                <span>{{ providerTesting ? 'Testing…' : 'Test connection' }}</span>
-              </button>
-              <div v-if="providerTestResult" class="st-test-result" :class="providerTestResult.ok ? 'st-test-ok' : 'st-test-fail'">
-                <CheckCircle2 v-if="providerTestResult.ok" :size="13" />
-                <AlertTriangle v-else :size="13" />
-                <span v-if="providerTestResult.ok">
-                  API key is valid and connection is live.
-                  <span v-if="providerTestResult.latencyMs" class="st-test-latency">{{ providerTestResult.latencyMs }}ms</span>
-                </span>
-                <span v-else>{{ providerTestResult.error ?? 'Connection failed' }}</span>
-              </div>
-            </div>
-
-            <div class="st-actions">
-              <FcButton variant="primary" size="sm" :disabled="providerSaving || !providerApiKey" @click="saveProvider">
-                <Save :size="13" />
-                {{ providerSaving ? 'Saving…' : 'Save provider settings' }}
-              </FcButton>
-            </div>
+            <ProviderSettingsSection
+              ref="providerSectionRef"
+              @feedback="(type, text) => setFeedback(type, text)"
+            />
           </div>
 
           <!-- ── Appearance ────────────────────────── -->

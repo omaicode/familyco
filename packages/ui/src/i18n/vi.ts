@@ -418,5 +418,17 @@ export default {
   'OpenAI GPT-4o — best for general-purpose agents': 'OpenAI GPT-4o — tốt nhất cho agent đa năng',
   'Anthropic Claude — great for reasoning and long-context tasks': 'Anthropic Claude — xuất sắc cho suy luận và tác vụ ngữ cảnh dài',
   'Latency': 'Độ trễ',
-  'ms': 'ms'
+  'ms': 'ms',
+  'AI configuration': 'Cấu hình AI',
+  'AI adapter': 'AI adapter',
+  'AI model': 'AI model',
+  'Default (system setting)': 'Mặc định (cài đặt hệ thống)',
+  'Override for this agent': 'Ghi đè cho agent này',
+  'GitHub Copilot API key': 'GitHub Copilot API key',
+  'OpenAI API key': 'OpenAI API key',
+  'Claude API key': 'Claude API key',
+  'Per-adapter API keys': 'API key theo adapter',
+  'Configure an API key for each adapter you want to use. Agents with an adapter override will use the matching key.': 'Cấu hình API key cho từng adapter bạn muốn dùng. Agent có ghi đè adapter sẽ dùng key tương ứng.',
+  'AI adapter override': 'Ghi đè AI adapter',
+  'Model override': 'Ghi đè model'
 }

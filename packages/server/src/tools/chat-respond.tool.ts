@@ -81,12 +81,25 @@ export const chatRespondTool: ServerToolDefinition = {
     const availableTools = context.listTools().filter((tool) => tool.name !== 'chat.respond');
     const requestedToolCalls = readExplicitToolCalls(argumentsMap);
     const conversationHistory = readConversationHistory(argumentsMap);
+
+    // Look up per-agent AI overrides when agentId is provided
+    const agentId = asNonEmptyString(argumentsMap.agentId);
+    let agentAdapterId: string | null = null;
+    let agentModel: string | null = null;
+    if (agentId && context.agentService) {
+      const agentProfile = await context.agentService.getAgentById(agentId).catch(() => null);
+      agentAdapterId = agentProfile?.aiAdapterId ?? null;
+      agentModel = agentProfile?.aiModel ?? null;
+    }
+
     const plannedResponse =
       requestedToolCalls.length > 0
         ? null
         : await planChatWithProvider({
             settingsService: context.settingsService,
             adapterRegistry: context.adapterRegistry,
+            agentAdapterId,
+            agentModel,
             message,
             companyProfile: profile,
             tools: availableTools,

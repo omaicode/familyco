@@ -303,6 +303,7 @@ export function useAgentsPage() {
     selectedPath,
     selectedTask,
     selectedTaskId,
+    setFeedback,
     showCreateForm,
     summaryMetrics,
     templateCards

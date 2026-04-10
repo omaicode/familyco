@@ -81,7 +81,9 @@ export class PrismaAgentRepository implements AgentRepository {
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.role !== undefined ? { role: input.role } : {}),
         ...(input.department !== undefined ? { department: input.department } : {}),
-        ...(input.status !== undefined ? { status: input.status } : {})
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.aiAdapterId !== undefined ? { aiAdapterId: input.aiAdapterId } : {}),
+        ...(input.aiModel !== undefined ? { aiModel: input.aiModel } : {})
       }
     });
 
@@ -108,6 +110,8 @@ function toAgentProfile(agent: {
   department: string;
   status: string;
   parentAgentId: string | null;
+  aiAdapterId: string | null;
+  aiModel: string | null;
   createdAt: Date;
   updatedAt: Date;
 }): AgentProfile {

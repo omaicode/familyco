@@ -419,5 +419,17 @@ export default {
   'OpenAI GPT-4o — best for general-purpose agents': 'OpenAI GPT-4o — best for general-purpose agents',
   'Anthropic Claude — great for reasoning and long-context tasks': 'Anthropic Claude — great for reasoning and long-context tasks',
   'Latency': 'Latency',
-  'ms': 'ms'
+  'ms': 'ms',
+  'AI configuration': 'AI configuration',
+  'AI adapter': 'AI adapter',
+  'AI model': 'AI model',
+  'Default (system setting)': 'Default (system setting)',
+  'Override for this agent': 'Override for this agent',
+  'GitHub Copilot API key': 'GitHub Copilot API key',
+  'OpenAI API key': 'OpenAI API key',
+  'Claude API key': 'Claude API key',
+  'Per-adapter API keys': 'Per-adapter API keys',
+  'Configure an API key for each adapter you want to use. Agents with an adapter override will use the matching key.': 'Configure an API key for each adapter you want to use. Agents with an adapter override will use the matching key.',
+  'AI adapter override': 'AI adapter override',
+  'Model override': 'Model override'
 };

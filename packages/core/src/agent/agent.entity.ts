@@ -9,6 +9,8 @@ export interface AgentProfile {
   department: string;
   status: AgentStatus;
   parentAgentId: string | null;
+  aiAdapterId: string | null;
+  aiModel: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,4 +28,6 @@ export interface UpdateAgentInput {
   role?: string;
   department?: string;
   status?: AgentStatus;
+  aiAdapterId?: string | null;
+  aiModel?: string | null;
 }

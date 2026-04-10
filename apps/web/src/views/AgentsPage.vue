@@ -62,6 +62,7 @@ const {
   selectedPath,
   selectedTask,
   selectedTaskId,
+  setFeedback,
   showCreateForm,
   summaryMetrics,
   templateCards,
@@ -203,6 +204,7 @@ const openAgentDetails = (agentId: string): void => {
         @save-manager="saveReportingLine"
         @save-details="saveAgentDetails"
         @select-task="selectTask"
+        @ai-feedback="(type, text) => setFeedback(type, text)"
       />
     </div>
   </section>

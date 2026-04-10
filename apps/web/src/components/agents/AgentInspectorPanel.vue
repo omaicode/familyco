@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import FcButton from '../FcButton.vue';
 import AgentActivityTimelineSection from './AgentActivityTimelineSection.vue';
+import AgentAiConfigSection from './AgentAiConfigSection.vue';
 import AgentCurrentTasksPanel from './AgentCurrentTasksPanel.vue';
 import AgentProfileEditorSection from './AgentProfileEditorSection.vue';
 import AgentReadinessChecklist from './AgentReadinessChecklist.vue';
@@ -55,11 +56,12 @@ const emit = defineEmits<{
   (event: 'save-manager'): void;
   (event: 'save-details'): void;
   (event: 'select-task', taskId: string): void;
+  (event: 'ai-feedback', type: 'success' | 'error', text: string): void;
 }>();
 
 const { t } = useI18n();
 
-type AgentDetailTab = 'overview' | 'profile' | 'tasks' | 'activity';
+type AgentDetailTab = 'overview' | 'profile' | 'tasks' | 'activity' | 'ai';
 
 const activeTab = ref<AgentDetailTab>('overview');
 
@@ -139,6 +141,9 @@ const warningMessage = computed(() => {
           <button class="fc-tab" :class="{ 'fc-tab-active': activeTab === 'activity' }" @click="activeTab = 'activity'">
             {{ t('Recent activity') }}
           </button>
+          <button class="fc-tab" :class="{ 'fc-tab-active': activeTab === 'ai' }" @click="activeTab = 'ai'">
+            {{ t('AI config') }}
+          </button>
         </div>
 
         <div class="ag-modal-body">
@@ -197,6 +202,13 @@ const warningMessage = computed(() => {
             :format-relative="formatRelative"
             :format-timestamp="formatTimestamp"
           />
+
+          <div v-show="activeTab === 'ai'" class="ag-modal-pane">
+            <AgentAiConfigSection
+              :agent="selectedAgent"
+              @feedback="(type, text) => emit('ai-feedback', type, text)"
+            />
+          </div>
         </div>
       </div>
     </div>

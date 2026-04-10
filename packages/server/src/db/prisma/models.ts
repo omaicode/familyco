@@ -8,12 +8,12 @@
  *
  * 🟢 You can import this file directly.
  */
-export type * from './models/Agent.js'
-export type * from './models/Project.js'
-export type * from './models/Task.js'
-export type * from './models/ApprovalRequest.js'
-export type * from './models/AuditLog.js'
-export type * from './models/InboxMessage.js'
-export type * from './models/Settings.js'
-export type * from './models/ApiKey.js'
-export type * from './commonInputTypes.js'
+export type * from './models/Agent'
+export type * from './models/Project'
+export type * from './models/Task'
+export type * from './models/ApprovalRequest'
+export type * from './models/AuditLog'
+export type * from './models/InboxMessage'
+export type * from './models/Settings'
+export type * from './models/ApiKey'
+export type * from './commonInputTypes'

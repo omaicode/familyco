@@ -52,6 +52,8 @@ test('AgentService skips terminated executives when selecting the default L0 age
     department: 'Executive',
     status: 'terminated',
     parentAgentId: null,
+    aiAdapterId: null,
+    aiModel: null,
     createdAt: now,
     updatedAt: now
   });
@@ -64,6 +66,8 @@ test('AgentService skips terminated executives when selecting the default L0 age
     department: 'Executive',
     status: 'active',
     parentAgentId: null,
+    aiAdapterId: null,
+    aiModel: null,
     createdAt: now,
     updatedAt: now
   });
@@ -116,6 +120,8 @@ class InMemoryAgentRepositoryStub implements AgentRepository {
       department: input.department,
       status: 'active',
       parentAgentId: input.parentAgentId ?? null,
+      aiAdapterId: null,
+      aiModel: null,
       createdAt: now,
       updatedAt: now
     };
