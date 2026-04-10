@@ -15,6 +15,7 @@ export function renderChatUserPrompt(input: ChatUserPromptInput): string {
     role: 'You are preparing the current planning turn based on founder conversation context.',
     goal: 'Analyze the latest founder message and produce the JSON response defined in the system prompt.',
     constraints: [
+      'Do not force tool usage when a direct response is sufficient.',
       'Use recent conversation context when it helps disambiguate intent.',
       'Prioritize the latest founder message.',
       'Return JSON only.'

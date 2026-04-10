@@ -144,7 +144,6 @@ export const chatRespondTool: ServerToolDefinition = {
         reply: buildChatReply({
           profile,
           toolCalls,
-          availableTools,
           plannedReply: plannedResponse?.reply ?? null
         }),
         toolCalls,
@@ -284,7 +283,6 @@ function toToolCallSummary(result: ToolExecutionResult): ChatToolCall {
 function buildChatReply(input: {
   profile: CompanyProfile;
   toolCalls: ChatToolCall[];
-  availableTools: ToolDefinitionSummary[];
   plannedReply: string | null;
 }): string {
   if (input.toolCalls.length === 0 && input.plannedReply) {
@@ -300,28 +298,7 @@ function buildChatReply(input: {
     return executedSummary;
   }
 
-  const descriptionText = input.profile.companyDescription.length > 0
-    ? ` Company description: ${input.profile.companyDescription}`
-    : '';
-  const suggestedTools = input.availableTools
-    .filter((tool) => tool.name === 'task.create' || tool.name === 'project.create')
-    .map((tool) => formatToolSignature(tool))
-    .join('; ');
-
-  const suggestionLine = suggestedTools.length > 0
-    ? ` When the agent decides to act, it should explicitly choose one of these tools and pass the needed parameters: ${suggestedTools}.`
-    : '';
-
-  return `I recorded your message for ${input.profile.companyName}. No tool was called automatically.${suggestionLine}${descriptionText}`;
-}
-
-function formatToolSignature(tool: ToolDefinitionSummary): string {
-  const signature = tool.parameters
-    .filter((parameter) => parameter.required)
-    .map((parameter) => parameter.name)
-    .join(', ');
-
-  return signature.length > 0 ? `${tool.name}(${signature})` : `${tool.name}()`;
+  return `I recorded your message for ${input.profile.companyName}. I can continue with a direct discussion, or execute actions only when you ask me to.`;
 }
 
 function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel): ToolDefinitionSummary[] {

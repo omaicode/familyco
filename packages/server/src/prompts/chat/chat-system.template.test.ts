@@ -24,6 +24,7 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('Constraints:'), true);
   assert.equal(prompt.includes('Output Contract:'), true);
   assert.equal(prompt.includes('{"reply":"string","toolCalls":[{"toolName":"string","arguments":{}}]}'), true);
+  assert.equal(prompt.includes('Direct conversational responses are valid and preferred'), true);
   assert.equal(prompt.includes('Company Name: FamilyCo'), true);
   assert.equal(prompt.includes('- task.create: Create a task'), true);
 });
