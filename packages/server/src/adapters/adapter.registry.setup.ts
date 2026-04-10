@@ -3,7 +3,6 @@ import type { Logger } from 'pino';
 import { AiAdapterRegistry, type AuditService } from '@familyco/core';
 
 import { ClaudeAdapter } from './claude.adapter.js';
-import { CopilotAdapter } from './copilot.adapter.js';
 import type { AdapterLogger } from './hooks/logging.hook.js';
 import { LoggingHook } from './hooks/logging.hook.js';
 import { TokenUsageHook } from './hooks/token-usage.hook.js';
@@ -16,7 +15,6 @@ export interface AdapterRegistryDeps {
 
 export function createAdapterRegistry(deps?: AdapterRegistryDeps): AiAdapterRegistry {
   const registry = new AiAdapterRegistry();
-  registry.register(new CopilotAdapter());
   registry.register(new OpenAiAdapter());
   registry.register(new ClaudeAdapter());
 

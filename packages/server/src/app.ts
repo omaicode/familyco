@@ -80,6 +80,7 @@ import { createSettingsEncryption } from './modules/settings/settings.encryption
 import { SkillsService } from './modules/skills/skills.service.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
+import { ChatEngineService } from './modules/agent/chat-engine.service.js';
 
 export type RepositoryDriver = 'memory' | 'prisma';
 export type QueueDriver = 'memory';
@@ -176,6 +177,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
+  const chatEngineService = new ChatEngineService(settingsService, adapterRegistry, skillsService);
 
   const queueService = new InMemoryQueueService({
     agentRunConcurrency,
@@ -390,7 +392,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         approvalService,
         auditService,
         approvalGuard,
-        agentRunner
+        agentRunner,
+        chatEngineService,
+        toolExecutor,
+        listTools: () => toolExecutor.listToolDefinitions()
       });
       registerApprovalController(api, {
         approvalService,

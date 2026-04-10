@@ -22,7 +22,7 @@ export const updateAgentBodySchema = z
     role: z.string().min(1).optional(),
     department: z.string().min(1).optional(),
     status: z.enum(['active', 'idle', 'running', 'error', 'paused', 'terminated']).optional(),
-    aiAdapterId: z.enum(['copilot', 'openai', 'claude']).nullable().optional(),
+    aiAdapterId: z.enum(['openai', 'claude']).nullable().optional(),
     aiModel: z.string().min(1).nullable().optional()
   })
   .refine((value) => Object.values(value).some((entry) => entry !== undefined), {

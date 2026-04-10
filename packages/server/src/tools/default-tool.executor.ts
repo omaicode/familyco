@@ -5,7 +5,6 @@ import { agentDeleteTool } from './agent-delete.tool.js';
 import { agentListTool } from './agent-list.tool.js';
 import { agentReadTool } from './agent-read.tool.js';
 import { agentUpdateTool } from './agent-update.tool.js';
-import { chatRespondTool } from './chat-respond.tool.js';
 import { companyProfileReadTool } from './company-profile-read.tool.js';
 import { echoTool } from './echo.tool.js';
 import { jsonExtractTool } from './json-extract.tool.js';
@@ -30,7 +29,6 @@ export class DefaultToolExecutor implements ToolExecutor {
 
   constructor(private readonly deps: DefaultToolExecutorDeps = {}) {
     const definitions: ServerToolDefinition[] = [
-      chatRespondTool,
       companyProfileReadTool,
       taskCreateTool,
       taskReadTool,

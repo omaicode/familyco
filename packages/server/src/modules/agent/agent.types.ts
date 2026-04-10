@@ -4,8 +4,11 @@ import type {
   AgentService,
   ApprovalService,
   AuditService,
-  InboxService
+  InboxService,
+  ToolExecutor
 } from '@familyco/core';
+import type { ChatEngineService } from './chat-engine.service.js';
+import type { ToolDefinitionSummary } from '../../tools/tool.types.js';
 
 export interface ChatToolCall {
   toolName: string;
@@ -47,6 +50,9 @@ export interface AgentModuleDeps {
   auditService: AuditService;
   approvalGuard: ApprovalGuard;
   agentRunner: AgentRunner;
+  chatEngineService: ChatEngineService;
+  toolExecutor: ToolExecutor;
+  listTools: () => ToolDefinitionSummary[];
 }
 
 export interface ChatSocketClient {
