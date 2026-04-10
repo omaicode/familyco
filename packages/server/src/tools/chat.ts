@@ -1,5 +1,6 @@
 import type {
   AdapterPlannedToolCall,
+  AdapterPreviousTurn,
   AiAdapterRegistry,
   SettingsService
 } from '@familyco/core';
@@ -35,6 +36,7 @@ interface SendChatInput {
   companyProfile: CompanyProfile;
   tools: ToolDefinitionSummary[];
   conversationHistory?: PromptConversationEntry[];
+  previousTurns?: AdapterPreviousTurn[];
   onChunk?: (chunk: string) => void;
 }
 
@@ -82,6 +84,7 @@ export async function sendChat(
     userPrompt,
     skills: enabledSkills,
     tools: input.tools,
+    previousTurns: input.previousTurns,
     adapterRegistry: input.adapterRegistry,
     onChunk: input.onChunk
   });
@@ -152,6 +155,7 @@ async function requestAdapterChat(input: {
   userPrompt: string;
   skills: EnabledSkillSummary[];
   tools: ToolDefinitionSummary[];
+  previousTurns?: AdapterPreviousTurn[];
   adapterRegistry?: AiAdapterRegistry;
   onChunk?: (chunk: string) => void;
 }): Promise<{ content: string; toolCalls: AdapterPlannedToolCall[] }> {
@@ -165,6 +169,7 @@ async function requestAdapterChat(input: {
         userPrompt: input.userPrompt,
         skills: input.skills,
         tools: mapToolDefinitions(input.tools),
+        previousTurns: input.previousTurns,
         onChunk: input.onChunk
       });
       return {

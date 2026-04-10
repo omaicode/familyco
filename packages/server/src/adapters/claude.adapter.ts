@@ -1,4 +1,4 @@
-import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult } from '@familyco/core';
+import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterPreviousTurn, AdapterTestResult } from '@familyco/core';
 
 import { readJsonLikePayload, readProviderError, readSseStream, toAdapterErrorMessage } from './adapter.helpers.js';
 
@@ -50,7 +50,10 @@ export class ClaudeAdapter implements AiAdapter {
               }
             : {}),
           system: input.systemPrompt,
-          messages: [{ role: 'user', content: input.userPrompt }]
+          messages: [
+            { role: 'user', content: input.userPrompt },
+            ...buildClaudePreviousTurnMessages(input.previousTurns ?? [])
+          ]
         })
       });
 
@@ -197,4 +200,42 @@ function asOptionalString(value: unknown): string | undefined {
 
 function asOptionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function buildClaudePreviousTurnMessages(turns: AdapterPreviousTurn[]): Array<{ role: string; content: string }> {
+  if (turns.length === 0) {
+    return [];
+  }
+
+  const messages: Array<{ role: string; content: string }> = [];
+
+  for (const turn of turns) {
+    const assistantParts: string[] = [];
+    if (turn.assistantText.trim().length > 0) {
+      assistantParts.push(turn.assistantText);
+    }
+    if (turn.toolInteractions.length > 0) {
+      const toolSummary = turn.toolInteractions
+        .map((i) => `[Called ${i.toolName}(${JSON.stringify(i.arguments)})]`)
+        .join('\n');
+      assistantParts.push(toolSummary);
+    }
+
+    if (assistantParts.length > 0) {
+      messages.push({ role: 'assistant', content: assistantParts.join('\n\n') });
+    }
+
+    if (turn.toolInteractions.length > 0) {
+      const resultLines = turn.toolInteractions.map((i) => {
+        const status = i.ok ? 'ok' : 'failed';
+        return `Tool ${i.toolName} (${status}): ${i.output}`;
+      });
+      messages.push({
+        role: 'user',
+        content: `Tool results:\n${resultLines.join('\n')}\n\nUse these results. Do NOT re-query the same data. Proceed to the next step.`
+      });
+    }
+  }
+
+  return messages;
 }

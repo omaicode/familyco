@@ -1,5 +1,6 @@
 import type {
   AdapterPlannedToolCall,
+  AdapterPreviousTurn,
   AiAdapter,
   AdapterChatInput,
   AdapterChatResult,
@@ -27,7 +28,8 @@ export class OpenAiAdapter implements AiAdapter {
       max_tool_calls: 5,
       input: [
         { role: 'system', content: input.systemPrompt },
-        { role: 'user', content: input.userPrompt }
+        { role: 'user', content: input.userPrompt },
+        ...buildOpenAiPreviousTurnMessages(input.previousTurns ?? [], toolNameMap)
       ]
     };
 
@@ -345,4 +347,45 @@ function readOpenAiUsage(payload: unknown): { prompt: number; completion: number
 
 function asOptionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function buildOpenAiPreviousTurnMessages(
+  turns: AdapterPreviousTurn[],
+  toolNameMap: Map<string, string>
+): Record<string, unknown>[] {
+  if (turns.length === 0) {
+    return [];
+  }
+
+  const messages: Record<string, unknown>[] = [];
+
+  for (let turnIndex = 0; turnIndex < turns.length; turnIndex += 1) {
+    const turn = turns[turnIndex];
+
+    if (turn.assistantText.trim().length > 0 && turn.toolInteractions.length === 0) {
+      messages.push({ role: 'assistant', content: turn.assistantText });
+      continue;
+    }
+
+    for (let callIndex = 0; callIndex < turn.toolInteractions.length; callIndex += 1) {
+      const interaction = turn.toolInteractions[callIndex];
+      const callId = interaction.callId;
+      const openAiName = toOpenAiToolName(interaction.toolName, toolNameMap);
+
+      messages.push({
+        type: 'function_call',
+        call_id: callId,
+        name: openAiName,
+        arguments: JSON.stringify(interaction.arguments)
+      });
+
+      messages.push({
+        type: 'function_call_output',
+        call_id: callId,
+        output: interaction.output
+      });
+    }
+  }
+
+  return messages;
 }

@@ -12,6 +12,7 @@ export interface AdapterChatInput {
   userPrompt: string;
   skills?: AdapterSkillDefinition[];
   tools?: AdapterToolDefinition[];
+  previousTurns?: AdapterPreviousTurn[];
   onChunk?: (chunk: string) => void;
 }
 
@@ -32,6 +33,26 @@ export interface AdapterToolDefinition {
   name: string;
   description: string;
   parameters: AdapterToolParameterDefinition[];
+}
+
+export interface AdapterToolInteraction {
+  /** Unique ID for linking call ↔ result (generated per-call) */
+  callId: string;
+  /** Original tool name (dot-separated, e.g., "task.list") */
+  toolName: string;
+  /** Arguments passed to the tool */
+  arguments: Record<string, unknown>;
+  /** JSON string of the tool's output */
+  output: string;
+  /** Whether the tool succeeded */
+  ok: boolean;
+}
+
+export interface AdapterPreviousTurn {
+  /** The assistant's text response in this turn (may be empty) */
+  assistantText: string;
+  /** Tool calls made and their results */
+  toolInteractions: AdapterToolInteraction[];
 }
 
 export interface AdapterPlannedToolCall {

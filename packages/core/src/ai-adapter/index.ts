@@ -3,6 +3,8 @@ export type {
   AdapterChatInput,
   AdapterChatResult,
   AdapterPlannedToolCall,
+  AdapterPreviousTurn,
+  AdapterToolInteraction,
   AdapterSkillDefinition,
   AdapterTokenUsage,
   AdapterToolDefinition,

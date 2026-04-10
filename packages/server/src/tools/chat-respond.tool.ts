@@ -1,4 +1,4 @@
-import type { AgentLevel, ToolExecutionResult } from '@familyco/core';
+import type { AgentLevel, AdapterPreviousTurn, AdapterToolInteraction, ToolExecutionResult } from '@familyco/core';
 
 import { publishChatChunk, publishToolStart, publishToolComplete } from '../modules/agent/agent-chat-stream-broker.js';
 import { buildAgentSlashRegistry } from '../modules/agent/agent-chat.registry.js';
@@ -127,7 +127,8 @@ export const chatRespondTool: ServerToolDefinition = {
       createdTask = executionResult.createdTask;
       createdProject = executionResult.createdProject;
     } else {
-      let rollingHistory = [...conversationHistory];
+      const previousTurns: AdapterPreviousTurn[] = [];
+      const executedCallSignatures = new Set<string>();
 
       for (let round = 0; round < MAX_PLANNED_TOOL_ROUNDS; round += 1) {
         const plannedResponse = await sendChat({
@@ -139,7 +140,8 @@ export const chatRespondTool: ServerToolDefinition = {
           message,
           companyProfile: profile,
           tools: availableTools,
-          conversationHistory: rollingHistory,
+          conversationHistory,
+          previousTurns,
           onChunk: streamRequestId
             ? (chunk) => publishChatChunk(streamRequestId, chunk)
             : undefined
@@ -158,12 +160,21 @@ export const chatRespondTool: ServerToolDefinition = {
           plannedToolCalls: plannedResponse.toolCalls
         });
 
-        if (toolCallQueue.length === 0) {
+        // Filter out duplicate tool calls (same name + same arguments)
+        const uniqueToolCallQueue = toolCallQueue.filter((call) => {
+          const signature = JSON.stringify({ t: call.toolName, a: call.arguments });
+          if (executedCallSignatures.has(signature)) {
+            return false;
+          }
+          return true;
+        });
+
+        if (uniqueToolCallQueue.length === 0) {
           break;
         }
 
         const executionResult = await executeToolCallQueue({
-          toolCallQueue,
+          toolCallQueue: uniqueToolCallQueue,
           executeTool: context.executeTool,
           streamRequestId
         });
@@ -176,11 +187,30 @@ export const chatRespondTool: ServerToolDefinition = {
           createdProject = executionResult.createdProject;
         }
 
-        rollingHistory = appendToolExecutionHistory(
-          rollingHistory,
-          plannedResponse.reply,
-          executionResult.toolCalls
-        );
+        // Build AdapterPreviousTurn for this round
+        const toolInteractions: AdapterToolInteraction[] = uniqueToolCallQueue.map((call, idx) => {
+          const result = executionResult.toolCalls[idx];
+          const output = result?.output !== undefined
+            ? serializeToolOutput(result.output)
+            : (result?.error ? JSON.stringify(result.error) : '{}');
+          return {
+            callId: `call_${round}_${idx}`,
+            toolName: call.toolName,
+            arguments: call.arguments,
+            output,
+            ok: result?.ok ?? false
+          };
+        });
+
+        previousTurns.push({
+          assistantText: plannedResponse.reply,
+          toolInteractions
+        });
+
+        // Track executed signatures for duplicate detection
+        for (const call of uniqueToolCallQueue) {
+          executedCallSignatures.add(JSON.stringify({ t: call.toolName, a: call.arguments }));
+        }
       }
     }
 

@@ -1,4 +1,4 @@
-import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult } from '@familyco/core';
+import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterPreviousTurn, AdapterTestResult } from '@familyco/core';
 
 import { readJsonLikePayload, readProviderError, readSseStream, toAdapterErrorMessage } from './adapter.helpers.js';
 
@@ -28,7 +28,8 @@ export class CopilotAdapter implements AiAdapter {
           stream: true,
           messages: [
             { role: 'system', content: input.systemPrompt },
-            { role: 'user', content: input.userPrompt }
+            { role: 'user', content: input.userPrompt },
+            ...buildCopilotPreviousTurnMessages(input.previousTurns ?? [])
           ]
         })
       });
@@ -138,4 +139,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function asOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function buildCopilotPreviousTurnMessages(turns: AdapterPreviousTurn[]): Array<{ role: string; content: string }> {
+  if (turns.length === 0) {
+    return [];
+  }
+
+  const messages: Array<{ role: string; content: string }> = [];
+
+  for (const turn of turns) {
+    const assistantParts: string[] = [];
+    if (turn.assistantText.trim().length > 0) {
+      assistantParts.push(turn.assistantText);
+    }
+    if (turn.toolInteractions.length > 0) {
+      const toolSummary = turn.toolInteractions
+        .map((i) => `[Called ${i.toolName}(${JSON.stringify(i.arguments)})]`)
+        .join('\n');
+      assistantParts.push(toolSummary);
+    }
+
+    if (assistantParts.length > 0) {
+      messages.push({ role: 'assistant', content: assistantParts.join('\n\n') });
+    }
+
+    if (turn.toolInteractions.length > 0) {
+      const resultLines = turn.toolInteractions.map((i) => {
+        const status = i.ok ? 'ok' : 'failed';
+        return `Tool ${i.toolName} (${status}): ${i.output}`;
+      });
+      messages.push({
+        role: 'user',
+        content: `Tool results:\n${resultLines.join('\n')}\n\nUse these results. Do NOT re-query the same data. Proceed to the next step.`
+      });
+    }
+  }
+
+  return messages;
 }
