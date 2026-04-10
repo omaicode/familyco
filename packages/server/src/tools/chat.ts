@@ -1,4 +1,8 @@
-import type { AiAdapterRegistry, SettingsService } from '@familyco/core';
+import type {
+  AdapterPlannedToolCall,
+  AiAdapterRegistry,
+  SettingsService
+} from '@familyco/core';
 import type { SkillsService } from '../modules/skills/skills.service.js';
 
 import type { CompanyProfile } from './company-profile-read.tool.js';
@@ -66,15 +70,16 @@ export async function sendChat(
   const systemPrompt = buildSystemPrompt(input.companyProfile, input.tools);
   const userPrompt = buildUserPrompt(input.message, input.conversationHistory ?? []);
 
-  const rawText = await requestAdapterChat({
+  const adapterResponse = await requestAdapterChat({
     adapterConfig,
     systemPrompt,
     userPrompt,
     skills: enabledSkills,
+    tools: input.tools,
     adapterRegistry: input.adapterRegistry
   });
 
-  const parsed = parseChatResponse(rawText, input.tools);
+  const parsed = parseChatResponse(adapterResponse.content, input.tools, adapterResponse.toolCalls);
   return {
     ...parsed,
     providerName: adapterConfig.adapterId,
@@ -203,18 +208,24 @@ async function requestAdapterChat(input: {
   systemPrompt: string;
   userPrompt: string;
   skills: EnabledSkillSummary[];
+  tools: ToolDefinitionSummary[];
   adapterRegistry?: AiAdapterRegistry;
-}): Promise<string> {
+}): Promise<{ content: string; toolCalls: AdapterPlannedToolCall[] }> {
   if (input.adapterRegistry) {
     const adapter = input.adapterRegistry.get(input.adapterConfig.adapterId);
     if (adapter) {
-      return (await adapter.chat({
+      const adapterResult = await adapter.chat({
         apiKey: input.adapterConfig.apiKey,
         model: input.adapterConfig.model,
         systemPrompt: input.systemPrompt,
         userPrompt: input.userPrompt,
-        skills: input.skills
-      })).content;
+        skills: input.skills,
+        tools: mapToolDefinitions(input.tools)
+      });
+      return {
+        content: adapterResult.content,
+        toolCalls: adapterResult.toolCalls ?? []
+      };
     }
   }
 
@@ -259,22 +270,31 @@ async function readSkillsRegistryFallback(settingsService?: SettingsService): Pr
   return setting.value.enabled.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
 }
 
-function parseChatResponse(text: string, tools: ToolDefinitionSummary[]): Omit<PlannedChatResponse, 'providerName' | 'model'> {
+function parseChatResponse(
+  text: string,
+  tools: ToolDefinitionSummary[],
+  adapterToolCalls: AdapterPlannedToolCall[]
+): Omit<PlannedChatResponse, 'providerName' | 'model'> {
   const parsed = tryParseJsonObject(text);
   const availableToolNames = new Set(tools.map((tool) => tool.name));
+  const normalizedAdapterToolCalls = adapterToolCalls
+    .map((entry) => normalizeAdapterToolCall(entry, availableToolNames))
+    .filter((entry): entry is PlannedToolCall => entry !== null);
 
   if (!isRecord(parsed)) {
     return {
       reply: 'I reviewed the request and kept it in the executive chat lane.',
-      toolCalls: []
+      toolCalls: normalizedAdapterToolCalls
     };
   }
 
-  const toolCalls = Array.isArray(parsed.toolCalls)
+  const parsedToolCalls = Array.isArray(parsed.toolCalls)
     ? parsed.toolCalls
         .map((entry) => normalizeToolCall(entry, availableToolNames))
         .filter((entry): entry is PlannedToolCall => entry !== null)
     : [];
+
+  const toolCalls = parsedToolCalls.length > 0 ? parsedToolCalls : normalizedAdapterToolCalls;
 
   return {
     reply:
@@ -301,6 +321,42 @@ function normalizeToolCall(
     toolName,
     arguments: isRecord(value.arguments) ? value.arguments : {}
   };
+}
+
+function normalizeAdapterToolCall(
+  value: AdapterPlannedToolCall,
+  availableToolNames: ReadonlySet<string>
+): PlannedToolCall | null {
+  if (typeof value.name !== 'string' || value.name.length === 0 || !availableToolNames.has(value.name)) {
+    return null;
+  }
+
+  return {
+    toolName: value.name,
+    arguments: isRecord(value.arguments) ? value.arguments : {}
+  };
+}
+
+function mapToolDefinitions(tools: ToolDefinitionSummary[]): Array<{
+  name: string;
+  description: string;
+  parameters: Array<{
+    name: string;
+    type: string;
+    required: boolean;
+    description: string;
+  }>;
+}> {
+  return tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters.map((parameter) => ({
+      name: parameter.name,
+      type: parameter.type,
+      required: parameter.required,
+      description: parameter.description
+    }))
+  }));
 }
 
 function tryParseJsonObject(text: string): unknown {

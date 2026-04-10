@@ -1,5 +1,7 @@
-import type { ToolExecutionResult } from '@familyco/core';
+import type { AgentLevel, ToolExecutionResult } from '@familyco/core';
 
+import { buildAgentSlashRegistry } from '../modules/agent/agent-chat.registry.js';
+import type { ToolSlashEntry } from '../modules/agent/agent-chat.registry.js';
 import type { CompanyProfile } from './company-profile-read.tool.js';
 import { sendChat } from './chat.js';
 import { asNonEmptyString, extractEntityLabel, invalidArguments, isRecord } from './tool.helpers.js';
@@ -78,7 +80,7 @@ export const chatRespondTool: ServerToolDefinition = {
       arguments: {}
     });
     const profile = toCompanyProfile(profileResult.output);
-    const availableTools = context.listTools().filter((tool) => tool.name !== 'chat.respond');
+    const allTools = context.listTools().filter((tool) => tool.name !== 'chat.respond');
     const requestedToolCalls = readExplicitToolCalls(argumentsMap);
     const conversationHistory = readConversationHistory(argumentsMap);
 
@@ -86,11 +88,14 @@ export const chatRespondTool: ServerToolDefinition = {
     const agentId = asNonEmptyString(argumentsMap.agentId);
     let agentAdapterId: string | null = null;
     let agentModel: string | null = null;
+    let agentLevel: AgentLevel = 'L0';
     if (agentId && context.agentService) {
       const agentProfile = await context.agentService.getAgentById(agentId).catch(() => null);
       agentAdapterId = agentProfile?.aiAdapterId ?? null;
       agentModel = agentProfile?.aiModel ?? null;
+      agentLevel = agentProfile?.level ?? 'L0';
     }
+    const availableTools = filterToolsForAgent(allTools, agentLevel);
 
     const plannedResponse =
       requestedToolCalls.length > 0
@@ -317,4 +322,16 @@ function formatToolSignature(tool: ToolDefinitionSummary): string {
     .join(', ');
 
   return signature.length > 0 ? `${tool.name}(${signature})` : `${tool.name}()`;
+}
+
+function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel): ToolDefinitionSummary[] {
+  const registry = buildAgentSlashRegistry();
+  const allowedToolNames = new Set(
+    registry
+      .listForLevel(level)
+      .filter((entry): entry is ToolSlashEntry => entry.kind === 'tool')
+      .map((entry) => entry.toolName)
+  );
+
+  return tools.filter((tool) => allowedToolNames.has(tool.name));
 }

@@ -1,4 +1,10 @@
-import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult } from '@familyco/core';
+import type {
+  AdapterPlannedToolCall,
+  AiAdapter,
+  AdapterChatInput,
+  AdapterChatResult,
+  AdapterTestResult
+} from '@familyco/core';
 
 import { readProviderError, toAdapterErrorMessage } from './adapter.helpers.js';
 
@@ -41,6 +47,32 @@ export class OpenAiAdapter implements AiAdapter {
       ];
     }
 
+    if (input.tools && input.tools.length > 0) {
+      const functionTools = input.tools.map((tool) => ({
+        type: 'function',
+        name: tool.name,
+        description: tool.description,
+        parameters: {
+          type: 'object',
+          properties: Object.fromEntries(
+            tool.parameters.map((parameter) => [
+              parameter.name,
+              {
+                type: mapJsonSchemaType(parameter.type),
+                description: parameter.description
+              }
+            ])
+          ),
+          required: tool.parameters.filter((parameter) => parameter.required).map((parameter) => parameter.name),
+          additionalProperties: true
+        }
+      }));
+
+      requestBody.tools = Array.isArray(requestBody.tools)
+        ? [...requestBody.tools, ...functionTools]
+        : functionTools;
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), OpenAiAdapter.TIMEOUT_MS);
 
@@ -70,13 +102,15 @@ export class OpenAiAdapter implements AiAdapter {
               .trim()
           : '');
 
-      if (typeof content !== 'string' || content.trim().length === 0) {
+      const toolCalls = extractToolCalls(payload);
+      if ((typeof content !== 'string' || content.trim().length === 0) && toolCalls.length === 0) {
         throw new Error('PROVIDER_INVALID_RESPONSE:OpenAI returned an empty response');
       }
 
       const usage = payload?.usage;
       return {
         content,
+        toolCalls,
         tokenUsage: usage
           ? {
               prompt: usage.input_tokens ?? usage.prompt_tokens ?? 0,
@@ -129,4 +163,74 @@ export class OpenAiAdapter implements AiAdapter {
       clearTimeout(timeout);
     }
   }
+}
+
+function extractToolCalls(payload: unknown): AdapterPlannedToolCall[] {
+  if (!isRecord(payload) || !Array.isArray(payload.output)) {
+    return [];
+  }
+
+  return payload.output
+    .map((entry) => extractToolCallFromOutput(entry))
+    .filter((entry): entry is AdapterPlannedToolCall => entry !== null);
+}
+
+function extractToolCallFromOutput(value: unknown): AdapterPlannedToolCall | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (value.type !== 'function_call') {
+    return null;
+  }
+
+  const name = typeof value.name === 'string' && value.name.length > 0 ? value.name : null;
+  if (!name) {
+    return null;
+  }
+
+  const parsedArguments = parseToolArguments(value.arguments);
+  if (!parsedArguments) {
+    return null;
+  }
+
+  return {
+    name,
+    arguments: parsedArguments
+  };
+}
+
+function parseToolArguments(value: unknown): Record<string, unknown> | null {
+  if (isRecord(value)) {
+    return value;
+  }
+
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function mapJsonSchemaType(type: string): string {
+  switch (type) {
+    case 'number':
+    case 'integer':
+    case 'boolean':
+    case 'array':
+    case 'object':
+    case 'string':
+      return type;
+    default:
+      return 'string';
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
