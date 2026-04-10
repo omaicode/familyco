@@ -524,28 +524,35 @@ async function streamReply(
   }
 }
 
-function chunkReply(reply: string): string[] {
-  const compact = reply.replace(/\s+/g, ' ').trim();
-  if (compact.length === 0) {
+export function chunkReply(reply: string): string[] {
+  if (reply.length === 0) {
     return [''];
   }
 
-  const words = compact.split(' ');
   const chunks: string[] = [];
-  let current = '';
+  let cursor = 0;
 
-  for (const word of words) {
-    const next = current.length === 0 ? word : `${current} ${word}`;
-    if (next.length > 56 && current.length > 0) {
-      chunks.push(current);
-      current = word;
-    } else {
-      current = next;
+  while (cursor < reply.length) {
+    const remaining = reply.slice(cursor);
+    if (remaining.length <= 56) {
+      chunks.push(remaining);
+      break;
     }
-  }
 
-  if (current.length > 0) {
-    chunks.push(current);
+    let take = 56;
+    const window = remaining.slice(0, take);
+    const newlineIndex = window.lastIndexOf('\n');
+    if (newlineIndex > 0) {
+      take = newlineIndex + 1;
+    } else {
+      const spaceIndex = window.lastIndexOf(' ');
+      if (spaceIndex > 20) {
+        take = spaceIndex + 1;
+      }
+    }
+
+    chunks.push(remaining.slice(0, take));
+    cursor += take;
   }
 
   return chunks;
