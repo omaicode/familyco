@@ -10,6 +10,7 @@ import type { SkillListItem } from '@familyco/ui';
 const { t } = useI18n();
 const isRefreshing = ref(false);
 const pendingSkillId = ref<string | null>(null);
+const selectedSkillId = ref<string | null>(null);
 
 const state = computed(() => uiRuntime.stores.skills.state);
 const skills = computed(() => state.value.data.items);
@@ -37,6 +38,14 @@ const toggleSkill = async (skill: SkillListItem): Promise<void> => {
     pendingSkillId.value = null;
   }
 };
+
+const viewSkill = (skill: SkillListItem): void => {
+  selectedSkillId.value = selectedSkillId.value === skill.id ? null : skill.id;
+};
+
+const selectedSkill = computed(() =>
+  skills.value.find((item) => item.id === selectedSkillId.value) ?? null
+);
 
 onMounted(() => {
   void uiRuntime.stores.skills.load();
@@ -86,43 +95,59 @@ onMounted(() => {
         <p>{{ t('Create a folder in skills path with a SKILL.md file to register a new skill.', { path: localSkillsPath }) }}</p>
       </div>
 
-      <div v-else class="fc-budget-grid">
-        <article v-for="skill in skills" :key="skill.id" class="fc-card">
-          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
-            <div>
-              <h4 class="fc-card-title">{{ skill.name }}</h4>
-              <p class="fc-card-desc">{{ skill.description }}</p>
-            </div>
-            <span class="fc-badge" :class="skill.enabled ? 'is-success' : 'is-muted'">
-              {{ skill.enabled ? t('Enabled') : t('Disabled') }}
-            </span>
-          </div>
+      <article v-else class="fc-card">
+        <table class="fc-budget-table">
+          <thead>
+            <tr>
+              <th>{{ t('Name') }}</th>
+              <th>{{ t('Actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="skill in skills" :key="skill.id">
+              <td>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <strong>{{ skill.name }}</strong>
+                  <span class="fc-list-meta">{{ skill.description }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="fc-inline-actions">
+                  <button class="fc-btn-secondary" @click="viewSkill(skill)">
+                    {{ selectedSkillId === skill.id ? t('Close') : t('View') }}
+                  </button>
+                  <button
+                    class="fc-btn-secondary"
+                    :disabled="pendingSkillId === skill.id"
+                    @click="toggleSkill(skill)"
+                  >
+                    {{
+                      pendingSkillId === skill.id
+                        ? t('Refreshing…')
+                        : skill.enabled
+                          ? t('Disable')
+                          : t('Enable')
+                    }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
+        <section v-if="selectedSkill" class="fc-card" style="margin-top: 12px;">
+          <h4 class="fc-card-title">{{ selectedSkill.name }}</h4>
           <dl class="fc-list-meta" style="display:grid; grid-template-columns: auto 1fr; gap:4px 10px; margin-top: 10px;">
-            <dt>{{ t('ID') }}</dt><dd>{{ skill.id }}</dd>
-            <dt>{{ t('Version') }}</dt><dd>{{ skill.version ?? '—' }}</dd>
-            <dt>{{ t('Source') }}</dt><dd>{{ skill.source }}</dd>
-            <dt>{{ t('Path') }}</dt><dd>{{ skill.path }}</dd>
-            <dt>{{ t('Tags') }}</dt><dd>{{ skill.tags.length > 0 ? skill.tags.join(', ') : '—' }}</dd>
+            <dt>{{ t('ID') }}</dt><dd>{{ selectedSkill.id }}</dd>
+            <dt>{{ t('Version') }}</dt><dd>{{ selectedSkill.version ?? '—' }}</dd>
+            <dt>{{ t('Source') }}</dt><dd>{{ selectedSkill.source }}</dd>
+            <dt>{{ t('Path') }}</dt><dd>{{ selectedSkill.path }}</dd>
+            <dt>{{ t('Tags') }}</dt><dd>{{ selectedSkill.tags.length > 0 ? selectedSkill.tags.join(', ') : '—' }}</dd>
+            <dt>{{ t('Status') }}</dt>
+            <dd>{{ selectedSkill.enabled ? t('Enabled') : t('Disabled') }}</dd>
           </dl>
-
-          <div style="margin-top: 12px;">
-            <button
-              class="fc-btn-secondary"
-              :disabled="pendingSkillId === skill.id"
-              @click="toggleSkill(skill)"
-            >
-              {{
-                pendingSkillId === skill.id
-                  ? t('Refreshing…')
-                  : skill.enabled
-                    ? t('Disable')
-                    : t('Enable')
-              }}
-            </button>
-          </div>
-        </article>
-      </div>
+        </section>
+      </article>
     </template>
   </section>
 </template>
