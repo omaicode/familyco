@@ -7,8 +7,8 @@ import { type ChatFeedback, type DraftChatAttachment, type ThreadMessage, sortTh
 import { useAutoReload } from './useAutoReload';
 import { useExecutiveChatStream } from './useExecutiveChatStream';
 
-const INITIAL_CHAT_PAGE_SIZE = 40;
-const OLDER_CHAT_PAGE_SIZE = 30;
+const INITIAL_CHAT_PAGE_SIZE = 20;
+const OLDER_CHAT_PAGE_SIZE = 20;
 
 export function useExecutiveChat() {
   const thread = ref<ThreadMessage[]>([]);
