@@ -132,9 +132,7 @@ export class TaskExecutionCoordinator {
 
     const allTools = this.options.toolExecutor.listToolDefinitions();
     const filteredTools = filterToolsForAgent(allTools, agent.level);
-
     const skills = await this.resolveSkills(agent);
-
     const companyName = this.options.companyName ?? 'FamilyCo';
 
     const systemPrompt = renderTaskSystemPrompt({

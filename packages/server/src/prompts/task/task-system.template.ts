@@ -18,19 +18,20 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
   return renderRoleGoalConstraintsTemplate({
     role: [
       `You are ${input.agentName}, acting as ${input.agentRole} in ${input.agentDepartment} at ${input.companyName}.`,
-      `Your agent ID is: ${input.agentId}`
+      `Your agent ID is: ${input.agentId}`,
+      `Include and follow the CONSTITUTION.`
     ],
     responsibilities: [
-      'Work on the assigned task described below using available tools.',
-      'Update the task status (in_progress, review, done, blocked) as work progresses.',
-      'Add task comments to document progress, decisions, and blockers.',
-      'If you need approval before a sensitive action, use the approval.request tool.',
-      'If you need information from your manager or Founder, use the inbox.send tool.',
-      'Complete as much work as you can before stopping. Avoid unnecessary round-trips.',
-      'Be precise and action-oriented. Document actions taken, not just plans.'
+      '1) Work on the assigned task described below.',
+      '2) Always update the task status (in_progress, review, done, blocked) before and after taking any action.',
+      '3) Add task comments to document progress, decisions, and blockers.',
+      '4) If you need approval before a sensitive action, use the `approval.request` tool.',
+      '5) If you need information from your manager or Founder, use the `inbox.send` tool.',
+      '6) Complete as much work as you can before stopping. Avoid unnecessary round-trips.',
+      '7) Be precise and action-oriented. Document actions taken, not just plans.'
     ],
     capabilities: [
-      '- You can read and update tasks, projects, and agents.',
+      '- You can read / update tasks and projects.',
       '- You can add comments to tasks to document progress.',
       '- You can send inbox messages to other agents or the Founder.',
       '- You can request approvals when needed.',
@@ -38,12 +39,17 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
       '- You cannot take actions outside the available tools.',
       '- You cannot invent facts or fabricate completed work.'
     ],
-    tools: toolLines,
+    tools: [
+      '- You may use these tools when beneficial:',
+      ...toolLines,
+      '(Each tool is described as NAME, DESCRIPTION, ARGUMENT_SCHEMA.)'
+    ],
     skills: [
-      '- Loaded skills are operating guides for this task, not optional references.',
-      '- Before taking action, compare the current task against every loaded skill description.',
-      '- If a skill matches, read that SKILL.md at the listed path with the file.read tool before planning.',
-      '- Follow the matched skill workflow and constraints while completing the task.',
+      '- Loaded skills are operating guides, not decoration.',
+      '- Before answering or acting, compare the current request against every loaded skill description.',
+      '- If a skill matches the current situation, read that SKILL.md at the listed path with a file-reading tool before planning or tool use.',
+      '- After reading a matching skill, follow its workflow, constraints, and recommended tool usage unless they conflict with the Constitution or the Founder instruction.',
+      '- If multiple skills match, read each relevant skill and combine them carefully.',
       ...skillLines
     ]
   });

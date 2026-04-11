@@ -4,7 +4,7 @@ description: Comprehensive skill for managing projects and tasks. Use this to li
 metadata: 
   version: 1.0
   default: true
-  apply_to: ['L0', 'L1']
+  apply_to: ['L0', 'L1', 'L2']
   tags: ['project management', 'task management', 'workflow']
 ---
 
@@ -19,6 +19,8 @@ This skill provides standardized protocols for the Agent to interact with the pr
 - **Safety First:** Before executing `project.delete`, warn the user about potential cascading effects (e.g., losing all associated tasks).
 
 ## 2. Standard Workflows
+
+Follow these structured workflows for common project and task management scenarios to ensure consistency and reliability in operations.
 
 ### A. New Project Initialization
 1. Call `project.list` to ensure the project name is unique and avoid duplicates.
@@ -35,7 +37,27 @@ This skill provides standardized protocols for the Agent to interact with the pr
 - **Missing Info:** If `task.create` fails due to missing fields, stop and prompt the user for specific details (e.g., deadline, assignee).
 - **ID Not Found:** If a specific ID lookup fails, re-run the `list` command to refresh the local cache before reporting an error.
 
-## 3. Constraints & Guidelines
+## 3. Task Handle Workflows
+
+Follow these specific protocols when managing tasks to ensure consistency and reliability in task handling.
+
+### A. Task Update & Progression
+1. Use `task.read` to confirm the current status and assignee of the task.
+2. If updating status, ensure the new status follows the allowed workflow (e.g., `in_progress` → `review` → `blocked` (optional) → `done`).
+3. When reassigning, verify the new assignee's agent ID exists and is active before updating.
+4. After any update, log a comment on the task.
+
+### B. Task Completion & Closure
+1. Before marking a task as `done`, ensure all subtasks (if any) are also completed.
+2. Use `task.read` to confirm no blockers are present. If blockers exist, update the status to `blocked` and notify the manager.
+3. Upon successful completion, add a final comment summarizing the work done and any relevant outcomes.
+
+### C. Task Deletion Protocol
+1. Before deleting a task, check for dependencies (e.g., linked subtasks or project associations).
+2. If dependencies exist, either reassign them or warn the user about potential data loss.
+3. After deletion, confirm the task is removed by attempting a `task.read` and handling the expected "not found" response gracefully.
+
+## 4. Constraints & Guidelines
 - **Privacy:** Do not expose sensitive tokens or system-level metadata from `project.read` unless explicitly requested.
 - **Efficiency:** Minimize redundant `list` calls within a single session if the state hasn't changed.
 - **Consistency:** Follow the project’s naming convention (e.g., kebab-case or Title Case) as defined in the project settings.
