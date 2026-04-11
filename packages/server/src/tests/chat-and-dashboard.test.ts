@@ -133,6 +133,19 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
     }
   );
   assert.equal(toolEvents.some((event) => event.type === 'chat.tool.used'), true);
+  const toolStartIndex = toolEvents.findIndex((event) => event.type === 'chat.tool.start');
+  const toolCompleteIndex = toolEvents.findIndex((event) => event.type === 'chat.tool.complete');
+  const toolUsedIndex = toolEvents.findIndex((event) => event.type === 'chat.tool.used');
+  const chatCompletedIndex = toolEvents.findIndex((event) => event.type === 'chat.completed');
+  const toolCompleteEvent = toolEvents.find((event) => event.type === 'chat.tool.complete');
+  assert.equal(toolStartIndex >= 0, true);
+  assert.equal(toolCompleteIndex > toolStartIndex, true);
+  assert.equal(toolUsedIndex > toolCompleteIndex, true);
+  assert.equal(chatCompletedIndex > toolUsedIndex, true);
+  assert.equal(toolCompleteEvent?.payload?.toolName, 'task.create');
+  assert.equal(toolCompleteEvent?.payload?.ok, true);
+  assert.equal(typeof toolCompleteEvent?.payload?.summary, 'string');
+  assert.equal(String(toolCompleteEvent?.payload?.summary).includes('Executed task.create'), true);
 
   const fallbackToolEvents = await runSocketChat(
     chatSocketUrl,

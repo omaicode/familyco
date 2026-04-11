@@ -5,6 +5,7 @@ import type { AgentLoopEvent, AgentService } from '@familyco/core';
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
 import type { ParsedSlashEntry } from './agent-chat.registry.js';
 import type { ChatEngineResult } from './chat-engine.service.js';
+import { toChatToolCall } from './chat-tool-call.js';
 import type {
   AgentModuleDeps,
   ChatRequestBody,
@@ -38,10 +39,23 @@ export async function handleSocketChatMessage(input: {
   const proxy = input.deps.chatStreamRegistry.createProxy(input.socket);
   input.deps.chatStreamRegistry.register(requestId, input.agentId, proxy);
 
-  // Minimum ms a tool spinner must be visible so the client renders the start state
-  // before the complete event arrives.
+  // Minimum ms a tool spinner must be visible so the client renders the start → complete transition.
   const MIN_TOOL_VISIBLE_MS = 350;
   const toolStartTimes = new Map<string, number>(); // callId → performance.now()
+
+  // Track pending delayed chat.tool.complete emissions so chat.completed is never sent
+  // before all spinners have been resolved (would cause refreshThread() to wipe tool cards).
+  let pendingDelayedCompletes = 0;
+  let onAllCompletesSettled: (() => void) | null = null;
+
+  const settleDelayedComplete = (): void => {
+    pendingDelayedCompletes -= 1;
+    if (pendingDelayedCompletes === 0 && onAllCompletesSettled) {
+      const resolve = onAllCompletesSettled;
+      onAllCompletesSettled = null;
+      resolve();
+    }
+  };
 
   try {
     const body = JSON.parse(input.raw) as ChatRequestBody;
@@ -73,19 +87,32 @@ export async function handleSocketChatMessage(input: {
 
           const completePayload = {
             requestId,
-            toolName: event.toolName,
-            ok: event.ok,
-            ...(event.output ? { output: event.output } : {})
+            ...toChatToolCall({
+              toolName: event.toolName,
+              ok: event.ok,
+              output: event.output
+            })
           };
 
           if (delay > 0) {
-            setTimeout(() => sendSocketEvent(proxy, 'chat.tool.complete', completePayload), delay);
+            pendingDelayedCompletes += 1;
+            setTimeout(() => {
+              sendSocketEvent(proxy, 'chat.tool.complete', completePayload);
+              settleDelayedComplete();
+            }, delay);
           } else {
             sendSocketEvent(proxy, 'chat.tool.complete', completePayload);
           }
         }
       }
     });
+
+    // Wait for any delayed chat.tool.complete timers before sending the final events.
+    // Without this, chat.completed (which triggers refreshThread) would arrive first,
+    // wiping the in-progress spinner state before tool cards can be shown.
+    if (pendingDelayedCompletes > 0) {
+      await new Promise<void>((resolve) => { onAllCompletesSettled = resolve; });
+    }
 
     for (const toolCall of result.toolCalls) {
       sendSocketEvent(proxy, 'chat.tool.used', { requestId, ...toolCall });

@@ -148,6 +148,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : `stream-${Date.now()}`;
       activeStreamId.value = requestId;
       streamToolCalls.value = { ...streamToolCalls.value, [requestId]: [] };
+      streamToolsInProgress.value = { ...streamToolsInProgress.value, [requestId]: [] };
       pendingConfirmRequestId.value = null;
       isSending.value = false;
       isStreaming.value = true;
@@ -174,7 +175,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       if (requestId && toolCall) {
         streamToolCalls.value = {
           ...streamToolCalls.value,
-          [requestId]: [...(streamToolCalls.value[requestId] ?? []), toolCall]
+          [requestId]: appendUniqueToolCall(streamToolCalls.value[requestId] ?? [], toolCall)
         };
         const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
         upsertStreamingReply(requestId, existingBody);
@@ -205,16 +206,20 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
 
     if (event.type === 'chat.tool.complete') {
       const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
-      // Server sends { requestId, toolName, ok, output? } — no summary yet.
-      // isToolCallDetails would fail (requires summary), so extract toolName directly.
       const toolName = typeof event.payload?.toolName === 'string' ? event.payload.toolName : null;
+      const toolCall = isToolCallDetails(event.payload) ? event.payload : null;
 
       if (requestId && toolName) {
-        // Remove spinner immediately — completed card will appear via chat.tool.used (which has summary)
         streamToolsInProgress.value = {
           ...streamToolsInProgress.value,
-          [requestId]: (streamToolsInProgress.value[requestId] ?? []).filter((e) => e.toolName !== toolName)
+          [requestId]: removeLatestInProgressTool(streamToolsInProgress.value[requestId] ?? [], toolName)
         };
+        if (toolCall) {
+          streamToolCalls.value = {
+            ...streamToolCalls.value,
+            [requestId]: appendUniqueToolCall(streamToolCalls.value[requestId] ?? [], toolCall)
+          };
+        }
         const existingBody = thread.value.find((message) => message.id === requestId)?.body ?? '';
         upsertStreamingReply(requestId, existingBody);
       }
@@ -392,4 +397,34 @@ function buildSocketUrl(agentId: string): string {
   }
 
   return url.toString();
+}
+
+function appendUniqueToolCall(
+  existing: ChatToolCallDetails[],
+  next: ChatToolCallDetails
+): ChatToolCallDetails[] {
+  return existing.some((entry) => isSameToolCall(entry, next))
+    ? existing
+    : [...existing, next];
+}
+
+function removeLatestInProgressTool(
+  existing: ChatToolInProgress[],
+  toolName: string
+): ChatToolInProgress[] {
+  for (let index = existing.length - 1; index >= 0; index -= 1) {
+    if (existing[index]?.toolName === toolName) {
+      return [...existing.slice(0, index), ...existing.slice(index + 1)];
+    }
+  }
+
+  return existing;
+}
+
+function isSameToolCall(left: ChatToolCallDetails, right: ChatToolCallDetails): boolean {
+  return left.toolName === right.toolName
+    && left.ok === right.ok
+    && left.summary === right.summary
+    && left.error?.code === right.error?.code
+    && left.error?.message === right.error?.message;
 }

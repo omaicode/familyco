@@ -8,7 +8,8 @@ import type { ToolSlashEntry } from './agent-chat.registry.js';
 import type { ChatToolCall } from './agent.types.js';
 import type { SkillsService } from '../skills/skills.service.js';
 import type { ToolDefinitionSummary } from '../../tools/tool.types.js';
-import { asNonEmptyString, extractEntityLabel, isRecord } from '../../tools/tool.helpers.js';
+import { asNonEmptyString, isRecord } from '../../tools/tool.helpers.js';
+import { toChatToolCall } from './chat-tool-call.js';
 
 export interface ChatEngineRunInput {
   agentAdapterId?: string | null;
@@ -99,7 +100,7 @@ export class ChatEngineService {
           }
         }
 
-        toolCalls.push(toToolCallSummary(result));
+        toolCalls.push(toChatToolCall(result));
 
         if (toolInput.toolName === 'task.create' && result.ok) {
           task = result.output ?? null;
@@ -195,23 +196,4 @@ function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel):
   );
 
   return tools.filter((tool) => allowedToolNames.has(tool.name) || INTERNAL_TOOLS_ALWAYS_ALLOWED.has(tool.name));
-}
-
-function toToolCallSummary(result: ToolExecutionResult): ChatToolCall {
-  if (!result.ok) {
-    return {
-      toolName: result.toolName,
-      ok: false,
-      summary: result.error?.message ?? `The tool ${result.toolName} could not complete the request.`,
-      error: result.error
-    };
-  }
-
-  const label = extractEntityLabel(result.output);
-  return {
-    toolName: result.toolName,
-    ok: true,
-    summary: label ? `Executed ${result.toolName} for "${label}".` : `Executed ${result.toolName}.`,
-    output: result.output
-  };
 }
