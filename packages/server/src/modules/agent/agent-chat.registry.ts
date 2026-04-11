@@ -5,6 +5,10 @@ import { agentDeleteTool } from '../../tools/agent-delete.tool.js';
 import { agentListTool } from '../../tools/agent-list.tool.js';
 import { agentReadTool } from '../../tools/agent-read.tool.js';
 import { agentUpdateTool } from '../../tools/agent-update.tool.js';
+import { fileDeleteTool } from '../../tools/file-delete.tool.js';
+import { fileReadTool } from '../../tools/file-read.tool.js';
+import { fileSearchTool } from '../../tools/file-search.tool.js';
+import { fileWriteTool } from '../../tools/file-write.tool.js';
 import { projectCreateTool } from '../../tools/project-create.tool.js';
 import { projectDeleteTool } from '../../tools/project-delete.tool.js';
 import { projectListTool } from '../../tools/project-list.tool.js';
@@ -168,7 +172,11 @@ export function buildAgentSlashRegistry(): AgentSlashRegistry {
     agentReadTool,
     agentListTool,
     agentUpdateTool,
-    agentDeleteTool
+    agentDeleteTool,
+    fileSearchTool,
+    fileReadTool,
+    fileWriteTool,
+    fileDeleteTool
   ]
     .filter((tool): tool is typeof tool & { slashSpec: SlashCommandSpec } => tool.slashSpec !== undefined)
     .map((tool) => toolSpecToEntry(tool.name, tool.slashSpec));

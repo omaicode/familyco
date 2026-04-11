@@ -8,6 +8,10 @@ import { agentUpdateTool } from './agent-update.tool.js';
 import { companyProfileReadTool } from './company-profile-read.tool.js';
 import { confirmRequestTool } from './confirm-request.tool.js';
 import { echoTool } from './echo.tool.js';
+import { fileDeleteTool } from './file-delete.tool.js';
+import { fileReadTool } from './file-read.tool.js';
+import { fileSearchTool } from './file-search.tool.js';
+import { fileWriteTool } from './file-write.tool.js';
 import { jsonExtractTool } from './json-extract.tool.js';
 import { projectCreateTool } from './project-create.tool.js';
 import { projectDeleteTool } from './project-delete.tool.js';
@@ -50,6 +54,10 @@ export class DefaultToolExecutor implements ToolExecutor {
       echoTool,
       taskLogTool,
       jsonExtractTool,
+      fileSearchTool,
+      fileReadTool,
+      fileWriteTool,
+      fileDeleteTool,
       webSearchTool,
       confirmRequestTool
     ];
