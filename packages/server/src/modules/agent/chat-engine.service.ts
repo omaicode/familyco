@@ -1,7 +1,12 @@
-import type { AgentLevel, AiAdapterRegistry, SettingsService, ToolExecutionResult } from '@familyco/core';
+import type {
+  AgentLevel,
+  AiAdapterRegistry,
+  AdapterChatAttachment,
+  SettingsService,
+  ToolExecutionResult
+} from '@familyco/core';
 import { runAgentLoop } from '@familyco/core';
 import type { AgentLoopEvent } from '@familyco/core';
-import type { AdapterChatAttachment } from '@familyco/core';
 import type { PromptConversationEntry } from '../../prompts/prompt.types.js';
 import { renderChatSystemPrompt, renderChatUserPrompt } from '../../prompts/index.js';
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
@@ -122,6 +127,57 @@ export class ChatEngineService {
     });
 
     return { reply: loopResult.finalReply, toolCalls, task, project, confirmRequest };
+  }
+
+  async prepareAttachments(input: {
+    agentAdapterId?: string | null;
+    agentModel?: string | null;
+    attachments: AdapterChatAttachment[];
+    abortSignal?: AbortSignal;
+  }): Promise<AdapterChatAttachment[]> {
+    const audioAttachments = input.attachments.filter(
+      (attachment) => attachment.kind === 'audio' && !attachment.transcript?.trim()
+    );
+
+    if (audioAttachments.length === 0) {
+      return input.attachments;
+    }
+
+    const adapterConfig = await this.resolveAdapterConfig(input.agentAdapterId, input.agentModel);
+    if (!adapterConfig) {
+      return input.attachments;
+    }
+
+    const adapter = this.adapterRegistry.get(adapterConfig.adapterId);
+    if (!adapter?.transcribeAudio) {
+      throw new Error(`CHAT_AUDIO_TRANSCRIPTION_UNSUPPORTED:${adapterConfig.adapterId}`);
+    }
+    const transcribeAudio = adapter.transcribeAudio;
+
+    const transcripts = await Promise.all(
+      audioAttachments.map(async (attachment) => ({
+        id: attachment.id,
+        transcript: (await transcribeAudio({
+          apiKey: adapterConfig.apiKey,
+          audio: attachment.data,
+          mediaType: attachment.mediaType,
+          filename: attachment.filename,
+          abortSignal: input.abortSignal
+        })).text.trim()
+      }))
+    );
+
+    const transcriptById = new Map(
+      transcripts
+        .filter((entry) => entry.transcript.length > 0)
+        .map((entry) => [entry.id, entry.transcript])
+    );
+
+    return input.attachments.map((attachment) =>
+      transcriptById.has(attachment.id)
+        ? { ...attachment, transcript: transcriptById.get(attachment.id) }
+        : attachment
+    );
   }
 
   private async resolveAdapterConfig(

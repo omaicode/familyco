@@ -1,7 +1,14 @@
-import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult } from '@familyco/core';
+import type {
+  AiAdapter,
+  AdapterAudioTranscriptionInput,
+  AdapterAudioTranscriptionResult,
+  AdapterChatInput,
+  AdapterChatResult,
+  AdapterTestResult
+} from '@familyco/core';
 
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText } from 'ai';
+import { experimental_transcribe as transcribe, streamText } from 'ai';
 
 import { toAdapterErrorMessage } from './adapter.helpers.js';
 import { buildCoreMessages, buildVercelTools } from './vercel-adapter.helpers.js';
@@ -59,6 +66,17 @@ export class OpenAiAdapter implements AiAdapter {
         ? { prompt: usage.inputTokens ?? 0, completion: usage.outputTokens ?? 0, total: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) }
         : undefined
     };
+  }
+
+  async transcribeAudio(input: AdapterAudioTranscriptionInput): Promise<AdapterAudioTranscriptionResult> {
+    const openai = createOpenAI({ apiKey: input.apiKey });
+    const result = await transcribe({
+      model: openai.transcription('gpt-4o-mini-transcribe'),
+      audio: Buffer.from(input.audio),
+      abortSignal: input.abortSignal
+    });
+
+    return { text: result.text };
   }
 
   async testConnection(apiKey: string, model?: string): Promise<AdapterTestResult> {

@@ -28,6 +28,18 @@ export interface AdapterChatAttachment {
   transcript?: string;
 }
 
+export interface AdapterAudioTranscriptionInput {
+  apiKey: string;
+  audio: Uint8Array;
+  mediaType: string;
+  filename?: string;
+  abortSignal?: AbortSignal;
+}
+
+export interface AdapterAudioTranscriptionResult {
+  text: string;
+}
+
 export interface AdapterSkillDefinition {
   id: string;
   name: string;
@@ -94,5 +106,6 @@ export interface AiAdapter {
   readonly availableModels: readonly string[];
 
   chat(input: AdapterChatInput): Promise<AdapterChatResult>;
+  transcribeAudio?(input: AdapterAudioTranscriptionInput): Promise<AdapterAudioTranscriptionResult>;
   testConnection(apiKey: string, model?: string): Promise<AdapterTestResult>;
 }

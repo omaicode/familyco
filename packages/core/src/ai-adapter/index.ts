@@ -2,6 +2,8 @@ export type {
   AiAdapter,
   AdapterChatInput,
   AdapterChatAttachment,
+  AdapterAudioTranscriptionInput,
+  AdapterAudioTranscriptionResult,
   AdapterChatResult,
   AdapterPlannedToolCall,
   AdapterPreviousTurn,

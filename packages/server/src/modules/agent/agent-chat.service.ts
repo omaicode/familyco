@@ -184,19 +184,48 @@ export async function processAgentChat(input: {
   }
 
   const attachments = await loadChatAttachments(input.body.meta, input.deps);
+  const preparedAttachments = await input.deps.chatEngineService.prepareAttachments({
+    agentAdapterId: agent.aiAdapterId ?? null,
+    agentModel: agent.aiModel ?? null,
+    attachments: attachments.map((attachment) => ({
+      id: attachment.id,
+      kind: attachment.kind,
+      filename: attachment.name,
+      mediaType: attachment.mediaType,
+      sizeBytes: attachment.sizeBytes,
+      data: attachment.data,
+      ...(attachment.transcript ? { transcript: attachment.transcript } : {})
+    })),
+    abortSignal: input.abortSignal
+  });
+
+  await Promise.all(
+    preparedAttachments
+      .filter((attachment) => attachment.kind === 'audio' && attachment.transcript?.trim())
+      .map(async (attachment) => {
+        const existing = attachments.find((entry) => entry.id === attachment.id);
+        if (existing?.transcript?.trim() === attachment.transcript?.trim()) {
+          return;
+        }
+
+        await input.deps.chatAttachmentStore.updateMetadata(attachment.id, {
+          transcript: attachment.transcript?.trim()
+        });
+      })
+  );
 
   const founderMessage = await createFounderMessage({
     agentId: agent.id,
     body: input.body.message,
     meta: isRecord(input.body.meta) ? input.body.meta : null,
-    attachments: attachments.map((attachment) => ({
+    attachments: preparedAttachments.map((attachment) => ({
       id: attachment.id,
       kind: attachment.kind,
-      name: attachment.name,
+      name: attachment.filename,
       mediaType: attachment.mediaType,
       sizeBytes: attachment.sizeBytes,
-      storageKey: attachment.storageKey,
-      createdAt: attachment.createdAt,
+      storageKey: attachments.find((entry) => entry.id === attachment.id)?.storageKey ?? attachment.id,
+      createdAt: attachments.find((entry) => entry.id === attachment.id)?.createdAt ?? new Date().toISOString(),
       ...(attachment.transcript ? { transcript: attachment.transcript } : {})
     })),
     slashCommand: null,
@@ -216,15 +245,7 @@ export async function processAgentChat(input: {
     agentModel: agent.aiModel ?? null,
     agentLevel: agent.level,
     message: input.body.message,
-    attachments: attachments.map((attachment) => ({
-      id: attachment.id,
-      kind: attachment.kind,
-      filename: attachment.name,
-      mediaType: attachment.mediaType,
-      sizeBytes: attachment.sizeBytes,
-      data: attachment.data,
-      ...(attachment.transcript ? { transcript: attachment.transcript } : {})
-    })),
+    attachments: preparedAttachments,
     companyProfile,
     conversationHistory: conversationHistory.map(toConversationHistoryEntry),
     availableTools: allTools,
