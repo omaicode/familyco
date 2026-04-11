@@ -11,6 +11,7 @@ import { uiRuntime, applyRuntimeTheme } from './runtime';
 import SplashScreen from './components/SplashScreen.vue';
 import AppSidebar from './components/AppSidebar.vue';
 import AppTopbar from './components/AppTopbar.vue';
+import FcToastViewport from './components/toast/FcToastViewport.vue';
 import { useI18n } from './composables/useI18n';
 
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -262,6 +263,7 @@ onUnmounted(() => {
 <template>
   <!-- ── Splash screen ───────────────────────────────────── -->
   <SplashScreen :show="showSplash && splashVisible" />
+  <FcToastViewport />
 
   <!-- ── Onboarding / Setup — fullscreen, no shell ─────── -->
   <RouterView v-if="isSetupRoute" />

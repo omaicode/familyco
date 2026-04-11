@@ -8,6 +8,7 @@
   background: var(--fc-background);
   font-family: var(--fc-font-family);
   font-size: var(--fc-body-size);
+  --fc-topbar-height: 0px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

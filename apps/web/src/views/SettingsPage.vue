@@ -9,13 +9,13 @@ import {
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
 import { useAutoReload } from '../composables/useAutoReload';
-import FcBanner from '../components/FcBanner.vue';
 import FcButton from '../components/FcButton.vue';
 import FcInput from '../components/FcInput.vue';
 import FcSelect from '../components/FcSelect.vue';
 import ProviderSettingsSection from '../components/settings/ProviderSettingsSection.vue';
 import { useTutorialTour } from '../composables/useTutorialTour';
 import { useI18n } from '../composables/useI18n';
+import { useToast } from '../plugins/toast.plugin';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -24,6 +24,7 @@ type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'sy
 // ── State ─────────────────────────────────────────────────
 const router = useRouter();
 const { t } = useI18n();
+const toast = useToast();
 const tour = useTutorialTour();
 const replayTour = () => { router.push('/dashboard').then(() => tour.start(t)); };
 
@@ -74,8 +75,8 @@ const getSetting = (key: string): unknown =>
   uiRuntime.stores.settings.state.data.find(s => s.key === key)?.value;
 
 const setFeedback = (type: 'success' | 'error', text: string) => {
-  feedback.value = { type, text };
-  setTimeout(() => { if (feedback.value?.text === text) feedback.value = null; }, 4000);
+  feedback.value = null;
+  toast.show({ type, message: text });
 };
 
 const formatDateTime = (iso: string): string => {
@@ -292,19 +293,6 @@ useAutoReload(reload);
         Refresh
       </button>
     </div>
-
-    <!-- ── Feedback ─────────────────────────────────── -->
-    <Transition name="fc-banner">
-      <FcBanner
-        v-if="feedback"
-        :type="feedback.type"
-        closable
-        style="margin-bottom:14px;"
-        @close="feedback = null"
-      >
-        {{ feedback.text }}
-      </FcBanner>
-    </Transition>
 
     <!-- ── 2-column layout ─────────────────────────── -->
     <div class="st-layout">

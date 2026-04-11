@@ -86,6 +86,8 @@ export default {
   'chat.thread.loadingOlder': 'Loading earlier messages…',
   'chat.thread.jumpLatest': 'Latest',
   'chat.confirm.chooseOption': 'Choose an option',
+  'toast.dismiss': 'Dismiss notification',
+  'toast.notifications': 'Toast notifications',
   'chat.empty.title': 'Start the first conversation',
   'chat.empty.copy': 'Use chat for planning and direction. Ask explicitly when you want the agent to call tools for a new task or project.',
   'chat.bubble.founder': 'Founder',
