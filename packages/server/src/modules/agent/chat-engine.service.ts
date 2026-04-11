@@ -68,9 +68,12 @@ export class ChatEngineService {
 
     const filteredTools = filterToolsForAgent(input.availableTools, input.agentLevel ?? 'L0');
 
+    const skills = await this.resolveEnabledSkills(input.agentLevel ?? 'L0');
+
     const systemPrompt = renderChatSystemPrompt({
       companyName: input.companyProfile.companyName,
       companyDescription: input.companyProfile.companyDescription,
+      skills,
       tools: filteredTools,
       conversationHistory: input.conversationHistory
     });
@@ -222,13 +225,16 @@ export class ChatEngineService {
     return { adapterId, apiKey, model };
   }
 
-  async resolveEnabledSkills(): Promise<Array<{ id: string; name: string; description: string }>> {
+  async resolveEnabledSkills(agentLevel: AgentLevel): Promise<Array<{ id: string; name: string; description: string; path: string }>> {
     if (this.skillsService) {
-      const listed = await this.skillsService.list().catch(() => null);
+      const listed = await this.skillsService.listForAgent({ level: agentLevel }).catch(() => null);
       if (listed) {
-        return listed.items
-          .filter((skill) => skill.enabled)
-          .map((skill) => ({ id: skill.id, name: skill.name, description: skill.description }));
+        return listed.map((skill) => ({
+          id: skill.id,
+          name: skill.name,
+          description: skill.description,
+          path: skill.path
+        }));
       }
     }
 
@@ -239,7 +245,7 @@ export class ChatEngineService {
 
     return (setting.value.enabled as unknown[])
       .filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
-      .map((id) => ({ id, name: id, description: 'Enabled local skill' }));
+      .map((id) => ({ id, name: id, description: 'Enabled local skill', path: id }));
   }
 }
 

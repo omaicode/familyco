@@ -20,8 +20,26 @@ export interface SkillsListResponse {
   invalidSkills: InvalidSkillItem[];
 }
 
-export interface SkillsRegistry {
-  enabled: string[];
-  updatedAt: string;
+export interface DiscoveredSkillItem {
+  id: string;
+  name: string;
+  description: string;
+  version: string | null;
+  tags: string[];
+  path: string;
+  source: 'local';
+  defaultEnabled: boolean;
+  applyTo: string[];
 }
 
+export interface SkillAgentTarget {
+  level?: string | null;
+  id?: string | null;
+  name?: string | null;
+}
+
+export interface SkillsRegistry {
+  enabled: string[];
+  disabled: string[];
+  updatedAt: string;
+}

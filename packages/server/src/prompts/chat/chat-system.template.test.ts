@@ -7,6 +7,14 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   const prompt = renderChatSystemPrompt({
     companyName: 'FamilyCo',
     companyDescription: 'AI-native operating system for founders.',
+    skills: [
+      {
+        id: 'project-management',
+        name: 'Project Management',
+        description: 'Coordinate project and task work.',
+        path: '/data/projects/familyco/skills/project-management/SKILL.md'
+      }
+    ],
     conversationHistory: [
       {
         senderId: 'founder',
@@ -48,35 +56,23 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   });
 
   assert.equal(prompt.includes('Role:'), true);
-  assert.equal(prompt.includes('Goal:'), true);
-  assert.equal(prompt.includes('Constraints:'), true);
-  assert.equal(prompt.includes('Output Contract:'), true);
+  assert.equal(prompt.includes('Responsibilities:'), true);
+  assert.equal(prompt.includes('Capabilities and limitations:'), true);
+  assert.equal(prompt.includes('Constitution'), true);
 
-  // New output contract: native tool calling, always write text, no JSON wrapper
-  assert.equal(prompt.includes('Tool calls are handled natively'), true);
-  assert.equal(prompt.includes('Always write a text reply in every response'), true);
-  assert.equal(prompt.includes('After tool results return, ALWAYS write a substantive reply'), true);
-  assert.equal(prompt.includes('does this request actually need external data?'), true);
+  assert.equal(prompt.includes('When talking to the Founder (human):'), true);
+  assert.equal(prompt.includes('Start with a short executive summary.'), true);
+  assert.equal(prompt.includes('When interacting with child agents:'), true);
+  assert.equal(prompt.includes('Escalation:'), true);
 
-  // Old JSON contract must be gone
-  assert.equal(prompt.includes('return JSON:'), false);
-  assert.equal(prompt.includes('"toolCalls"'), false);
-
-  // Tool strategy section — GATHER is now optional
-  assert.equal(prompt.includes('Tool Strategy (follow this order strictly)'), true);
-  assert.equal(prompt.includes('GATHER (skip if not needed)'), true);
-  assert.equal(prompt.includes('PLAN'), true);
-  assert.equal(prompt.includes('CONFIRM'), true);
-  assert.equal(prompt.includes('EXECUTE'), true);
-  assert.equal(prompt.includes('NEVER repeat a tool call'), true);
-
-  // confirm.request guidance
-  assert.equal(prompt.includes('confirm.request'), true);
-  assert.equal(prompt.includes('sparingly'), true);
-
-  // Tools are now listed in context
-  assert.equal(prompt.includes('Available Tools:'), true);
+  // Tools are listed in the TOOLS section
+  assert.equal(prompt.includes('TOOLS:'), true);
   assert.equal(prompt.includes('- task.create: Create a task'), true);
+  assert.equal(prompt.includes('Skills:'), true);
+  assert.equal(
+    prompt.includes('- project-management: Coordinate project and task work. Path => /data/projects/familyco/skills/project-management/SKILL.md'),
+    true
+  );
 
   // Conversation history
   assert.equal(prompt.includes('Recent Conversation History'), true);

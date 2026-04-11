@@ -5,6 +5,7 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
   const companyName = input.companyName.trim().length > 0 ? input.companyName.trim() : 'FamilyCo';
   const companyDescription = input.companyDescription?.trim() || 'Not provided.';
   const toolLines = renderToolLines(input.tools);
+  const skillLines = renderSkillLines(input.skills);
   const historyLines = renderHistoryLines(input.conversationHistory);
 
   return renderRoleGoalConstraintsTemplate({
@@ -51,11 +52,23 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
       ...toolLines,
       '(Each tool is described as NAME, DESCRIPTION, ARGUMENT_SCHEMA.)'
     ],
+    skills: [
+      '- You may use these built-in skills as operating guidance when they match the current task:',
+      ...skillLines
+    ],
     context: [
       'Recent Conversation History (tool results are included — use them, do NOT re-query):',
       ...historyLines
     ]
   });
+}
+
+function renderSkillLines(input: ChatSystemPromptInput['skills']): string[] {
+  if (input.length === 0) {
+    return ['- No skills loaded for this agent.'];
+  }
+
+  return input.map((skill) => `- ${skill.id}: ${skill.description} Path => ${skill.path}`);
 }
 
 function renderToolLines(input: ChatSystemPromptInput['tools']): string[] {

@@ -11,6 +11,13 @@ export interface PromptToolDefinition {
   parameters: PromptToolParameter[];
 }
 
+export interface PromptSkillDefinition {
+  id: string;
+  name: string;
+  description: string;
+  path: string;
+}
+
 export interface PromptConversationEntry {
   senderId: string;
   body: string;
@@ -33,6 +40,7 @@ export interface PromptConversationToolCall {
 export interface ChatSystemPromptInput {
   companyName: string;
   companyDescription?: string;
+  skills: PromptSkillDefinition[];
   tools: PromptToolDefinition[];
   conversationHistory: PromptConversationEntry[];
 }
@@ -46,5 +54,6 @@ export interface HeartbeatRunPromptInput {
   agentName: string;
   agentRole: string;
   agentDepartment: string;
+  skills?: PromptSkillDefinition[];
   timestamp: string;
 }

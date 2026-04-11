@@ -202,6 +202,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     queueService,
     agentService,
     settingsService,
+    skillsService,
     pollMs: options.heartbeatPollMs,
     defaultHeartbeatMinutes: options.defaultHeartbeatMinutes
   });

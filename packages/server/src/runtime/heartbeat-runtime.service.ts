@@ -6,6 +6,7 @@ import type {
   SettingsService
 } from '@familyco/core';
 import { renderHeartbeatRunPrompt } from '../prompts/index.js';
+import type { SkillsService } from '../modules/skills/skills.service.js';
 
 const DEFAULT_HEARTBEAT_MINUTES = 60;
 const DEFAULT_POLL_MS = 30_000;
@@ -43,6 +44,7 @@ export interface HeartbeatRuntimeOptions {
   queueService: QueueService;
   agentService: AgentService;
   settingsService: SettingsService;
+  skillsService?: SkillsService;
   pollMs?: number;
   defaultHeartbeatMinutes?: number;
 }
@@ -130,6 +132,7 @@ export class HeartbeatRuntimeService {
             agentName: agent.name,
             agentRole: agent.role,
             agentDepartment: agent.department,
+            skills: await this.resolveSkillsForAgent(agent),
             timestamp: now.toISOString()
           })
         };
@@ -329,6 +332,18 @@ export class HeartbeatRuntimeService {
     }
 
     return true;
+  }
+
+  private async resolveSkillsForAgent(agent: { id: string; name: string; level: string }) {
+    if (!this.options.skillsService) {
+      return [];
+    }
+
+    return this.options.skillsService.listForAgent({
+      level: agent.level,
+      id: agent.id,
+      name: agent.name
+    });
   }
 
   private async resolveHeartbeatIntervalMs(): Promise<number> {

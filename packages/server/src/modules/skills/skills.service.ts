@@ -3,7 +3,14 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { parseSkillMarkdown } from './skills.parser.js';
-import type { InvalidSkillItem, SkillItem, SkillsListResponse, SkillsRegistry } from './skills.types.js';
+import type {
+  DiscoveredSkillItem,
+  InvalidSkillItem,
+  SkillAgentTarget,
+  SkillItem,
+  SkillsListResponse,
+  SkillsRegistry
+} from './skills.types.js';
 
 const SKILLS_REGISTRY_KEY = 'skills.registry';
 
@@ -16,18 +23,29 @@ export class SkillsService {
   async list(): Promise<SkillsListResponse> {
     const discovered = await this.discover();
     const registry = await this.getRegistry();
-    const enabledSet = new Set(registry.enabled);
 
     return {
-      items: discovered.items.map((item) => ({ ...item, enabled: enabledSet.has(item.id) })),
+      items: discovered.items.map((item) => toSkillItem(item, isSkillEnabled(item, registry))),
       invalidSkills: discovered.invalidSkills
     };
   }
 
+  async listForAgent(target: SkillAgentTarget): Promise<SkillItem[]> {
+    const discovered = await this.discover();
+    const registry = await this.getRegistry();
+
+    return discovered.items
+      .filter((item) => isSkillEnabled(item, registry))
+      .filter((item) => appliesToAgent(item, target))
+      .map((item) => toSkillItem(item, true));
+  }
+
   async getById(id: string): Promise<SkillItem | null> {
     const normalizedId = normalizeSkillId(id);
-    const listed = await this.list();
-    return listed.items.find((item) => item.id === normalizedId) ?? null;
+    const discovered = await this.discover();
+    const registry = await this.getRegistry();
+    const existing = discovered.items.find((item) => item.id === normalizedId);
+    return existing ? toSkillItem(existing, isSkillEnabled(existing, registry)) : null;
   }
 
   async enable(id: string): Promise<SkillItem> {
@@ -38,11 +56,10 @@ export class SkillsService {
     }
 
     const registry = await this.getRegistry();
-    if (!registry.enabled.includes(normalizedId)) {
-      registry.enabled.push(normalizedId);
-    }
+    registry.enabled = Array.from(new Set([...registry.enabled, normalizedId]));
+    registry.disabled = registry.disabled.filter((item) => item !== normalizedId);
 
-    await this.setRegistry(registry.enabled);
+    await this.setRegistry(registry);
     return { ...existing, enabled: true };
   }
 
@@ -54,12 +71,13 @@ export class SkillsService {
     }
 
     const registry = await this.getRegistry();
-    const nextEnabled = registry.enabled.filter((item) => item !== normalizedId);
-    await this.setRegistry(nextEnabled);
+    registry.enabled = registry.enabled.filter((item) => item !== normalizedId);
+    registry.disabled = Array.from(new Set([...registry.disabled, normalizedId]));
+    await this.setRegistry(registry);
     return { ...existing, enabled: false };
   }
 
-  private async discover(): Promise<{ items: SkillItem[]; invalidSkills: InvalidSkillItem[] }> {
+  private async discover(): Promise<{ items: DiscoveredSkillItem[]; invalidSkills: InvalidSkillItem[] }> {
     if (!(await pathExists(this.skillsRootDir))) {
       return {
         items: [],
@@ -68,7 +86,7 @@ export class SkillsService {
     }
 
     const entries = await readdir(this.skillsRootDir, { withFileTypes: true });
-    const items: SkillItem[] = [];
+    const items: DiscoveredSkillItem[] = [];
     const invalidSkills: InvalidSkillItem[] = [];
 
     for (const entry of entries) {
@@ -91,14 +109,15 @@ export class SkillsService {
           description: metadata.description,
           version: metadata.version,
           tags: metadata.tags,
-          path: normalizePath(path.relative(process.cwd(), skillFilePath)),
+          path: normalizePath(skillFilePath),
           source: 'local',
-          enabled: false
+          defaultEnabled: metadata.defaultEnabled,
+          applyTo: metadata.applyTo
         });
       } catch (error) {
         invalidSkills.push({
           id: defaultId,
-          path: normalizePath(path.relative(process.cwd(), skillFilePath)),
+          path: normalizePath(skillFilePath),
           reason: error instanceof Error ? error.message : 'SKILL_PARSE_FAILED'
         });
       }
@@ -115,30 +134,27 @@ export class SkillsService {
     const value = setting?.value;
 
     if (!isRegistryPayload(value)) {
+        return {
+          enabled: [],
+          disabled: [],
+          updatedAt: new Date(0).toISOString()
+        };
+      }
+
+      const enabled = normalizeRegistryList(value.enabled);
+      const disabled = normalizeRegistryList(value.disabled);
+
       return {
-        enabled: [],
-        updatedAt: new Date(0).toISOString()
+        enabled,
+        disabled,
+        updatedAt: value.updatedAt
       };
-    }
-
-    const enabled = Array.from(
-      new Set(
-        value.enabled
-          .filter((item) => typeof item === 'string')
-          .map((item) => normalizeSkillId(item))
-          .filter((item) => item.length > 0)
-      )
-    );
-
-    return {
-      enabled,
-      updatedAt: value.updatedAt
-    };
   }
 
-  private async setRegistry(enabled: string[]): Promise<void> {
+  private async setRegistry(registry: SkillsRegistry): Promise<void> {
     const payload: SkillsRegistry = {
-      enabled: Array.from(new Set(enabled.map((item) => normalizeSkillId(item)).filter((item) => item.length > 0))),
+      enabled: normalizeRegistryList(registry.enabled),
+      disabled: normalizeRegistryList(registry.disabled),
       updatedAt: new Date().toISOString()
     };
 
@@ -162,6 +178,7 @@ function isRegistryPayload(
   value: unknown
 ): value is {
   enabled: unknown[];
+  disabled?: unknown[];
   updatedAt: string;
 } {
   if (typeof value !== 'object' || value === null) {
@@ -170,6 +187,57 @@ function isRegistryPayload(
 
   const payload = value as Record<string, unknown>;
   return Array.isArray(payload.enabled) && typeof payload.updatedAt === 'string';
+}
+
+function normalizeRegistryList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => normalizeSkillId(item))
+        .filter((item) => item.length > 0)
+    )
+  );
+}
+
+function toSkillItem(item: DiscoveredSkillItem, enabled: boolean): SkillItem {
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    version: item.version,
+    tags: item.tags,
+    path: item.path,
+    source: item.source,
+    enabled
+  };
+}
+
+function isSkillEnabled(item: DiscoveredSkillItem, registry: SkillsRegistry): boolean {
+  return (item.defaultEnabled || registry.enabled.includes(item.id)) && !registry.disabled.includes(item.id);
+}
+
+function appliesToAgent(item: DiscoveredSkillItem, target: SkillAgentTarget): boolean {
+  if (item.applyTo.length === 0) {
+    return true;
+  }
+
+  const candidates = [
+    target.level?.trim().toLowerCase(),
+    target.id?.trim().toLowerCase(),
+    target.name?.trim().toLowerCase()
+  ].filter((value): value is string => Boolean(value));
+
+  if (candidates.length === 0) {
+    return false;
+  }
+
+  const scope = new Set(item.applyTo.map((entry) => entry.trim().toLowerCase()).filter((entry) => entry.length > 0));
+  return candidates.some((candidate) => scope.has(candidate));
 }
 
 function normalizeSkillId(id: string): string {
@@ -183,4 +251,3 @@ function normalizeSkillId(id: string): string {
 function normalizePath(relativePath: string): string {
   return relativePath.split(path.sep).join('/');
 }
-

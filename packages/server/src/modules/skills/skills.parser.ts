@@ -4,6 +4,8 @@ export interface ParsedSkillMetadata {
   description: string;
   version: string | null;
   tags: string[];
+  defaultEnabled: boolean;
+  applyTo: string[];
 }
 
 interface ParseSkillMarkdownInput {
@@ -17,37 +19,48 @@ export function parseSkillMarkdown(input: ParseSkillMarkdownInput): ParsedSkillM
   const frontmatterMatch = input.content.match(FRONTMATTER_PATTERN);
   const frontmatter = parseFrontmatter(frontmatterMatch?.[1]);
   const body = frontmatterMatch ? input.content.slice(frontmatterMatch[0].length) : input.content;
+  const metadata = asRecord(frontmatter.metadata);
 
-  const idSource = firstNonEmpty(frontmatter.name, input.defaultId);
+  const idSource = firstNonEmpty(asString(frontmatter.name), input.defaultId);
   const id = normalizeSkillId(idSource);
   if (!id) {
     throw new Error('SKILL_INVALID_ID:Skill id cannot be empty');
   }
 
   const headingTitle = extractHeading(body);
-  const description = firstNonEmpty(frontmatter.description, extractFirstParagraph(body));
+  const description = firstNonEmpty(asString(frontmatter.description), extractFirstParagraph(body));
   if (!description) {
     throw new Error('SKILL_INVALID_DESCRIPTION:Skill description is required');
   }
 
   return {
     id,
-    name: firstNonEmpty(frontmatter.title, headingTitle, toTitleFromId(id)),
+    name: firstNonEmpty(asString(frontmatter.title), headingTitle, toTitleFromId(id)),
     description,
-    version: frontmatter.version ?? null,
-    tags: parseTags(frontmatter.tags)
+    version: asString(frontmatter.version) ?? null,
+    tags: parseTags(frontmatter.tags),
+    defaultEnabled: asBoolean(metadata.default) ?? asBoolean(metadata.is_default) ?? false,
+    applyTo: parseApplyTo(metadata.apply_to)
   };
 }
 
-function parseFrontmatter(raw: string | undefined): Record<string, string> {
+interface FrontmatterObject {
+  [key: string]: FrontmatterValue;
+}
+
+type FrontmatterValue = string | boolean | string[] | FrontmatterObject;
+
+function parseFrontmatter(raw: string | undefined): FrontmatterObject {
   if (!raw) {
     return {};
   }
 
   const lines = raw.split(/\r?\n/);
-  const output: Record<string, string> = {};
+  const output: FrontmatterObject = {};
+  let currentObjectKey: string | null = null;
 
   for (const line of lines) {
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) {
       continue;
@@ -60,7 +73,26 @@ function parseFrontmatter(raw: string | undefined): Record<string, string> {
 
     const key = trimmed.slice(0, delimiterIndex).trim();
     const value = trimmed.slice(delimiterIndex + 1).trim();
-    output[key] = unquote(value);
+
+    if (indent === 0) {
+      if (!value) {
+        output[key] = {};
+        currentObjectKey = key;
+        continue;
+      }
+
+      output[key] = parseScalarValue(value);
+      currentObjectKey = null;
+      continue;
+    }
+
+    if (!currentObjectKey) {
+      continue;
+    }
+
+    const parent = asRecord(output[currentObjectKey]);
+    parent[key] = parseScalarValue(value);
+    output[currentObjectKey] = parent;
   }
 
   return output;
@@ -90,8 +122,14 @@ function extractFirstParagraph(content: string): string | null {
   return null;
 }
 
-function parseTags(raw: string | undefined): string[] {
-  if (!raw) {
+function parseTags(raw: FrontmatterValue | undefined): string[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => normalizeTag(String(item)))
+      .filter((item) => item.length > 0);
+  }
+
+  if (typeof raw !== 'string') {
     return [];
   }
 
@@ -112,6 +150,33 @@ function parseTags(raw: string | undefined): string[] {
     .split(',')
     .map((item) => normalizeTag(item))
     .filter((item) => item.length > 0);
+}
+
+function parseApplyTo(raw: FrontmatterValue | undefined): string[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => String(item).trim())
+      .filter((item) => item.length > 0);
+  }
+
+  if (typeof raw !== 'string') {
+    return [];
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    return trimmed
+      .slice(1, -1)
+      .split(',')
+      .map((item) => unquote(item.trim()))
+      .filter((item) => item.length > 0);
+  }
+
+  return [unquote(trimmed)].filter((item) => item.length > 0);
 }
 
 function normalizeTag(value: string): string {
@@ -150,6 +215,43 @@ function unquote(value: string): string {
   return trimmed;
 }
 
+function parseScalarValue(value: string): FrontmatterValue {
+  const trimmed = value.trim();
+  if (trimmed === 'true') {
+    return true;
+  }
+
+  if (trimmed === 'false') {
+    return false;
+  }
+
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    return trimmed
+      .slice(1, -1)
+      .split(',')
+      .map((item) => unquote(item.trim()))
+      .filter((item) => item.length > 0);
+  }
+
+  return unquote(trimmed);
+}
+
+function asString(value: FrontmatterValue | undefined): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+function asBoolean(value: FrontmatterValue | undefined): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function asRecord(value: FrontmatterValue | undefined): FrontmatterObject {
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return value;
+  }
+
+  return {};
+}
+
 function firstNonEmpty(...values: Array<string | null | undefined>): string {
   for (const value of values) {
     if (typeof value === 'string' && value.trim().length > 0) {
@@ -159,4 +261,3 @@ function firstNonEmpty(...values: Array<string | null | undefined>): string {
 
   return '';
 }
-
