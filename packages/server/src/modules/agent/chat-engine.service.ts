@@ -1,6 +1,7 @@
 import type { AgentLevel, AiAdapterRegistry, SettingsService, ToolExecutionResult } from '@familyco/core';
 import { runAgentLoop } from '@familyco/core';
 import type { AgentLoopEvent } from '@familyco/core';
+import type { AdapterChatAttachment } from '@familyco/core';
 import type { PromptConversationEntry } from '../../prompts/prompt.types.js';
 import { renderChatSystemPrompt, renderChatUserPrompt } from '../../prompts/index.js';
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
@@ -19,7 +20,9 @@ export interface ChatEngineRunInput {
   companyProfile: { companyName: string; companyDescription: string };
   conversationHistory: PromptConversationEntry[];
   availableTools: ToolDefinitionSummary[];
+  attachments?: AdapterChatAttachment[];
   onEvent?: (event: AgentLoopEvent) => void;
+  abortSignal?: AbortSignal;
   executeTool: (input: { toolName: string; arguments: Record<string, unknown> }) => Promise<ToolExecutionResult>;
 }
 
@@ -82,8 +85,10 @@ export class ChatEngineService {
       model: adapterConfig.model,
       systemPrompt,
       userPrompt,
+      attachments: input.attachments,
       availableTools: filteredTools,
       onEvent: input.onEvent,
+      abortSignal: input.abortSignal,
       executeTool: async (toolInput) => {
         const result = await input.executeTool(toolInput);
 

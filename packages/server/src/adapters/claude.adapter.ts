@@ -22,9 +22,10 @@ export class ClaudeAdapter implements AiAdapter {
     const result = streamText({
       model: anthropic(input.model),
       system: input.systemPrompt,
-      messages: buildCoreMessages(input.userPrompt, input.previousTurns ?? []),
+      messages: buildCoreMessages(input.userPrompt, input.previousTurns ?? [], input.attachments ?? []),
       tools: toolSet?.tools,
       maxOutputTokens: supportsThinking ? 1_200 : 800,
+      abortSignal: input.abortSignal,
       onChunk: ({ chunk }) => {
         if (chunk.type === 'text-delta') {
           input.onChunk?.(chunk.text);

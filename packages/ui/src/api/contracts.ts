@@ -27,8 +27,29 @@ export interface AgentChatMessage {
     taskId?: string;
     projectId?: string;
     toolCalls?: ChatToolCallItem[];
+    attachments?: ChatAttachmentItem[];
+    editedFromMessageId?: string;
+    supersedesMessageId?: string;
+    supersededByMessageId?: string;
     [key: string]: unknown;
   };
+}
+
+export type ChatAttachmentKind = 'file' | 'audio';
+
+export interface ChatAttachmentReference {
+  id: string;
+}
+
+export interface ChatAttachmentItem {
+  id: string;
+  kind: ChatAttachmentKind;
+  name: string;
+  mediaType: string;
+  sizeBytes: number;
+  storageKey: string;
+  createdAt: string;
+  transcript?: string;
 }
 
 export interface ProjectListItem {
@@ -296,7 +317,16 @@ export interface SendAgentChatPayload {
     taskId?: string;
     toolCall?: ChatToolRequest;
     toolCalls?: ChatToolRequest[];
+    attachments?: ChatAttachmentReference[];
+    editedFromMessageId?: string;
+    supersedesMessageId?: string;
   };
+}
+
+export interface UploadAgentChatAttachmentPayload {
+  agentId: string;
+  file: Blob;
+  filename: string;
 }
 
 export interface ChatToolCallItem {
@@ -427,6 +457,7 @@ export interface FamilyCoApiContracts {
   getAgentChat: (agentId: string, query?: GetAgentChatQuery) => Promise<AgentChatMessage[]>;
   getAgentSlashCommands: (agentId: string) => Promise<SlashCommandItem[]>;
   sendAgentChat: (payload: SendAgentChatPayload) => Promise<SendAgentChatResult>;
+  uploadAgentChatAttachment: (payload: UploadAgentChatAttachmentPayload) => Promise<ChatAttachmentItem>;
   createAgent: (payload: CreateAgentPayload) => Promise<CreateAgentResult>;
   pauseAgent: (payload: PauseAgentPayload) => Promise<PauseAgentResult>;
   updateAgent: (payload: UpdateAgentPayload) => Promise<AgentListItem>;
@@ -493,6 +524,11 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
         meta: payload.meta
       }
     ),
+  uploadAgentChatAttachment: async (payload) => {
+    const formData = new FormData();
+    formData.append('file', payload.file, payload.filename);
+    return client.post<ChatAttachmentItem>(`/api/v1/agents/${payload.agentId}/chat/attachments`, formData);
+  },
   createAgent: (payload) => client.post<CreateAgentResult, CreateAgentPayload>('/api/v1/agents', payload),
   pauseAgent: (payload) => client.post<PauseAgentResult>(`/api/v1/agents/${payload.agentId}/pause`),
   updateAgent: (payload) =>

@@ -1,7 +1,7 @@
 import { tool, jsonSchema, type ModelMessage, type ToolSet, type JSONValue } from 'ai';
 import type { ToolCallPart } from 'ai';
 
-import type { AdapterPreviousTurn, AdapterToolDefinition } from '@familyco/core';
+import type { AdapterChatAttachment, AdapterPreviousTurn, AdapterToolDefinition } from '@familyco/core';
 
 export interface VercelToolSet {
   tools: ToolSet;
@@ -24,9 +24,41 @@ export function toSafeToolName(name: string): string {
  */
 export function buildCoreMessages(
   userPrompt: string,
-  previousTurns: AdapterPreviousTurn[]
+  previousTurns: AdapterPreviousTurn[],
+  attachments: AdapterChatAttachment[] = []
 ): ModelMessage[] {
-  const messages: ModelMessage[] = [{ role: 'user', content: userPrompt }];
+  const userContent: Array<
+    | { type: 'text'; text: string }
+    | { type: 'file'; data: Uint8Array; filename?: string; mediaType: string }
+  > = [];
+
+  if (userPrompt.trim().length > 0) {
+    userContent.push({ type: 'text', text: userPrompt });
+  }
+
+  for (const attachment of attachments) {
+    if (attachment.kind === 'audio') {
+      if (attachment.transcript?.trim()) {
+        userContent.push({
+          type: 'text',
+          text: `Transcript for ${attachment.filename}:\n${attachment.transcript.trim()}`
+        });
+      }
+      continue;
+    }
+
+    userContent.push({
+      type: 'file',
+      data: attachment.data,
+      filename: attachment.filename,
+      mediaType: attachment.mediaType
+    });
+  }
+
+  const messages: ModelMessage[] = [{
+    role: 'user',
+    content: userContent.length > 0 ? userContent : [{ type: 'text', text: '' }]
+  }];
 
   for (const turn of previousTurns) {
     const assistantContent: Array<

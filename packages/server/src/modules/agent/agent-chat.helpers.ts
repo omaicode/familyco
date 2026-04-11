@@ -1,6 +1,7 @@
 import type { AgentService, AuditService, InboxService } from '@familyco/core';
 import type { ChatEngineResult } from './chat-engine.service.js';
 import type { ChatToolCall, ProcessedChatResult } from './agent.types.js';
+import type { ChatAttachmentRecord } from './chat-attachment-store.js';
 
 export async function buildProcessedChatResult(input: {
   agent: Awaited<ReturnType<AgentService['getAgentById']>>;
@@ -88,6 +89,9 @@ export async function createFounderMessage(input: {
   agentId: string;
   body: string;
   meta?: Record<string, unknown> | null;
+  attachments?: ChatAttachmentRecord[];
+  editedFromMessageId?: string;
+  supersedesMessageId?: string;
   slashCommand: string | null;
   inboxService: InboxService;
 }): Promise<Awaited<ReturnType<InboxService['createMessage']>>> {
@@ -100,6 +104,9 @@ export async function createFounderMessage(input: {
     payload: {
       channel: 'chat',
       meta: input.meta ?? null,
+      ...(input.attachments && input.attachments.length > 0 ? { attachments: input.attachments } : {}),
+      ...(input.editedFromMessageId ? { editedFromMessageId: input.editedFromMessageId } : {}),
+      ...(input.supersedesMessageId ? { supersedesMessageId: input.supersedesMessageId } : {}),
       ...(input.slashCommand ? { slashCommand: input.slashCommand } : {})
     }
   });

@@ -1,4 +1,5 @@
 import type { AiAdapter, AdapterToolDefinition, AdapterPreviousTurn } from '../ai-adapter/index.js';
+import type { AdapterChatAttachment } from '../ai-adapter/index.js';
 
 export type AgentLoopEvent =
   | { type: 'chunk'; text: string }
@@ -28,10 +29,12 @@ export interface AgentLoopInput {
   model: string;
   systemPrompt: string;
   userPrompt: string;
+  attachments?: AdapterChatAttachment[];
   availableTools?: AdapterToolDefinition[];
   previousTurns?: AdapterPreviousTurn[];
   maxRounds?: number;
   onEvent?: (event: AgentLoopEvent) => void;
+  abortSignal?: AbortSignal;
   executeTool: (input: { toolName: string; arguments: Record<string, unknown> }) => Promise<{
     ok: boolean;
     output?: unknown;
@@ -61,9 +64,11 @@ export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResu
       model: input.model,
       systemPrompt: input.systemPrompt,
       userPrompt: input.userPrompt,
+      attachments: input.attachments,
       tools: input.availableTools,
       previousTurns,
-      onChunk: (chunk) => input.onEvent?.({ type: 'chunk', text: chunk })
+      onChunk: (chunk) => input.onEvent?.({ type: 'chunk', text: chunk }),
+      abortSignal: input.abortSignal
     });
 
     if (response.content.trim().length > 0) {

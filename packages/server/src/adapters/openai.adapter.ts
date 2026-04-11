@@ -24,8 +24,9 @@ export class OpenAiAdapter implements AiAdapter {
     const result = streamText({
       model: openai(model),
       system: input.systemPrompt,
-      messages: buildCoreMessages(input.userPrompt, input.previousTurns ?? []),
+      messages: buildCoreMessages(input.userPrompt, input.previousTurns ?? [], input.attachments ?? []),
       tools: toolSet?.tools,
+      abortSignal: input.abortSignal,
       onChunk: ({ chunk }) => {
         if (chunk.type === 'text-delta') {
           input.onChunk?.(chunk.text);

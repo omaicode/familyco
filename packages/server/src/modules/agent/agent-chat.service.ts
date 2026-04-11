@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { AgentLoopEvent, AgentService } from '@familyco/core';
+import type { ChatAttachmentData } from './chat-attachment-store.js';
 
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
 import type { ParsedSlashEntry } from './agent-chat.registry.js';
@@ -161,10 +162,22 @@ export async function processAgentChat(input: {
     });
   }
 
+  const attachments = await loadChatAttachments(input.body.meta, input.deps);
+
   const founderMessage = await createFounderMessage({
     agentId: agent.id,
     body: input.body.message,
     meta: isRecord(input.body.meta) ? input.body.meta : null,
+    attachments: attachments.map((attachment) => ({
+      id: attachment.id,
+      kind: attachment.kind,
+      name: attachment.name,
+      mediaType: attachment.mediaType,
+      sizeBytes: attachment.sizeBytes,
+      storageKey: attachment.storageKey,
+      createdAt: attachment.createdAt,
+      ...(attachment.transcript ? { transcript: attachment.transcript } : {})
+    })),
     slashCommand: null,
     inboxService: input.deps.inboxService
   });
@@ -182,6 +195,15 @@ export async function processAgentChat(input: {
     agentModel: agent.aiModel ?? null,
     agentLevel: agent.level,
     message: input.body.message,
+    attachments: attachments.map((attachment) => ({
+      id: attachment.id,
+      kind: attachment.kind,
+      filename: attachment.name,
+      mediaType: attachment.mediaType,
+      sizeBytes: attachment.sizeBytes,
+      data: attachment.data,
+      ...(attachment.transcript ? { transcript: attachment.transcript } : {})
+    })),
     companyProfile,
     conversationHistory: conversationHistory.map(toConversationHistoryEntry),
     availableTools: allTools,
@@ -332,6 +354,23 @@ async function runSlashCommand(input: {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+async function loadChatAttachments(
+  meta: ChatRequestBody['meta'],
+  deps: AgentModuleDeps
+): Promise<ChatAttachmentData[]> {
+  if (!Array.isArray(meta?.attachments) || meta.attachments.length === 0) {
+    return [];
+  }
+
+  const loaded = await Promise.all(
+    meta.attachments
+      .filter((entry): entry is { id: string } => isRecord(entry) && typeof entry.id === 'string')
+      .map(async (entry) => deps.chatAttachmentStore.read(entry.id))
+  );
+
+  return loaded.filter((entry): entry is ChatAttachmentData => entry !== null);
 }
 
 function toCompanyProfile(value: unknown): { companyName: string; companyDescription: string } {
