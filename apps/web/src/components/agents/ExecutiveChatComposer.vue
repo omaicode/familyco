@@ -25,7 +25,7 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void;
   (event: 'send'): void;
   (event: 'cancel'): void;
-  (event: 'pick-attachments', files: FileList): void;
+  (event: 'pick-attachments', files: File[]): void;
   (event: 'remove-attachment', localId: string): void;
 }>();
 

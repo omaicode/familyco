@@ -167,12 +167,11 @@ export function useExecutiveChat() {
 
   useAutoReload(reload);
 
-  const uploadAttachments = async (files: FileList): Promise<void> => {
-    if (!selectedAgentId.value || files.length === 0) {
+  const uploadAttachments = async (files: File[] | FileList): Promise<void> => {
+    const selectedFiles = Array.isArray(files) ? files : Array.from(files);
+    if (!selectedAgentId.value || selectedFiles.length === 0) {
       return;
     }
-
-    const selectedFiles = Array.from(files);
     const pendingEntries = selectedFiles.map((file) => createPendingAttachment(file));
     draftAttachments.value = [...draftAttachments.value, ...pendingEntries];
 

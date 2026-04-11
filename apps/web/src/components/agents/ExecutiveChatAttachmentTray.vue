@@ -4,6 +4,7 @@ import { Paperclip } from 'lucide-vue-next';
 
 import type { DraftChatAttachment } from '../../composables/executiveChat.shared';
 import { useI18n } from '../../composables/useI18n';
+import ExecutiveChatRecorderButton from './ExecutiveChatRecorderButton.vue';
 import ChatAttachmentList from '../chat/ChatAttachmentList.vue';
 import FcButton from '../FcButton.vue';
 
@@ -14,7 +15,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (event: 'pick', files: FileList): void;
+  (event: 'pick', files: File[]): void;
   (event: 'remove', localId: string): void;
 }>();
 
@@ -34,7 +35,7 @@ const openFilePicker = (): void => {
 const handleFileChange = (event: Event): void => {
   const input = event.target as HTMLInputElement;
   if (input.files && input.files.length > 0) {
-    emit('pick', input.files);
+    emit('pick', Array.from(input.files));
   }
   input.value = '';
 };
@@ -43,10 +44,13 @@ const handleFileChange = (event: Event): void => {
 <template>
   <div class="chat-attachment-tray">
     <div class="chat-attachment-actions">
-      <FcButton variant="secondary" size="sm" :disabled="props.disabled" @click="openFilePicker">
-        <Paperclip :size="14" />
-        {{ t('chat.attachment.add') }}
-      </FcButton>
+      <div class="chat-attachment-controls">
+        <FcButton variant="secondary" size="sm" :disabled="props.disabled" @click="openFilePicker">
+          <Paperclip :size="14" />
+          {{ t('chat.attachment.add') }}
+        </FcButton>
+        <ExecutiveChatRecorderButton :disabled="props.disabled" @recorded="emit('pick', [$event])" />
+      </div>
       <span v-if="hasPendingUploads" class="chat-attachment-uploading">{{ t('chat.attachment.uploading') }}</span>
     </div>
 
@@ -82,6 +86,13 @@ const handleFileChange = (event: Event): void => {
   gap: 8px;
   align-items: center;
   justify-content: space-between;
+}
+
+.chat-attachment-controls {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .chat-attachment-input {
