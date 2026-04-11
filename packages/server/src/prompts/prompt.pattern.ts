@@ -1,26 +1,32 @@
+import { getConstitutionPrompt } from "./base/consitution";
+
 interface PromptTemplateInput {
-  role: string;
-  goal: string;
-  constraints: string[];
-  outputContract?: string[];
+  role: string[];
+  responsibilities?: string[];
+  capabilities: string[];
+  tools?: string[];
+  skills?: string[];
   context?: string[];
 }
 
 export function renderRoleGoalConstraintsTemplate(input: PromptTemplateInput): string {
   const sections: string[] = [
+    'Constitution',
+    ...getConstitutionPrompt(),
+    '',
     'Role:',
-    input.role,
+    ...(input.role || []),
     '',
-    'Goal:',
-    input.goal,
+    'Responsibilities:',
+    ...(input.responsibilities || []),
     '',
-    'Constraints:',
-    ...input.constraints.map((constraint) => `- ${constraint}`)
+    'Capabilities and limitations:',
+    ...input.capabilities,
+    '',
+    ...(input.tools && input.tools.length > 0 ? ['TOOLS:', ...input.tools] : []),
+    '',
+    ...(input.skills && input.skills.length > 0 ? ['Skills:', ...input.skills] : [])
   ];
-
-  if (input.outputContract && input.outputContract.length > 0) {
-    sections.push('', 'Output Contract:', ...input.outputContract.map((item) => `- ${item}`));
-  }
 
   if (input.context && input.context.length > 0) {
     sections.push('', 'Context:', ...input.context);
