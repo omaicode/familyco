@@ -184,6 +184,12 @@ export async function processAgentChat(input: {
   }
 
   const attachments = await loadChatAttachments(input.body.meta, input.deps);
+  const editedFromMessageId = typeof input.body.meta?.editedFromMessageId === 'string'
+    ? input.body.meta.editedFromMessageId
+    : undefined;
+  const supersedesMessageId = typeof input.body.meta?.supersedesMessageId === 'string'
+    ? input.body.meta.supersedesMessageId
+    : undefined;
   const preparedAttachments = await input.deps.chatEngineService.prepareAttachments({
     agentAdapterId: agent.aiAdapterId ?? null,
     agentModel: agent.aiModel ?? null,
@@ -228,6 +234,8 @@ export async function processAgentChat(input: {
       createdAt: attachments.find((entry) => entry.id === attachment.id)?.createdAt ?? new Date().toISOString(),
       ...(attachment.transcript ? { transcript: attachment.transcript } : {})
     })),
+    editedFromMessageId,
+    supersedesMessageId,
     slashCommand: null,
     inboxService: input.deps.inboxService
   });
@@ -236,6 +244,19 @@ export async function processAgentChat(input: {
     input.deps.inboxService.listConversation(agent.id, 12),
     input.deps.toolExecutor.execute({ toolName: 'company.profile.read', arguments: {} }).catch(() => null)
   ]);
+
+  if (supersedesMessageId) {
+    const supersededMessage = conversationHistory.find((message) => message.id === supersedesMessageId);
+    if (supersededMessage) {
+      await input.deps.inboxService.updateMessage(supersedesMessageId, {
+        payload: {
+          ...(supersededMessage.payload ?? {}),
+          supersededByMessageId: founderMessage.id,
+          editedAt: founderMessage.createdAt.toISOString()
+        }
+      });
+    }
+  }
 
   const companyProfile = toCompanyProfile(profileResult?.output);
   const allTools = input.deps.listTools();

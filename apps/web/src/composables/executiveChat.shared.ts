@@ -40,6 +40,10 @@ export type ThreadMessage = AgentChatMessage & {
     toolCalls?: ChatToolCallDetails[];
     toolsInProgress?: ChatToolInProgress[];
     attachments?: ChatAttachmentItem[];
+    editedAt?: string;
+    editedFromMessageId?: string;
+    supersedesMessageId?: string;
+    supersededByMessageId?: string;
     confirmRequest?: ChatConfirmRequest;
     resuming?: boolean;
     [key: string]: unknown;

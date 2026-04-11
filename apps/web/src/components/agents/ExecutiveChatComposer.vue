@@ -14,6 +14,7 @@ const props = defineProps<{
   modelValue: string;
   agentId: string;
   attachments: DraftChatAttachment[];
+  editingPreview?: string;
   connectionState: ConnectionState;
   isSending: boolean;
   isStreaming: boolean;
@@ -25,6 +26,7 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void;
   (event: 'send'): void;
   (event: 'cancel'): void;
+  (event: 'cancel-edit'): void;
   (event: 'pick-attachments', files: File[]): void;
   (event: 'remove-attachment', localId: string): void;
 }>();
@@ -58,6 +60,16 @@ const isSendDisabled = computed(() =>
 <template>
   <div class="chat-compose">
     <label class="fc-label" for="founder-message">{{ t('Message') }}</label>
+
+    <div v-if="props.editingPreview" class="chat-editing-banner">
+      <div class="chat-editing-copy">
+        <strong>{{ t('chat.composer.editing') }}</strong>
+        <span>{{ props.editingPreview }}</span>
+      </div>
+      <button type="button" class="chat-editing-cancel" @click="emit('cancel-edit')">
+        {{ t('chat.composer.cancelEdit') }}
+      </button>
+    </div>
 
     <ExecutiveChatAttachmentTray
       :agent-id="props.agentId"
@@ -123,6 +135,46 @@ const isSendDisabled = computed(() =>
 
 .chat-compose-shell {
   position: relative;
+}
+
+.chat-editing-banner {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--fc-primary) 8%, var(--fc-surface));
+  border: 1px solid color-mix(in srgb, var(--fc-primary) 24%, var(--fc-border-subtle));
+}
+
+.chat-editing-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chat-editing-copy strong {
+  font-size: 0.78rem;
+  color: var(--fc-primary);
+}
+
+.chat-editing-copy span {
+  color: var(--fc-text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-editing-cancel {
+  border: 0;
+  background: transparent;
+  color: var(--fc-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .chat-textarea {

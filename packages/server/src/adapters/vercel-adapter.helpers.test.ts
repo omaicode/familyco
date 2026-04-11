@@ -68,7 +68,7 @@ test('buildCoreMessages: produces user message for simple prompt, no history', (
   const messages = buildCoreMessages('hello', []);
   assert.equal(messages.length, 1);
   assert.equal(messages[0]?.role, 'user');
-  assert.equal(messages[0]?.content, 'hello');
+  assert.deepEqual(messages[0]?.content, [{ type: 'text', text: 'hello' }]);
 });
 
 test('buildCoreMessages: adds assistant message for text-only previous turn', () => {
@@ -82,7 +82,7 @@ test('buildCoreMessages: adds assistant message for text-only previous turn', ()
   // Structure: [user: follow-up, assistant: previous response]
   assert.equal(messages.length, 2);
   assert.equal(messages[0]?.role, 'user');
-  assert.equal(messages[0]?.content, 'follow-up');
+  assert.deepEqual(messages[0]?.content, [{ type: 'text', text: 'follow-up' }]);
   assert.equal(messages[1]?.role, 'assistant');
   const assistantContent = messages[1]?.content as Array<{ type: string; text: string }>;
   assert.equal(assistantContent[0]?.type, 'text');

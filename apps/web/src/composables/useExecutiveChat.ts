@@ -1,6 +1,6 @@
 import { computed, ref, watch } from 'vue';
 
-import { translate, type ChatAttachmentReference } from '@familyco/ui';
+import { translate, type ChatAttachmentItem, type ChatAttachmentReference } from '@familyco/ui';
 
 import { uiRuntime } from '../runtime';
 import { type ChatFeedback, type DraftChatAttachment, type ThreadMessage, sortThread } from './executiveChat.shared';
@@ -15,6 +15,7 @@ export function useExecutiveChat() {
   const selectedAgentId = ref('');
   const draftMessage = ref('');
   const draftAttachments = ref<DraftChatAttachment[]>([]);
+  const editingMessageId = ref<string | null>(null);
   const isLoading = ref(false);
   const isRefreshing = ref(false);
   const isLoadingOlder = ref(false);
@@ -31,6 +32,9 @@ export function useExecutiveChat() {
   );
   const isUploadingAttachments = computed(() =>
     draftAttachments.value.some((attachment) => attachment.uploadState === 'uploading')
+  );
+  const editingMessage = computed(
+    () => thread.value.find((message) => message.id === editingMessageId.value) ?? null
   );
 
   const setFeedback = (type: 'success' | 'error' | 'info', text: string): void => {
@@ -142,6 +146,7 @@ export function useExecutiveChat() {
   watch(selectedAgentId, () => {
     hasMoreHistory.value = true;
     draftAttachments.value = [];
+    editingMessageId.value = null;
 
     if (!isLoading.value) {
       void refreshThread();
@@ -215,6 +220,22 @@ export function useExecutiveChat() {
     draftAttachments.value = draftAttachments.value.filter((attachment) => attachment.localId !== localId);
   };
 
+  const startEditingMessage = (message: ThreadMessage): void => {
+    editingMessageId.value = message.id;
+    draftMessage.value = message.body;
+    draftAttachments.value = readDraftAttachmentsFromMessage(message).map((attachment) => ({
+      ...attachment,
+      localId: crypto.randomUUID(),
+      uploadState: 'uploaded'
+    }));
+  };
+
+  const cancelEditing = (): void => {
+    editingMessageId.value = null;
+    draftMessage.value = '';
+    draftAttachments.value = [];
+  };
+
   const sendMessage = (): void => {
     if (isUploadingAttachments.value) {
       setFeedback('info', t('chat.attachment.waitUpload'));
@@ -230,14 +251,31 @@ export function useExecutiveChat() {
       (attachment): attachment is DraftChatAttachment & { uploadState: 'uploaded' } => attachment.uploadState === 'uploaded'
     );
     const attachmentRefs: ChatAttachmentReference[] = uploadedAttachments.map((attachment) => ({ id: attachment.id }));
+    const editMeta = editingMessageId.value
+      ? {
+          editedFromMessageId: editingMessageId.value,
+          supersedesMessageId: editingMessageId.value
+        }
+      : undefined;
 
     const sent = streamSendMessage({
-      meta: attachmentRefs.length > 0 ? { attachments: attachmentRefs } : undefined,
-      founderPayload: attachmentRefs.length > 0 ? { attachments: uploadedAttachments } : undefined
+      meta: attachmentRefs.length > 0 || editMeta
+        ? {
+            ...(attachmentRefs.length > 0 ? { attachments: attachmentRefs } : {}),
+            ...(editMeta ?? {})
+          }
+        : undefined,
+      founderPayload: attachmentRefs.length > 0 || editMeta
+        ? {
+            ...(attachmentRefs.length > 0 ? { attachments: uploadedAttachments } : {}),
+            ...(editMeta ?? {})
+          }
+        : undefined
     });
 
     if (sent) {
       draftAttachments.value = [];
+      editingMessageId.value = null;
     }
   };
 
@@ -246,6 +284,7 @@ export function useExecutiveChat() {
     selectedAgentId,
     draftMessage,
     draftAttachments,
+    editingMessage,
     isLoading,
     isRefreshing,
     isLoadingOlder,
@@ -263,6 +302,8 @@ export function useExecutiveChat() {
     loadOlderMessages,
     uploadAttachments,
     removeDraftAttachment,
+    startEditingMessage,
+    cancelEditing,
     sendMessage,
     cancelMessage,
     sendConfirmOption
@@ -281,4 +322,20 @@ function createPendingAttachment(file: File): DraftChatAttachment {
     createdAt: new Date().toISOString(),
     uploadState: 'uploading'
   };
+}
+
+function readDraftAttachmentsFromMessage(message: ThreadMessage): ChatAttachmentItem[] {
+  if (!Array.isArray(message.payload?.attachments)) {
+    return [];
+  }
+
+  return message.payload.attachments.filter((attachment): attachment is ChatAttachmentItem =>
+    typeof attachment.id === 'string'
+    && (attachment.kind === 'file' || attachment.kind === 'audio')
+    && typeof attachment.name === 'string'
+    && typeof attachment.mediaType === 'string'
+    && typeof attachment.sizeBytes === 'number'
+    && typeof attachment.storageKey === 'string'
+    && typeof attachment.createdAt === 'string'
+  );
 }

@@ -15,6 +15,7 @@ const props = defineProps<{
   isLoadingOlder?: boolean;
   hasMoreHistory?: boolean;
   onSelectOption?: (option: string) => void;
+  onEditMessage?: (message: ThreadMessage) => void;
 }>();
 const { t } = useI18n();
 
@@ -116,6 +117,7 @@ watch(
           :agent-id="props.selectedAgentId"
           :streaming="isStreamingMessage(message)"
           :on-select-option="props.onSelectOption"
+          :on-edit-message="props.onEditMessage"
         />
       </TransitionGroup>
 

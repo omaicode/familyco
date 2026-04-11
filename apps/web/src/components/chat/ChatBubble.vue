@@ -15,6 +15,7 @@ const props = defineProps<{
   agentId: string;
   streaming: boolean;
   onSelectOption?: (option: string) => void;
+  onEditMessage?: (message: ThreadMessage) => void;
 }>();
 
 const { t } = useI18n();
@@ -71,6 +72,23 @@ const getStreamingStatus = (message: ThreadMessage): string => {
   return t('chat.thread.status.typing');
 };
 
+const isEditableFounderMessage = (message: ThreadMessage): boolean =>
+  message.direction === 'founder_to_agent'
+  && typeof props.onEditMessage === 'function'
+  && typeof message.payload?.supersededByMessageId !== 'string';
+
+const getEditBadge = (message: ThreadMessage): string | null => {
+  if (typeof message.payload?.supersededByMessageId === 'string') {
+    return t('chat.edit.label.superseded');
+  }
+
+  if (typeof message.payload?.editedFromMessageId === 'string') {
+    return t('chat.edit.label.edited');
+  }
+
+  return null;
+};
+
 const formatTime = (date: string): string => {
   return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
@@ -88,8 +106,21 @@ const formatTime = (date: string): string => {
     ]"
   >
     <div class="chat-bubble-meta">
-      <span>{{ message.direction === 'founder_to_agent' ? t('chat.bubble.founder') : props.agentName }}</span>
-      <span>{{ formatTime(message.createdAt) }}</span>
+      <span class="chat-bubble-author">
+        {{ message.direction === 'founder_to_agent' ? t('chat.bubble.founder') : props.agentName }}
+        <span v-if="getEditBadge(message)" class="chat-edit-badge">{{ getEditBadge(message) }}</span>
+      </span>
+      <span class="chat-bubble-meta-actions">
+        <button
+          v-if="isEditableFounderMessage(message)"
+          type="button"
+          class="chat-edit-action"
+          @click="props.onEditMessage?.(message)"
+        >
+          {{ t('chat.edit.action') }}
+        </button>
+        <span>{{ formatTime(message.createdAt) }}</span>
+      </span>
     </div>
 
     <MarkdownPreview
@@ -185,6 +216,32 @@ const formatTime = (date: string): string => {
   font-size: 0.75rem;
   color: var(--fc-text-muted);
   margin-bottom: 6px;
+}
+
+.chat-bubble-author,
+.chat-bubble-meta-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-edit-badge {
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: color-mix(in srgb, var(--fc-primary) 10%, var(--fc-surface));
+  color: var(--fc-primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.chat-edit-action {
+  border: 0;
+  background: transparent;
+  color: var(--fc-primary);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
 }
 
 .chat-bubble-body {

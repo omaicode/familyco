@@ -18,6 +18,7 @@ const { t } = useI18n();
     selectedAgentId,
     draftMessage,
     draftAttachments,
+    editingMessage,
     isLoading,
     isRefreshing,
     isLoadingOlder,
@@ -35,6 +36,8 @@ const { t } = useI18n();
     loadOlderMessages,
     uploadAttachments,
     removeDraftAttachment,
+    startEditingMessage,
+    cancelEditing,
     sendMessage,
     cancelMessage,
     sendConfirmOption
@@ -111,12 +114,14 @@ const { t } = useI18n();
               :is-loading-older="isLoadingOlder"
               :has-more-history="hasMoreHistory"
               :on-select-option="sendConfirmOption"
+              :on-edit-message="startEditingMessage"
               @load-older="loadOlderMessages"
             />
             <ExecutiveChatComposer
               v-model="draftMessage"
               :agent-id="selectedAgent?.id ?? ''"
               :attachments="draftAttachments"
+              :editing-preview="editingMessage?.body"
               :connection-state="connectionState"
               :is-sending="isSending"
               :is-streaming="isStreaming"
@@ -126,6 +131,7 @@ const { t } = useI18n();
               @remove-attachment="removeDraftAttachment"
               @send="sendMessage"
               @cancel="cancelMessage"
+              @cancel-edit="cancelEditing"
             />
           </template>
         </FcCard>
