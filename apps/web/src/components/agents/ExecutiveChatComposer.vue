@@ -102,26 +102,28 @@ const isSendDisabled = computed(() =>
         <span>{{ t('chat.composer.hint.inline-slash') }}</span>
       </p>
 
-      <FcButton
-        v-if="props.isStreaming"
-        variant="danger"
-        class="chat-cancel-button"
-        :disabled="props.isCancelling"
-        @click="emit('cancel')"
-      >
-        <Ban :size="14" />
-        {{ props.isCancelling ? t('chat.composer.cancelling') : t('chat.composer.cancel') }}
-      </FcButton>
+      <div class="chat-compose-actions">
+        <FcButton
+          v-if="props.isStreaming"
+          variant="danger"
+          class="chat-cancel-button"
+          :disabled="props.isCancelling"
+          @click="emit('cancel')"
+        >
+          <Ban :size="14" />
+          {{ props.isCancelling ? t('chat.composer.cancelling') : t('chat.composer.cancel') }}
+        </FcButton>
 
-      <FcButton
-        variant="primary"
-        class="chat-send-button"
-        :disabled="isSendDisabled"
-        @click="emit('send')"
-      >
-        <Send :size="14" />
-        {{ props.isUploadingAttachments ? t('chat.attachment.uploading') : props.isStreaming ? t('Streaming…') : props.isSending ? t('Sending…') : t('Send') }}
-      </FcButton>
+        <FcButton
+          variant="primary"
+          class="chat-send-button"
+          :disabled="isSendDisabled"
+          @click="emit('send')"
+        >
+          <Send :size="14" />
+          {{ props.isUploadingAttachments ? t('chat.attachment.uploading') : props.isStreaming ? t('Streaming…') : props.isSending ? t('Sending…') : t('Send') }}
+        </FcButton>
+      </div>
     </div>
   </div>
 </template>
@@ -234,6 +236,11 @@ const isSendDisabled = computed(() =>
 
 .chat-compose-hint code {
   font-size: 0.72rem;
+}
+
+.chat-compose-actions {
+  display: inline-flex;
+  gap: 8px;
 }
 
 .chat-send-button {
