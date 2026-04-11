@@ -20,6 +20,10 @@ export interface AgentDeleteResult {
   deletedProjectIds: string[];
   deletedTaskIds: string[];
   deletedApprovalIds: string[];
+  fallbackAgentId: string;
+  reassignedTaskCount: number;
+  reassignedProjectCount: number;
+  reassignedChildAgentCount: number;
 }
 
 export interface CreateAgentInput {

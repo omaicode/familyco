@@ -15,5 +15,6 @@ export interface AgentRepository {
   setStatus(id: string, status: AgentStatus): Promise<AgentProfile>;
   update(id: string, input: UpdateAgentInput): Promise<AgentProfile>;
   updateParent(id: string, parentAgentId: string | null): Promise<AgentProfile>;
-  deleteCascade(id: string): Promise<AgentDeleteResult>;
+  reassignChildren(parentAgentId: string, nextParentAgentId: string): Promise<AgentProfile[]>;
+  delete(id: string): Promise<AgentProfile>;
 }

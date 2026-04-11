@@ -71,6 +71,28 @@ export class InMemoryTaskRepository implements TaskRepository {
     return this.list({ projectId });
   }
 
+  async reassignAgent(previousAgentId: string, nextAgentId: string): Promise<Task[]> {
+    const updatedTasks: Task[] = [];
+
+    for (const task of this.tasks.values()) {
+      if (task.assigneeAgentId !== previousAgentId && task.createdBy !== previousAgentId) {
+        continue;
+      }
+
+      const updatedTask: Task = {
+        ...task,
+        assigneeAgentId: task.assigneeAgentId === previousAgentId ? nextAgentId : task.assigneeAgentId,
+        createdBy: task.createdBy === previousAgentId ? nextAgentId : task.createdBy,
+        updatedAt: new Date()
+      };
+
+      this.tasks.set(task.id, updatedTask);
+      updatedTasks.push(updatedTask);
+    }
+
+    return updatedTasks;
+  }
+
   async update(id: string, input: UpdateTaskInput): Promise<Task> {
     const task = this.tasks.get(id);
     if (!task) {

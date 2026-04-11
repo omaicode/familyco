@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  AgentDeleteResult,
   AgentProfile,
   AgentRepository,
   AgentStatus,
@@ -99,36 +98,32 @@ export class InMemoryAgentRepository implements AgentRepository {
     return updated;
   }
 
-  async deleteCascade(id: string): Promise<AgentDeleteResult> {
-    if (!this.agents.has(id)) {
-      throw new Error(`AGENT_NOT_FOUND:${id}`);
-    }
-
-    const deletedAgentIds: string[] = [];
-    const stack = [id];
-
-    while (stack.length > 0) {
-      const current = stack.pop()!;
-      if (deletedAgentIds.includes(current)) {
+  async reassignChildren(parentAgentId: string, nextParentAgentId: string): Promise<AgentProfile[]> {
+    const updatedChildren: AgentProfile[] = [];
+    for (const agent of this.agents.values()) {
+      if (agent.parentAgentId !== parentAgentId) {
         continue;
       }
 
-      deletedAgentIds.push(current);
-      const children = Array.from(this.agents.values())
-        .filter((agent) => agent.parentAgentId === current)
-        .map((agent) => agent.id);
-      stack.push(...children);
+      const updated: AgentProfile = {
+        ...agent,
+        parentAgentId: nextParentAgentId,
+        updatedAt: new Date()
+      };
+      this.agents.set(agent.id, updated);
+      updatedChildren.push(updated);
     }
 
-    for (const agentId of deletedAgentIds) {
-      this.agents.delete(agentId);
+    return updatedChildren;
+  }
+
+  async delete(id: string): Promise<AgentProfile> {
+    const existing = this.agents.get(id);
+    if (!existing) {
+      throw new Error(`AGENT_NOT_FOUND:${id}`);
     }
 
-    return {
-      deletedAgentIds,
-      deletedProjectIds: [],
-      deletedTaskIds: [],
-      deletedApprovalIds: []
-    };
+    this.agents.delete(id);
+    return existing;
   }
 }

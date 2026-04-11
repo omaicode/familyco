@@ -74,6 +74,48 @@ export class PrismaTaskRepository implements TaskRepository {
     return this.list({ projectId });
   }
 
+  async reassignAgent(previousAgentId: string, nextAgentId: string): Promise<Task[]> {
+    const affectedTasks = await this.prisma.task.findMany({
+      where: {
+        OR: [
+          { assigneeAgentId: previousAgentId },
+          { createdBy: previousAgentId }
+        ]
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    if (affectedTasks.length === 0) {
+      return [];
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.task.updateMany({
+        where: { assigneeAgentId: previousAgentId },
+        data: {
+          assigneeAgentId: nextAgentId
+        } as never
+      }),
+      this.prisma.task.updateMany({
+        where: { createdBy: previousAgentId },
+        data: {
+          createdBy: nextAgentId
+        } as never
+      })
+    ]);
+
+    const updatedTasks = await this.prisma.task.findMany({
+      where: {
+        id: {
+          in: affectedTasks.map((task) => task.id)
+        }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    return updatedTasks.map((task) => toTask(task as unknown as Parameters<typeof toTask>[0]));
+  }
+
   async update(id: string, input: UpdateTaskInput): Promise<Task> {
     const task = await this.prisma.task.update({
       where: { id },

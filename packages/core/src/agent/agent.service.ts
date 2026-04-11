@@ -7,11 +7,17 @@ import type {
 } from './agent.entity.js';
 import type { AgentRepository } from './agent.repository.js';
 import type { EventBus } from '../events/event-bus.js';
+import type { TaskRepository } from '../task/task.repository.js';
+import type { ProjectRepository } from '../project/project.repository.js';
+import type { ApprovalRepository } from '../approval/approval.repository.js';
 
 export class AgentService {
   constructor(
     private readonly repository: AgentRepository,
-    private readonly eventBus?: EventBus
+    private readonly eventBus?: EventBus,
+    private readonly taskRepository?: TaskRepository,
+    private readonly projectRepository?: ProjectRepository,
+    private readonly approvalRepository?: ApprovalRepository
   ) {}
 
   async createAgent(input: CreateAgentInput): Promise<AgentProfile> {
@@ -88,20 +94,61 @@ export class AgentService {
 
   async deleteAgent(id: string): Promise<AgentDeleteResult> {
     const target = await this.getAgentById(id);
+    const agents = await this.repository.list();
+    const defaultExecutive = resolveDefaultExecutiveAgent(agents);
 
-    if (target.level === 'L0' && target.status !== 'terminated') {
-      const l0Agents = await this.repository.list();
-      const remainingActiveExecutives = l0Agents.filter(
-        (agent) => agent.id !== id && agent.level === 'L0' && agent.status !== 'terminated'
-      );
-
-      if (remainingActiveExecutives.length === 0) {
-        throw new Error('AGENT_DELETE_LAST_EXECUTIVE');
-      }
+    if (defaultExecutive?.id === target.id) {
+      throw new Error('AGENT_DELETE_DEFAULT_EXECUTIVE');
     }
 
-    const deleted = await this.repository.deleteCascade(id);
+    const fallbackAgent = resolveFallbackExecutive(agents, target);
+
+    if (!fallbackAgent) {
+      throw new Error(target.level === 'L0' ? 'AGENT_DELETE_LAST_EXECUTIVE' : 'AGENT_DELETE_FALLBACK_NOT_FOUND');
+    }
+
+    const reassignedChildren = await this.repository.reassignChildren(id, fallbackAgent.id);
+    const reassignedProjects = await this.projectRepository?.reassignOwner(id, fallbackAgent.id) ?? [];
+    const reassignedTasks = await this.taskRepository?.reassignAgent(id, fallbackAgent.id) ?? [];
+    await this.approvalRepository?.reassignActor(id, fallbackAgent.id);
+    const deletedAgent = await this.repository.delete(id);
+
+    for (const child of reassignedChildren) {
+      this.eventBus?.emit('agent.updated', { agentId: child.id });
+    }
+
+    for (const task of reassignedTasks) {
+      this.eventBus?.emit('task.updated', {
+        taskId: task.id,
+        projectId: task.projectId
+      });
+    }
+
     this.eventBus?.emit('agent.deleted', { agentId: id });
-    return deleted;
+    return {
+      deletedAgentIds: [deletedAgent.id],
+      deletedProjectIds: [],
+      deletedTaskIds: [],
+      deletedApprovalIds: [],
+      fallbackAgentId: fallbackAgent.id,
+      reassignedTaskCount: reassignedTasks.length,
+      reassignedProjectCount: reassignedProjects.length,
+      reassignedChildAgentCount: reassignedChildren.length
+    };
   }
+}
+
+function resolveFallbackExecutive(agents: AgentProfile[], target: AgentProfile): AgentProfile | null {
+  const activeExecutives = agents.filter((agent) => agent.level === 'L0' && agent.status !== 'terminated');
+  if (target.level === 'L0' && target.status !== 'terminated') {
+    return activeExecutives.find((agent) => agent.id !== target.id) ?? null;
+  }
+
+  return activeExecutives[0] ?? null;
+}
+
+function resolveDefaultExecutiveAgent(agents: AgentProfile[]): AgentProfile | null {
+  return agents
+    .filter((agent) => agent.level === 'L0')
+    .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())[0] ?? null;
 }

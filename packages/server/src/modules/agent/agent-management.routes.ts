@@ -161,4 +161,98 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
 
     return updated;
   });
+
+  app.delete('/agents/:id', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'agent.delete',
+      targetId: id,
+      payload: {
+        agentId: id
+      }
+    });
+
+    if (!approval.allowed) {
+      await deps.auditService.write({
+        actorId: request.authContext?.subject ?? 'system',
+        action: 'approval.request.create',
+        targetId: approval.request.id,
+        payload: {
+          approvalAction: 'agent.delete',
+          agentId: id
+        }
+      });
+
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
+
+    try {
+      const result = await deps.agentService.deleteAgent(id);
+      await deps.auditService.write({
+        actorId: request.authContext?.subject ?? 'system',
+        action: 'agent.delete',
+        targetId: id,
+        payload: {
+          fallbackAgentId: result.fallbackAgentId,
+          reassignedTaskCount: result.reassignedTaskCount,
+          reassignedProjectCount: result.reassignedProjectCount,
+          reassignedChildAgentCount: result.reassignedChildAgentCount
+        }
+      });
+
+      return result;
+    } catch (error) {
+      return sendAgentDeleteError(reply, error);
+    }
+  });
+}
+
+function sendAgentDeleteError(reply: { code: (statusCode: number) => void }, error: unknown) {
+  if (error instanceof Error && error.message.startsWith('AGENT_NOT_FOUND:')) {
+    reply.code(404);
+    return {
+      statusCode: 404,
+      code: 'AGENT_NOT_FOUND',
+      message: 'Agent not found.'
+    };
+  }
+
+  if (error instanceof Error && error.message === 'AGENT_DELETE_LAST_EXECUTIVE') {
+    reply.code(400);
+    return {
+      statusCode: 400,
+      code: 'AGENT_DELETE_LAST_EXECUTIVE',
+      message: 'At least one active executive agent must remain in the company.'
+    };
+  }
+
+  if (error instanceof Error && error.message === 'AGENT_DELETE_DEFAULT_EXECUTIVE') {
+    reply.code(400);
+    return {
+      statusCode: 400,
+      code: 'AGENT_DELETE_DEFAULT_EXECUTIVE',
+      message: 'The default executive agent cannot be deleted.'
+    };
+  }
+
+  if (error instanceof Error && error.message === 'AGENT_DELETE_FALLBACK_NOT_FOUND') {
+    reply.code(400);
+    return {
+      statusCode: 400,
+      code: 'AGENT_DELETE_FALLBACK_NOT_FOUND',
+      message: 'No active executive agent is available to receive the reassigned work.'
+    };
+  }
+
+  throw error;
 }

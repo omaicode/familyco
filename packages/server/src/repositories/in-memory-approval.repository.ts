@@ -35,6 +35,26 @@ export class InMemoryApprovalRepository implements ApprovalRepository {
     return Array.from(this.requests.values());
   }
 
+  async reassignActor(previousAgentId: string, nextAgentId: string): Promise<ApprovalRequest[]> {
+    const updatedRequests: ApprovalRequest[] = [];
+
+    for (const request of this.requests.values()) {
+      if (request.actorId !== previousAgentId) {
+        continue;
+      }
+
+      const updatedRequest: ApprovalRequest = {
+        ...request,
+        actorId: nextAgentId,
+        updatedAt: new Date()
+      };
+      this.requests.set(request.id, updatedRequest);
+      updatedRequests.push(updatedRequest);
+    }
+
+    return updatedRequests;
+  }
+
   async updateStatus(id: string, status: ApprovalStatus): Promise<ApprovalRequest> {
     const request = this.requests.get(id);
     if (!request) {

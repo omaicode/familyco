@@ -41,6 +41,35 @@ export class PrismaApprovalRepository implements ApprovalRepository {
     return requests.map(toApprovalRequest);
   }
 
+  async reassignActor(previousAgentId: string, nextAgentId: string): Promise<ApprovalRequest[]> {
+    const affectedRequests = await this.prisma.approvalRequest.findMany({
+      where: { actorId: previousAgentId },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    if (affectedRequests.length === 0) {
+      return [];
+    }
+
+    await this.prisma.approvalRequest.updateMany({
+      where: { actorId: previousAgentId },
+      data: {
+        actorId: nextAgentId
+      }
+    });
+
+    const updatedRequests = await this.prisma.approvalRequest.findMany({
+      where: {
+        id: {
+          in: affectedRequests.map((request) => request.id)
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return updatedRequests.map(toApprovalRequest);
+  }
+
   async updateStatus(id: string, status: ApprovalStatus): Promise<ApprovalRequest> {
     const request = await this.prisma.approvalRequest.update({
       where: { id },

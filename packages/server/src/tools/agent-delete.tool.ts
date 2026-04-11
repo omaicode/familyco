@@ -7,7 +7,7 @@ export const agentDeleteSlashSpec: SlashCommandSpec = {
   command: '/delete-agent',
   usage: '/delete-agent {agentId} confirm',
   label: 'Delete an agent',
-  description: 'Hard-delete an agent and related data (requires confirm keyword).',
+  description: 'Delete an agent and reassign their current work to the executive root (requires confirm keyword).',
   insertValue: '/delete-agent ',
   levels: ['L0'],
   auditAction: 'agent.chat.delete-agent',
@@ -22,7 +22,7 @@ export const agentDeleteSlashSpec: SlashCommandSpec = {
 
 export const agentDeleteTool: ServerToolDefinition = {
   name: 'agent.delete',
-  description: 'Hard-delete an agent with cascading cleanup for related approvals, tasks, and owned projects.',
+  description: 'Delete an agent while reassigning current tasks, owned projects, and direct reports to the executive root.',
   slashSpec: agentDeleteSlashSpec,
   parameters: [
     { name: 'agentId', type: 'string', required: true, description: 'Agent id or name.' },

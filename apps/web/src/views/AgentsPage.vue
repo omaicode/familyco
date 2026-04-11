@@ -23,6 +23,7 @@ const {
   agents,
   attentionSummary,
   busy,
+  canDeleteAgent,
   createAgent,
   currentTasks,
   deploymentChecklist,
@@ -45,10 +46,11 @@ const {
   isLoading,
   isLoadingDetails,
   isRefreshing,
-  isSavingDetails,
-  isSavingParent,
-  managerDraft,
-  pauseAgent,
+    isSavingDetails,
+    isSavingParent,
+    managerDraft,
+    deleteAgent,
+    pauseAgent,
   reload,
   saveAgentDetails,
   saveReportingLine,
@@ -168,11 +170,13 @@ const openAgentDetails = (agentId: string): void => {
         :filters="filters"
         :attention-summary="attentionSummary"
         :busy="busy"
+        :can-delete-agent="canDeleteAgent"
         :get-agent-name="getAgentName"
         :get-agent-initials="getAgentInitials"
         :get-direct-report-count="getDirectReportCount"
         :format-relative="formatRelative"
         @select="openAgentDetails"
+        @delete="deleteAgent"
         @pause="pauseAgent"
       />
 

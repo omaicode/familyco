@@ -3,6 +3,8 @@ import type {
   AgentListItem,
   CreateAgentPayload,
   CreateAgentResult,
+  DeleteAgentPayload,
+  DeleteAgentResult,
   FamilyCoApiContracts,
   PauseAgentPayload,
   PauseAgentResult,
@@ -16,7 +18,7 @@ export interface AgentStoreState {
 }
 
 const isApprovalResponse = (
-  result: AgentListItem | AgentActionApprovalResponse
+  result: AgentListItem | AgentActionApprovalResponse | DeleteAgentResult
 ): result is AgentActionApprovalResponse => 'approvalRequired' in result;
 
 export class AgentStore {
@@ -65,6 +67,16 @@ export class AgentStore {
     }
 
     return pausedAgent;
+  }
+
+  async deleteAgent(payload: DeleteAgentPayload): Promise<DeleteAgentResult> {
+    const result = await this.api.deleteAgent(payload);
+
+    if (!isApprovalResponse(result)) {
+      await this.loadAgents();
+    }
+
+    return result;
   }
 
   async updateAgent(payload: UpdateAgentPayload): Promise<AgentListItem> {

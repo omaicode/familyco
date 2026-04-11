@@ -87,6 +87,26 @@ class InMemoryApprovalRepositoryStub implements ApprovalRepository {
     return Array.from(this.records.values());
   }
 
+  async reassignActor(previousAgentId: string, nextAgentId: string): Promise<ApprovalRequest[]> {
+    const updatedRequests: ApprovalRequest[] = [];
+
+    for (const request of this.records.values()) {
+      if (request.actorId !== previousAgentId) {
+        continue;
+      }
+
+      const updated: ApprovalRequest = {
+        ...request,
+        actorId: nextAgentId,
+        updatedAt: new Date('2026-01-02T00:00:00.000Z')
+      };
+      this.records.set(request.id, updated);
+      updatedRequests.push(updated);
+    }
+
+    return updatedRequests;
+  }
+
   async updateStatus(id: string, status: ApprovalStatus): Promise<ApprovalRequest> {
     const existing = this.records.get(id);
     if (!existing) {

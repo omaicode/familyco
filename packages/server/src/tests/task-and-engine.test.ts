@@ -253,6 +253,201 @@ test('POST /api/v1/tasks/bulk updates priority and status for multiple tasks', a
   await app.close();
 });
 
+test('DELETE /api/v1/agents/:id reassigns current work to the executive root', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const executiveRootResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Executive Root',
+      role: 'Executive',
+      level: 'L0',
+      department: 'Executive'
+    }
+  });
+  assert.equal(executiveRootResponse.statusCode, 201);
+  const executiveRoot = executiveRootResponse.json() as { id: string };
+
+  const operationsLeadResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Operations Lead',
+      role: 'Lead',
+      level: 'L1',
+      department: 'Operations',
+      parentAgentId: executiveRoot.id
+    }
+  });
+  assert.equal(operationsLeadResponse.statusCode, 201);
+  const operationsLead = operationsLeadResponse.json() as { id: string };
+
+  const specialistResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Queue Specialist',
+      role: 'Specialist',
+      level: 'L2',
+      department: 'Operations',
+      parentAgentId: operationsLead.id
+    }
+  });
+  assert.equal(specialistResponse.statusCode, 201);
+  const specialist = specialistResponse.json() as { id: string };
+
+  const projectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Ops Stability',
+      description: 'Keep queues healthy',
+      ownerAgentId: operationsLead.id
+    }
+  });
+  assert.equal(projectResponse.statusCode, 201);
+  const project = projectResponse.json() as { id: string };
+
+  const taskResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Review queue backlog',
+      description: 'Triage queue backlog and unblock stuck work',
+      projectId: project.id,
+      assigneeAgentId: operationsLead.id,
+      createdBy: operationsLead.id,
+      priority: 'high'
+    }
+  });
+  assert.equal(taskResponse.statusCode, 201);
+  const task = taskResponse.json() as { id: string };
+
+  const deleteResponse = await app.inject({
+    method: 'DELETE',
+    url: `/api/v1/agents/${operationsLead.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+  assert.equal(deleteResponse.statusCode, 200);
+
+  const deleteResult = deleteResponse.json() as {
+    fallbackAgentId: string;
+    reassignedTaskCount: number;
+    reassignedProjectCount: number;
+    reassignedChildAgentCount: number;
+  };
+  assert.equal(deleteResult.fallbackAgentId, executiveRoot.id);
+  assert.equal(deleteResult.reassignedTaskCount, 1);
+  assert.equal(deleteResult.reassignedProjectCount, 1);
+  assert.equal(deleteResult.reassignedChildAgentCount, 1);
+
+  const agentsResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+  assert.equal(agentsResponse.statusCode, 200);
+  const agents = agentsResponse.json() as Array<{ id: string; parentAgentId: string | null }>;
+  assert.equal(agents.some((agent) => agent.id === operationsLead.id), false);
+  assert.equal(agents.find((agent) => agent.id === specialist.id)?.parentAgentId, executiveRoot.id);
+
+  const tasksResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+  assert.equal(tasksResponse.statusCode, 200);
+  const tasks = tasksResponse.json() as Array<{ id: string; assigneeAgentId: string | null; createdBy: string }>;
+  assert.equal(tasks.find((entry) => entry.id === task.id)?.assigneeAgentId, executiveRoot.id);
+  assert.equal(tasks.find((entry) => entry.id === task.id)?.createdBy, executiveRoot.id);
+
+  const projectsResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+  assert.equal(projectsResponse.statusCode, 200);
+  const projects = projectsResponse.json() as Array<{ id: string; ownerAgentId: string }>;
+  assert.equal(projects.find((entry) => entry.id === project.id)?.ownerAgentId, executiveRoot.id);
+
+  await app.close();
+});
+
+test('DELETE /api/v1/agents/:id blocks deleting the default L0 executive', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const defaultExecutiveResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Default Executive',
+      role: 'Executive',
+      level: 'L0',
+      department: 'Executive'
+    }
+  });
+  assert.equal(defaultExecutiveResponse.statusCode, 201);
+  const defaultExecutive = defaultExecutiveResponse.json() as { id: string };
+
+  const secondaryExecutiveResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Secondary Executive',
+      role: 'Executive',
+      level: 'L0',
+      department: 'Executive'
+    }
+  });
+  assert.equal(secondaryExecutiveResponse.statusCode, 201);
+
+  const deleteResponse = await app.inject({
+    method: 'DELETE',
+    url: `/api/v1/agents/${defaultExecutive.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+  assert.equal(deleteResponse.statusCode, 400);
+  assert.deepEqual(deleteResponse.json(), {
+    statusCode: 400,
+    code: 'AGENT_DELETE_DEFAULT_EXECUTIVE',
+    message: 'The default executive agent cannot be deleted.'
+  });
+
+  await app.close();
+});
+
 test('PATCH /api/v1/tasks, task comments, and DELETE /api/v1/tasks/:id support task detail workflows', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 

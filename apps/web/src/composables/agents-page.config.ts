@@ -11,6 +11,17 @@ export type AgentApprovalResponse = {
   reason?: string;
 };
 export type AgentActionResult = AgentListItem | AgentApprovalResponse;
+export type AgentDeleteActionResult = {
+  deletedAgentIds: string[];
+  deletedProjectIds: string[];
+  deletedTaskIds: string[];
+  deletedApprovalIds: string[];
+  fallbackAgentId: string;
+  reassignedTaskCount: number;
+  reassignedProjectCount: number;
+  reassignedChildAgentCount: number;
+} | AgentApprovalResponse;
+type AgentApprovalResult = AgentActionResult | AgentDeleteActionResult;
 
 const LEVEL_ORDER: Record<AgentLevel, number> = { L0: 0, L1: 1, L2: 2 };
 const STATUS_ORDER: Record<AgentStatus, number> = {
@@ -156,5 +167,5 @@ export const sortAgents = (items: AgentListItem[]): AgentListItem[] =>
     return left.name.localeCompare(right.name);
   });
 
-export const isApprovalResponse = (result: AgentActionResult): result is AgentApprovalResponse =>
+export const isApprovalResponse = (result: AgentApprovalResult): result is AgentApprovalResponse =>
   'approvalRequired' in result;

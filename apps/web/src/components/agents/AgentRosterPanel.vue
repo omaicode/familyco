@@ -33,6 +33,7 @@ defineProps<{
     missingManager: number;
   };
   busy: Record<string, boolean>;
+  canDeleteAgent: (agent: AgentListItem) => boolean;
   getAgentName: (agentId: string | null) => string;
   getAgentInitials: (name: string) => string;
   getDirectReportCount: (agentId: string) => number;
@@ -42,6 +43,7 @@ defineProps<{
 const emit = defineEmits<{
   (event: 'select', agentId: string): void;
   (event: 'pause', agent: AgentListItem): void;
+  (event: 'delete', agent: AgentListItem): void;
 }>();
 
 const { t } = useI18n();
@@ -172,6 +174,15 @@ const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.inclu
                 >
                   <Pause :size="12" />
                   {{ busy[agent.id] ? t('Pausing…') : t('Pause') }}
+                </FcButton>
+                <FcButton
+                  v-if="canDeleteAgent(agent)"
+                  variant="danger"
+                  size="sm"
+                  :disabled="busy[agent.id]"
+                  @click.stop="emit('delete', agent)"
+                >
+                  {{ busy[agent.id] ? t('Deleting…') : t('Delete agent') }}
                 </FcButton>
               </div>
             </td>

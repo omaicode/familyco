@@ -21,6 +21,26 @@ export class InMemoryProjectRepository implements ProjectRepository {
     return project;
   }
 
+  async reassignOwner(previousAgentId: string, nextAgentId: string): Promise<Project[]> {
+    const updatedProjects: Project[] = [];
+
+    for (const project of this.projects.values()) {
+      if (project.ownerAgentId !== previousAgentId) {
+        continue;
+      }
+
+      const updated: Project = {
+        ...project,
+        ownerAgentId: nextAgentId,
+        updatedAt: new Date()
+      };
+      this.projects.set(project.id, updated);
+      updatedProjects.push(updated);
+    }
+
+    return updatedProjects;
+  }
+
   async update(id: string, input: UpdateProjectInput): Promise<Project> {
     const existing = this.projects.get(id);
     if (!existing) {

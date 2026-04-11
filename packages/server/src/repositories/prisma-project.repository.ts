@@ -15,6 +15,33 @@ export class PrismaProjectRepository implements ProjectRepository {
     });
   }
 
+  async reassignOwner(previousAgentId: string, nextAgentId: string): Promise<Project[]> {
+    const affectedProjects = await this.prisma.project.findMany({
+      where: { ownerAgentId: previousAgentId },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    if (affectedProjects.length === 0) {
+      return [];
+    }
+
+    await this.prisma.project.updateMany({
+      where: { ownerAgentId: previousAgentId },
+      data: {
+        ownerAgentId: nextAgentId
+      }
+    });
+
+    return this.prisma.project.findMany({
+      where: {
+        id: {
+          in: affectedProjects.map((project) => project.id)
+        }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+  }
+
   async update(id: string, input: UpdateProjectInput): Promise<Project> {
     const existing = await this.prisma.project.findUnique({
       where: { id }

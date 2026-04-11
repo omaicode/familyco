@@ -231,6 +231,27 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
     return this.list({ projectId });
   }
 
+  async reassignAgent(previousAgentId: string, nextAgentId: string): Promise<Task[]> {
+    const updatedTasks: Task[] = [];
+
+    for (const task of this.tasks.values()) {
+      if (task.assigneeAgentId !== previousAgentId && task.createdBy !== previousAgentId) {
+        continue;
+      }
+
+      const updated: Task = {
+        ...task,
+        assigneeAgentId: task.assigneeAgentId === previousAgentId ? nextAgentId : task.assigneeAgentId,
+        createdBy: task.createdBy === previousAgentId ? nextAgentId : task.createdBy,
+        updatedAt: new Date('2026-01-02T00:00:00.000Z')
+      };
+      this.tasks.set(task.id, updated);
+      updatedTasks.push(updated);
+    }
+
+    return updatedTasks;
+  }
+
   async updateStatus(id: string, status: TaskStatus): Promise<Task> {
     const existing = this.tasks.get(id);
     if (!existing) {

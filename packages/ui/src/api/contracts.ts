@@ -156,6 +156,23 @@ export interface AgentActionApprovalResponse {
 export type CreateAgentResult = AgentListItem | AgentActionApprovalResponse;
 export type PauseAgentResult = AgentListItem | AgentActionApprovalResponse;
 
+export interface DeleteAgentPayload {
+  agentId: string;
+}
+
+export interface DeleteAgentSuccessResponse {
+  deletedAgentIds: string[];
+  deletedProjectIds: string[];
+  deletedTaskIds: string[];
+  deletedApprovalIds: string[];
+  fallbackAgentId: string;
+  reassignedTaskCount: number;
+  reassignedProjectCount: number;
+  reassignedChildAgentCount: number;
+}
+
+export type DeleteAgentResult = DeleteAgentSuccessResponse | AgentActionApprovalResponse;
+
 export interface CreateProjectPayload {
   name: string;
   description: string;
@@ -460,6 +477,7 @@ export interface FamilyCoApiContracts {
   uploadAgentChatAttachment: (payload: UploadAgentChatAttachmentPayload) => Promise<ChatAttachmentItem>;
   createAgent: (payload: CreateAgentPayload) => Promise<CreateAgentResult>;
   pauseAgent: (payload: PauseAgentPayload) => Promise<PauseAgentResult>;
+  deleteAgent: (payload: DeleteAgentPayload) => Promise<DeleteAgentResult>;
   updateAgent: (payload: UpdateAgentPayload) => Promise<AgentListItem>;
   updateAgentParent: (payload: UpdateAgentParentPayload) => Promise<AgentListItem>;
   listProjects: () => Promise<ProjectListItem[]>;
@@ -531,6 +549,7 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   },
   createAgent: (payload) => client.post<CreateAgentResult, CreateAgentPayload>('/api/v1/agents', payload),
   pauseAgent: (payload) => client.post<PauseAgentResult>(`/api/v1/agents/${payload.agentId}/pause`),
+  deleteAgent: (payload) => client.delete<DeleteAgentResult>(`/api/v1/agents/${payload.agentId}`),
   updateAgent: (payload) =>
     client.patch<AgentListItem, Omit<UpdateAgentPayload, 'agentId'>>(`/api/v1/agents/${payload.agentId}`, {
       name: payload.name,

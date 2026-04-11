@@ -159,7 +159,13 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   } = createRepositories(repositoryDriver, settingsEncryption);
   
   const eventBus = new EventBus();
-  const agentService = new AgentService(agentRepository, eventBus);
+  const agentService = new AgentService(
+    agentRepository,
+    eventBus,
+    taskRepository,
+    projectRepository,
+    approvalRepository
+  );
   const apiKeyService = new ApiKeyService(apiKeyRepository, authApiKeySalt);
   const approvalService = new ApprovalService(approvalRepository, eventBus);
   const auditService = new AuditService(auditRepository);
