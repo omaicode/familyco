@@ -96,6 +96,21 @@ export class InMemoryInboxRepository implements InboxRepository {
     return updated;
   }
 
+  async deleteConversationAfter(agentId: string, after: Date, founderId = 'founder'): Promise<void> {
+    const afterTimestamp = after.getTime();
+    const remaining = this.messages.filter((message) => {
+      const isConversationMessage = message.recipientId === agentId
+        || (message.recipientId === founderId && message.senderId === agentId);
+      if (!isConversationMessage) {
+        return true;
+      }
+
+      return message.createdAt.getTime() <= afterTimestamp;
+    });
+
+    this.messages.splice(0, this.messages.length, ...remaining);
+  }
+
   async clearConversation(agentId: string, founderId = 'founder'): Promise<void> {
     const remaining = this.messages.filter((message) => {
       const isConversationMessage = message.recipientId === agentId

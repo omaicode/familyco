@@ -75,6 +75,21 @@ export class PrismaInboxRepository implements InboxRepository {
     return toInboxMessage(message);
   }
 
+  async deleteConversationAfter(agentId: string, after: Date, founderId = 'founder'): Promise<void> {
+    await this.prisma.inboxMessage.deleteMany({
+      where: {
+        createdAt: { gt: after },
+        OR: [
+          { recipientId: agentId },
+          {
+            recipientId: founderId,
+            senderId: agentId
+          }
+        ]
+      }
+    });
+  }
+
   async clearConversation(agentId: string, founderId = 'founder'): Promise<void> {
     await this.prisma.inboxMessage.deleteMany({
       where: {

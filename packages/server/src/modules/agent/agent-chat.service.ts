@@ -190,6 +190,25 @@ export async function processAgentChat(input: {
   const supersedesMessageId = typeof input.body.meta?.supersedesMessageId === 'string'
     ? input.body.meta.supersedesMessageId
     : undefined;
+  const supersededMessage = supersedesMessageId
+    ? await input.deps.inboxService.findMessageById(supersedesMessageId)
+    : null;
+
+  if (supersedesMessageId && !supersededMessage) {
+    throw new Error(`CHAT_EDIT_TARGET_NOT_FOUND:${supersedesMessageId}`);
+  }
+
+  if (
+    supersededMessage
+    && (supersededMessage.senderId !== 'founder' || supersededMessage.recipientId !== agent.id)
+  ) {
+    throw new Error(`CHAT_EDIT_TARGET_INVALID:${supersededMessage.id}`);
+  }
+
+  if (supersededMessage) {
+    await input.deps.inboxService.deleteConversationAfter(agent.id, supersededMessage.createdAt);
+  }
+
   const preparedAttachments = await input.deps.chatEngineService.prepareAttachments({
     agentAdapterId: agent.aiAdapterId ?? null,
     agentModel: agent.aiModel ?? null,
@@ -245,17 +264,14 @@ export async function processAgentChat(input: {
     input.deps.toolExecutor.execute({ toolName: 'company.profile.read', arguments: {} }).catch(() => null)
   ]);
 
-  if (supersedesMessageId) {
-    const supersededMessage = conversationHistory.find((message) => message.id === supersedesMessageId);
-    if (supersededMessage) {
-      await input.deps.inboxService.updateMessage(supersedesMessageId, {
-        payload: {
-          ...(supersededMessage.payload ?? {}),
-          supersededByMessageId: founderMessage.id,
-          editedAt: founderMessage.createdAt.toISOString()
-        }
-      });
-    }
+  if (supersededMessage) {
+    await input.deps.inboxService.updateMessage(supersededMessage.id, {
+      payload: {
+        ...(supersededMessage.payload ?? {}),
+        supersededByMessageId: founderMessage.id,
+        editedAt: founderMessage.createdAt.toISOString()
+      }
+    });
   }
 
   const companyProfile = toCompanyProfile(profileResult?.output);

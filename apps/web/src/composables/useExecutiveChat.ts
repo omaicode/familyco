@@ -251,12 +251,20 @@ export function useExecutiveChat() {
       (attachment): attachment is DraftChatAttachment & { uploadState: 'uploaded' } => attachment.uploadState === 'uploaded'
     );
     const attachmentRefs: ChatAttachmentReference[] = uploadedAttachments.map((attachment) => ({ id: attachment.id }));
+    const currentEditingMessage = editingMessage.value;
     const editMeta = editingMessageId.value
       ? {
           editedFromMessageId: editingMessageId.value,
           supersedesMessageId: editingMessageId.value
         }
       : undefined;
+
+    if (currentEditingMessage) {
+      const editingIndex = thread.value.findIndex((message) => message.id === currentEditingMessage.id);
+      if (editingIndex >= 0) {
+        thread.value = thread.value.slice(0, editingIndex + 1);
+      }
+    }
 
     const sent = streamSendMessage({
       meta: attachmentRefs.length > 0 || editMeta

@@ -12,6 +12,7 @@ export interface InboxRepository {
   list(query: ListInboxMessagesQuery): Promise<InboxMessage[]>;
   updateStatus(id: string, status: InboxMessageStatus): Promise<InboxMessage>;
   updateMessage(id: string, input: UpdateInboxMessageInput): Promise<InboxMessage>;
+  deleteConversationAfter(agentId: string, after: Date, founderId?: string): Promise<void>;
   clearConversation(agentId: string, founderId?: string): Promise<void>;
 }
 
@@ -24,6 +25,10 @@ export class InboxService {
 
   updateMessage(id: string, input: UpdateInboxMessageInput): Promise<InboxMessage> {
     return this.repository.updateMessage(id, input);
+  }
+
+  findMessageById(id: string): Promise<InboxMessage | null> {
+    return this.repository.findById(id);
   }
 
   async listMessages(query: ListInboxMessagesQuery): Promise<InboxMessage[]> {
@@ -57,6 +62,10 @@ export class InboxService {
 
   async clearConversation(agentId: string, founderId = 'founder'): Promise<void> {
     await this.repository.clearConversation(agentId, founderId);
+  }
+
+  async deleteConversationAfter(agentId: string, after: Date, founderId = 'founder'): Promise<void> {
+    await this.repository.deleteConversationAfter(agentId, after, founderId);
   }
 
   async markRead(id: string): Promise<InboxMessage> {
