@@ -23,6 +23,7 @@ export interface ChatEngineRunInput {
   attachments?: AdapterChatAttachment[];
   onEvent?: (event: AgentLoopEvent) => void;
   abortSignal?: AbortSignal;
+  shouldStop?: () => boolean;
   executeTool: (input: { toolName: string; arguments: Record<string, unknown> }) => Promise<ToolExecutionResult>;
 }
 
@@ -89,6 +90,7 @@ export class ChatEngineService {
       availableTools: filteredTools,
       onEvent: input.onEvent,
       abortSignal: input.abortSignal,
+      shouldStop: input.shouldStop,
       executeTool: async (toolInput) => {
         const result = await input.executeTool(toolInput);
 

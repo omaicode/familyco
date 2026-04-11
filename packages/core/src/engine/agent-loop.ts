@@ -35,6 +35,7 @@ export interface AgentLoopInput {
   maxRounds?: number;
   onEvent?: (event: AgentLoopEvent) => void;
   abortSignal?: AbortSignal;
+  shouldStop?: () => boolean;
   executeTool: (input: { toolName: string; arguments: Record<string, unknown> }) => Promise<{
     ok: boolean;
     output?: unknown;
@@ -50,6 +51,13 @@ export interface AgentLoopResult {
   haltSignal?: unknown;
 }
 
+export class AgentLoopCancelledError extends Error {
+  constructor(message = 'AGENT_LOOP_CANCELLED') {
+    super(message);
+    this.name = 'AgentLoopCancelledError';
+  }
+}
+
 export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResult> {
   const maxRounds = input.maxRounds ?? 6;
   const turns: AgentLoopTurn[] = [];
@@ -59,6 +67,8 @@ export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResu
   let loopHaltSignal: unknown = undefined;
 
   for (let round = 0; round < maxRounds; round += 1) {
+    assertNotCancelled(input.abortSignal, input.shouldStop);
+
     const response = await input.adapter.chat({
       apiKey: input.apiKey,
       model: input.model,
@@ -69,6 +79,12 @@ export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResu
       previousTurns,
       onChunk: (chunk) => input.onEvent?.({ type: 'chunk', text: chunk }),
       abortSignal: input.abortSignal
+    }).catch((error: unknown) => {
+      if (isAbortError(error) || input.abortSignal?.aborted || input.shouldStop?.() === true) {
+        throw new AgentLoopCancelledError();
+      }
+
+      throw error;
     });
 
     if (response.content.trim().length > 0) {
@@ -122,6 +138,8 @@ export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResu
         loopHaltSignal = result.haltSignal;
         break;
       }
+
+      assertNotCancelled(input.abortSignal, input.shouldStop);
     }
 
     turns.push({ turn: round, assistantText: response.content, toolResults: turnResults });
@@ -147,6 +165,20 @@ export async function runAgentLoop(input: AgentLoopInput): Promise<AgentLoopResu
 
   input.onEvent?.({ type: 'done', finalReply, totalTurns: turns.length });
   return { finalReply, turns, totalTurns: turns.length, ...(loopHaltSignal !== undefined ? { haltSignal: loopHaltSignal } : {}) };
+}
+
+function assertNotCancelled(
+  abortSignal?: AbortSignal,
+  shouldStop?: () => boolean
+): void {
+  if (abortSignal?.aborted || shouldStop?.() === true) {
+    throw new AgentLoopCancelledError();
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error
+    && (error.name === 'AbortError' || error.message === 'AGENT_LOOP_CANCELLED');
 }
 
 function serializeOutput(value: unknown): string {

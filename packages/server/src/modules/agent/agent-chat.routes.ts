@@ -126,6 +126,18 @@ export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleD
       });
 
       socket.on('message', (raw: unknown) => {
+        const parsed = parseSocketCommand(raw);
+        if (parsed?.action === 'cancel') {
+          const cancelledRequestId = deps.chatStreamRegistry.requestCancel(id, parsed.requestId);
+          if (!cancelledRequestId) {
+            sendSocketEvent(socket, 'chat.error', { message: 'No active chat request to cancel' });
+            return;
+          }
+
+          sendSocketEvent(socket, 'chat.cancelling', { requestId: cancelledRequestId });
+          return;
+        }
+
         void handleSocketChatMessage({
           raw: String(raw),
           socket,
@@ -154,4 +166,24 @@ export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleD
       levels: definition.levels
     }));
   });
+}
+
+function parseSocketCommand(raw: unknown): { action: 'cancel'; requestId?: string } | null {
+  if (typeof raw !== 'string') {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { action?: unknown; requestId?: unknown };
+    if (parsed.action !== 'cancel') {
+      return null;
+    }
+
+    return {
+      action: 'cancel',
+      ...(typeof parsed.requestId === 'string' ? { requestId: parsed.requestId } : {})
+    };
+  } catch {
+    return null;
+  }
 }

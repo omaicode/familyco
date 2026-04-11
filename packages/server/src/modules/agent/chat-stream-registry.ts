@@ -38,6 +38,9 @@ interface ActiveStream {
   proxy: MutableSocketProxy;
   agentId: string;
   startedAt: Date;
+  abortController: AbortController;
+  activeToolCallId: string | null;
+  cancelRequested: boolean;
 }
 
 /**
@@ -52,14 +55,21 @@ export class ChatStreamRegistry {
     return new MutableSocketProxy(socket);
   }
 
-  register(requestId: string, agentId: string, proxy: MutableSocketProxy): void {
+  register(requestId: string, agentId: string, proxy: MutableSocketProxy, abortController: AbortController): void {
     // Evict any stale entry for the same agent (defensive, shouldn't normally occur)
     const stale = this.byAgentId.get(agentId);
     if (stale) {
       this.byRequestId.delete(stale);
     }
 
-    this.byRequestId.set(requestId, { proxy, agentId, startedAt: new Date() });
+    this.byRequestId.set(requestId, {
+      proxy,
+      agentId,
+      startedAt: new Date(),
+      abortController,
+      activeToolCallId: null,
+      cancelRequested: false
+    });
     this.byAgentId.set(agentId, requestId);
   }
 
@@ -89,5 +99,54 @@ export class ChatStreamRegistry {
 
     stream.proxy.repoint(newSocket);
     return requestId;
+  }
+
+  requestCancel(agentId: string, requestId?: string): string | null {
+    const activeRequestId = this.byAgentId.get(agentId);
+    if (!activeRequestId) {
+      return null;
+    }
+
+    if (requestId && requestId !== activeRequestId) {
+      return null;
+    }
+
+    const stream = this.byRequestId.get(activeRequestId);
+    if (!stream) {
+      return null;
+    }
+
+    stream.cancelRequested = true;
+    if (stream.activeToolCallId === null && !stream.abortController.signal.aborted) {
+      stream.abortController.abort();
+    }
+
+    return activeRequestId;
+  }
+
+  beginTool(requestId: string, callId: string): void {
+    const stream = this.byRequestId.get(requestId);
+    if (!stream) {
+      return;
+    }
+
+    stream.activeToolCallId = callId;
+  }
+
+  completeTool(requestId: string, callId: string): void {
+    const stream = this.byRequestId.get(requestId);
+    if (!stream || stream.activeToolCallId !== callId) {
+      return;
+    }
+
+    stream.activeToolCallId = null;
+    if (stream.cancelRequested && !stream.abortController.signal.aborted) {
+      stream.abortController.abort();
+    }
+  }
+
+  shouldStop(requestId: string): boolean {
+    const stream = this.byRequestId.get(requestId);
+    return stream?.cancelRequested === true;
   }
 }

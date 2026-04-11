@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { AgentLoopEvent, AgentService } from '@familyco/core';
+import { AgentLoopCancelledError, type AgentLoopEvent, type AgentService } from '@familyco/core';
 import type { ChatAttachmentData } from './chat-attachment-store.js';
 
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
@@ -36,9 +36,10 @@ export async function handleSocketChatMessage(input: {
   actorId: string;
 }): Promise<void> {
   const requestId = randomUUID();
+  const abortController = new AbortController();
   // Wrap in a mutable proxy so the socket can be repointed if the client reconnects mid-stream.
   const proxy = input.deps.chatStreamRegistry.createProxy(input.socket);
-  input.deps.chatStreamRegistry.register(requestId, input.agentId, proxy);
+  input.deps.chatStreamRegistry.register(requestId, input.agentId, proxy, abortController);
 
   // Minimum ms a tool spinner must be visible so the client renders the start → complete transition.
   const MIN_TOOL_VISIBLE_MS = 350;
@@ -74,11 +75,14 @@ export async function handleSocketChatMessage(input: {
       body,
       deps: input.deps,
       actorId: input.actorId,
+      abortSignal: abortController.signal,
+      shouldStop: () => input.deps.chatStreamRegistry.shouldStop(requestId),
       onEvent: (event) => {
         if (event.type === 'chunk') {
           sendSocketEvent(proxy, 'chat.chunk', { requestId, index: chunkIndex, chunk: event.text });
           chunkIndex += 1;
         } else if (event.type === 'tool_start') {
+          input.deps.chatStreamRegistry.beginTool(requestId, event.callId);
           toolStartTimes.set(event.callId, performance.now());
           sendSocketEvent(proxy, 'chat.tool.start', { requestId, toolName: event.toolName });
         } else if (event.type === 'tool_result') {
@@ -99,10 +103,12 @@ export async function handleSocketChatMessage(input: {
             pendingDelayedCompletes += 1;
             setTimeout(() => {
               sendSocketEvent(proxy, 'chat.tool.complete', completePayload);
+              input.deps.chatStreamRegistry.completeTool(requestId, event.callId);
               settleDelayedComplete();
             }, delay);
           } else {
             sendSocketEvent(proxy, 'chat.tool.complete', completePayload);
+            input.deps.chatStreamRegistry.completeTool(requestId, event.callId);
           }
         }
       }
@@ -134,6 +140,19 @@ export async function handleSocketChatMessage(input: {
       ...(result.confirmRequest ? { confirmRequest: result.confirmRequest } : {})
     });
   } catch (error) {
+    if (error instanceof AgentLoopCancelledError || abortController.signal.aborted) {
+      if (pendingDelayedCompletes > 0) {
+        await new Promise<void>((resolve) => { onAllCompletesSettled = resolve; });
+      }
+
+      sendSocketEvent(proxy, 'chat.cancelled', {
+        requestId,
+        agentId: input.agentId,
+        cancelledAt: new Date().toISOString()
+      });
+      return;
+    }
+
     sendSocketEvent(proxy, 'chat.error', { message: toErrorMessage(error) });
   } finally {
     input.deps.chatStreamRegistry.complete(requestId);
@@ -145,6 +164,8 @@ export async function processAgentChat(input: {
   body: ChatRequestBody;
   deps: AgentModuleDeps;
   actorId: string;
+  abortSignal?: AbortSignal;
+  shouldStop?: () => boolean;
   onEvent?: (event: AgentLoopEvent) => void;
 }): Promise<ProcessedChatResult> {
   const agent = await input.deps.agentService.getAgentById(input.agentId);
@@ -208,6 +229,8 @@ export async function processAgentChat(input: {
     conversationHistory: conversationHistory.map(toConversationHistoryEntry),
     availableTools: allTools,
     onEvent: input.onEvent,
+    abortSignal: input.abortSignal,
+    shouldStop: input.shouldStop,
     executeTool: (toolInput) => input.deps.toolExecutor.execute(toolInput)
   });
 
