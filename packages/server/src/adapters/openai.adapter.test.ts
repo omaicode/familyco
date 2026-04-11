@@ -3,25 +3,26 @@ import test from 'node:test';
 
 import { OpenAiAdapter } from './openai.adapter.js';
 
-test('OpenAiAdapter: gpt-4o-mini returns streamed content with temperature', async () => {
+test('OpenAiAdapter: gpt-5 streams text through the responses API', async () => {
   const adapter = new OpenAiAdapter();
   const restoreFetch = globalThis.fetch;
 
   globalThis.fetch = async (_input, init) => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    assert.equal(body['temperature'], 0.5);
-    assert.equal(body['reasoning_effort'], undefined);
-    return createChatCompletionSseResponse('hello from openai');
+    assert.equal(body['model'], 'gpt-5');
+    assert.ok(Array.isArray(body['input']));
+    assert.deepEqual(body['reasoning'], { effort: 'medium' });
+    return createResponsesTextResponse('hello from openai');
   };
 
   try {
     const chunks: string[] = [];
     const result = await adapter.chat({
       apiKey: 'sk-test',
-      model: 'gpt-4o-mini',
+      model: 'gpt-5',
       systemPrompt: 'system',
       userPrompt: 'hello',
-      onChunk: (c) => chunks.push(c)
+      onChunk: (chunk) => chunks.push(chunk)
     });
 
     assert.equal(result.content, 'hello from openai');
@@ -31,15 +32,15 @@ test('OpenAiAdapter: gpt-4o-mini returns streamed content with temperature', asy
   }
 });
 
-test('OpenAiAdapter: gpt-5-mini sends reasoningEffort (treated as reasoning model by SDK)', async () => {
+test('OpenAiAdapter: gpt-5-mini sends reasoning settings through the responses API', async () => {
   const adapter = new OpenAiAdapter();
   const restoreFetch = globalThis.fetch;
 
   globalThis.fetch = async (_input, init) => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    assert.equal(body['reasoning_effort'], 'medium');
-    assert.equal(body['temperature'], undefined);
-    return createChatCompletionSseResponse('gpt5 result');
+    assert.equal(body['model'], 'gpt-5-mini');
+    assert.deepEqual(body['reasoning'], { effort: 'medium' });
+    return createResponsesTextResponse('gpt5-mini result');
   };
 
   try {
@@ -50,32 +51,32 @@ test('OpenAiAdapter: gpt-5-mini sends reasoningEffort (treated as reasoning mode
       userPrompt: 'hello'
     });
 
-    assert.equal(result.content, 'gpt5 result');
+    assert.equal(result.content, 'gpt5-mini result');
   } finally {
     globalThis.fetch = restoreFetch;
   }
 });
 
-test('OpenAiAdapter: o3-mini sends reasoningEffort without temperature', async () => {
+test('OpenAiAdapter: gpt-5.4 is passed through without aliasing', async () => {
   const adapter = new OpenAiAdapter();
   const restoreFetch = globalThis.fetch;
 
   globalThis.fetch = async (_input, init) => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    assert.equal(body['reasoning_effort'], 'medium');
-    assert.equal(body['temperature'], undefined);
-    return createChatCompletionSseResponse('reasoning result');
+    assert.equal(body['model'], 'gpt-5.4');
+    assert.deepEqual(body['reasoning'], { effort: 'medium' });
+    return createResponsesTextResponse('gpt5.4 result');
   };
 
   try {
     const result = await adapter.chat({
       apiKey: 'sk-test',
-      model: 'o3-mini',
+      model: 'gpt-5.4',
       systemPrompt: 'system',
       userPrompt: 'hello'
     });
 
-    assert.equal(result.content, 'reasoning result');
+    assert.equal(result.content, 'gpt5.4 result');
   } finally {
     globalThis.fetch = restoreFetch;
   }
@@ -85,15 +86,12 @@ test('OpenAiAdapter: tool calls restore original dotted name', async () => {
   const adapter = new OpenAiAdapter();
   const restoreFetch = globalThis.fetch;
 
-  globalThis.fetch = async () => createChatCompletionSseResponseWithToolCall(
-    'task_create',
-    { title: 'New task' }
-  );
+  globalThis.fetch = async () => createResponsesToolCallResponse('task_create', { title: 'New task' });
 
   try {
     const result = await adapter.chat({
       apiKey: 'sk-test',
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-mini',
       systemPrompt: 'system',
       userPrompt: 'create a task',
       tools: [
@@ -113,16 +111,16 @@ test('OpenAiAdapter: tool calls restore original dotted name', async () => {
   }
 });
 
-test('OpenAiAdapter: token usage is extracted from stream', async () => {
+test('OpenAiAdapter: token usage is extracted from responses streams', async () => {
   const adapter = new OpenAiAdapter();
   const restoreFetch = globalThis.fetch;
 
-  globalThis.fetch = async () => createChatCompletionSseResponseWithUsage('hi', 10, 5, 15);
+  globalThis.fetch = async () => createResponsesTextResponseWithUsage('hi', 10, 5);
 
   try {
     const result = await adapter.chat({
       apiKey: 'sk-test',
-      model: 'gpt-5-mini',
+      model: 'gpt-5.4-mini',
       systemPrompt: 'system',
       userPrompt: 'hello'
     });
@@ -135,108 +133,141 @@ test('OpenAiAdapter: token usage is extracted from stream', async () => {
   }
 });
 
-function sseChunk(data: string): string {
-  return `data: ${data}\n\n`;
+test('OpenAiAdapter: testConnection uses the requested GPT-5 family model', async () => {
+  const adapter = new OpenAiAdapter();
+  const restoreFetch = globalThis.fetch;
+
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    assert.equal(body['model'], 'gpt-5.4-mini');
+    return createResponsesTextResponse('pong');
+  };
+
+  try {
+    const result = await adapter.testConnection('sk-test', 'gpt-5.4-mini');
+    assert.equal(result.ok, true);
+    assert.equal(result.model, 'gpt-5.4-mini');
+  } finally {
+    globalThis.fetch = restoreFetch;
+  }
+});
+
+function sseChunk(data: Record<string, unknown> | '[DONE]'): string {
+  return data === '[DONE]'
+    ? 'data: [DONE]\n\n'
+    : `data: ${JSON.stringify(data)}\n\n`;
 }
 
-function createChatCompletionSseResponse(text: string): Response {
+function createResponsesTextResponse(text: string): Response {
   const chunks = [
-    sseChunk(JSON.stringify({
-      id: 'chatcmpl-1',
-      object: 'chat.completion.chunk',
-      created: 1,
-      model: 'gpt-5-mini',
-      choices: [{ index: 0, delta: { role: 'assistant', content: text }, finish_reason: null }]
-    })),
-    sseChunk(JSON.stringify({
-      id: 'chatcmpl-1',
-      object: 'chat.completion.chunk',
-      created: 1,
-      model: 'gpt-5-mini',
-      choices: [{ index: 0, delta: {}, finish_reason: 'stop' }]
-    })),
-    'data: [DONE]\n\n'
+    sseChunk({
+      type: 'response.created',
+      response: { id: 'resp-1', created_at: 1, model: 'gpt-5' }
+    }),
+    sseChunk({
+      type: 'response.output_item.added',
+      output_index: 0,
+      item: { type: 'message', id: 'msg-1', phase: 'final_answer' }
+    }),
+    sseChunk({
+      type: 'response.output_text.delta',
+      item_id: 'msg-1',
+      delta: text
+    }),
+    sseChunk({
+      type: 'response.output_item.done',
+      output_index: 0,
+      item: { type: 'message', id: 'msg-1', phase: 'final_answer' }
+    }),
+    sseChunk({
+      type: 'response.completed',
+      response: { usage: { input_tokens: 1, output_tokens: 1 } }
+    }),
+    sseChunk('[DONE]')
   ].join('');
 
   return makeStreamResponse(chunks);
 }
 
-function createChatCompletionSseResponseWithUsage(
+function createResponsesTextResponseWithUsage(
   text: string,
   promptTokens: number,
-  completionTokens: number,
-  totalTokens: number
+  completionTokens: number
 ): Response {
   const chunks = [
-    sseChunk(JSON.stringify({
-      id: 'chatcmpl-1',
-      object: 'chat.completion.chunk',
-      created: 1,
-      model: 'gpt-5-mini',
-      choices: [{ index: 0, delta: { role: 'assistant', content: text }, finish_reason: null }]
-    })),
-    sseChunk(JSON.stringify({
-      id: 'chatcmpl-1',
-      object: 'chat.completion.chunk',
-      created: 1,
-      model: 'gpt-5-mini',
-      choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
-      usage: { prompt_tokens: promptTokens, completion_tokens: completionTokens, total_tokens: totalTokens }
-    })),
-    'data: [DONE]\n\n'
+    sseChunk({
+      type: 'response.created',
+      response: { id: 'resp-1', created_at: 1, model: 'gpt-5.4-mini' }
+    }),
+    sseChunk({
+      type: 'response.output_item.added',
+      output_index: 0,
+      item: { type: 'message', id: 'msg-1', phase: 'final_answer' }
+    }),
+    sseChunk({
+      type: 'response.output_text.delta',
+      item_id: 'msg-1',
+      delta: text
+    }),
+    sseChunk({
+      type: 'response.output_item.done',
+      output_index: 0,
+      item: { type: 'message', id: 'msg-1', phase: 'final_answer' }
+    }),
+    sseChunk({
+      type: 'response.completed',
+      response: { usage: { input_tokens: promptTokens, output_tokens: completionTokens } }
+    }),
+    sseChunk('[DONE]')
   ].join('');
 
   return makeStreamResponse(chunks);
 }
 
-function createChatCompletionSseResponseWithToolCall(
+function createResponsesToolCallResponse(
   toolName: string,
   args: Record<string, unknown>
 ): Response {
+  const argumentsJson = JSON.stringify(args);
   const chunks = [
-    sseChunk(JSON.stringify({
-      id: 'chatcmpl-1',
-      object: 'chat.completion.chunk',
-      created: 1,
-      model: 'gpt-5-mini',
-      choices: [{
-        index: 0,
-        delta: {
-          role: 'assistant',
-          tool_calls: [{
-            index: 0,
-            id: 'call_abc',
-            type: 'function',
-            function: { name: toolName, arguments: '' }
-          }]
-        },
-        finish_reason: null
-      }]
-    })),
-    sseChunk(JSON.stringify({
-      id: 'chatcmpl-1',
-      object: 'chat.completion.chunk',
-      created: 1,
-      model: 'gpt-5-mini',
-      choices: [{
-        index: 0,
-        delta: {
-          tool_calls: [{
-            index: 0,
-            function: { arguments: JSON.stringify(args) }
-          }]
-        },
-        finish_reason: null
-      }]
-    })),
-    sseChunk(JSON.stringify({
-      id: 'chatcmpl-1',
-      object: 'chat.completion.chunk',
-      created: 1,
-      model: 'gpt-5-mini',
-      choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }]
-    })),
-    'data: [DONE]\n\n'
+    sseChunk({
+      type: 'response.created',
+      response: { id: 'resp-1', created_at: 1, model: 'gpt-5-mini' }
+    }),
+    sseChunk({
+      type: 'response.output_item.added',
+      output_index: 0,
+      item: {
+        type: 'function_call',
+        id: 'fc-1',
+        call_id: 'call_abc',
+        name: toolName,
+        arguments: ''
+      }
+    }),
+    sseChunk({
+      type: 'response.function_call_arguments.delta',
+      item_id: 'fc-1',
+      output_index: 0,
+      delta: argumentsJson
+    }),
+    sseChunk({
+      type: 'response.output_item.done',
+      output_index: 0,
+      item: {
+        type: 'function_call',
+        id: 'fc-1',
+        call_id: 'call_abc',
+        name: toolName,
+        arguments: argumentsJson,
+        status: 'completed'
+      }
+    }),
+    sseChunk({
+      type: 'response.completed',
+      response: { usage: { input_tokens: 1, output_tokens: 1 } }
+    }),
+    sseChunk('[DONE]')
   ].join('');
 
   return makeStreamResponse(chunks);
@@ -255,4 +286,3 @@ function makeStreamResponse(payload: string): Response {
     headers: { 'content-type': 'text/event-stream' }
   });
 }
-

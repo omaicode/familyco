@@ -6,20 +6,23 @@ import { streamText } from 'ai';
 import { toAdapterErrorMessage } from './adapter.helpers.js';
 import { buildCoreMessages, buildVercelTools } from './vercel-adapter.helpers.js';
 
+const OPENAI_MODELS = ['gpt-5', 'gpt-5-mini', 'gpt-5.4', 'gpt-5.4-mini'] as const;
+
 export class OpenAiAdapter implements AiAdapter {
   readonly id = 'openai';
   readonly name = 'OpenAI';
   readonly description = 'OpenAI gpt-5-mini — best for general-purpose agents';
   readonly keyHint = 'sk-…';
   readonly defaultModel = 'gpt-5-mini';
-  readonly availableModels = ['gpt-5-mini', 'gpt-5.4-mini', 'o3-mini', 'o1'] as const;
+  readonly availableModels = OPENAI_MODELS;
 
   async chat(input: AdapterChatInput): Promise<AdapterChatResult> {
     const openai = createOpenAI({ apiKey: input.apiKey });
     const toolSet = input.tools && input.tools.length > 0 ? buildVercelTools(input.tools) : undefined;
+    const model = resolveOpenAiModel(input.model);
 
     const result = streamText({
-      model: openai.chat(input.model),
+      model: openai(model),
       system: input.systemPrompt,
       messages: buildCoreMessages(input.userPrompt, input.previousTurns ?? []),
       tools: toolSet?.tools,
@@ -28,7 +31,7 @@ export class OpenAiAdapter implements AiAdapter {
           input.onChunk?.(chunk.text);
         }
       },
-      ...(supportsOpenAiReasoning(input.model)
+      ...(supportsOpenAiReasoning(model)
         ? { providerOptions: { openai: { reasoningEffort: 'medium' } } }
         : { temperature: 0.5 })
     });
@@ -57,29 +60,36 @@ export class OpenAiAdapter implements AiAdapter {
     };
   }
 
-  async testConnection(apiKey: string): Promise<AdapterTestResult> {
+  async testConnection(apiKey: string, model?: string): Promise<AdapterTestResult> {
     const start = Date.now();
+    const resolvedModel = resolveOpenAiModel(model);
     try {
       const openai = createOpenAI({ apiKey });
       const result = streamText({
-        model: openai.chat('gpt-5.4-mini'),
+        model: openai(resolvedModel),
         messages: [{ role: 'user', content: 'ping' }],
         maxOutputTokens: 1,
       });
       await result.text;
-      return { ok: true, latencyMs: Date.now() - start, model: 'gpt-5.4-mini' };
+      return { ok: true, latencyMs: Date.now() - start, model: resolvedModel };
     } catch (error) {
       return { ok: false, latencyMs: Date.now() - start, error: toAdapterErrorMessage(error) };
     }
   }
 }
 
+function resolveOpenAiModel(model: string | undefined): string {
+  const trimmed = model?.trim();
+  if (!trimmed) {
+    return 'gpt-5-mini';
+  }
+
+  return OPENAI_MODELS.includes(trimmed as typeof OPENAI_MODELS[number]) ? trimmed : 'gpt-5-mini';
+}
+
 function supportsOpenAiReasoning(model: string): boolean {
   const normalized = model.trim().toLowerCase();
   return (
-    normalized.startsWith('o1') ||
-    normalized.startsWith('o3') ||
-    normalized.startsWith('o4') ||
     (normalized.startsWith('gpt-5') && !normalized.startsWith('gpt-5-chat'))
   );
 }

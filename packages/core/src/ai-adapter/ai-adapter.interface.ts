@@ -82,5 +82,5 @@ export interface AiAdapter {
   readonly availableModels: readonly string[];
 
   chat(input: AdapterChatInput): Promise<AdapterChatResult>;
-  testConnection(apiKey: string): Promise<AdapterTestResult>;
+  testConnection(apiKey: string, model?: string): Promise<AdapterTestResult>;
 }

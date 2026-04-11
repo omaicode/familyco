@@ -59,17 +59,18 @@ export class ClaudeAdapter implements AiAdapter {
     };
   }
 
-  async testConnection(apiKey: string): Promise<AdapterTestResult> {
+  async testConnection(apiKey: string, model?: string): Promise<AdapterTestResult> {
     const start = Date.now();
+    const requestedModel = model?.trim() || 'claude-haiku-3-5';
     try {
       const anthropic = createAnthropic({ apiKey });
       const result = streamText({
-        model: anthropic('claude-haiku-3-5'),
+        model: anthropic(requestedModel),
         messages: [{ role: 'user', content: 'ping' }],
         maxOutputTokens: 1
       });
       await result.text;
-      return { ok: true, latencyMs: Date.now() - start, model: 'claude-haiku-3-5' };
+      return { ok: true, latencyMs: Date.now() - start, model: requestedModel };
     } catch (error) {
       return { ok: false, latencyMs: Date.now() - start, error: toAdapterErrorMessage(error) };
     }

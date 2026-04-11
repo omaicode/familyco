@@ -21,7 +21,7 @@ export function registerProviderController(app: FastifyInstance, deps: ProviderM
       return;
     }
 
-    const result = await adapter.testConnection(body.apiKey);
+    const result = await adapter.testConnection(body.apiKey, body.model);
     return result;
   });
 }

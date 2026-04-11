@@ -8,7 +8,7 @@ import FcPasswordInput from '../FcPasswordInput.vue';
 import FcSelect from '../FcSelect.vue';
 import { uiRuntime } from '../../runtime';
 import { useI18n } from '../../composables/useI18n';
-import { ADAPTER_OPTIONS, getDefaultAdapterModel, type AdapterId } from '../../constants/adapter-options';
+import { ADAPTER_OPTIONS, getDefaultAdapterModel, normalizeAdapterModel, type AdapterId } from '../../constants/adapter-options';
 
 const { t } = useI18n();
 
@@ -60,10 +60,11 @@ const load = () => {
   const loadedModel = typeof getSetting('provider.defaultModel') === 'string'
     ? getSetting('provider.defaultModel') as string
     : getDefaultAdapterModel(activeAdapter);
+  const normalizedModel = normalizeAdapterModel(activeAdapter, loadedModel);
 
-  providerDraft[activeAdapter] = { apiKey: globalKey, model: loadedModel };
+  providerDraft[activeAdapter] = { apiKey: globalKey, model: normalizedModel };
   providerName.value = activeAdapter;
-  providerModel.value = loadedModel;
+  providerModel.value = normalizedModel;
 
   for (const adapter of ADAPTER_OPTIONS) {
     const perKey = getSetting(`provider.${adapter.value}.apiKey`);

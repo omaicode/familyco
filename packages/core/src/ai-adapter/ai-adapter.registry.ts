@@ -35,8 +35,8 @@ class HookedAdapter implements AiAdapter {
     }
   }
 
-  testConnection(apiKey: string): Promise<AdapterTestResult> {
-    return this.inner.testConnection(apiKey);
+  testConnection(apiKey: string, model?: string): Promise<AdapterTestResult> {
+    return this.inner.testConnection(apiKey, model);
   }
 }
 

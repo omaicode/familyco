@@ -5,7 +5,7 @@ import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import { uiRuntime } from '../../runtime';
-import { ADAPTER_OPTIONS, type AdapterId } from '../../constants/adapter-options';
+import { ADAPTER_OPTIONS, normalizeAdapterModel, type AdapterId } from '../../constants/adapter-options';
 import FcButton from '../FcButton.vue';
 import FcSelect from '../FcSelect.vue';
 
@@ -34,7 +34,9 @@ const hasOverride = computed(() => !!draftAdapterId.value);
 const load = () => {
   const id = props.agent.aiAdapterId;
   draftAdapterId.value = (id === 'copilot' || id === 'openai' || id === 'claude') ? id : '';
-  draftModel.value = props.agent.aiModel ?? '';
+  draftModel.value = draftAdapterId.value
+    ? normalizeAdapterModel(draftAdapterId.value, props.agent.aiModel)
+    : '';
   saved.value = false;
 };
 
