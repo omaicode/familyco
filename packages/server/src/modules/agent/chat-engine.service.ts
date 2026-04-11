@@ -150,7 +150,9 @@ export class ChatEngineService {
 
     const adapter = this.adapterRegistry.get(adapterConfig.adapterId);
     if (!adapter?.transcribeAudio) {
-      throw new Error(`CHAT_AUDIO_TRANSCRIPTION_UNSUPPORTED:${adapterConfig.adapterId}`);
+      throw new Error(
+        `CHAT_AUDIO_TRANSCRIPTION_UNSUPPORTED:Audio transcription is only available with the OpenAI adapter. Active adapter=${adapterConfig.adapterId}, model=${adapterConfig.model}`
+      );
     }
     const transcribeAudio = adapter.transcribeAudio;
 
