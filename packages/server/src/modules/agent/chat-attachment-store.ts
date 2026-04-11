@@ -110,7 +110,7 @@ export class ChatAttachmentStore {
 
 function resolveChatAttachmentsDir(): string {
   const uploadPath = path.resolve(process.cwd(), 'uploads');
-  return path.join(path.dirname(uploadPath), 'chat-attachments');
+  return path.join(uploadPath, 'chat-attachments');
 }
 
 function inferAttachmentKind(mediaType: string): ChatAttachmentKind {
