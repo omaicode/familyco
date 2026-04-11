@@ -2,6 +2,9 @@ import type {
   AgentService,
   AgentLevel,
   AiAdapterRegistry,
+  ApprovalService,
+  AuditService,
+  InboxService,
   ProjectService,
   SettingsService,
   TaskService,
@@ -17,6 +20,9 @@ export interface DefaultToolExecutorDeps {
   skillsService?: SkillsService;
   taskService?: TaskService;
   adapterRegistry?: AiAdapterRegistry;
+  auditService?: AuditService;
+  inboxService?: InboxService;
+  approvalService?: ApprovalService;
 }
 
 export interface ToolParameterDefinition {

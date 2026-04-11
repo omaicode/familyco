@@ -1,13 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
-import type { QueueJobEnvelope, QueueService } from '@familyco/core';
+import type { QueueJobEnvelope, QueueJobType, QueueService } from '@familyco/core';
+
+type KnownJobType = QueueJobType;
 
 interface InMemoryQueueHandlers {
   onAgentRun?: (job: InMemoryQueueJob<'agent.run'>) => Promise<unknown>;
   onToolExecute?: (job: InMemoryQueueJob<'tool.execute'>) => Promise<unknown>;
+  onTaskExecute?: (job: InMemoryQueueJob<'task.execute'>) => Promise<unknown>;
 }
 
-export interface InMemoryQueueJob<TType extends 'agent.run' | 'tool.execute' = 'agent.run' | 'tool.execute'>
+export interface InMemoryQueueJob<TType extends KnownJobType = KnownJobType>
   extends QueueJobEnvelope<TType> {
   status: 'queued' | 'running' | 'completed' | 'failed';
   startedAt?: Date;
@@ -19,19 +22,22 @@ export interface InMemoryQueueJob<TType extends 'agent.run' | 'tool.execute' = '
 export interface InMemoryQueueServiceOptions {
   agentRunConcurrency?: number;
   toolExecuteConcurrency?: number;
+  taskExecuteConcurrency?: number;
 }
 
 export class InMemoryQueueService implements QueueService {
   private readonly jobs: Array<InMemoryQueueJob> = [];
-  private readonly pendingByType: Record<'agent.run' | 'tool.execute', InMemoryQueueJob[]> = {
+  private readonly pendingByType: Record<KnownJobType, InMemoryQueueJob[]> = {
     'agent.run': [],
-    'tool.execute': []
+    'tool.execute': [],
+    'task.execute': []
   };
-  private readonly runningByType: Record<'agent.run' | 'tool.execute', number> = {
+  private readonly runningByType: Record<KnownJobType, number> = {
     'agent.run': 0,
-    'tool.execute': 0
+    'tool.execute': 0,
+    'task.execute': 0
   };
-  private readonly maxConcurrencyByType: Record<'agent.run' | 'tool.execute', number>;
+  private readonly maxConcurrencyByType: Record<KnownJobType, number>;
   private handlers: InMemoryQueueHandlers = {};
   private closed = false;
   private closePromise: Promise<void> | null = null;
@@ -40,7 +46,8 @@ export class InMemoryQueueService implements QueueService {
   constructor(options: InMemoryQueueServiceOptions = {}) {
     this.maxConcurrencyByType = {
       'agent.run': normalizeConcurrency(options.agentRunConcurrency, 4),
-      'tool.execute': normalizeConcurrency(options.toolExecuteConcurrency, 8)
+      'tool.execute': normalizeConcurrency(options.toolExecuteConcurrency, 8),
+      'task.execute': normalizeConcurrency(options.taskExecuteConcurrency, 2)
     };
   }
 
@@ -53,17 +60,23 @@ export class InMemoryQueueService implements QueueService {
       throw new Error('In-memory queue is closed and cannot accept new jobs');
     }
 
+    const type = job.type as KnownJobType;
+
     const envelope: InMemoryQueueJob = {
       id: randomUUID(),
       createdAt: new Date(),
-      type: job.type,
+      type,
       payload: job.payload,
       status: 'queued'
     };
 
     this.jobs.push(envelope);
-    this.pendingByType[envelope.type].push(envelope);
-    this.pump(envelope.type);
+    const pending = this.pendingByType[type];
+    if (pending) {
+      pending.push(envelope);
+      this.pump(type);
+    }
+
     await Promise.resolve();
   }
 
@@ -82,11 +95,12 @@ export class InMemoryQueueService implements QueueService {
     this.jobs.length = 0;
     this.pendingByType['agent.run'].length = 0;
     this.pendingByType['tool.execute'].length = 0;
+    this.pendingByType['task.execute'].length = 0;
   }
 
-  private pump(type: 'agent.run' | 'tool.execute'): void {
+  private pump(type: KnownJobType): void {
     while (this.runningByType[type] < this.maxConcurrencyByType[type]) {
-      const next = this.pendingByType[type].shift();
+      const next = this.pendingByType[type]?.shift();
       if (!next) {
         return;
       }
@@ -107,8 +121,8 @@ export class InMemoryQueueService implements QueueService {
       return;
     }
 
-    const hasRunningJobs = this.runningByType['agent.run'] > 0 || this.runningByType['tool.execute'] > 0;
-    const hasPendingJobs = this.pendingByType['agent.run'].length > 0 || this.pendingByType['tool.execute'].length > 0;
+    const hasRunningJobs = Object.values(this.runningByType).some((count) => count > 0);
+    const hasPendingJobs = Object.values(this.pendingByType).some((list) => list.length > 0);
 
     if (hasRunningJobs || hasPendingJobs) {
       return;
@@ -120,7 +134,16 @@ export class InMemoryQueueService implements QueueService {
   }
 
   private async process(job: InMemoryQueueJob): Promise<void> {
-    const handler = job.type === 'agent.run' ? this.handlers.onAgentRun : this.handlers.onToolExecute;
+    let handler: ((job: InMemoryQueueJob) => Promise<unknown>) | undefined;
+
+    if (job.type === 'agent.run') {
+      handler = this.handlers.onAgentRun as (job: InMemoryQueueJob) => Promise<unknown>;
+    } else if (job.type === 'tool.execute') {
+      handler = this.handlers.onToolExecute as (job: InMemoryQueueJob) => Promise<unknown>;
+    } else if (job.type === 'task.execute') {
+      handler = this.handlers.onTaskExecute as (job: InMemoryQueueJob) => Promise<unknown>;
+    }
+
     if (!handler) {
       return;
     }
@@ -129,7 +152,7 @@ export class InMemoryQueueService implements QueueService {
     job.startedAt = new Date();
 
     try {
-      job.result = await handler(job as never);
+      job.result = await handler(job);
       job.status = 'completed';
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

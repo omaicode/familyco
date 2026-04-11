@@ -3,7 +3,8 @@ import type {
   AgentRunResult,
   AgentService,
   QueueService,
-  SettingsService
+  SettingsService,
+  TaskService
 } from '@familyco/core';
 import { renderHeartbeatRunPrompt } from '../prompts/index.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
@@ -45,6 +46,7 @@ export interface HeartbeatRuntimeOptions {
   agentService: AgentService;
   settingsService: SettingsService;
   skillsService?: SkillsService;
+  taskService?: TaskService;
   pollMs?: number;
   defaultHeartbeatMinutes?: number;
 }
@@ -118,6 +120,31 @@ export class HeartbeatRuntimeService {
           if (Number.isFinite(nextRunAt) && nextRunAt > now.getTime()) {
             continue;
           }
+        }
+
+        const hasActionableTasks = await this.agentHasActionableTasks(agent.id);
+
+        if (hasActionableTasks) {
+          const syntheticRequest: AgentRunRequest = {
+            agentId: agent.id,
+            approvalMode: 'auto',
+            action: 'task.execute',
+            toolName: 'task.execute',
+            toolArguments: {},
+            input: `Task execution for ${agent.name} at ${now.toISOString()}`
+          };
+
+          try {
+            await this.markQueued(syntheticRequest, now, intervalMs);
+            await this.options.queueService.enqueue({
+              type: 'task.execute',
+              payload: { agentId: agent.id }
+            });
+          } catch (error) {
+            await this.markFailed(syntheticRequest, toError(error), new Date());
+          }
+
+          continue;
         }
 
         const request: AgentRunRequest = {
@@ -344,6 +371,15 @@ export class HeartbeatRuntimeService {
       id: agent.id,
       name: agent.name
     });
+  }
+
+  private async agentHasActionableTasks(agentId: string): Promise<boolean> {
+    if (!this.options.taskService) {
+      return false;
+    }
+
+    const tasks = await this.options.taskService.listTasks({ assigneeAgentId: agentId }).catch(() => []);
+    return tasks.some((t) => t.status === 'pending' || t.status === 'in_progress' || t.status === 'blocked');
   }
 
   private async resolveHeartbeatIntervalMs(): Promise<number> {

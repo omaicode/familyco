@@ -5,15 +5,18 @@ import { agentDeleteTool } from '../../tools/agent-delete.tool.js';
 import { agentListTool } from '../../tools/agent-list.tool.js';
 import { agentReadTool } from '../../tools/agent-read.tool.js';
 import { agentUpdateTool } from '../../tools/agent-update.tool.js';
+import { approvalRequestTool } from '../../tools/approval-request.tool.js';
 import { fileDeleteTool } from '../../tools/file-delete.tool.js';
 import { fileReadTool } from '../../tools/file-read.tool.js';
 import { fileSearchTool } from '../../tools/file-search.tool.js';
 import { fileWriteTool } from '../../tools/file-write.tool.js';
+import { inboxSendTool } from '../../tools/inbox-send.tool.js';
 import { projectCreateTool } from '../../tools/project-create.tool.js';
 import { projectDeleteTool } from '../../tools/project-delete.tool.js';
 import { projectListTool } from '../../tools/project-list.tool.js';
 import { projectReadTool } from '../../tools/project-read.tool.js';
 import { projectUpdateTool } from '../../tools/project-update.tool.js';
+import { taskCommentAddTool } from '../../tools/task-comment-add.tool.js';
 import { taskCreateTool } from '../../tools/task-create.tool.js';
 import { taskDeleteTool } from '../../tools/task-delete.tool.js';
 import { taskListTool } from '../../tools/task-list.tool.js';
@@ -163,6 +166,7 @@ export function buildAgentSlashRegistry(): AgentSlashRegistry {
     taskUpdateTool,
     taskUpdateStatusTool,
     taskDeleteTool,
+    taskCommentAddTool,
     projectCreateTool,
     projectReadTool,
     projectListTool,
@@ -176,7 +180,9 @@ export function buildAgentSlashRegistry(): AgentSlashRegistry {
     fileSearchTool,
     fileReadTool,
     fileWriteTool,
-    fileDeleteTool
+    fileDeleteTool,
+    inboxSendTool,
+    approvalRequestTool
   ]
     .filter((tool): tool is typeof tool & { slashSpec: SlashCommandSpec } => tool.slashSpec !== undefined)
     .map((tool) => toolSpecToEntry(tool.name, tool.slashSpec));

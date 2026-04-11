@@ -75,6 +75,8 @@ import {
 } from './queue/index.js';
 import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
 import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
+import { TaskExecutionCoordinator } from './runtime/task-execution.coordinator.js';
+import { TaskSessionStore } from './runtime/task-session.store.js';
 import { DefaultToolExecutor } from './tools/index.js';
 import { createAdapterRegistry } from './adapters/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
@@ -186,13 +188,28 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     settingsService,
     skillsService,
     taskService,
-    adapterRegistry
+    adapterRegistry,
+    auditService,
+    inboxService,
+    approvalService
   });
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
   const chatEngineService = new ChatEngineService(settingsService, adapterRegistry, skillsService);
   const chatStreamRegistry = new ChatStreamRegistry();
   const chatAttachmentStore = new ChatAttachmentStore();
+
+  const taskSessionStore = new TaskSessionStore(settingsService);
+  const taskCoordinator = new TaskExecutionCoordinator({
+    chatEngineService,
+    toolExecutor,
+    taskService,
+    auditService,
+    inboxService,
+    agentService,
+    skillsService,
+    sessionStore: taskSessionStore
+  });
 
   const queueService = new InMemoryQueueService({
     agentRunConcurrency,
@@ -203,6 +220,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     agentService,
     settingsService,
     skillsService,
+    taskService,
     pollMs: options.heartbeatPollMs,
     defaultHeartbeatMinutes: options.defaultHeartbeatMinutes
   });
@@ -310,6 +328,54 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
               toolName: job.payload.input.toolName,
               message: normalizedError.message
             }
+          });
+          throw normalizedError;
+        }
+      },
+      onTaskExecute: async (job) => {
+        const syntheticRequest = {
+          agentId: job.payload.agentId,
+          approvalMode: 'auto' as const,
+          action: 'task.execute',
+          toolName: 'task.execute',
+          toolArguments: {},
+          input: `Task execution for agent ${job.payload.agentId}`
+        };
+
+        await heartbeatRuntime.markStarted(syntheticRequest);
+
+        try {
+          const executionResult = await taskCoordinator.executeForAgent(job.payload.agentId);
+
+          const syntheticAgentResult = {
+            status: (executionResult.status === 'waiting_for_approval' || executionResult.status === 'blocked')
+              ? ('blocked' as const)
+              : ('completed' as const),
+            agentId: job.payload.agentId,
+            action: 'task.execute',
+            toolName: 'task.execute'
+          };
+
+          await heartbeatRuntime.markCompleted(syntheticRequest, syntheticAgentResult);
+
+          await auditService.write({
+            actorId: job.payload.agentId,
+            action: 'engine.task.execute.completed',
+            targetId: executionResult.taskId || job.payload.agentId,
+            payload: {
+              status: executionResult.status,
+              summary: executionResult.summary.slice(0, 500)
+            }
+          });
+
+          return executionResult;
+        } catch (error) {
+          const normalizedError = toError(error);
+          await heartbeatRuntime.markFailed(syntheticRequest, normalizedError);
+          await auditService.write({
+            actorId: job.payload.agentId,
+            action: 'engine.task.execute.failed',
+            payload: { message: normalizedError.message }
           });
           throw normalizedError;
         }

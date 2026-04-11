@@ -56,7 +56,7 @@ export class ChatEngineService {
   ) {}
 
   async run(input: ChatEngineRunInput): Promise<ChatEngineResult> {
-    const adapterConfig = await this.resolveAdapterConfig(input.agentAdapterId, input.agentModel);
+    const adapterConfig = await this.getAdapterConfig(input.agentAdapterId, input.agentModel);
     if (!adapterConfig) {
       return { reply: '', toolCalls: [], task: null, project: null };
     }
@@ -146,7 +146,7 @@ export class ChatEngineService {
       return input.attachments;
     }
 
-    const adapterConfig = await this.resolveAdapterConfig(input.agentAdapterId, input.agentModel);
+    const adapterConfig = await this.getAdapterConfig(input.agentAdapterId, input.agentModel);
     if (!adapterConfig) {
       throw new Error('CHAT_AUDIO_TRANSCRIPTION_CONFIG_MISSING');
     }
@@ -192,6 +192,17 @@ export class ChatEngineService {
   }
 
   private async resolveAdapterConfig(
+    agentAdapterId?: string | null,
+    agentModel?: string | null
+  ): Promise<AdapterConfig | null> {
+    return this.getAdapterConfig(agentAdapterId, agentModel);
+  }
+
+  getAdapter(adapterId: string): ReturnType<AiAdapterRegistry['get']> {
+    return this.adapterRegistry.get(adapterId);
+  }
+
+  async getAdapterConfig(
     agentAdapterId?: string | null,
     agentModel?: string | null
   ): Promise<AdapterConfig | null> {
@@ -263,7 +274,7 @@ function toAdapterId(value: unknown): AdapterId | undefined {
 
 const INTERNAL_TOOLS_ALWAYS_ALLOWED = new Set(['confirm.request']);
 
-function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel): ToolDefinitionSummary[] {
+export function filterToolsForAgent(tools: ToolDefinitionSummary[], level: AgentLevel): ToolDefinitionSummary[] {
   const registry = buildAgentSlashRegistry();
   const allowedToolNames = new Set(
     registry
