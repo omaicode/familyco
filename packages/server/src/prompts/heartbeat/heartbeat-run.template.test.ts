@@ -24,8 +24,9 @@ test('renderHeartbeatRunPrompt follows Role Goal Constraints pattern', () => {
   assert.equal(prompt.includes('Capabilities and limitations:'), true);
   assert.equal(prompt.includes('Heartbeat Timestamp: 2026-01-01T00:00:00.000Z'), true);
   assert.equal(prompt.includes('Resume from saved session context before taking action.'), true);
+  assert.equal(prompt.includes('Loaded skills are operating guides for this heartbeat, not optional references.'), true);
   assert.equal(
-    prompt.includes('- agent-orchestrator: Manage subordinate agents. Path => /data/projects/familyco/skills/agent-orchestrator/SKILL.md'),
+    prompt.includes('- agent-orchestrator (Agent Orchestrator): Manage subordinate agents. Path => /data/projects/familyco/skills/agent-orchestrator/SKILL.md'),
     true
   );
 });

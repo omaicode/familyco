@@ -69,8 +69,13 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('TOOLS:'), true);
   assert.equal(prompt.includes('- task.create: Create a task'), true);
   assert.equal(prompt.includes('Skills:'), true);
+  assert.equal(prompt.includes('Loaded skills are operating guides, not decoration.'), true);
   assert.equal(
-    prompt.includes('- project-management: Coordinate project and task work. Path => /data/projects/familyco/skills/project-management/SKILL.md'),
+    prompt.includes('If a skill matches the current situation, read that SKILL.md at the listed path with a file-reading tool before planning or tool use.'),
+    true
+  );
+  assert.equal(
+    prompt.includes('- project-management (Project Management): Coordinate project and task work. Path => /data/projects/familyco/skills/project-management/SKILL.md'),
     true
   );
 

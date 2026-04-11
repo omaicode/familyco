@@ -19,7 +19,10 @@ export function renderHeartbeatRunPrompt(input: HeartbeatRunPromptInput): string
       '- You cannot access real-time information or fabricate progress.'
     ],
     skills: [
-      '- You may use these built-in skills as operating guidance for this heartbeat:',
+      '- Loaded skills are operating guides for this heartbeat, not optional references.',
+      '- Before deciding the next action, compare the saved context and current situation against every loaded skill description.',
+      '- If a skill matches, read that SKILL.md at the listed path with a file-reading tool before taking action.',
+      '- Follow the matched skill workflow and constraints while completing the heartbeat.',
       ...skillLines
     ],
     context: [
@@ -34,5 +37,5 @@ function renderSkillLines(input: NonNullable<HeartbeatRunPromptInput['skills']>)
     return ['- No skills loaded for this agent.'];
   }
 
-  return input.map((skill) => `- ${skill.id}: ${skill.description} Path => ${skill.path}`);
+  return input.map((skill) => `- ${skill.id} (${skill.name}): ${skill.description} Path => ${skill.path}`);
 }

@@ -53,7 +53,11 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
       '(Each tool is described as NAME, DESCRIPTION, ARGUMENT_SCHEMA.)'
     ],
     skills: [
-      '- You may use these built-in skills as operating guidance when they match the current task:',
+      '- Loaded skills are operating guides, not decoration.',
+      '- Before answering or acting, compare the current request against every loaded skill description.',
+      '- If a skill matches the current situation, read that SKILL.md at the listed path with a file-reading tool before planning or tool use.',
+      '- After reading a matching skill, follow its workflow, constraints, and recommended tool usage unless they conflict with the Constitution or the Founder instruction.',
+      '- If multiple skills match, read each relevant skill and combine them carefully.',
       ...skillLines
     ],
     context: [
@@ -68,7 +72,7 @@ function renderSkillLines(input: ChatSystemPromptInput['skills']): string[] {
     return ['- No skills loaded for this agent.'];
   }
 
-  return input.map((skill) => `- ${skill.id}: ${skill.description} Path => ${skill.path}`);
+  return input.map((skill) => `- ${skill.id} (${skill.name}): ${skill.description} Path => ${skill.path}`);
 }
 
 function renderToolLines(input: ChatSystemPromptInput['tools']): string[] {
