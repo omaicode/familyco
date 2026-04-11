@@ -13,26 +13,32 @@ import { useI18n } from '../composables/useI18n';
 
 const { t } = useI18n();
 
-const {
-  thread,
-  selectedAgentId,
-  draftMessage,
-  isLoading,
-  isRefreshing,
-  isLoadingOlder,
-  hasMoreHistory,
-  isSending,
-  isStreaming,
-  connectionState,
-  connectionLabel,
-  feedback,
-  executiveAgents,
-  selectedAgent,
-  reload,
-  loadOlderMessages,
-  sendMessage,
-  sendConfirmOption
-} = useExecutiveChat();
+  const {
+    thread,
+    selectedAgentId,
+    draftMessage,
+    draftAttachments,
+    isLoading,
+    isRefreshing,
+    isLoadingOlder,
+    hasMoreHistory,
+    isSending,
+    isStreaming,
+    isCancelling,
+    isUploadingAttachments,
+    connectionState,
+    connectionLabel,
+    feedback,
+    executiveAgents,
+    selectedAgent,
+    reload,
+    loadOlderMessages,
+    uploadAttachments,
+    removeDraftAttachment,
+    sendMessage,
+    cancelMessage,
+    sendConfirmOption
+  } = useExecutiveChat();
 </script>
 
 <template>
@@ -100,6 +106,7 @@ const {
             <ExecutiveChatThread
               :thread="thread"
               :selected-agent-name="selectedAgent.name"
+              :selected-agent-id="selectedAgent.id"
               :is-streaming="isStreaming"
               :is-loading-older="isLoadingOlder"
               :has-more-history="hasMoreHistory"
@@ -109,10 +116,16 @@ const {
             <ExecutiveChatComposer
               v-model="draftMessage"
               :agent-id="selectedAgent?.id ?? ''"
+              :attachments="draftAttachments"
               :connection-state="connectionState"
               :is-sending="isSending"
               :is-streaming="isStreaming"
+              :is-cancelling="isCancelling"
+              :is-uploading-attachments="isUploadingAttachments"
+              @pick-attachments="uploadAttachments"
+              @remove-attachment="removeDraftAttachment"
               @send="sendMessage"
+              @cancel="cancelMessage"
             />
           </template>
         </FcCard>

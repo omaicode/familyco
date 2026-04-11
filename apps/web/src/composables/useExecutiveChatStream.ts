@@ -1,5 +1,7 @@
 import { onBeforeUnmount, ref, type ComputedRef, type Ref } from 'vue';
 
+import { translate, type SendAgentChatPayload } from '@familyco/ui';
+
 import { uiRuntime } from '../runtime';
 import {
   buildChatTitle,
@@ -28,11 +30,18 @@ interface UseExecutiveChatStreamOptions {
   setFeedback: (type: 'success' | 'error' | 'info', text: string) => void;
 }
 
+interface SendStreamingMessageOptions {
+  meta?: SendAgentChatPayload['meta'];
+  founderPayload?: ThreadMessage['payload'];
+}
+
 export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
   const { selectedAgent, draftMessage, thread, refreshThread, setFeedback } = options;
+  const t = (key: string): string => translate(uiRuntime.stores.app.state.locale, key);
 
   const isSending = ref(false);
   const isStreaming = ref(false);
+  const isCancelling = ref(false);
   const connectionState = ref<ChatConnectionState>('disconnected');
   const socket = ref<WebSocket | null>(null);
   const activeStreamId = ref<string | null>(null);
@@ -81,23 +90,23 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       try {
         handleSocketEvent(JSON.parse(String(event.data)) as ChatSocketEvent);
       } catch {
-        setFeedback('error', 'Received an invalid streaming payload from the server.');
+        setFeedback('error', t('chat.stream.invalidPayload'));
       }
     });
 
     socket.value = nextSocket;
   };
 
-  const sendMessage = (): void => {
+  const sendMessage = (options?: SendStreamingMessageOptions): boolean => {
     const message = draftMessage.value.trim();
-    if (!selectedAgent.value || message.length === 0) {
-      return;
+    if (!selectedAgent.value || (message.length === 0 && !(options?.meta?.attachments?.length))) {
+      return false;
     }
 
     if (!socket.value || connectionState.value !== 'connected') {
       connectSocket();
-      setFeedback('info', 'Reconnecting the executive socket. Send again once it shows connected.');
-      return;
+      setFeedback('info', t('chat.socket.reconnect'));
+      return false;
     }
 
     thread.value = sortThread([
@@ -110,13 +119,30 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
         title: buildChatTitle(message),
         body: message,
         createdAt: new Date().toISOString(),
-        direction: 'founder_to_agent'
+        direction: 'founder_to_agent',
+        ...(options?.founderPayload ? { payload: options.founderPayload } : {})
       }
     ]);
 
-    socket.value.send(JSON.stringify({ message }));
+    socket.value.send(JSON.stringify({
+      message,
+      ...(options?.meta ? { meta: options.meta } : {})
+    }));
     draftMessage.value = '';
     isSending.value = true;
+    isCancelling.value = false;
+    return true;
+  };
+
+  const cancelMessage = (): void => {
+    if (!socket.value || connectionState.value !== 'connected' || !activeStreamId.value || !isStreaming.value) {
+      return;
+    }
+
+    socket.value.send(JSON.stringify({
+      action: 'cancel',
+      requestId: activeStreamId.value
+    }));
   };
 
   const handleSocketEvent = (event: ChatSocketEvent): void => {
@@ -140,6 +166,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       pendingConfirmRequestId.value = null;
       isSending.value = false;
       isStreaming.value = true;
+      isCancelling.value = false;
       upsertStreamingReply(requestId, '', undefined, true);
       return;
     }
@@ -152,6 +179,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       pendingConfirmRequestId.value = null;
       isSending.value = false;
       isStreaming.value = true;
+      isCancelling.value = false;
       upsertStreamingReply(requestId, '');
       return;
     }
@@ -259,6 +287,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
 
       isSending.value = false;
       isStreaming.value = false;
+      isCancelling.value = false;
       activeStreamId.value = null;
 
       if (!confirmRequest) {
@@ -271,12 +300,34 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       return;
     }
 
+    if (event.type === 'chat.cancelling') {
+      isCancelling.value = true;
+      return;
+    }
+
+    if (event.type === 'chat.cancelled') {
+      const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
+
+      if (requestId) {
+        thread.value = thread.value.filter((message) => message.id !== requestId);
+      }
+
+      isSending.value = false;
+      isStreaming.value = false;
+      isCancelling.value = false;
+      activeStreamId.value = null;
+      void refreshThread();
+      setFeedback('info', t('chat.cancelled'));
+      return;
+    }
+
     if (event.type === 'chat.error') {
       const message = typeof event.payload?.message === 'string'
         ? event.payload.message
         : 'Failed to stream the executive reply';
       isSending.value = false;
       isStreaming.value = false;
+      isCancelling.value = false;
       activeStreamId.value = null;
       appendLocalIssueMessage(message);
       setFeedback('error', message);
@@ -379,9 +430,11 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
   return {
     isSending,
     isStreaming,
+    isCancelling,
     connectionState,
     connectSocket,
     sendMessage,
+    cancelMessage,
     sendConfirmOption
   };
 }

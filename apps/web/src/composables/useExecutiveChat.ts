@@ -1,7 +1,9 @@
 import { computed, ref, watch } from 'vue';
 
+import { translate, type ChatAttachmentReference } from '@familyco/ui';
+
 import { uiRuntime } from '../runtime';
-import { type ChatFeedback, type ThreadMessage, sortThread } from './executiveChat.shared';
+import { type ChatFeedback, type DraftChatAttachment, type ThreadMessage, sortThread } from './executiveChat.shared';
 import { useAutoReload } from './useAutoReload';
 import { useExecutiveChatStream } from './useExecutiveChatStream';
 
@@ -12,11 +14,13 @@ export function useExecutiveChat() {
   const thread = ref<ThreadMessage[]>([]);
   const selectedAgentId = ref('');
   const draftMessage = ref('');
+  const draftAttachments = ref<DraftChatAttachment[]>([]);
   const isLoading = ref(false);
   const isRefreshing = ref(false);
   const isLoadingOlder = ref(false);
   const hasMoreHistory = ref(true);
   const feedback = ref<ChatFeedback>(null);
+  const t = (key: string): string => translate(uiRuntime.stores.app.state.locale, key);
 
   const agentState = computed(() => uiRuntime.stores.agents.state.agents);
   const executiveAgents = computed(() =>
@@ -24,6 +28,9 @@ export function useExecutiveChat() {
   );
   const selectedAgent = computed(
     () => executiveAgents.value.find((agent) => agent.id === selectedAgentId.value) ?? executiveAgents.value[0] ?? null
+  );
+  const isUploadingAttachments = computed(() =>
+    draftAttachments.value.some((attachment) => attachment.uploadState === 'uploading')
   );
 
   const setFeedback = (type: 'success' | 'error' | 'info', text: string): void => {
@@ -88,7 +95,16 @@ export function useExecutiveChat() {
     }
   };
 
-  const { isSending, isStreaming, connectionState, connectSocket, sendMessage, sendConfirmOption } = useExecutiveChatStream({
+  const {
+    isSending,
+    isStreaming,
+    isCancelling,
+    connectionState,
+    connectSocket,
+    sendMessage: streamSendMessage,
+    cancelMessage,
+    sendConfirmOption
+  } = useExecutiveChatStream({
     selectedAgent,
     draftMessage,
     thread,
@@ -125,6 +141,7 @@ export function useExecutiveChat() {
 
   watch(selectedAgentId, () => {
     hasMoreHistory.value = true;
+    draftAttachments.value = [];
 
     if (!isLoading.value) {
       void refreshThread();
@@ -150,16 +167,94 @@ export function useExecutiveChat() {
 
   useAutoReload(reload);
 
+  const uploadAttachments = async (files: FileList): Promise<void> => {
+    if (!selectedAgentId.value || files.length === 0) {
+      return;
+    }
+
+    const selectedFiles = Array.from(files);
+    const pendingEntries = selectedFiles.map((file) => createPendingAttachment(file));
+    draftAttachments.value = [...draftAttachments.value, ...pendingEntries];
+
+    await Promise.all(
+      pendingEntries.map(async (pendingEntry, index) => {
+        const file = selectedFiles[index];
+
+        try {
+          const uploaded = await uiRuntime.api.uploadAgentChatAttachment({
+            agentId: selectedAgentId.value,
+            file,
+            filename: file.name
+          });
+
+          draftAttachments.value = draftAttachments.value.map((attachment) =>
+            attachment.localId === pendingEntry.localId
+              ? {
+                  ...uploaded,
+                  localId: pendingEntry.localId,
+                  uploadState: 'uploaded'
+                }
+              : attachment
+          );
+        } catch (error) {
+          draftAttachments.value = draftAttachments.value.map((attachment) =>
+            attachment.localId === pendingEntry.localId
+              ? {
+                  ...attachment,
+                  uploadState: 'failed',
+                  errorText: error instanceof Error ? error.message : 'Failed to upload attachment'
+                }
+              : attachment
+          );
+          setFeedback('error', error instanceof Error ? error.message : 'Failed to upload attachment');
+        }
+      })
+    );
+  };
+
+  const removeDraftAttachment = (localId: string): void => {
+    draftAttachments.value = draftAttachments.value.filter((attachment) => attachment.localId !== localId);
+  };
+
+  const sendMessage = (): void => {
+    if (isUploadingAttachments.value) {
+      setFeedback('info', t('chat.attachment.waitUpload'));
+      return;
+    }
+
+    if (draftAttachments.value.some((attachment) => attachment.uploadState === 'failed')) {
+      setFeedback('error', t('chat.attachment.removeFailed'));
+      return;
+    }
+
+    const uploadedAttachments = draftAttachments.value.filter(
+      (attachment): attachment is DraftChatAttachment & { uploadState: 'uploaded' } => attachment.uploadState === 'uploaded'
+    );
+    const attachmentRefs: ChatAttachmentReference[] = uploadedAttachments.map((attachment) => ({ id: attachment.id }));
+
+    const sent = streamSendMessage({
+      meta: attachmentRefs.length > 0 ? { attachments: attachmentRefs } : undefined,
+      founderPayload: attachmentRefs.length > 0 ? { attachments: uploadedAttachments } : undefined
+    });
+
+    if (sent) {
+      draftAttachments.value = [];
+    }
+  };
+
   return {
     thread,
     selectedAgentId,
     draftMessage,
+    draftAttachments,
     isLoading,
     isRefreshing,
     isLoadingOlder,
     hasMoreHistory,
     isSending,
     isStreaming,
+    isCancelling,
+    isUploadingAttachments,
     connectionState,
     connectionLabel,
     feedback,
@@ -167,7 +262,24 @@ export function useExecutiveChat() {
     selectedAgent,
     reload,
     loadOlderMessages,
+    uploadAttachments,
+    removeDraftAttachment,
     sendMessage,
+    cancelMessage,
     sendConfirmOption
+  };
+}
+
+function createPendingAttachment(file: File): DraftChatAttachment {
+  return {
+    id: `pending-${crypto.randomUUID()}`,
+    localId: crypto.randomUUID(),
+    kind: file.type.startsWith('audio/') ? 'audio' : 'file',
+    name: file.name,
+    mediaType: file.type || 'application/octet-stream',
+    sizeBytes: file.size,
+    storageKey: '',
+    createdAt: new Date().toISOString(),
+    uploadState: 'uploading'
   };
 }

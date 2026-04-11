@@ -1,14 +1,18 @@
 <script setup lang="ts">
+import type { ChatAttachmentItem } from '@familyco/ui';
+
 import type { ChatConfirmRequest, ChatToolCallDetails, ChatToolInProgress, ThreadMessage } from '../../composables/executiveChat.shared';
-import { isChatConfirmRequest, isRecord, isToolCallDetails } from '../../composables/executiveChat.shared';
+import { isChatAttachmentItem, isChatConfirmRequest, isRecord, isToolCallDetails } from '../../composables/executiveChat.shared';
 import { useI18n } from '../../composables/useI18n';
 import MarkdownPreview from '../MarkdownPreview.vue';
+import ChatAttachmentList from './ChatAttachmentList.vue';
 import ChatStreamingIndicator from './ChatStreamingIndicator.vue';
 import ChatToolCard from './ChatToolCard.vue';
 
 const props = defineProps<{
   message: ThreadMessage;
   agentName: string;
+  agentId: string;
   streaming: boolean;
   onSelectOption?: (option: string) => void;
 }>();
@@ -41,6 +45,14 @@ const getConfirmRequest = (message: ThreadMessage): ChatConfirmRequest | null =>
 
 const hasError = (message: ThreadMessage): boolean => {
   return message.type === 'alert' || getToolCalls(message).some((tc) => !tc.ok);
+};
+
+const getAttachments = (message: ThreadMessage): ChatAttachmentItem[] => {
+  if (!isRecord(message.payload) || !Array.isArray(message.payload.attachments)) {
+    return [];
+  }
+
+  return message.payload.attachments.filter(isChatAttachmentItem);
 };
 
 const getStreamingStatus = (message: ThreadMessage): string => {
@@ -85,6 +97,12 @@ const formatTime = (date: string): string => {
       class="chat-bubble-body"
       :source="message.body"
       empty-text=""
+    />
+
+    <ChatAttachmentList
+      v-if="getAttachments(message).length > 0"
+      :agent-id="props.agentId"
+      :attachments="getAttachments(message)"
     />
 
     <ChatStreamingIndicator

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue';
-import { CornerDownLeft, Send } from 'lucide-vue-next';
+import { Ban, CornerDownLeft, Send } from 'lucide-vue-next';
 
+import type { DraftChatAttachment } from '../../composables/executiveChat.shared';
 import { useExecutiveSlashCommands } from '../../composables/useExecutiveSlashCommands';
 import { useI18n } from '../../composables/useI18n';
+import ExecutiveChatAttachmentTray from './ExecutiveChatAttachmentTray.vue';
 import FcButton from '../FcButton.vue';
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected';
@@ -11,14 +13,20 @@ type ConnectionState = 'connecting' | 'connected' | 'disconnected';
 const props = defineProps<{
   modelValue: string;
   agentId: string;
+  attachments: DraftChatAttachment[];
   connectionState: ConnectionState;
   isSending: boolean;
   isStreaming: boolean;
+  isCancelling?: boolean;
+  isUploadingAttachments?: boolean;
 }>();
 
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void;
   (event: 'send'): void;
+  (event: 'cancel'): void;
+  (event: 'pick-attachments', files: FileList): void;
+  (event: 'remove-attachment', localId: string): void;
 }>();
 
 const draftValue = computed({
@@ -37,11 +45,27 @@ const {
 const handleDraftKeydown = (event: KeyboardEvent): void => {
   onDraftKeydown(event, () => emit('send'));
 };
+
+const isSendDisabled = computed(() =>
+  props.isSending
+  || props.isStreaming
+  || props.connectionState !== 'connected'
+  || props.isUploadingAttachments
+  || (!draftValue.value.trim() && props.attachments.length === 0)
+);
 </script>
 
 <template>
   <div class="chat-compose">
     <label class="fc-label" for="founder-message">{{ t('Message') }}</label>
+
+    <ExecutiveChatAttachmentTray
+      :agent-id="props.agentId"
+      :attachments="props.attachments"
+      :disabled="props.isSending || props.isStreaming"
+      @pick="emit('pick-attachments', $event)"
+      @remove="emit('remove-attachment', $event)"
+    />
 
     <div class="chat-compose-shell">
       <textarea
@@ -67,13 +91,24 @@ const handleDraftKeydown = (event: KeyboardEvent): void => {
       </p>
 
       <FcButton
+        v-if="props.isStreaming"
+        variant="danger"
+        class="chat-cancel-button"
+        :disabled="props.isCancelling"
+        @click="emit('cancel')"
+      >
+        <Ban :size="14" />
+        {{ props.isCancelling ? t('chat.composer.cancelling') : t('chat.composer.cancel') }}
+      </FcButton>
+
+      <FcButton
         variant="primary"
         class="chat-send-button"
-        :disabled="props.isSending || props.isStreaming || props.connectionState !== 'connected' || !draftValue.trim()"
+        :disabled="isSendDisabled"
         @click="emit('send')"
       >
         <Send :size="14" />
-        {{ props.isStreaming ? t('Streaming…') : props.isSending ? t('Sending…') : t('Send') }}
+        {{ props.isUploadingAttachments ? t('chat.attachment.uploading') : props.isStreaming ? t('Streaming…') : props.isSending ? t('Sending…') : t('Send') }}
       </FcButton>
     </div>
   </div>
@@ -150,6 +185,10 @@ const handleDraftKeydown = (event: KeyboardEvent): void => {
 }
 
 .chat-send-button {
+  flex-shrink: 0;
+}
+
+.chat-cancel-button {
   flex-shrink: 0;
 }
 

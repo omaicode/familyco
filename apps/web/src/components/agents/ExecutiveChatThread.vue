@@ -10,6 +10,7 @@ import ChatEmptyState from '../chat/ChatEmptyState.vue';
 const props = defineProps<{
   thread: ThreadMessage[];
   selectedAgentName: string;
+  selectedAgentId: string;
   isStreaming?: boolean;
   isLoadingOlder?: boolean;
   hasMoreHistory?: boolean;
@@ -112,6 +113,7 @@ watch(
           :key="message.id"
           :message="message"
           :agent-name="props.selectedAgentName"
+          :agent-id="props.selectedAgentId"
           :streaming="isStreamingMessage(message)"
           :on-select-option="props.onSelectOption"
         />

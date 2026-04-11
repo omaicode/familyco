@@ -169,12 +169,12 @@ export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleD
 }
 
 function parseSocketCommand(raw: unknown): { action: 'cancel'; requestId?: string } | null {
-  if (typeof raw !== 'string') {
+  if (typeof raw !== 'string' && !(raw instanceof Uint8Array)) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(raw) as { action?: unknown; requestId?: unknown };
+    const parsed = JSON.parse(String(raw)) as { action?: unknown; requestId?: unknown };
     if (parsed.action !== 'cancel') {
       return null;
     }
