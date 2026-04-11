@@ -2,8 +2,10 @@
 name: agent-orchestrator
 description: High-level skill for managing and orchestrating subordinate agents. Use this to initialize, configure, and monitor the performance of worker agents.
 metadata: 
+  version: 1.0
   default: true
   apply_to: ['L0']
+  tags: ['agent management', 'orchestration', 'supervisory']
 ---
 
 # Supervisory & Agent Management Skill

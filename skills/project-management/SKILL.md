@@ -2,8 +2,10 @@
 name: project-management
 description: Comprehensive skill for managing projects and tasks. Use this to list, create, read, and delete project or task entities systematically.
 metadata: 
+  version: 1.0
   default: true
   apply_to: ['L0', 'L1']
+  tags: ['project management', 'task management', 'workflow']
 ---
 
 # Project Management Guide

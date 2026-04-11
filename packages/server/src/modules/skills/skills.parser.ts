@@ -37,8 +37,8 @@ export function parseSkillMarkdown(input: ParseSkillMarkdownInput): ParsedSkillM
     id,
     name: firstNonEmpty(asString(frontmatter.title), headingTitle, toTitleFromId(id)),
     description,
-    version: asString(frontmatter.version) ?? null,
-    tags: parseTags(frontmatter.tags),
+    version: asString(metadata.version) ?? null,
+    tags: parseTags(metadata.tags),
     defaultEnabled: asBoolean(metadata.default) ?? asBoolean(metadata.is_default) ?? false,
     applyTo: parseApplyTo(metadata.apply_to)
   };
