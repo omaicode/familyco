@@ -145,31 +145,40 @@ export class ChatEngineService {
 
     const adapterConfig = await this.resolveAdapterConfig(input.agentAdapterId, input.agentModel);
     if (!adapterConfig) {
-      return input.attachments;
+      throw new Error('CHAT_AUDIO_TRANSCRIPTION_CONFIG_MISSING');
     }
 
     const adapter = this.adapterRegistry.get(adapterConfig.adapterId);
     if (!adapter) {
       throw new Error(`ADAPTER_NOT_FOUND:${adapterConfig.adapterId}`);
-    }    
-    
+    }
+
+    if (!adapter.transcribeAudio) {
+      throw new Error(`CHAT_AUDIO_TRANSCRIPTION_UNSUPPORTED: active adapter=${adapterConfig.adapterId}, model=${adapterConfig.model}`);
+    }
+    const transcribeAudio = adapter.transcribeAudio.bind(adapter);
+
     const transcripts = await Promise.all(
       audioAttachments.map(async (attachment) => ({
         id: attachment.id,
-        transcript: adapter.transcribeAudio ? (await adapter.transcribeAudio({
+        transcript: (await transcribeAudio({
           apiKey: adapterConfig.apiKey,
           audio: attachment.data,
           mediaType: attachment.mediaType,
           filename: attachment.filename,
           abortSignal: input.abortSignal
-        })).text.trim() : ''
+        })).text.trim()
       }))
     );
 
+    for (const entry of transcripts) {
+      if (entry.transcript.length === 0) {
+        throw new Error(`CHAT_AUDIO_TRANSCRIPTION_EMPTY:${entry.id}`);
+      }
+    }
+
     const transcriptById = new Map(
-      transcripts
-        .filter((entry) => entry.transcript.length > 0)
-        .map((entry) => [entry.id, entry.transcript])
+      transcripts.map((entry) => [entry.id, entry.transcript])
     );
 
     return input.attachments.map((attachment) =>

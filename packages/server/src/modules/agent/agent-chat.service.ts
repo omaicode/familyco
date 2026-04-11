@@ -169,8 +169,9 @@ export async function processAgentChat(input: {
   onEvent?: (event: AgentLoopEvent) => void;
 }): Promise<ProcessedChatResult> {
   const agent = await input.deps.agentService.getAgentById(input.agentId);
+  const attachments = await loadChatAttachments(input.body.meta, input.deps);
   const registry = buildAgentSlashRegistry();
-  const parsedCommand = registry.parse(input.body.message);
+  const parsedCommand = attachments.length === 0 ? registry.parse(input.body.message) : null;
 
   if (parsedCommand) {
     return runSlashCommand({
@@ -183,7 +184,6 @@ export async function processAgentChat(input: {
     });
   }
 
-  const attachments = await loadChatAttachments(input.body.meta, input.deps);
   const editedFromMessageId = typeof input.body.meta?.editedFromMessageId === 'string'
     ? input.body.meta.editedFromMessageId
     : undefined;
@@ -227,6 +227,7 @@ export async function processAgentChat(input: {
     })),
     abortSignal: input.abortSignal
   });
+  const effectiveMessage = buildEffectiveChatMessage(input.body.message, preparedAttachments);
 
   await Promise.all(
     preparedAttachments
@@ -285,7 +286,7 @@ export async function processAgentChat(input: {
     agentAdapterId: agent.aiAdapterId ?? null,
     agentModel: agent.aiModel ?? null,
     agentLevel: agent.level,
-    message: input.body.message,
+    message: effectiveMessage,
     attachments: preparedAttachments,
     companyProfile,
     conversationHistory: conversationHistory.map(toConversationHistoryEntry),
@@ -305,6 +306,18 @@ export async function processAgentChat(input: {
     actorId: input.actorId,
     auditAction: 'agent.chat'
   });
+}
+
+function buildEffectiveChatMessage(message: string, attachments: Array<{ kind: string; transcript?: string }>): string {
+  if (message.trim().length > 0) {
+    return message;
+  }
+
+  return attachments
+    .filter((attachment) => attachment.kind === 'audio' && attachment.transcript?.trim())
+    .map((attachment) => attachment.transcript!.trim())
+    .join('\n\n')
+    .trim();
 }
 
 async function runSlashCommand(input: {

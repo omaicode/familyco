@@ -124,6 +124,30 @@ test('buildCoreMessages: produces tool-call + tool-result for turn with interact
   assert.deepEqual(toolContent[0]?.output.value, [{ id: '1' }]);
 });
 
+test('buildCoreMessages: injects audio transcript into user content for the model', () => {
+  const messages = buildCoreMessages('Summarize this note.', [], [
+    {
+      id: 'audio-1',
+      kind: 'audio',
+      filename: 'recording.webm',
+      mediaType: 'audio/webm',
+      sizeBytes: 128,
+      data: new Uint8Array([1, 2, 3]),
+      transcript: 'We need to reduce churn and review onboarding.'
+    }
+  ]);
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0]?.role, 'user');
+  assert.deepEqual(messages[0]?.content, [
+    { type: 'text', text: 'Summarize this note.' },
+    {
+      type: 'text',
+      text: 'Transcript for recording.webm:\nWe need to reduce churn and review onboarding.'
+    }
+  ]);
+});
+
 test('buildCoreMessages: sanitizes dotted tool names in tool-call and tool-result', () => {
   const messages = buildCoreMessages('continue', [
     {

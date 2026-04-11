@@ -144,10 +144,12 @@ export function toConversationHistoryEntry(message: Awaited<ReturnType<InboxServ
   }>;
 } {
   const toolCalls = readToolCallsFromPayload(message.payload);
+  const transcriptText = readAttachmentTranscriptText(message.payload);
+  const body = [message.body, transcriptText].filter((value) => value.trim().length > 0).join('\n\n').trim();
   return {
     senderId: message.senderId,
     title: message.title,
-    body: message.body,
+    body,
     createdAt: message.createdAt.toISOString(),
     ...(toolCalls.length > 0 ? { toolCalls } : {})
   };
@@ -256,6 +258,34 @@ function extractEntityId(value: unknown): string | undefined {
 
   const record = value as Record<string, unknown>;
   return typeof record.id === 'string' ? record.id : undefined;
+}
+
+function readAttachmentTranscriptText(payload: unknown): string {
+  if (typeof payload !== 'object' || payload === null || !('attachments' in payload)) {
+    return '';
+  }
+
+  const attachments = (payload as { attachments?: unknown }).attachments;
+  if (!Array.isArray(attachments)) {
+    return '';
+  }
+
+  return attachments
+    .flatMap((attachment) => {
+      if (typeof attachment !== 'object' || attachment === null) {
+        return [];
+      }
+
+      const transcript = 'transcript' in attachment && typeof attachment.transcript === 'string'
+        ? attachment.transcript.trim()
+        : '';
+      const name = 'name' in attachment && typeof attachment.name === 'string'
+        ? attachment.name.trim()
+        : 'audio attachment';
+
+      return transcript.length > 0 ? [`Transcript for ${name}:\n${transcript}`] : [];
+    })
+    .join('\n\n');
 }
 
 function readToolCallsFromPayload(payload: Record<string, unknown> | undefined): Array<{
