@@ -5,6 +5,7 @@ import {
   type AuditRecord,
   type AuditService,
   type ProjectService,
+  type QueueService,
   type SettingsService,
   type TaskService
 } from '@familyco/core';
@@ -34,6 +35,7 @@ export interface TaskModuleDeps {
   approvalService: ApprovalService;
   auditService: AuditService;
   approvalGuard: ApprovalGuard;
+  queueService: QueueService;
 }
 
 export function registerTaskController(app: FastifyInstance, deps: TaskModuleDeps): void {
@@ -115,6 +117,13 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       }
     });
 
+    if (task.assigneeAgentId) {
+      await deps.queueService.enqueue({
+        type: 'task.execute',
+        payload: { agentId: task.assigneeAgentId }
+      }).catch(() => undefined);
+    }
+
     reply.code(201);
     return task;
   });
@@ -154,6 +163,13 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
         assigneeAgentId: updatedTask.assigneeAgentId
       }
     });
+
+    if (updatedTask.assigneeAgentId) {
+      await deps.queueService.enqueue({
+        type: 'task.execute',
+        payload: { agentId: updatedTask.assigneeAgentId }
+      }).catch(() => undefined);
+    }
 
     return updatedTask;
   });
@@ -329,6 +345,16 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
         status: updatedTask.status
       }
     });
+
+    if (
+      (status === 'in_progress' || status === 'pending') &&
+      updatedTask.assigneeAgentId
+    ) {
+      await deps.queueService.enqueue({
+        type: 'task.execute',
+        payload: { agentId: updatedTask.assigneeAgentId }
+      }).catch(() => undefined);
+    }
 
     return updatedTask;
   });

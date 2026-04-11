@@ -537,7 +537,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         settingsService,
         approvalService,
         auditService,
-        approvalGuard
+        approvalGuard,
+        queueService
       });
       registerEventGateway(api, { eventBus });
     },
