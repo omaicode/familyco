@@ -10,6 +10,7 @@ import type {
   FamilyCoApiContracts,
   ListTasksQuery,
   ProjectListItem,
+  TaskActivityItem,
   TaskCommentItem,
   TaskListItem,
   UpdateTaskPayload,
@@ -141,6 +142,10 @@ export class TaskStore {
 
   createTaskComment(payload: CreateTaskCommentPayload): Promise<TaskCommentItem> {
     return this.api.createTaskComment(payload);
+  }
+
+  listTaskActivity(taskId: string): Promise<TaskActivityItem[]> {
+    return this.api.listTaskActivity(taskId);
   }
 }
 

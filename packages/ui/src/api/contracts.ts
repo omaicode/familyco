@@ -251,6 +251,33 @@ export interface TaskCommentItem {
   createdAt: string;
 }
 
+export type TaskActivityKind =
+  | 'comment'
+  | 'session.checkpoint'
+  | 'approval.created'
+  | 'approval.decided'
+  | 'status.changed'
+  | 'assigned';
+
+export interface TaskActivityItem {
+  id: string;
+  kind: TaskActivityKind;
+  taskId: string;
+  actorId: string;
+  actorLabel: string;
+  /** Human-readable summary of this activity entry */
+  summary: string;
+  /** Full body if kind === 'comment' */
+  body?: string;
+  /** Checkpoint index if kind === 'session.checkpoint' */
+  checkpointIndex?: number;
+  /** Session status if kind === 'session.checkpoint' */
+  sessionStatus?: string;
+  /** Approval decision if kind === 'approval.decided' */
+  approvalDecision?: 'approved' | 'rejected';
+  createdAt: string;
+}
+
 export interface CreateTaskCommentPayload {
   taskId: string;
   body: string;
@@ -493,6 +520,7 @@ export interface FamilyCoApiContracts {
   deleteTask: (payload: DeleteTaskPayload) => Promise<DeleteTaskResult>;
   listTaskComments: (taskId: string) => Promise<TaskCommentItem[]>;
   createTaskComment: (payload: CreateTaskCommentPayload) => Promise<TaskCommentItem>;
+  listTaskActivity: (taskId: string) => Promise<TaskActivityItem[]>;
   listApprovals: () => Promise<ApprovalListItem[]>;
   decideApproval: (payload: DecideApprovalPayload) => Promise<ApprovalListItem>;
   listInbox: (recipientId: string) => Promise<InboxMessageItem[]>;
@@ -631,6 +659,7 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
       authorType: payload.authorType,
       authorLabel: payload.authorLabel
     }),
+  listTaskActivity: (taskId) => client.get<TaskActivityItem[]>(`/api/v1/tasks/${taskId}/activity`),
   listApprovals: () => client.get<ApprovalListItem[]>('/api/v1/approvals'),
   decideApproval: (payload) =>
     client.post<ApprovalListItem, Omit<DecideApprovalPayload, 'approvalId'>>(

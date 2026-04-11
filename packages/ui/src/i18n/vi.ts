@@ -366,7 +366,6 @@ export default {
   'No task brief provided yet.': 'Chưa có mô tả chi tiết cho công việc này.',
   'Recent activity': 'Hoạt động gần đây',
   'Scan the latest audit trail for this agent without leaving the roster view.': 'Xem nhanh nhật ký kiểm tra mới nhất của tác tử ngay trong màn hình danh sách.',
-  'Loading activity history…': 'Đang tải lịch sử hoạt động…',
   'No recent activity yet': 'Chưa có hoạt động gần đây',
   'This agent has not produced any recent audit events to review.': 'Tác tử này chưa tạo ra sự kiện kiểm tra gần đây để xem lại.',
   'Agent created': 'Đã tạo tác tử',
@@ -551,5 +550,19 @@ export default {
   'Message': 'Tin nhắn',
   'Send': 'Gửi',
   'Sending…': 'Đang gửi…',
-  'Streaming…': 'Đang phản hồi…'
+  'Streaming…': 'Đang phản hồi…',
+
+  // ── Task activity timeline ─────────────────────────────
+  'Agent activity': 'Hoạt động của agent',
+  'Loading activity history…': 'Đang tải lịch sử hoạt động…',
+  'No activity yet. Activity will appear here as the agent works on this task.': 'Chưa có hoạt động. Lịch sử sẽ xuất hiện ở đây khi agent làm việc trên task này.',
+  'Comment': 'Bình luận',
+  'Checkpoint': 'Điểm kiểm tra',
+  'Waiting for approval': 'Chờ phê duyệt',
+  'Waiting for input': 'Chờ thông tin',
+  'Approval requested': 'Yêu cầu phê duyệt',
+  'Approved': 'Đã duyệt',
+  'Rejected': 'Đã từ chối',
+  'Status changed': 'Trạng thái thay đổi',
+  'Assigned': 'Đã giao'
 }

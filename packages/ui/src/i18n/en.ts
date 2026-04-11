@@ -367,7 +367,6 @@ export default {
   'No task brief provided yet.': 'No task brief provided yet.',
   'Recent activity': 'Recent activity',
   'Scan the latest audit trail for this agent without leaving the roster view.': 'Scan the latest audit trail for this agent without leaving the roster view.',
-  'Loading activity history…': 'Loading activity history…',
   'No recent activity yet': 'No recent activity yet',
   'This agent has not produced any recent audit events to review.': 'This agent has not produced any recent audit events to review.',
   'Agent created': 'Agent created',
@@ -552,5 +551,19 @@ export default {
   'Message': 'Message',
   'Send': 'Send',
   'Sending…': 'Sending…',
-  'Streaming…': 'Streaming…'
+  'Streaming…': 'Streaming…',
+
+  // ── Task activity timeline ─────────────────────────────
+  'Agent activity': 'Agent activity',
+  'Loading activity history…': 'Loading activity history…',
+  'No activity yet. Activity will appear here as the agent works on this task.': 'No activity yet. Activity will appear here as the agent works on this task.',
+  'Comment': 'Comment',
+  'Checkpoint': 'Checkpoint',
+  'Waiting for approval': 'Waiting for approval',
+  'Waiting for input': 'Waiting for input',
+  'Approval requested': 'Approval requested',
+  'Approved': 'Approved',
+  'Rejected': 'Rejected',
+  'Status changed': 'Status changed',
+  'Assigned': 'Assigned'
 };

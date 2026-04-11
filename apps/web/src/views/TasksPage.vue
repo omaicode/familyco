@@ -2,6 +2,7 @@
 import type {
   BulkUpdateTasksPayload,
   CreateTaskCommentPayload,
+  TaskActivityItem,
   TaskCommentItem,
   TaskListItem,
   UpdateTaskPayload
@@ -96,6 +97,8 @@ const isTaskMutating = ref(false);
 const commentsLoading = ref(false);
 const commentSubmitting = ref(false);
 const taskComments = ref<TaskCommentItem[]>([]);
+const activityLoading = ref(false);
+const taskActivity = ref<TaskActivityItem[]>([]);
 
 const filters = reactive<FilterState>({
   status: 'all',
@@ -556,11 +559,23 @@ const loadTaskComments = async (taskId: string): Promise<void> => {
   }
 };
 
+const loadTaskActivity = async (taskId: string): Promise<void> => {
+  activityLoading.value = true;
+
+  try {
+    taskActivity.value = await uiRuntime.stores.tasks.listTaskActivity(taskId);
+  } catch {
+    taskActivity.value = [];
+  } finally {
+    activityLoading.value = false;
+  }
+};
+
 const openTaskModal = async (taskId: string, mode: TaskModalMode = 'view'): Promise<void> => {
   selectedTaskId.value = taskId;
   taskModalMode.value = mode;
   taskModalOpen.value = true;
-  await loadTaskComments(taskId);
+  await Promise.all([loadTaskComments(taskId), loadTaskActivity(taskId)]);
 };
 
 const closeTaskModal = (): void => {
@@ -583,7 +598,7 @@ const saveTaskChanges = async (payload: UpdateTaskPayload): Promise<void> => {
     selectedTaskId.value = result.id;
     taskModalMode.value = 'view';
     setFeedback('success', t('Task updated successfully.'));
-    await loadTaskComments(result.id);
+    await Promise.all([loadTaskComments(result.id), loadTaskActivity(result.id)]);
   } catch (error) {
     setFeedback('error', error instanceof Error ? error.message : t('Failed to update task'));
   } finally {
@@ -703,6 +718,7 @@ useAutoReload(reload);
       :mode="taskModalMode"
       :task="selectedTask"
       :comments="taskComments"
+      :activity="taskActivity"
       :project-options="projectOptions"
       :assignee-options="assigneeOptions"
       :creator-options="creatorOptions"
@@ -710,6 +726,7 @@ useAutoReload(reload);
       :busy="isTaskMutating"
       :comments-loading="commentsLoading"
       :comment-submitting="commentSubmitting"
+      :activity-loading="activityLoading"
       :format-relative="formatRelative"
       :get-project-name="getProjectName"
       :get-agent-name="getAgentName"

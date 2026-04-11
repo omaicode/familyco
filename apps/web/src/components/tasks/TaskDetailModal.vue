@@ -3,12 +3,14 @@ import type {
   AgentListItem,
   CreateTaskCommentPayload,
   ProjectListItem,
+  TaskActivityItem,
   TaskCommentItem,
   TaskListItem,
   UpdateTaskPayload
 } from '@familyco/ui';
 import { computed, reactive, ref, watch } from 'vue';
 import {
+  Activity,
   Clock3,
   Eye,
   MessageSquareMore,
@@ -26,9 +28,11 @@ import FcInput from '../FcInput.vue';
 import FcSelect from '../FcSelect.vue';
 import MarkdownEditor from '../MarkdownEditor.vue';
 import MarkdownPreview from '../MarkdownPreview.vue';
+import TaskActivityTimeline from './TaskActivityTimeline.vue';
 import { useI18n } from '../../composables/useI18n';
 
 type ModalMode = 'view' | 'edit' | 'delete';
+type ViewTab = 'details' | 'activity';
 
 interface CommentAuthorOption {
   id: string;
@@ -41,6 +45,7 @@ const props = defineProps<{
   mode: ModalMode;
   task: TaskListItem | null;
   comments: TaskCommentItem[];
+  activity: TaskActivityItem[];
   projectOptions: ProjectListItem[];
   assigneeOptions: AgentListItem[];
   creatorOptions: AgentListItem[];
@@ -48,6 +53,7 @@ const props = defineProps<{
   busy: boolean;
   commentsLoading: boolean;
   commentSubmitting: boolean;
+  activityLoading: boolean;
   formatRelative: (iso: string) => string;
   getProjectName: (projectId: string) => string;
   getAgentName: (agentId: string | null | undefined) => string;
@@ -64,6 +70,8 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const activeViewTab = ref<ViewTab>('details');
 
 const draft = reactive({
   title: '',
@@ -97,6 +105,7 @@ watch(
 
     if (!props.open) {
       commentDraft.value = '';
+      activeViewTab.value = 'details';
     }
   },
   { immediate: true }
@@ -282,12 +291,26 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
             </div>
           </div>
 
-          <div class="task-modal-section">
-            <div class="task-modal-section-header">
-              <h5>{{ t('Comment thread') }}</h5>
-              <span class="fc-badge">{{ comments.length }}</span>
-            </div>
+          <div class="task-view-tabs">
+            <button
+              :class="['task-view-tab', activeViewTab === 'details' ? 'task-view-tab--active' : '']"
+              @click="activeViewTab = 'details'"
+            >
+              <MessageSquareMore :size="13" />
+              {{ t('Comment thread') }}
+              <span class="task-view-tab-count">{{ comments.length }}</span>
+            </button>
+            <button
+              :class="['task-view-tab', activeViewTab === 'activity' ? 'task-view-tab--active' : '']"
+              @click="activeViewTab = 'activity'"
+            >
+              <Activity :size="13" />
+              {{ t('Agent activity') }}
+              <span class="task-view-tab-count">{{ activity.length }}</span>
+            </button>
+          </div>
 
+          <div v-if="activeViewTab === 'details'" class="task-modal-section">
             <div class="task-comment-composer">
               <div class="fc-form-grid">
                 <div class="fc-form-group">
@@ -341,6 +364,14 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
             <div v-else class="task-comments-empty">
               {{ t('No comments yet. Start the thread with context, blockers, or a quick status note.') }}
             </div>
+          </div>
+
+          <div v-else-if="activeViewTab === 'activity'" class="task-modal-section">
+            <TaskActivityTimeline
+              :activity="activity"
+              :loading="activityLoading"
+              :format-date-time="formatDateTime"
+            />
           </div>
         </template>
 
@@ -700,5 +731,48 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
   .task-delete-checks {
     grid-template-columns: 1fr;
   }
+}
+
+.task-view-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--fc-border-subtle);
+  padding: 0 20px;
+  margin: 0 -20px;
+}
+
+.task-view-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fc-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.task-view-tab:hover {
+  color: var(--fc-text-primary);
+}
+
+.task-view-tab--active {
+  color: var(--fc-text-primary);
+  border-bottom-color: var(--fc-accent);
+}
+
+.task-view-tab-count {
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: var(--fc-surface-2, rgba(255,255,255,0.06));
+  color: var(--fc-text-muted);
+  min-width: 18px;
+  text-align: center;
 }
 </style>

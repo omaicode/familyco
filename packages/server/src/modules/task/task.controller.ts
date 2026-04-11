@@ -195,6 +195,33 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     return toTaskComment(comment);
   });
 
+  app.get('/tasks/:id/activity', async (request) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = taskIdParamsSchema.parse(request.params);
+    await deps.taskService.getTask(id);
+
+    const ACTIVITY_ACTIONS = [
+      'task.comment.added',
+      'task.session.checkpoint',
+      'approval.request.created',
+      'approval.request.decided',
+      'task.status.changed',
+      'task.assigned'
+    ];
+
+    const allRecords = await Promise.all(
+      ACTIVITY_ACTIONS.map((action) =>
+        deps.auditService.list({ action, targetId: id, limit: 200 })
+      )
+    );
+
+    const merged = allRecords
+      .flat()
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    return merged.map(toTaskActivity);
+  });
+
   app.delete('/tasks/:id', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const { id } = taskIdParamsSchema.parse(request.params);
@@ -361,5 +388,78 @@ function toTaskComment(record: AuditRecord) {
     authorType,
     authorLabel,
     createdAt: record.createdAt.toISOString()
+  };
+}
+
+function toTaskActivity(record: AuditRecord) {
+  const payload = record.payload ?? {};
+  const taskId = record.targetId ?? '';
+  const actorLabel = typeof payload.actorLabel === 'string' && payload.actorLabel.length > 0
+    ? payload.actorLabel
+    : record.actorId;
+
+  let kind: string;
+  let summary: string;
+  let extra: Record<string, unknown> = {};
+
+  switch (record.action) {
+    case 'task.comment.added': {
+      const body = typeof payload.body === 'string' ? payload.body : '';
+      kind = 'comment';
+      summary = body.slice(0, 200);
+      extra = { body };
+      break;
+    }
+    case 'task.session.checkpoint': {
+      const status = typeof payload.status === 'string' ? payload.status : 'active';
+      const index = typeof payload.checkpointIndex === 'number' ? payload.checkpointIndex : 0;
+      const sess = typeof payload.summary === 'string' ? payload.summary : '';
+      kind = 'session.checkpoint';
+      summary = sess.length > 0 ? sess.slice(0, 200) : `Checkpoint #${index} — ${status}`;
+      extra = { checkpointIndex: index, sessionStatus: status };
+      break;
+    }
+    case 'approval.request.created': {
+      const action = typeof payload.action === 'string' ? payload.action : '';
+      kind = 'approval.created';
+      summary = action.length > 0 ? `Approval requested: ${action}` : 'Approval requested';
+      break;
+    }
+    case 'approval.request.decided': {
+      const decision = payload.decision === 'approved' || payload.decision === 'rejected'
+        ? payload.decision
+        : undefined;
+      kind = 'approval.decided';
+      summary = decision ? `Approval ${decision}` : 'Approval decided';
+      extra = { approvalDecision: decision };
+      break;
+    }
+    case 'task.status.changed': {
+      const from = typeof payload.from === 'string' ? payload.from : '';
+      const to = typeof payload.to === 'string' ? payload.to : '';
+      kind = 'status.changed';
+      summary = from && to ? `Status: ${from} → ${to}` : 'Status changed';
+      break;
+    }
+    case 'task.assigned': {
+      const assignee = typeof payload.assigneeId === 'string' ? payload.assigneeId : '';
+      kind = 'assigned';
+      summary = assignee ? `Assigned to ${assignee}` : 'Task assigned';
+      break;
+    }
+    default:
+      kind = 'comment';
+      summary = record.action;
+  }
+
+  return {
+    id: record.id,
+    kind,
+    taskId,
+    actorId: record.actorId,
+    actorLabel,
+    summary,
+    createdAt: record.createdAt.toISOString(),
+    ...extra
   };
 }
