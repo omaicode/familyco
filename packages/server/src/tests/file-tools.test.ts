@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -7,7 +7,9 @@ import test from 'node:test';
 import { DefaultToolExecutor } from '../tools/default-tool.executor.js';
 
 test('file tools can search, read, write, and delete workspace files', async () => {
-  const workspaceRoot = process.cwd();
+  const workspaceRoot = await resolveRepoRoot(process.cwd());
+  const originalCwd = process.cwd();
+  const nestedCwd = path.join(workspaceRoot, 'packages/server');
   const tempDir = await mkdtemp(path.join(workspaceRoot, 'tmp-file-tools-'));
   const sourceFile = path.join(tempDir, 'notes.txt');
 
@@ -16,6 +18,8 @@ test('file tools can search, read, write, and delete workspace files', async () 
   const executor = new DefaultToolExecutor();
 
   try {
+    process.chdir(nestedCwd);
+
     const searchResult = await executor.execute({
       toolName: 'file.search',
       arguments: {
@@ -67,6 +71,40 @@ test('file tools can search, read, write, and delete workspace files', async () 
     });
     assert.equal(deleteResult.ok, true);
   } finally {
+    process.chdir(originalCwd);
     await rm(tempDir, { recursive: true, force: true });
   }
 });
+
+async function resolveRepoRoot(startPath: string): Promise<string> {
+  let currentPath = path.resolve(startPath);
+
+  while (true) {
+    if (await exists(path.join(currentPath, 'pnpm-workspace.yaml'))) {
+      return currentPath;
+    }
+
+    const parentPath = path.dirname(currentPath);
+    if (parentPath === currentPath) {
+      throw new Error('REPO_ROOT_NOT_FOUND');
+    }
+
+    currentPath = parentPath;
+  }
+}
+
+async function exists(filePath: string): Promise<boolean> {
+  try {
+    await stat(filePath);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && 'code' in error) {
+      const code = typeof error.code === 'string' ? error.code : '';
+      if (code === 'ENOENT' || code === 'ENOTDIR') {
+        return false;
+      }
+    }
+
+    throw error;
+  }
+}
