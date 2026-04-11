@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url))
 
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
 import websocket from '@fastify/websocket';
 import {
   AgentRunner,
@@ -30,7 +31,7 @@ import {
 
 import { prismaClient } from './db/prisma-client.js';
 import { runMigrationsWithSafety, type MigrationRunResult } from './db/migration-runner.js';
-import { ChatStreamRegistry, registerAgentController } from './modules/agent/index.js';
+import { ChatAttachmentStore, ChatStreamRegistry, registerAgentController } from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
@@ -111,6 +112,12 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
 
   registerAuthPlugin(app);
+  app.register(multipart, {
+    limits: {
+      fileSize: 25 * 1024 * 1024,
+      files: 1
+    }
+  });
   app.register(websocket);
 
   const repositoryDriver =
@@ -179,6 +186,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
   const chatEngineService = new ChatEngineService(settingsService, adapterRegistry, skillsService);
   const chatStreamRegistry = new ChatStreamRegistry();
+  const chatAttachmentStore = new ChatAttachmentStore();
 
   const queueService = new InMemoryQueueService({
     agentRunConcurrency,
@@ -397,7 +405,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         chatEngineService,
         toolExecutor,
         listTools: () => toolExecutor.listToolDefinitions(),
-        chatStreamRegistry
+        chatStreamRegistry,
+        chatAttachmentStore
       });
       registerApprovalController(api, {
         approvalService,

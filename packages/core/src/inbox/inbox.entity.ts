@@ -23,6 +23,12 @@ export interface CreateInboxMessageInput {
   payload?: Record<string, unknown>;
 }
 
+export interface UpdateInboxMessageInput {
+  title?: string;
+  body?: string;
+  payload?: Record<string, unknown>;
+}
+
 export interface ListInboxMessagesQuery {
   recipientId: string;
   senderId?: string;

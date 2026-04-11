@@ -2,7 +2,8 @@ import type {
   CreateInboxMessageInput,
   InboxMessage,
   InboxMessageStatus,
-  ListInboxMessagesQuery
+  ListInboxMessagesQuery,
+  UpdateInboxMessageInput
 } from './inbox.entity.js';
 
 export interface InboxRepository {
@@ -10,6 +11,7 @@ export interface InboxRepository {
   findById(id: string): Promise<InboxMessage | null>;
   list(query: ListInboxMessagesQuery): Promise<InboxMessage[]>;
   updateStatus(id: string, status: InboxMessageStatus): Promise<InboxMessage>;
+  updateMessage(id: string, input: UpdateInboxMessageInput): Promise<InboxMessage>;
   clearConversation(agentId: string, founderId?: string): Promise<void>;
 }
 
@@ -18,6 +20,10 @@ export class InboxService {
 
   createMessage(input: CreateInboxMessageInput): Promise<InboxMessage> {
     return this.repository.create(input);
+  }
+
+  updateMessage(id: string, input: UpdateInboxMessageInput): Promise<InboxMessage> {
+    return this.repository.updateMessage(id, input);
   }
 
   async listMessages(query: ListInboxMessagesQuery): Promise<InboxMessage[]> {

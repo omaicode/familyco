@@ -9,6 +9,7 @@ import type {
 } from '@familyco/core';
 import type { ChatEngineService } from './chat-engine.service.js';
 import type { ChatStreamRegistry } from './chat-stream-registry.js';
+import type { ChatAttachmentStore } from './chat-attachment-store.js';
 import type { ToolDefinitionSummary } from '../../tools/tool.types.js';
 
 export interface ChatToolCall {
@@ -37,6 +38,9 @@ export interface ChatRequestMeta {
   taskId?: string;
   toolCall?: unknown;
   toolCalls?: unknown[];
+  attachments?: Array<{ id: string }>;
+  editedFromMessageId?: string;
+  supersedesMessageId?: string;
   [key: string]: unknown;
 }
 
@@ -56,6 +60,7 @@ export interface AgentModuleDeps {
   toolExecutor: ToolExecutor;
   listTools: () => ToolDefinitionSummary[];
   chatStreamRegistry: ChatStreamRegistry;
+  chatAttachmentStore: ChatAttachmentStore;
 }
 
 export interface ChatSocketClient {

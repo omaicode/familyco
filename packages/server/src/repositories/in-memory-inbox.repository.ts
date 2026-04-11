@@ -5,7 +5,8 @@ import type {
   InboxMessage,
   InboxMessageStatus,
   InboxRepository,
-  ListInboxMessagesQuery
+  ListInboxMessagesQuery,
+  UpdateInboxMessageInput
 } from '@familyco/core';
 
 export class InMemoryInboxRepository implements InboxRepository {
@@ -69,6 +70,25 @@ export class InMemoryInboxRepository implements InboxRepository {
     const updated: InboxMessage = {
       ...this.messages[index],
       status,
+      updatedAt: new Date()
+    };
+
+    this.messages[index] = updated;
+    return updated;
+  }
+
+  async updateMessage(id: string, input: UpdateInboxMessageInput): Promise<InboxMessage> {
+    const index = this.messages.findIndex((item) => item.id === id);
+    if (index < 0) {
+      throw new Error(`INBOX_MESSAGE_NOT_FOUND:${id}`);
+    }
+
+    const current = this.messages[index];
+    const updated: InboxMessage = {
+      ...current,
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.body !== undefined ? { body: input.body } : {}),
+      ...(input.payload !== undefined ? { payload: input.payload } : {}),
       updatedAt: new Date()
     };
 

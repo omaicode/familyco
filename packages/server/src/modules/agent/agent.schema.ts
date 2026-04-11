@@ -42,6 +42,10 @@ const chatToolRequestSchema = z.object({
   arguments: z.record(z.string(), z.unknown()).optional().default({})
 });
 
+const chatAttachmentRefSchema = z.object({
+  id: z.string().min(1)
+});
+
 export const agentChatBodySchema = z.object({
   message: z.string().min(1),
   meta: z
@@ -49,7 +53,10 @@ export const agentChatBodySchema = z.object({
       projectId: z.string().min(1).optional(),
       taskId: z.string().min(1).optional(),
       toolCall: chatToolRequestSchema.optional(),
-      toolCalls: z.array(chatToolRequestSchema).optional()
+      toolCalls: z.array(chatToolRequestSchema).optional(),
+      attachments: z.array(chatAttachmentRefSchema).optional(),
+      editedFromMessageId: z.string().min(1).optional(),
+      supersedesMessageId: z.string().min(1).optional()
     })
     .optional()
 });
@@ -57,6 +64,11 @@ export const agentChatBodySchema = z.object({
 export const agentChatQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(200),
   before: z.string().datetime().optional()
+});
+
+export const agentChatAttachmentParamsSchema = z.object({
+  id: z.string().min(1),
+  attachmentId: z.string().min(1)
 });
 
 export type CreateAgentDto = z.infer<typeof createAgentSchema>;

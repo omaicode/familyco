@@ -10,10 +10,22 @@ export interface AdapterChatInput {
   model: string;
   systemPrompt: string;
   userPrompt: string;
+  attachments?: AdapterChatAttachment[];
   skills?: AdapterSkillDefinition[];
   tools?: AdapterToolDefinition[];
   previousTurns?: AdapterPreviousTurn[];
   onChunk?: (chunk: string) => void;
+  abortSignal?: AbortSignal;
+}
+
+export interface AdapterChatAttachment {
+  id: string;
+  kind: 'file' | 'audio';
+  filename: string;
+  mediaType: string;
+  sizeBytes: number;
+  data: Uint8Array;
+  transcript?: string;
 }
 
 export interface AdapterSkillDefinition {

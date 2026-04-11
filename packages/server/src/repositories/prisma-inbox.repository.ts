@@ -4,7 +4,8 @@ import type {
   InboxMessage,
   InboxMessageStatus,
   InboxRepository,
-  ListInboxMessagesQuery
+  ListInboxMessagesQuery,
+  UpdateInboxMessageInput
 } from '@familyco/core';
 
 export class PrismaInboxRepository implements InboxRepository {
@@ -55,6 +56,19 @@ export class PrismaInboxRepository implements InboxRepository {
       where: { id },
       data: {
         status
+      }
+    });
+
+    return toInboxMessage(message);
+  }
+
+  async updateMessage(id: string, input: UpdateInboxMessageInput): Promise<InboxMessage> {
+    const message = await this.prisma.inboxMessage.update({
+      where: { id },
+      data: {
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.body !== undefined ? { body: input.body } : {}),
+        ...(input.payload !== undefined ? { payload: toJsonValue(input.payload) } : {})
       }
     });
 
