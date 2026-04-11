@@ -1,6 +1,6 @@
 import type { AdapterHook } from './adapter-hook.interface.js';
 import { AdapterHookRunner } from './adapter-hook-runner.js';
-import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult } from './ai-adapter.interface.js';
+import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult, AdapterAudioTranscriptionInput, AdapterAudioTranscriptionResult } from './ai-adapter.interface.js';
 
 class HookedAdapter implements AiAdapter {
   constructor(
@@ -33,6 +33,13 @@ class HookedAdapter implements AiAdapter {
       });
       throw error;
     }
+  }
+
+  transcribeAudio(input: AdapterAudioTranscriptionInput): Promise<AdapterAudioTranscriptionResult> {
+    if (!this.inner.transcribeAudio) {
+      throw new Error(`ADAPTER_AUDIO_TRANSCRIPTION_UNSUPPORTED: ${this.inner.id}`);
+    }
+    return this.inner.transcribeAudio(input);
   }
 
   testConnection(apiKey: string, model?: string): Promise<AdapterTestResult> {

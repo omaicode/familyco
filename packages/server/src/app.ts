@@ -406,7 +406,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         toolExecutor,
         listTools: () => toolExecutor.listToolDefinitions(),
         chatStreamRegistry,
-        chatAttachmentStore
+        chatAttachmentStore,
+        settingsService
       });
       registerApprovalController(api, {
         approvalService,

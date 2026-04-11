@@ -5,7 +5,8 @@ import type {
   ApprovalService,
   AuditService,
   InboxService,
-  ToolExecutor
+  ToolExecutor,
+  SettingsService
 } from '@familyco/core';
 import type { ChatEngineService } from './chat-engine.service.js';
 import type { ChatStreamRegistry } from './chat-stream-registry.js';
@@ -61,6 +62,7 @@ export interface AgentModuleDeps {
   listTools: () => ToolDefinitionSummary[];
   chatStreamRegistry: ChatStreamRegistry;
   chatAttachmentStore: ChatAttachmentStore;
+  settingsService: SettingsService;
 }
 
 export interface ChatSocketClient {

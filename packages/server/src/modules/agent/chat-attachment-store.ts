@@ -109,19 +109,8 @@ export class ChatAttachmentStore {
 }
 
 function resolveChatAttachmentsDir(): string {
-  const raw = process.env.DATABASE_URL ?? 'file:./prisma/dev.db';
-
-  if (raw.startsWith('file://')) {
-    const dbPath = fileURLToPath(raw);
-    return path.join(path.dirname(dbPath), 'chat-attachments');
-  }
-
-  if (raw.startsWith('file:')) {
-    const dbPath = path.resolve(process.cwd(), raw.slice('file:'.length));
-    return path.join(path.dirname(dbPath), 'chat-attachments');
-  }
-
-  return path.resolve(process.cwd(), '.familyco', 'chat-attachments');
+  const uploadPath = path.resolve(process.cwd(), 'uploads');
+  return path.join(path.dirname(uploadPath), 'chat-attachments');
 }
 
 function inferAttachmentKind(mediaType: string): ChatAttachmentKind {

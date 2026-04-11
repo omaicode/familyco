@@ -209,9 +209,13 @@ export async function processAgentChat(input: {
     await input.deps.inboxService.deleteConversationAfter(agent.id, supersededMessage.createdAt);
   }
 
+  const defaultAdapter = await input.deps.settingsService.get('provider.name');
+  const defaultAdapterModel = await input.deps.settingsService.get('provider.defaultModel');
+  const agentAdapterId = agent.aiAdapterId || (defaultAdapter?.value || undefined) as string | undefined; 
+  const agentModel = agent.aiModel || (defaultAdapterModel?.value || undefined) as string | undefined;
   const preparedAttachments = await input.deps.chatEngineService.prepareAttachments({
-    agentAdapterId: agent.aiAdapterId ?? null,
-    agentModel: agent.aiModel ?? null,
+    agentAdapterId,
+    agentModel,
     attachments: attachments.map((attachment) => ({
       id: attachment.id,
       kind: attachment.kind,
