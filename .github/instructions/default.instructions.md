@@ -1,213 +1,219 @@
 ---
-description: Đây là file hướng dẫn mặc định. Luôn đọc kỹ và tuân thủ các quy tắc trong file này trước khi thực hiện bất kỳ thay đổi nào.
+description: This is the default instruction file. Always read it carefully and follow its rules before making any change.
 applyTo: '**/*'
 ---
 
-## 1. Vai Trò Của Bạn
+## 1. Your Role
 
-Bạn **không phải kiến trúc sư**, bạn là **người thực thi theo kiến trúc đã có**.
+You are not the architect. You are the implementation executor for an existing architecture.
 
-- Tập trung: triển khai code, test, refactor nhỏ, fix bug, đi theo tài liệu hiện có.
-- Không tự ý: đổi kiến trúc, đổi flow nghiệp vụ, thêm module lớn, đổi tech stack, hoặc phá vỡ convention.
-- Khi thấy kiến trúc chưa hợp lý: mô tả vấn đề + đề xuất trong comment/PR, **không tự đổi**.
----
-
-## 2. Tài Liệu BẮT BUỘC Phải Đọc Trước
-
-Trước khi làm bất kỳ thay đổi nào, **phải đọc (hoặc refresh)** các file sau trong repo:
-
-- `.github/docs/02-PRD.md` — hiểu sản phẩm, tính năng, user flow.
-- `.github/docs/03-ARCHITECTURE.md` — hiểu kiến trúc tổng thể, các module, layer, và cách chúng tương tác.
-- `.github/docs/04-DOMAIN_MODEL.md` — hiểu model dữ liệu, entity, và mối quan hệ.
-- `.github/docs/05-MODULE_SPECS.md` — hiểu chi tiết từng module, API contract, và trách nhiệm.
-- `.github/docs/06-AGENT_OPERATING_MODEL.md` — hiểu cách Agent hoạt động, phân quyền, và luồng approval.
-- `.github/docs/07-APPROVAL_POLICY.md` — hiểu chính sách approval, khi nào cần approval, và cách thức hoạt động.
-- `.github/docs/09-CODING_RULES.md` — hiểu quy tắc coding, convention, và best practices cho codebase.
-
-Nếu yêu cầu mới conflict với các file trên, **không tự quyết** → ghi rõ conflict vào comment/PR.
+- Focus on implementation, testing, small refactors, and bug fixes according to existing documentation.
+- Do not change architecture, business flow, add major modules, change tech stack, or break conventions without direction.
+- If architecture appears problematic, describe the issue and propose options in PR/comment. Do not unilaterally change it.
 
 ---
 
-## 3. Quy Tắc Kiến Trúc CỐT LÕI (Không Được Vi Phạm)
+## 2. Mandatory Docs To Read First
 
-1. **Business logic chỉ nằm trong `@familyco/core`**  
-   - Không đưa logic nghiệp vụ vào Vue component, controller Fastify, hay Electron main.
+Before making any change, read (or refresh) the following files:
 
-2. **`core` KHÔNG import package nội bộ nào khác**  
-   - Không được tạo import từ `@familyco/server`, `@familyco/ui`, `@familyco/electron`, `@familyco/cli` vào `core`.
+- `.github/docs/02-PRD.md` — product goals, features, user flows.
+- `.github/docs/03-ARCHITECTURE.md` — architecture, modules, layers, interactions.
+- `.github/docs/04-DOMAIN_MODEL.md` — data model, entities, relationships.
+- `.github/docs/05-MODULE_SPECS.md` — module responsibilities and API contracts.
+- `.github/docs/06-AGENT_OPERATING_MODEL.md` — agent behavior, permissions, approval flow.
+- `.github/docs/07-APPROVAL_POLICY.md` — approval policy and decision rules.
+- `.github/docs/09-CODING_RULES.md` — coding conventions and best practices.
 
-3. **Tất cả gọi AI provider phải qua Engine (`agent-runner` + `tool-executor`)**  
-   - Không dùng SDK OpenAI/Anthropic trực tiếp trong UI/Server.
-
-4. **Mọi side-effect (email, webhook, publish ra ngoài, DB mutation lớn) phải đi qua `ApprovalGuard`**.
-
-5. **DB chỉ truy cập qua Repository**  
-   - Service dùng interface repository từ `core`.  
-   - Implementation Prisma nằm bên `@familyco/server/repositories/*`.
-
-6. **Không bật tắt strict mode**  
-   - Không dùng `any` bừa bãi, không chỉnh `tsconfig` để tắt strict.
-
-7. **Không đổi schema Prisma nếu chưa được mô tả rõ diff**  
-   - Nếu bắt buộc phải đổi: viết rõ diff + migration step trong PR.
-
-8. **Không thêm package nặng nếu không có lý do**  
-   - Ưu tiên libs đã dùng (Fastify, Prisma, BullMQ, Pinia, Vite, Tailwind).
+If a new request conflicts with these docs, do not decide by yourself. Explicitly document the conflict in PR/comment.
 
 ---
 
-## 4. Trình Tự Làm Việc Trước Khi Viết Code
+## 3. Core Architecture Rules (Must Not Violate)
 
-Khi nhận một yêu cầu (issue / task / prompt), hãy đi theo checklist sau **trong đầu** trước khi bắt tay vào code:
+1. Business logic only in `@familyco/core`.
+   - Do not put business logic in Vue components, Fastify controllers, or Electron main.
 
-1. **Xác định loại yêu cầu**  
-   - Bugfix? New API? Mở rộng UI? Thêm field DB? Thay đổi Agent logic?  
-   - Ghi rõ loại trong phần mô tả PR / comment đầu tiên.
+2. `core` must not import any other internal package.
+   - No imports from `@familyco/server`, `@familyco/ui`, `@familyco/electron`, `@familyco/cli` into `core`.
 
-2. **Xác định layer bị ảnh hưởng**  
-   - Logic core? → `packages/core/*`  
-   - API/REST/WS? → `packages/server/*`  
-   - UI runtime (Vue renderer)? → `apps/web/*`  
-   - UI contracts/design tokens? → `packages/ui/*`  
-   - Electron shell / Desktop? → `apps/electron/*`  
-   - CLI / Server Only? → `packages/cli/*`
+3. All AI provider calls must go through Engine (`agent-runner` + `tool-executor`).
+   - Do not call OpenAI/Anthropic SDK directly from UI/Server.
 
-3. **Đọc lại tài liệu liên quan**  
-   - Nếu đụng đến Agent/Task/Project/Inbox/Approval: đọc section tương ứng trong `technical-architecture.md` + `agent-hierarchy.md`.
+4. All side effects (email, webhook, external publish, large DB mutation) must pass through `ApprovalGuard`.
 
-4. **Lập kế hoạch thay đổi nhỏ (Implementation Plan)**  
-   - Viết checklist ngắn trong comment/PR, ví dụ:
-     - [ ] Thêm field `xyz` vào model `Task` (Prisma + core entity).
-     - [ ] Update `TaskService` để xử lý logic mới.
-     - [ ] Expose field qua API `/tasks` (controller + schema).
-     - [ ] Update UI `TaskRow.vue` hiển thị field.
-     - [ ] Thêm test unit/integration.
+5. DB access only through Repository.
+   - Services use repository interfaces from `core`.
+   - Prisma implementations are in `@familyco/server/repositories/*`.
 
-5. **Xác nhận không phá dependency graph**  
-   - Kiểm tra lại imports: `core` không được import từ package khác; `ui` không import `server` hoặc `desktop`.
+6. Do not disable strict mode.
+   - Do not misuse `any` or relax `tsconfig` strictness.
 
-6. **Sau khi chắc chắn plan ổn, mới bắt đầu chỉnh code**.
+7. Do not change Prisma schema without a clear documented diff.
+   - If required, document schema diff and migration steps in PR.
+
+8. Do not add heavy dependencies without clear reason.
+   - Prefer existing stack (Fastify, Prisma, BullMQ, Pinia, Vite, Tailwind).
 
 ---
 
-## 5. GitNexus Workflow Cho Phân Tích / Tìm Kiếm Code
+## 4. Work Sequence Before Writing Code
 
-Khi repo đã được GitNexus index, **ưu tiên dùng GitNexus trước** cho các tác vụ hiểu codebase, tìm execution flow, debug bug, phân tích ảnh hưởng thay đổi và rà consumer của API.
+Before implementing a request (issue/task/prompt), follow this checklist mentally:
 
-### Ưu tiên dùng GitNexus khi:
+1. Classify the request.
+   - Bugfix? New API? UI extension? DB field? Agent logic change?
+   - State request type in initial PR/comment context.
 
-1. **Muốn hiểu “flow này chạy như thế nào?”**
-   - Dùng `gitnexus_query` để tìm process/execution flow liên quan.
-   - Dùng `gitnexus_context` để xem callers/callees của symbol chính.
+2. Identify affected layer.
+   - Core logic -> `packages/core/*`
+   - API/REST/WS -> `apps/server/*`
+   - UI runtime -> `apps/web/*`
+   - UI contracts/design tokens -> `packages/ui/*`
+   - Electron shell/desktop -> `apps/electron/*`
+   - CLI/server-only tooling -> `packages/cli/*`
 
-2. **Muốn biết “sửa chỗ này ảnh hưởng gì?”**
-   - Dùng `gitnexus_impact` trước khi sửa shared function/class/method.
+3. Re-read relevant docs.
+   - For Agent/Task/Project/Inbox/Approval changes, read related sections in:
+     - `.github/docs/03-ARCHITECTURE.md`
+     - `.github/docs/06-AGENT_OPERATING_MODEL.md`
+     - `.github/docs/07-APPROVAL_POLICY.md`
 
-3. **Sửa API route / controller / response**
-   - Dùng `gitnexus_api_impact` để biết route đang được ai consume, access field nào, có mismatch shape hay không.
+4. Create a small implementation plan.
+   - Example checklist:
+     - [ ] Add field `xyz` to Task model (Prisma + core entity).
+     - [ ] Update `TaskService` logic.
+     - [ ] Expose field via `/tasks` API (controller + schema).
+     - [ ] Update UI in Task row component.
+     - [ ] Add/adjust unit and integration tests.
 
-4. **Refactor / rename / tách hàm**
-   - Dùng `gitnexus_rename` cho rename an toàn.
-   - Dùng `gitnexus_detect_changes()` trước khi commit để rà blast radius của diff hiện tại.
+5. Confirm dependency graph remains valid.
+   - `core` cannot import other internal packages.
+   - `ui` must not import `server` or `desktop`.
 
-### Chỉ dùng grep/read/search trực tiếp khi:
-- Cần exact line hoặc snippet cụ thể
-- Đọc file nhỏ để sửa nhanh
-- Nội dung chưa được GitNexus index hoặc cần xác nhận text literal
-
-Nếu GitNexus báo index stale, chạy `npx gitnexus analyze` ở root repo trước khi tiếp tục.
-
-## 6. Quy Tắc Khi Chỉnh Code Trong VSCode
-
-Khi đang ở trong VSCode (hoặc bất kỳ editor nào) với AI assistance:
-
-1. **Không auto-format toàn file**  
-   - Chỉ format vùng code mình đụng tới (giảm diff noise trong PR).
-
-2. **Tuân thủ convention hiện tại**  
-   - Tên file, tên class, tên function, casing… theo tài liệu kỹ thuật (`technical-brief.md`).
-
-3. **Không xoá TODO / FIXME trừ khi thực sự giải quyết**  
-   - Nếu fix TODO/FIXME: update comment/issue tương ứng.
-
-4. **Không đổi tên public API / route / event** nếu không được yêu cầu rõ ràng.
-
-5. **Không thêm log debug thừa**  
-   - Log mới phải có ý nghĩa, dùng logger chuẩn (Pino), không `console.log` lung tung.
-
-6. **Mọi text UI/UX phải đi qua i18n và luôn cập nhật đủ 2 ngôn ngữ**  
-   - Khi sửa hoặc thêm UI trong `apps/web/*` hoặc `packages/ui/*`, không để text user-facing hardcode nếu có thể localize.  
-   - Bắt buộc cập nhật cả **English** và **Vietnamese** trong bộ dịch chung hiện hành (hiện tại là `packages/ui/src/i18n/en.ts`, `packages/ui/src/i18n/vi.ts`).  
-   - Áp dụng cho: page title, button, label, tooltip, empty/loading/error state, modal, banner, onboarding copy, và microcopy UX.
-
-7. **Luôn chạy test liên quan**  
-   - Nếu sửa core: chạy unit test core.  
-   - Nếu sửa API: chạy integration test.  
-   - Nếu sửa UI: chạy ít nhất unit test component (nếu có) hoặc manual quick test.
-
-8. **Không để file phình quá dài**  
-   - Nếu file Vue/TS đã chạm khoảng **220 dòng** mà còn cần thêm logic/UI, phải **dừng và tách ngay**, không đợi Founder nhắc.  
-   - Nếu sau khi sửa file vượt khoảng **260 dòng** hoặc ôm hơn 1 trách nhiệm chính, thay đổi **chưa được xem là xong**.  
-   - Ưu tiên tách theo hướng: **page → subcomponents/composables/helpers**, **controller → routes/services**, **test lớn → helpers + spec theo domain**.  
-   - Trong phần summary/PR, phải nêu rõ file nào đã được tách hoặc lý do cụ thể nếu giữ nguyên.
+6. Start coding only after plan sanity check.
 
 ---
 
-## 7. Quy Trình Git / GitHub Chuẩn Cho AI Agent
+## 5. GitNexus Workflow For Analysis / Code Search
 
-### 6.1 Branch Naming
+When GitNexus is indexed, use GitNexus first for code understanding, execution flow tracing, bug debugging, impact analysis, and API consumer mapping.
 
-Khi tạo branch mới, dùng format:
+### Prefer GitNexus when:
 
-- `feat/<short-description>` — thêm tính năng.  
-  Ví dụ: `feat/agent-inbox-filter`, `feat/dashboard-kpis`.
-- `fix/<short-description>` — sửa bug.  
-  Ví dụ: `fix/task-status-transition`.
-- `chore/<short-description>` — dọn code, update deps.  
-  Ví dụ: `chore/update-prisma`.
+1. Understanding execution flow.
+   - Use `gitnexus_query` for relevant processes/flows.
+   - Use `gitnexus_context` for caller/callee graph around key symbols.
 
-### 6.2 Commit Message
+2. Assessing change impact.
+   - Use `gitnexus_impact` before editing shared functions/classes/methods.
 
-Dùng dạng ngắn gọn, rõ ràng, tiếng Anh hoặc tiếng Việt đều được nhưng phải nhất quán.
+3. Modifying API route/controller/response.
+   - Use `gitnexus_api_impact` to identify consumers and response-shape risks.
 
-Ví dụ:
+4. Refactoring / rename / extraction.
+   - Use `gitnexus_rename` for safe rename.
+   - Use `gitnexus_detect_changes()` before commit to inspect blast radius.
 
+### Use grep/read/search directly only when:
+- You need exact lines/snippets.
+- You are reading a small file for quick edits.
+- Content is not indexed or you need literal text verification.
+
+If GitNexus index is stale, run `npx gitnexus analyze` at repo root before continuing.
+
+---
+
+## 6. VS Code Editing Rules
+
+1. Do not auto-format entire files.
+   - Only format touched regions to reduce diff noise.
+
+2. Follow existing conventions.
+   - Naming, casing, structure should follow current project patterns.
+
+3. Do not remove TODO/FIXME unless actually resolved.
+   - If resolved, update related issue/comment context.
+
+4. Do not rename public API/route/event unless explicitly requested.
+
+5. Do not add noisy debug logs.
+   - Use standard logger (Pino). Avoid random `console.log`.
+
+6. All UI/UX text must go through i18n and keep both languages updated.
+   - For changes in `apps/web/*` or `packages/ui/*`, avoid hardcoded user-facing text when localization exists.
+   - Update both English and Vietnamese catalogs (`packages/ui/src/i18n/en.ts`, `packages/ui/src/i18n/vi.ts`).
+   - Includes titles, buttons, labels, tooltips, empty/loading/error states, modals, banners, onboarding copy, microcopy.
+
+7. Always run relevant validation.
+   - Core changes: at least `pnpm --filter @familyco/core typecheck`.
+   - API/server changes: `pnpm --filter @familyco/server test`.
+   - UI changes: `pnpm --filter @familyco/web typecheck` and `pnpm --filter @familyco/web build`.
+
+8. Do not report completion before validation gates pass.
+   - Run the scope-relevant gates (typecheck/test/build).
+   - For fullstack or uncertain impact, run `pnpm -w typecheck` before concluding.
+
+9. Keep files maintainable in size and responsibility.
+   - If a Vue/TS file is around 220+ lines and still growing, split immediately.
+   - If after edits a file exceeds ~260 lines or has multiple major responsibilities, the task is not considered done.
+   - Prefer splitting as:
+     - page -> subcomponents/composables/helpers
+     - controller -> routes/services
+     - large tests -> helpers + domain specs
+   - In summary/PR, state which files were split or why they were intentionally kept as-is.
+
+---
+
+## 7. Git / GitHub Process For AI Agent
+
+### 7.1 Branch naming
+
+Use:
+- `feat/<short-description>` for feature work.
+- `fix/<short-description>` for bug fixes.
+- `chore/<short-description>` for maintenance.
+
+### 7.2 Commit messages
+
+Use concise, clear messages (English or Vietnamese, but consistent).
+
+Examples:
 - `feat: add approval status filter for tasks`
 - `fix: prevent task moving from done back to in_progress`
 - `chore: bump fastify to v5`
 
-Không gộp nhiều loại thay đổi lớn trong một commit.
+Do not mix multiple large change types in one commit.
 
-### 6.3 Pull Request Checklist
+### 7.3 PR checklist
 
-Trước khi coi PR là "xong" (dù là AI tạo), hãy đảm bảo:
-
-- [ ] Đã link tới issue / yêu cầu tương ứng.
-- [ ] Đã ghi **Implementation Plan** ngắn ở phần mô tả PR.
-- [ ] Đã liệt kê rõ: files/areas bị ảnh hưởng.
-- [ ] Đã chạy test cần thiết và ghi rõ kết quả (ví dụ: "Core unit tests: passed").
-- [ ] Đã kiểm tra nhanh UI (nếu có thay đổi UI) ở ít nhất 2 màn hình: Desktop size & small width.
-- [ ] Không có thay đổi `.env.example`, `tsconfig`, `package.json` trừ khi yêu cầu.
-
----
-
-## 8. Những Điều CẦN HỎI Thay Vì Tự Ý Làm
-
-Nếu rơi vào một trong các trường hợp dưới đây, **dừng lại và yêu cầu clarification từ Founder**, không tự implement:
-
-1. Cần thêm **model/bảng DB mới** không được nhắc trong tài liệu.
-2. Cần thay đổi **luồng approval** (Auto / Suggest-only / Require-review) mặc định.
-3. Cần thêm **loại Agent mới** (ví dụ L3, role mới chưa định nghĩa).
-4. Cần thay đổi **luồng onboarding** (thêm/bớt bước).
-5. Cần đổi **tech stack lớn** (ORM khác, HTTP framework khác, UI framework khác).
-6. Cần **xóa mã cũ** với logic chưa rõ mục đích.
-
-Khi hỏi, hãy mô tả:
-- Bối cảnh (file/module liên quan).  
-- Vấn đề hoặc giới hạn kiến trúc hiện tại.  
-- 1–2 phương án đề xuất.
+Before considering PR done:
+- [ ] Link related issue/request.
+- [ ] Include short implementation plan.
+- [ ] List affected files/areas.
+- [ ] Run and record relevant tests.
+- [ ] Quick UI check on at least desktop and small width (if UI changed).
+- [ ] Do not alter `.env.example`, `tsconfig`, `package.json` unless required.
 
 ---
 
-File này là "hợp đồng" giữa kiến trúc FamilyCo và AI Coding Agent. 
-Nếu rule nào cần cập nhật, phải được Founder chỉnh trực tiếp.
+## 8. Cases Requiring Clarification (Do Not Decide Alone)
+
+Pause and ask Founder clarification if any of these apply:
+
+1. New DB model/table not documented.
+2. Default approval mode change (Auto/Suggest-only/Require-review).
+3. New agent type (e.g., L3/new undefined role).
+4. Onboarding flow changes.
+5. Major tech stack change (ORM/framework/UI framework).
+6. Deleting legacy code with unclear purpose.
+
+When asking, include:
+- Context (relevant file/module)
+- Current limitation/problem
+- 1-2 proposed options
+
+---
+
+This file is the operating contract between FamilyCo architecture and AI coding agents.
+If any rule needs to change, Founder should update this file directly.
