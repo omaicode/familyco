@@ -6,7 +6,7 @@ export interface AgentListItem {
   role: string;
   level: 'L0' | 'L1' | 'L2';
   department: string;
-  status: 'active' | 'idle' | 'running' | 'error' | 'paused' | 'terminated';
+  status: 'active' | 'idle' | 'running' | 'error' | 'paused' | 'terminated' | 'archived';
   parentAgentId: string | null;
   aiAdapterId: string | null;
   aiModel: string | null;
@@ -155,6 +155,8 @@ export interface AgentActionApprovalResponse {
 
 export type CreateAgentResult = AgentListItem | AgentActionApprovalResponse;
 export type PauseAgentResult = AgentListItem | AgentActionApprovalResponse;
+export type ResumeAgentResult = AgentListItem | AgentActionApprovalResponse;
+export type ArchiveAgentResult = AgentListItem | AgentActionApprovalResponse;
 
 export interface DeleteAgentPayload {
   agentId: string;
@@ -328,6 +330,14 @@ export interface PauseAgentPayload {
   agentId: string;
 }
 
+export interface ResumeAgentPayload {
+  agentId: string;
+}
+
+export interface ArchiveAgentPayload {
+  agentId: string;
+}
+
 export interface UpdateAgentPayload {
   agentId: string;
   name: string;
@@ -401,6 +411,11 @@ export interface ArchiveInboxMessagePayload {
   id: string;
 }
 
+export interface RespondInboxMessagePayload {
+  id: string;
+  responseText: string;
+}
+
 export interface TestAdapterPayload {
   adapterId: string;
   apiKey: string;
@@ -469,6 +484,43 @@ export interface BudgetReport {
   budget: BudgetReportBudgetStatus;
   byAdapter: BudgetReportByAdapter[];
   dailyBreakdown: BudgetReportDailyEntry[];
+  byModel: Array<{
+    model: string;
+    provider: string;
+    totalTokens: number;
+    estimatedCostUSD: number;
+    requestCount: number;
+  }>;
+  byRun: Array<{
+    runId: string;
+    totalTokens: number;
+    estimatedCostUSD: number;
+    requestCount: number;
+  }>;
+  byWeek: Array<{
+    bucket: string;
+    totalTokens: number;
+    estimatedCostUSD: number;
+    requestCount: number;
+  }>;
+  byMonth: Array<{
+    bucket: string;
+    totalTokens: number;
+    estimatedCostUSD: number;
+    requestCount: number;
+  }>;
+  topCostlyAgents: Array<{
+    entityId: string;
+    totalTokens: number;
+    estimatedCostUSD: number;
+    requestCount: number;
+  }>;
+  topCostlyProjects: Array<{
+    entityId: string;
+    totalTokens: number;
+    estimatedCostUSD: number;
+    requestCount: number;
+  }>;
 }
 
 export interface SkillListItem {
@@ -504,6 +556,8 @@ export interface FamilyCoApiContracts {
   uploadAgentChatAttachment: (payload: UploadAgentChatAttachmentPayload) => Promise<ChatAttachmentItem>;
   createAgent: (payload: CreateAgentPayload) => Promise<CreateAgentResult>;
   pauseAgent: (payload: PauseAgentPayload) => Promise<PauseAgentResult>;
+  resumeAgent: (payload: ResumeAgentPayload) => Promise<ResumeAgentResult>;
+  archiveAgent: (payload: ArchiveAgentPayload) => Promise<ArchiveAgentResult>;
   deleteAgent: (payload: DeleteAgentPayload) => Promise<DeleteAgentResult>;
   updateAgent: (payload: UpdateAgentPayload) => Promise<AgentListItem>;
   updateAgentParent: (payload: UpdateAgentParentPayload) => Promise<AgentListItem>;
@@ -526,6 +580,8 @@ export interface FamilyCoApiContracts {
   listInbox: (recipientId: string) => Promise<InboxMessageItem[]>;
   readInboxMessage: (payload: ReadInboxMessagePayload) => Promise<InboxMessageItem>;
   archiveInboxMessage: (payload: ArchiveInboxMessagePayload) => Promise<InboxMessageItem>;
+  requestInboxChange: (payload: RespondInboxMessagePayload) => Promise<InboxMessageItem>;
+  answerInboxClarification: (payload: RespondInboxMessagePayload) => Promise<InboxMessageItem>;
   listSettings: () => Promise<SettingItem[]>;
   upsertSetting: (payload: UpsertSettingPayload) => Promise<SettingItem>;
   testProviderAdapter: (payload: TestAdapterPayload) => Promise<AdapterTestResult>;
@@ -577,6 +633,8 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   },
   createAgent: (payload) => client.post<CreateAgentResult, CreateAgentPayload>('/api/v1/agents', payload),
   pauseAgent: (payload) => client.post<PauseAgentResult>(`/api/v1/agents/${payload.agentId}/pause`),
+  resumeAgent: (payload) => client.post<ResumeAgentResult>(`/api/v1/agents/${payload.agentId}/resume`),
+  archiveAgent: (payload) => client.post<ArchiveAgentResult>(`/api/v1/agents/${payload.agentId}/archive`),
   deleteAgent: (payload) => client.delete<DeleteAgentResult>(`/api/v1/agents/${payload.agentId}`),
   updateAgent: (payload) =>
     client.patch<AgentListItem, Omit<UpdateAgentPayload, 'agentId'>>(`/api/v1/agents/${payload.agentId}`, {
@@ -672,6 +730,14 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   listInbox: (recipientId) => client.get<InboxMessageItem[]>(`/api/v1/inbox?recipientId=${recipientId}`),
   readInboxMessage: (payload) => client.post<InboxMessageItem>(`/api/v1/inbox/${payload.id}/read`),
   archiveInboxMessage: (payload) => client.post<InboxMessageItem>(`/api/v1/inbox/${payload.id}/archive`),
+  requestInboxChange: (payload) =>
+    client.post<InboxMessageItem, { responseText: string }>(`/api/v1/inbox/${payload.id}/request-change`, {
+      responseText: payload.responseText
+    }),
+  answerInboxClarification: (payload) =>
+    client.post<InboxMessageItem, { responseText: string }>(`/api/v1/inbox/${payload.id}/clarification`, {
+      responseText: payload.responseText
+    }),
   listSettings: () => client.get<SettingItem[]>('/api/v1/settings'),
   upsertSetting: (payload) => client.post<SettingItem, UpsertSettingPayload>('/api/v1/settings', payload),
   testProviderAdapter: (payload) =>

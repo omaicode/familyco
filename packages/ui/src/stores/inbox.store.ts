@@ -3,7 +3,8 @@ import type {
   ArchiveInboxMessagePayload,
   AuditListItem,
   DecideApprovalPayload,
-  FamilyCoApiContracts
+  FamilyCoApiContracts,
+  RespondInboxMessagePayload
 } from '../api/contracts.js';
 import { createAsyncState, type AsyncState } from './async-state.js';
 
@@ -74,6 +75,20 @@ export class InboxStore {
 
   async archive(payload: ArchiveInboxMessagePayload): Promise<void> {
     const updated = await this.api.archiveInboxMessage(payload);
+    this.state.data.messages = this.state.data.messages.map((message) =>
+      message.id === updated.id ? updated : message
+    );
+  }
+
+  async requestChange(payload: RespondInboxMessagePayload): Promise<void> {
+    const updated = await this.api.requestInboxChange(payload);
+    this.state.data.messages = this.state.data.messages.map((message) =>
+      message.id === updated.id ? updated : message
+    );
+  }
+
+  async answerClarification(payload: RespondInboxMessagePayload): Promise<void> {
+    const updated = await this.api.answerInboxClarification(payload);
     this.state.data.messages = this.state.data.messages.map((message) =>
       message.id === updated.id ? updated : message
     );

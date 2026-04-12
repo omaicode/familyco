@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import type { AgentListItem } from '@familyco/ui';
-import { Pause, Users } from 'lucide-vue-next';
+import { Archive, Pause, Play, Users } from 'lucide-vue-next';
 
-import { AGENT_STATUS_META, PAUSABLE_AGENT_STATUSES } from '../../composables/agents-page.config';
+import {
+  AGENT_STATUS_META,
+  ARCHIVABLE_AGENT_STATUSES,
+  PAUSABLE_AGENT_STATUSES,
+  RESUMABLE_AGENT_STATUSES
+} from '../../composables/agents-page.config';
 import { useI18n } from '../../composables/useI18n';
 import FcBadge from '../FcBadge.vue';
 import FcButton from '../FcButton.vue';
@@ -13,7 +18,7 @@ import FcSelect from '../FcSelect.vue';
 type AgentLevel = AgentListItem['level'];
 type AgentStatus = AgentListItem['status'];
 
-const STATUS_OPTIONS: AgentStatus[] = ['active', 'idle', 'running', 'error', 'paused', 'terminated'];
+const STATUS_OPTIONS: AgentStatus[] = ['active', 'idle', 'running', 'error', 'paused', 'archived', 'terminated'];
 
 defineProps<{
   agents: AgentListItem[];
@@ -43,6 +48,8 @@ defineProps<{
 const emit = defineEmits<{
   (event: 'select', agentId: string): void;
   (event: 'pause', agent: AgentListItem): void;
+  (event: 'resume', agent: AgentListItem): void;
+  (event: 'archive', agent: AgentListItem): void;
   (event: 'delete', agent: AgentListItem): void;
 }>();
 
@@ -50,6 +57,8 @@ const { t } = useI18n();
 
 const getStatusLabel = (status: AgentStatus): string => t(AGENT_STATUS_META[status].label);
 const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.includes(status);
+const canResume = (status: AgentStatus): boolean => RESUMABLE_AGENT_STATUSES.includes(status);
+const canArchive = (status: AgentStatus): boolean => ARCHIVABLE_AGENT_STATUSES.includes(status);
 </script>
 
 <template>
@@ -174,6 +183,26 @@ const canPause = (status: AgentStatus): boolean => PAUSABLE_AGENT_STATUSES.inclu
                 >
                   <Pause :size="12" />
                   {{ busy[agent.id] ? t('Pausing…') : t('Pause') }}
+                </FcButton>
+                <FcButton
+                  v-if="canResume(agent.status)"
+                  variant="secondary"
+                  size="sm"
+                  :disabled="busy[agent.id]"
+                  @click.stop="emit('resume', agent)"
+                >
+                  <Play :size="12" />
+                  {{ busy[agent.id] ? t('Resuming…') : t('Resume') }}
+                </FcButton>
+                <FcButton
+                  v-if="canArchive(agent.status)"
+                  variant="ghost"
+                  size="sm"
+                  :disabled="busy[agent.id]"
+                  @click.stop="emit('archive', agent)"
+                >
+                  <Archive :size="12" />
+                  {{ busy[agent.id] ? t('Archiving…') : t('Archive') }}
                 </FcButton>
                 <FcButton
                   v-if="canDeleteAgent(agent)"

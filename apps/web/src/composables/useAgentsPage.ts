@@ -167,9 +167,11 @@ export function useAgentsPage() {
   };
 
   const {
+    archiveAgent,
     createAgent,
     deleteAgent,
     pauseAgent,
+    resumeAgent,
     saveAgentDetails,
     saveReportingLine
   } = useAgentPageActions({
@@ -194,6 +196,7 @@ export function useAgentsPage() {
 
   return {
     AUTONOMY_GUIDE,
+    archiveAgent,
     agentState,
     agents,
     applyTemplate,
@@ -227,6 +230,7 @@ export function useAgentsPage() {
     managerDraft,
     deleteAgent,
     pauseAgent,
+    resumeAgent,
     reload,
     saveAgentDetails,
     saveReportingLine,

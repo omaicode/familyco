@@ -1,5 +1,7 @@
 import type {
   AgentActionApprovalResponse,
+  ArchiveAgentPayload,
+  ArchiveAgentResult,
   AgentListItem,
   CreateAgentPayload,
   CreateAgentResult,
@@ -8,6 +10,8 @@ import type {
   FamilyCoApiContracts,
   PauseAgentPayload,
   PauseAgentResult,
+  ResumeAgentPayload,
+  ResumeAgentResult,
   UpdateAgentPayload,
   UpdateAgentParentPayload
 } from '../api/contracts.js';
@@ -67,6 +71,30 @@ export class AgentStore {
     }
 
     return pausedAgent;
+  }
+
+  async resumeAgent(payload: ResumeAgentPayload): Promise<ResumeAgentResult> {
+    const resumedAgent = await this.api.resumeAgent(payload);
+
+    if (!isApprovalResponse(resumedAgent)) {
+      this.state.agents.data = this.state.agents.data.map((agent) =>
+        agent.id === resumedAgent.id ? resumedAgent : agent
+      );
+    }
+
+    return resumedAgent;
+  }
+
+  async archiveAgent(payload: ArchiveAgentPayload): Promise<ArchiveAgentResult> {
+    const archivedAgent = await this.api.archiveAgent(payload);
+
+    if (!isApprovalResponse(archivedAgent)) {
+      this.state.agents.data = this.state.agents.data.map((agent) =>
+        agent.id === archivedAgent.id ? archivedAgent : agent
+      );
+    }
+
+    return archivedAgent;
   }
 
   async deleteAgent(payload: DeleteAgentPayload): Promise<DeleteAgentResult> {

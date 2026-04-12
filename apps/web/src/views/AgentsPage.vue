@@ -46,11 +46,13 @@ const {
   isLoading,
   isLoadingDetails,
   isRefreshing,
-    isSavingDetails,
-    isSavingParent,
-    managerDraft,
-    deleteAgent,
-    pauseAgent,
+  isSavingDetails,
+  isSavingParent,
+  managerDraft,
+  archiveAgent,
+  deleteAgent,
+  pauseAgent,
+  resumeAgent,
   reload,
   saveAgentDetails,
   saveReportingLine,
@@ -178,6 +180,8 @@ const openAgentDetails = (agentId: string): void => {
         @select="openAgentDetails"
         @delete="deleteAgent"
         @pause="pauseAgent"
+        @resume="resumeAgent"
+        @archive="archiveAgent"
       />
 
       <AgentInspectorPanel

@@ -166,6 +166,40 @@ const archive = async (id: string) => {
   }
 };
 
+const requestChange = async (id: string) => {
+  const responseText = window.prompt(t('Describe the requested changes'))?.trim();
+  if (!responseText) {
+    return;
+  }
+
+  markBusy(messageBusy, id, true);
+  try {
+    await uiRuntime.stores.inbox.requestChange({ id, responseText });
+    setFeedback('success', t('Change request sent'));
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : t('Failed to send change request'));
+  } finally {
+    markBusy(messageBusy, id, false);
+  }
+};
+
+const answerClarification = async (id: string) => {
+  const responseText = window.prompt(t('Provide clarification response'))?.trim();
+  if (!responseText) {
+    return;
+  }
+
+  markBusy(messageBusy, id, true);
+  try {
+    await uiRuntime.stores.inbox.answerClarification({ id, responseText });
+    setFeedback('success', t('Clarification sent'));
+  } catch (error) {
+    setFeedback('error', error instanceof Error ? error.message : t('Failed to send clarification'));
+  } finally {
+    markBusy(messageBusy, id, false);
+  }
+};
+
 useAutoReload(reload);
 </script>
 
@@ -455,6 +489,24 @@ useAutoReload(reload);
               >
                 <Archive :size="12" />
                 Archive
+              </button>
+              <button
+                v-if="message.type === 'approval'"
+                class="fc-btn-ghost fc-btn-sm"
+                :disabled="isBusy(messageBusy, message.id)"
+                @click="requestChange(message.id)"
+              >
+                <FileText :size="12" />
+                Request change
+              </button>
+              <button
+                v-if="message.type === 'approval'"
+                class="fc-btn-ghost fc-btn-sm"
+                :disabled="isBusy(messageBusy, message.id)"
+                @click="answerClarification(message.id)"
+              >
+                <Info :size="12" />
+                Clarify
               </button>
             </div>
           </div>

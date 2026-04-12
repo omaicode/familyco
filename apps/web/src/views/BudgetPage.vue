@@ -170,6 +170,154 @@ const formatTokensK = (value: number): string => (value / 1000).toFixed(1);
         </article>
       </div>
 
+      <div class="fc-budget-split" style="margin-top: 14px;">
+        <article class="fc-card">
+          <h4 class="fc-card-title">{{ t('Usage by model') }}</h4>
+          <table class="fc-budget-table">
+            <thead>
+              <tr>
+                <th>{{ t('Model') }}</th>
+                <th>{{ t('Provider') }}</th>
+                <th>{{ t('Requests') }}</th>
+                <th>{{ t('Est. cost (USD)') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in report.byModel" :key="`${row.provider}-${row.model}`">
+                <td>{{ row.model }}</td>
+                <td>{{ row.provider }}</td>
+                <td>{{ row.requestCount }}</td>
+                <td>{{ formatCurrency(row.estimatedCostUSD) }}</td>
+              </tr>
+              <tr v-if="report.byModel.length === 0">
+                <td colspan="4">{{ t('No data yet') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="fc-card">
+          <h4 class="fc-card-title">{{ t('Top costly runs') }}</h4>
+          <table class="fc-budget-table">
+            <thead>
+              <tr>
+                <th>{{ t('Run') }}</th>
+                <th>{{ t('Requests') }}</th>
+                <th>{{ t('Total tokens (K)') }}</th>
+                <th>{{ t('Est. cost (USD)') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in report.byRun.slice(0, 10)" :key="row.runId">
+                <td>{{ row.runId }}</td>
+                <td>{{ row.requestCount }}</td>
+                <td>{{ formatTokensK(row.totalTokens) }}</td>
+                <td>{{ formatCurrency(row.estimatedCostUSD) }}</td>
+              </tr>
+              <tr v-if="report.byRun.length === 0">
+                <td colspan="4">{{ t('No data yet') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+
+      <div class="fc-budget-split" style="margin-top: 14px;">
+        <article class="fc-card">
+          <h4 class="fc-card-title">{{ t('Weekly usage') }}</h4>
+          <table class="fc-budget-table">
+            <thead>
+              <tr>
+                <th>{{ t('Week') }}</th>
+                <th>{{ t('Requests') }}</th>
+                <th>{{ t('Est. cost (USD)') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in report.byWeek" :key="row.bucket">
+                <td>{{ row.bucket }}</td>
+                <td>{{ row.requestCount }}</td>
+                <td>{{ formatCurrency(row.estimatedCostUSD) }}</td>
+              </tr>
+              <tr v-if="report.byWeek.length === 0">
+                <td colspan="3">{{ t('No data yet') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="fc-card">
+          <h4 class="fc-card-title">{{ t('Monthly usage') }}</h4>
+          <table class="fc-budget-table">
+            <thead>
+              <tr>
+                <th>{{ t('Month') }}</th>
+                <th>{{ t('Requests') }}</th>
+                <th>{{ t('Est. cost (USD)') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in report.byMonth" :key="row.bucket">
+                <td>{{ row.bucket }}</td>
+                <td>{{ row.requestCount }}</td>
+                <td>{{ formatCurrency(row.estimatedCostUSD) }}</td>
+              </tr>
+              <tr v-if="report.byMonth.length === 0">
+                <td colspan="3">{{ t('No data yet') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+
+      <div class="fc-budget-split" style="margin-top: 14px;">
+        <article class="fc-card">
+          <h4 class="fc-card-title">{{ t('Top costly agents') }}</h4>
+          <table class="fc-budget-table">
+            <thead>
+              <tr>
+                <th>{{ t('Agent') }}</th>
+                <th>{{ t('Requests') }}</th>
+                <th>{{ t('Est. cost (USD)') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in report.topCostlyAgents" :key="row.entityId">
+                <td>{{ row.entityId }}</td>
+                <td>{{ row.requestCount }}</td>
+                <td>{{ formatCurrency(row.estimatedCostUSD) }}</td>
+              </tr>
+              <tr v-if="report.topCostlyAgents.length === 0">
+                <td colspan="3">{{ t('No data yet') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="fc-card">
+          <h4 class="fc-card-title">{{ t('Top costly projects') }}</h4>
+          <table class="fc-budget-table">
+            <thead>
+              <tr>
+                <th>{{ t('Project') }}</th>
+                <th>{{ t('Requests') }}</th>
+                <th>{{ t('Est. cost (USD)') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in report.topCostlyProjects" :key="row.entityId">
+                <td>{{ row.entityId }}</td>
+                <td>{{ row.requestCount }}</td>
+                <td>{{ formatCurrency(row.estimatedCostUSD) }}</td>
+              </tr>
+              <tr v-if="report.topCostlyProjects.length === 0">
+                <td colspan="3">{{ t('No data yet') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+
       <div v-if="state.isEmpty" class="fc-empty" style="margin-top: 14px;">
         <Wallet :size="22" class="fc-empty-icon" />
         <h4>{{ t('No data yet') }}</h4>

@@ -3,7 +3,9 @@ import type { ComputedRef, Ref } from 'vue';
 
 import { uiRuntime } from '../runtime';
 import {
+  ARCHIVABLE_AGENT_STATUSES,
   PAUSABLE_AGENT_STATUSES,
+  RESUMABLE_AGENT_STATUSES,
   isApprovalResponse,
   type AgentActionResult,
   type AgentDeleteActionResult
@@ -140,6 +142,54 @@ export function useAgentPageActions(options: UseAgentPageActionsOptions) {
     }
   };
 
+  const resumeAgent = async (agent: AgentListItem): Promise<void> => {
+    if (!RESUMABLE_AGENT_STATUSES.includes(agent.status)) {
+      return;
+    }
+
+    options.busy.value = { ...options.busy.value, [agent.id]: true };
+    try {
+      const result = await uiRuntime.stores.agents.resumeAgent({ agentId: agent.id }) as AgentActionResult;
+
+      if (isApprovalResponse(result)) {
+        options.setFeedback(
+          'info',
+          result.reason ? `Resume request queued: ${result.reason}` : `Resume request queued for ${agent.name}.`
+        );
+      } else {
+        options.setFeedback('success', `${result.name} resumed and can receive new work.`);
+      }
+    } catch (error) {
+      options.setFeedback('error', error instanceof Error ? error.message : 'Failed to resume agent');
+    } finally {
+      options.busy.value = { ...options.busy.value, [agent.id]: false };
+    }
+  };
+
+  const archiveAgent = async (agent: AgentListItem): Promise<void> => {
+    if (!ARCHIVABLE_AGENT_STATUSES.includes(agent.status)) {
+      return;
+    }
+
+    options.busy.value = { ...options.busy.value, [agent.id]: true };
+    try {
+      const result = await uiRuntime.stores.agents.archiveAgent({ agentId: agent.id }) as AgentActionResult;
+
+      if (isApprovalResponse(result)) {
+        options.setFeedback(
+          'info',
+          result.reason ? `Archive request queued: ${result.reason}` : `Archive request queued for ${agent.name}.`
+        );
+      } else {
+        options.setFeedback('success', `${result.name} has been archived.`);
+      }
+    } catch (error) {
+      options.setFeedback('error', error instanceof Error ? error.message : 'Failed to archive agent');
+    } finally {
+      options.busy.value = { ...options.busy.value, [agent.id]: false };
+    }
+  };
+
   const saveReportingLine = async (): Promise<void> => {
     if (!options.selectedAgent.value || options.selectedAgent.value.level === 'L0') {
       return;
@@ -175,9 +225,11 @@ export function useAgentPageActions(options: UseAgentPageActionsOptions) {
   };
 
   return {
+    archiveAgent,
     createAgent,
     deleteAgent,
     pauseAgent,
+    resumeAgent,
     saveAgentDetails,
     saveReportingLine
   };

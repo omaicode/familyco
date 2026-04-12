@@ -30,7 +30,8 @@ const STATUS_ORDER: Record<AgentStatus, number> = {
   running: 2,
   error: 3,
   paused: 4,
-  terminated: 5
+  archived: 5,
+  terminated: 6
 };
 
 export const AGENT_STATUS_META: Record<
@@ -60,6 +61,10 @@ export const AGENT_STATUS_META: Record<
     label: 'Paused',
     description: 'Manually paused or stopped by budget guardrails.'
   },
+  archived: {
+    label: 'Archived',
+    description: 'Hidden from active operations but retained for reporting history.'
+  },
   terminated: {
     label: 'Terminated',
     description: 'Permanently deactivated and kept for audit history only.'
@@ -68,8 +73,10 @@ export const AGENT_STATUS_META: Record<
 
 export const HEALTHY_AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'running'];
 export const HEARTBEAT_READY_STATUSES: AgentStatus[] = ['active', 'idle'];
-export const ATTENTION_AGENT_STATUSES: AgentStatus[] = ['error', 'paused'];
+export const ATTENTION_AGENT_STATUSES: AgentStatus[] = ['error', 'paused', 'archived'];
 export const PAUSABLE_AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'running', 'error'];
+export const RESUMABLE_AGENT_STATUSES: AgentStatus[] = ['paused', 'archived'];
+export const ARCHIVABLE_AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'running', 'paused', 'error'];
 
 export const TEMPLATE_PRESETS: Record<
   CreateTemplateId,
