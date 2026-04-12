@@ -9,7 +9,7 @@ import { DefaultToolExecutor } from '../tools/default-tool.executor.js';
 test('file tools can search, read, write, and delete workspace files', async () => {
   const workspaceRoot = await resolveRepoRoot(process.cwd());
   const originalCwd = process.cwd();
-  const nestedCwd = path.join(workspaceRoot, 'packages/server');
+  const nestedCwd = path.join(workspaceRoot, 'apps/server');
   const tempDir = await mkdtemp(path.join(workspaceRoot, 'tmp-file-tools-'));
   const sourceFile = path.join(tempDir, 'notes.txt');
 

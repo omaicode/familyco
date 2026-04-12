@@ -563,6 +563,9 @@ export default {
   'Clarification sent': 'Đã gửi nội dung làm rõ',
   'Failed to send change request': 'Gửi yêu cầu chỉnh sửa thất bại',
   'Failed to send clarification': 'Gửi nội dung làm rõ thất bại',
+  'Request change': 'Yêu cầu chỉnh sửa',
+  'Clarify': 'Làm rõ',
+  'Ctrl+Enter to send': 'Ctrl+Enter để gửi',
 
   // ── Chat composer ──────────────────────────────────────
   'chat.composer.placeholder.inline-slash': 'Trao đổi với executive agent, sau đó gõ / để nhận gợi ý command inline (Tab để áp dụng) …',

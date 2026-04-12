@@ -564,6 +564,9 @@ export default {
   'Clarification sent': 'Clarification sent',
   'Failed to send change request': 'Failed to send change request',
   'Failed to send clarification': 'Failed to send clarification',
+  'Request change': 'Request change',
+  'Clarify': 'Clarify',
+  'Ctrl+Enter to send': 'Ctrl+Enter to send',
 
   // ── Chat composer ──────────────────────────────────────
   'chat.composer.placeholder.inline-slash': 'Ask the executive agent for guidance, then type / to get inline command suggestions (Tab to apply) …',

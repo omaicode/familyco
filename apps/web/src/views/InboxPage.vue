@@ -28,6 +28,10 @@ const isLoading = ref(false);
 const requestInfoOpen = ref(false);
 const requestInfoTargetId = ref<string | null>(null);
 const requestInfoNote = ref('');
+const messageResponseOpen = ref(false);
+const messageResponseTargetId = ref<string | null>(null);
+const messageResponseType = ref<'request_change' | 'clarification_answer'>('request_change');
+const messageResponseText = ref('');
 
 const reload = async () => {
   feedback.value = null;
@@ -166,35 +170,47 @@ const archive = async (id: string) => {
   }
 };
 
-const requestChange = async (id: string) => {
-  const responseText = window.prompt(t('Describe the requested changes'))?.trim();
-  if (!responseText) {
-    return;
-  }
-
-  markBusy(messageBusy, id, true);
-  try {
-    await uiRuntime.stores.inbox.requestChange({ id, responseText });
-    setFeedback('success', t('Change request sent'));
-  } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : t('Failed to send change request'));
-  } finally {
-    markBusy(messageBusy, id, false);
-  }
+const openMessageResponse = (id: string, type: 'request_change' | 'clarification_answer') => {
+  messageResponseTargetId.value = id;
+  messageResponseType.value = type;
+  messageResponseText.value = '';
+  messageResponseOpen.value = true;
 };
 
-const answerClarification = async (id: string) => {
-  const responseText = window.prompt(t('Provide clarification response'))?.trim();
-  if (!responseText) {
+const closeMessageResponse = () => {
+  messageResponseOpen.value = false;
+  messageResponseTargetId.value = null;
+  messageResponseText.value = '';
+};
+
+const submitMessageResponse = async () => {
+  if (!messageResponseTargetId.value || !messageResponseText.value.trim()) {
     return;
   }
 
+  const id = messageResponseTargetId.value;
+  const responseText = messageResponseText.value.trim();
+
   markBusy(messageBusy, id, true);
   try {
-    await uiRuntime.stores.inbox.answerClarification({ id, responseText });
-    setFeedback('success', t('Clarification sent'));
+    if (messageResponseType.value === 'request_change') {
+      await uiRuntime.stores.inbox.requestChange({ id, responseText });
+      setFeedback('success', t('Change request sent'));
+    } else {
+      await uiRuntime.stores.inbox.answerClarification({ id, responseText });
+      setFeedback('success', t('Clarification sent'));
+    }
+
+    closeMessageResponse();
   } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : t('Failed to send clarification'));
+    setFeedback(
+      'error',
+      error instanceof Error
+        ? error.message
+        : messageResponseType.value === 'request_change'
+          ? t('Failed to send change request')
+          : t('Failed to send clarification')
+    );
   } finally {
     markBusy(messageBusy, id, false);
   }
@@ -362,6 +378,50 @@ useAutoReload(reload);
           </div>
         </Transition>
 
+        <Transition name="fc-page">
+          <div
+            v-if="messageResponseOpen"
+            class="fc-card fc-banner-info"
+            style="margin-bottom:12px;padding:16px;"
+            @keydown.esc="closeMessageResponse"
+          >
+            <div class="fc-section-header">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <FileText :size="16" style="color:var(--fc-info);" />
+                <h4 style="margin:0;font-size:0.9rem;">
+                  {{ messageResponseType === 'request_change' ? t('Describe the requested changes') : t('Provide clarification response') }}
+                </h4>
+              </div>
+              <button class="fc-btn-ghost fc-btn-icon" @click="closeMessageResponse">
+                <X :size="14" />
+              </button>
+            </div>
+            <textarea
+              v-model="messageResponseText"
+              class="fc-textarea"
+              :placeholder="messageResponseType === 'request_change' ? t('Describe the requested changes') : t('Provide clarification response')"
+              style="margin-bottom:10px;"
+              rows="3"
+              autofocus
+              @keydown.enter.ctrl="submitMessageResponse"
+            ></textarea>
+            <div class="fc-inline-actions">
+              <button
+                class="fc-btn-primary fc-btn-sm"
+                :disabled="!messageResponseText.trim()"
+                @click="submitMessageResponse"
+              >
+                <Check :size="13" />
+                {{ messageResponseType === 'request_change' ? t('Request change') : t('Clarify') }}
+              </button>
+              <button class="fc-btn-ghost fc-btn-sm" @click="closeMessageResponse">
+                {{ t('Cancel') }}
+              </button>
+              <span class="fc-list-meta">{{ t('Ctrl+Enter to send') }}</span>
+            </div>
+          </div>
+        </Transition>
+
         <!-- Approvals list -->
         <div v-if="filteredApprovals.length > 0" style="display:flex;flex-direction:column;gap:8px;">
           <div
@@ -494,19 +554,19 @@ useAutoReload(reload);
                 v-if="message.type === 'approval'"
                 class="fc-btn-ghost fc-btn-sm"
                 :disabled="isBusy(messageBusy, message.id)"
-                @click="requestChange(message.id)"
+                @click="openMessageResponse(message.id, 'request_change')"
               >
                 <FileText :size="12" />
-                Request change
+                {{ t('Request change') }}
               </button>
               <button
                 v-if="message.type === 'approval'"
                 class="fc-btn-ghost fc-btn-sm"
                 :disabled="isBusy(messageBusy, message.id)"
-                @click="answerClarification(message.id)"
+                @click="openMessageResponse(message.id, 'clarification_answer')"
               >
                 <Info :size="12" />
-                Clarify
+                {{ t('Clarify') }}
               </button>
             </div>
           </div>
