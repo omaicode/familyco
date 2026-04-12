@@ -16,7 +16,7 @@ coverage/
 .turbo/
 
 # Ignore database files
-prisma/**/*.db
-prisma/**/*.bak
+packages/prisma/**/*.db
+packages/prisma/**/*.bak
 
 .gitnexus
