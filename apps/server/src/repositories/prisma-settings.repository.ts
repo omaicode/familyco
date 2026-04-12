@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from '../db/prisma/client.js';
+import { Prisma, type PrismaClient } from '@familyco/db';
 import type { Setting, SettingsRepository, UpsertSettingInput } from '@familyco/core';
 import type { SettingsEncryption } from '../modules/settings/settings.encryption.js';
 

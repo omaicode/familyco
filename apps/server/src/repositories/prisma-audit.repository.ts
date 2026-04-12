@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from '../db/prisma/client.js';
+import { Prisma, type PrismaClient } from '@familyco/db';
 import type { AuditListQuery, AuditRecord, AuditRepository } from '@familyco/core';
 
 export class PrismaAuditRepository implements AuditRepository {

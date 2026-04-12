@@ -1,0 +1,26 @@
+{
+  "name": "@familyco/db",
+  "version": "1.0.0",
+  "description": "FamilyCo database module",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "postinstall": "node-gyp rebuild --directory ../../node_modules/better-sqlite3 || true",
+    "prisma:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "prisma:migrate:dev": "prisma migrate dev --schema=./prisma/schema.prisma",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0",
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.7.0",
+    "@prisma/client": "^7.7.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.7.0"
+  }
+}

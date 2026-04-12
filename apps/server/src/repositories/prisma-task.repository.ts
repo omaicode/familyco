@@ -7,7 +7,7 @@ import type {
   TaskStatus,
   UpdateTaskInput
 } from '@familyco/core';
-import type { PrismaClient } from '../db/prisma/client.js';
+import type { PrismaClient } from '@familyco/db';
 
 const TASK_STATUSES: TaskStatus[] = [
   'pending',

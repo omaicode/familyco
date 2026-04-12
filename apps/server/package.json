@@ -8,7 +8,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/main.ts",
-    "postinstall": "node-gyp rebuild --directory ../../node_modules/better-sqlite3 || true",
     "test": "node --test dist/**/*.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -17,15 +16,14 @@
     "server"
   ],
   "dependencies": {
+    "@familyco/core": "workspace:*",
+    "@familyco/db": "workspace:*",    
     "@ai-sdk/anthropic": "^3.0.68",
     "@ai-sdk/openai": "^3.0.52",
-    "@familyco/core": "workspace:*",
     "@fastify/cors": "^11.1.0",
     "@fastify/jwt": "^10.0.0",
     "@fastify/multipart": "^10.0.0",
     "@fastify/websocket": "^11.2.0",
-    "@prisma/adapter-better-sqlite3": "^7.6.0",
-    "@prisma/client": "^7.6.0",
     "ai": "^6.0.157",
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.4.0",
@@ -34,8 +32,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "prisma": "^7.6.0"
+    "@types/better-sqlite3": "^7.6.13"  
   },
   "author": "",
   "license": "UNLICENSED",

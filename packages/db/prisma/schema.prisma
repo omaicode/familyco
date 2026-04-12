@@ -1,0 +1,114 @@
+generator client {
+	provider   = "prisma-client"
+	output = "../src/generated"
+}
+
+datasource db {
+	provider = "sqlite"
+}
+
+model Agent {
+	id            String   @id @default(cuid())
+	name          String
+	role          String
+	level         String
+	department    String
+	status        String
+	parentAgentId String?
+	aiAdapterId   String?
+	aiModel       String?
+	createdAt     DateTime @default(now())
+	updatedAt     DateTime @updatedAt
+
+	parent   Agent?  @relation("AgentHierarchy", fields: [parentAgentId], references: [id])
+	children Agent[] @relation("AgentHierarchy")
+
+	ownedProjects    Project[]         @relation("ProjectOwner")
+	assignedTasks    Task[]            @relation("TaskAssignee")
+	createdTasks     Task[]            @relation("TaskCreator")
+	approvalRequests ApprovalRequest[] @relation("ApprovalActor")
+}
+
+model Project {
+	id              String   @id @default(cuid())
+	name            String
+	description     String
+	ownerAgentId    String
+	parentProjectId String?
+	createdAt       DateTime @default(now())
+	updatedAt       DateTime @updatedAt
+
+	owner    Agent    @relation("ProjectOwner", fields: [ownerAgentId], references: [id])
+	parent   Project? @relation("ProjectHierarchy", fields: [parentProjectId], references: [id])
+	children Project[] @relation("ProjectHierarchy")
+	tasks    Task[]
+}
+
+model Task {
+	id              String   @id @default(cuid())
+	title           String
+	description     String
+	status          String
+	priority        String   @default("medium")
+	projectId       String
+	assigneeAgentId String?
+	createdBy       String
+	createdAt       DateTime @default(now())
+	updatedAt       DateTime @updatedAt
+
+	project  Project @relation(fields: [projectId], references: [id])
+	assignee Agent?  @relation("TaskAssignee", fields: [assigneeAgentId], references: [id])
+	creator  Agent   @relation("TaskCreator", fields: [createdBy], references: [id])
+}
+
+model ApprovalRequest {
+	id        String   @id @default(cuid())
+	actorId   String
+	action    String
+	targetId  String?
+	status    String
+	payload   Json?
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+
+	actor Agent @relation("ApprovalActor", fields: [actorId], references: [id])
+}
+
+model AuditLog {
+	id        String   @id @default(cuid())
+	actorId   String
+	action    String
+	targetId  String?
+	payload   Json?
+	createdAt DateTime @default(now())
+}
+
+model InboxMessage {
+	id          String   @id @default(cuid())
+	recipientId String
+	senderId    String
+	type        String
+	title       String
+	body        String
+	status      String
+	payload     Json?
+	createdAt   DateTime @default(now())
+	updatedAt   DateTime @updatedAt
+}
+
+model Settings {
+	id        String   @id @default(cuid())
+	key       String   @unique
+	value     Json
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+}
+
+model ApiKey {
+	id        String   @id @default(cuid())
+	name      String
+	keyHash   String   @unique
+	active    Boolean  @default(true)
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+}

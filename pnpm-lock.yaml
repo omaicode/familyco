@@ -64,6 +64,9 @@ importers:
       '@familyco/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@familyco/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@fastify/cors':
         specifier: ^11.1.0
         version: 11.2.0
@@ -76,12 +79,6 @@ importers:
       '@fastify/websocket':
         specifier: ^11.2.0
         version: 11.2.0
-      '@prisma/adapter-better-sqlite3':
-        specifier: ^7.6.0
-        version: 7.7.0
-      '@prisma/client':
-        specifier: ^7.6.0
-        version: 7.7.0(prisma@7.7.0(@types/react@19.2.14)(better-sqlite3@12.8.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3))(typescript@5.9.3)
       ai:
         specifier: ^6.0.157
         version: 6.0.157(zod@4.3.6)
@@ -104,9 +101,6 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
-      prisma:
-        specifier: ^7.6.0
-        version: 7.7.0(@types/react@19.2.14)(better-sqlite3@12.8.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
 
   apps/web:
     dependencies:
@@ -164,6 +158,19 @@ importers:
         version: 3.2.6(typescript@5.9.3)
 
   packages/core: {}
+
+  packages/db:
+    dependencies:
+      '@prisma/adapter-better-sqlite3':
+        specifier: ^7.7.0
+        version: 7.7.0
+      '@prisma/client':
+        specifier: ^7.7.0
+        version: 7.7.0(prisma@7.7.0(@types/react@19.2.14)(better-sqlite3@12.8.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3))(typescript@5.9.3)
+    devDependencies:
+      prisma:
+        specifier: ^7.7.0
+        version: 7.7.0(@types/react@19.2.14)(better-sqlite3@12.8.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
 
   packages/ui:
     dependencies:

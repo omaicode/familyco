@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../db/prisma/client.js';
+import type { PrismaClient } from '@familyco/db';
 
 import type { ApiKeyRecord, ApiKeyRepository } from '../modules/auth/api-key.service.js';
 

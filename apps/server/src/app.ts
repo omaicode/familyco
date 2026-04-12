@@ -29,8 +29,8 @@ import {
   type TaskRepository
 } from '@familyco/core';
 
-import { prismaClient } from './db/prisma-client.js';
-import { runMigrationsWithSafety, type MigrationRunResult } from './db/migration-runner.js';
+import { prismaClient } from '@familyco/db'
+import { runMigrationsWithSafety, type MigrationRunResult } from '@familyco/db';
 import { ChatAttachmentStore, ChatStreamRegistry, registerAgentController } from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
