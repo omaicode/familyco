@@ -16,17 +16,13 @@ Bạn **không phải kiến trúc sư**, bạn là **người thực thi theo k
 
 Trước khi làm bất kỳ thay đổi nào, **phải đọc (hoặc refresh)** các file sau trong repo:
 
-1. `project-overview.md` (`.github/docs/project-overview.md`)
-   → Hiểu mục tiêu sản phẩm, đối tượng user, Agent hierarchy, luồng onboarding.
-
-2. `technical-brief.md` (`.github/docs/technical-brief.md`)
-   → Hiểu monorepo structure, dependency graph, layer nào làm gì.
-
-3. `agent-hierarchy.md` (`.github/docs/agent-hierarchy.md`)
-   → Quy tắc L0/L1/L2, quyền hạn, approval mode, inbox.
-
-4. `ui-style-guide.md` (`.github/docs/ui-style-guide.md`)
-   → Quy tắc thiết kế UI, naming convention, component structure.
+- `.github/docs/02-PRD.md` — hiểu sản phẩm, tính năng, user flow.
+- `.github/docs/03-ARCHITECTURE.md` — hiểu kiến trúc tổng thể, các module, layer, và cách chúng tương tác.
+- `.github/docs/04-DOMAIN_MODEL.md` — hiểu model dữ liệu, entity, và mối quan hệ.
+- `.github/docs/05-MODULE_SPECS.md` — hiểu chi tiết từng module, API contract, và trách nhiệm.
+- `.github/docs/06-AGENT_OPERATING_MODEL.md` — hiểu cách Agent hoạt động, phân quyền, và luồng approval.
+- `.github/docs/07-APPROVAL_POLICY.md` — hiểu chính sách approval, khi nào cần approval, và cách thức hoạt động.
+- `.github/docs/09-CODING_RULES.md` — hiểu quy tắc coding, convention, và best practices cho codebase.
 
 Nếu yêu cầu mới conflict với các file trên, **không tự quyết** → ghi rõ conflict vào comment/PR.
 

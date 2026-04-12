@@ -165,7 +165,4 @@ git commit -m "feat: add priority field to Task entity and API"
 ## Tài Liệu Tham Khảo
 
 Đọc khi cần thiết (dùng `read` tool):
-- `.github/docs/project-overview.md` — giới thiệu và mô tả dự án
-- `.github/docs/technical-brief.md` — tóm tắt nhanh để tránh sai kiến trúc
-- `.github/docs/agent-hierarchy.md` — L0/L1/L2, quyền hạn, approval mode
-- `.github/docs/ui-style-guide.md` — quy tắc UI, naming, component structure
+- Toàn bộ tài liệu trong `.github/docs/` (PRD, Architecture, Agent Operating Model, Approval Policy, Coding Rules)
