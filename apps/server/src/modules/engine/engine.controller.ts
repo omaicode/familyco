@@ -1,3 +1,4 @@
+import { createRunLifecycle } from '@familyco/agent-runtime';
 import { ApprovalGuard, type ApprovalService, type AuditService, type QueueService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
@@ -15,6 +16,8 @@ export interface EngineModuleDeps {
 }
 
 export function registerEngineController(app: FastifyInstance, deps: EngineModuleDeps): void {
+  const runLifecycle = createRunLifecycle('queued');
+
   app.get('/engine/jobs', async (request) => {
     requireMinimumLevel(request, 'L1');
     const jobs = await deps.queueService.listPendingJobs();
@@ -56,7 +59,8 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
       return {
         approvalRequired: true,
         approvalRequestId: approval.request.id,
-        reason: approval.reason
+        reason: approval.reason,
+        runtimeState: 'waiting_approval'
       };
     }
 
@@ -80,7 +84,8 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
     reply.code(202);
     return {
       queued: true,
-      type: 'agent.run'
+      type: 'agent.run',
+      runtimeState: runLifecycle.current
     };
   });
 
@@ -113,7 +118,8 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
       return {
         approvalRequired: true,
         approvalRequestId: approval.request.id,
-        reason: approval.reason
+        reason: approval.reason,
+        runtimeState: 'waiting_approval'
       };
     }
 
@@ -135,7 +141,8 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
     reply.code(202);
     return {
       queued: true,
-      type: 'tool.execute'
+      type: 'tool.execute',
+      runtimeState: runLifecycle.current
     };
   });
 }

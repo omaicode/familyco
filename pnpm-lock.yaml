@@ -61,6 +61,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^3.0.52
         version: 3.0.52(zod@4.3.6)
+      '@familyco/agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agent-runtime
       '@familyco/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -156,6 +159,8 @@ importers:
       vue-tsc:
         specifier: ^3.1.1
         version: 3.2.6(typescript@5.9.3)
+
+  packages/agent-runtime: {}
 
   packages/core: {}
 

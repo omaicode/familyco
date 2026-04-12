@@ -16,6 +16,7 @@
     "server"
   ],
   "dependencies": {
+    "@familyco/agent-runtime": "workspace:*",
     "@familyco/core": "workspace:*",
     "@familyco/db": "workspace:*",    
     "@ai-sdk/anthropic": "^3.0.68",

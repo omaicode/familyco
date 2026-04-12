@@ -1,0 +1,21 @@
+{
+  "name": "@familyco/agent-runtime",
+  "version": "1.0.0",
+  "description": "FamilyCo agent runtime orchestration primitives",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "node --test dist/**/*.test.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "familyco",
+    "agent-runtime"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.33.0"
+}
