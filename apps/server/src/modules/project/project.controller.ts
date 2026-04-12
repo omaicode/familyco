@@ -19,6 +19,17 @@ export function registerProjectController(app: FastifyInstance, deps: ProjectMod
     return deps.projectService.listProjects();
   });
 
+  app.get('/projects/:id', async (request, reply) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = projectParamsSchema.parse(request.params);
+
+    try {
+      return await deps.projectService.getProjectById(id);
+    } catch (error) {
+      return sendProjectError(reply, error);
+    }
+  });
+
   app.post('/projects', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = createProjectSchema.parse(request.body);

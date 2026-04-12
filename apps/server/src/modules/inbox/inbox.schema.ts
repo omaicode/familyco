@@ -20,3 +20,7 @@ export const createInboxSchema = z.object({
 export const inboxMessageParamsSchema = z.object({
   id: z.string().min(1)
 });
+
+export const respondInboxBodySchema = z.object({
+  responseText: z.string().trim().min(1)
+});

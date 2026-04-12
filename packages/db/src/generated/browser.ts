@@ -43,6 +43,16 @@ export type ApprovalRequest = Prisma.ApprovalRequestModel
  */
 export type AuditLog = Prisma.AuditLogModel
 /**
+ * Model AgentRun
+ * 
+ */
+export type AgentRun = Prisma.AgentRunModel
+/**
+ * Model BudgetUsage
+ * 
+ */
+export type BudgetUsage = Prisma.BudgetUsageModel
+/**
  * Model InboxMessage
  * 
  */

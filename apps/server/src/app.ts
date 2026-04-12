@@ -9,10 +9,12 @@ import multipart from '@fastify/multipart';
 import websocket from '@fastify/websocket';
 import {
   AgentRunner,
+  AgentRunService,
   AgentService,
   ApprovalGuard,
   ApprovalService,
   AuditService,
+  BudgetUsageService,
   EventBus,
   InboxService,
   ProjectService,
@@ -21,8 +23,10 @@ import {
   type AgentRunRequest,
   type AgentRunResult,
   type AgentRepository,
+  type AgentRunRepository,
   type ApprovalRepository,
   type AuditRepository,
+  type BudgetUsageRepository,
   type InboxRepository,
   type ProjectRepository,
   type SettingsRepository,
@@ -54,17 +58,21 @@ import {
 } from './plugins/auth.plugin.js';
 import {
   InMemoryAgentRepository,
+  InMemoryAgentRunRepository,
   InMemoryApiKeyRepository,
   InMemoryApprovalRepository,
   InMemoryAuditRepository,
+  InMemoryBudgetUsageRepository,
   InMemoryInboxRepository,
   InMemoryProjectRepository,
   InMemorySettingsRepository,
   InMemoryTaskRepository,
   PrismaAgentRepository,
+  PrismaAgentRunRepository,
   PrismaApiKeyRepository,
   PrismaApprovalRepository,
   PrismaAuditRepository,
+  PrismaBudgetUsageRepository,
   PrismaInboxRepository,
   PrismaProjectRepository,
   PrismaSettingsRepository,
@@ -151,9 +159,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
 
   const {
     agentRepository,
+    agentRunRepository,
     apiKeyRepository,
     approvalRepository,
     auditRepository,
+    budgetUsageRepository,
     inboxRepository,
     projectRepository,
     settingsRepository,
@@ -171,8 +181,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const apiKeyService = new ApiKeyService(apiKeyRepository, authApiKeySalt);
   const approvalService = new ApprovalService(approvalRepository, eventBus);
   const auditService = new AuditService(auditRepository);
+  const budgetUsageService = new BudgetUsageService(budgetUsageRepository);
   const inboxService = new InboxService(inboxRepository);
   const projectService = new ProjectService(projectRepository);
+  const agentRunService = new AgentRunService(agentRunRepository);
   const settingsService = new SettingsService(settingsRepository);
   const skillsService = new SkillsService(
     settingsService,
@@ -181,7 +193,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
-  const adapterRegistry = createAdapterRegistry({ logger: app.log, auditService });
+  const adapterRegistry = createAdapterRegistry({
+    logger: app.log,
+    auditService,
+    budgetUsageService
+  });
   const toolExecutor = new DefaultToolExecutor({
     agentService,
     projectService,
@@ -229,7 +245,16 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   let readOnlyMode = false;
 
   const executeAgentRun = async (request: AgentRunRequest): Promise<AgentRunResult> => {
+    if (request.runId) {
+      await agentRunService.updateState(request.runId, { state: 'planning' });
+    }
+
     await heartbeatRuntime.markStarted(request);
+
+    if (request.runId) {
+      await agentRunService.updateState(request.runId, { state: 'executing' });
+    }
+
     return agentRunner.run(request);
   };
 
@@ -239,6 +264,18 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   ): Promise<void> => {
     if (result) {
       await heartbeatRuntime.markCompleted(request, result);
+    }
+
+    if (request.runId) {
+      await agentRunService.updateState(request.runId, {
+        state: result?.status === 'blocked' ? 'waiting_approval' : 'completed',
+        outputSummary:
+          result?.status === 'blocked'
+            ? result.reason?.slice(0, 500) ?? null
+            : result?.output
+              ? JSON.stringify(result.output).slice(0, 500)
+              : 'Execution completed'
+      });
     }
 
     await auditService.write({
@@ -269,6 +306,13 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
 
   const handleAgentRunFailed = async (request: AgentRunRequest, error: Error): Promise<void> => {
     await heartbeatRuntime.markFailed(request, error);
+
+    if (request.runId) {
+      await agentRunService.updateState(request.runId, {
+        state: 'failed',
+        outputSummary: error.message.slice(0, 500)
+      });
+    }
 
     await auditService.write({
       actorId: request.agentId,
@@ -492,7 +536,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         inboxService
       });
       registerAuditController(api, { auditService });
-      registerBudgetController(api, { auditService, settingsService });
+      registerBudgetController(api, { budgetUsageService, settingsService });
       registerDashboardController(api, {
         agentService,
         approvalService,
@@ -505,7 +549,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         auditService,
         approvalService,
         approvalGuard,
-        dailyQuotaGuard
+        dailyQuotaGuard,
+        agentRunService
       });
       registerInboxController(api, { inboxService, auditService });
       registerProjectController(api, {
@@ -693,9 +738,11 @@ function createRepositories(
   settingsEncryption: import('./modules/settings/settings.encryption.js').SettingsEncryption | null = null
 ): {
   agentRepository: AgentRepository;
+  agentRunRepository: AgentRunRepository;
   apiKeyRepository: import('./modules/auth/api-key.service.js').ApiKeyRepository;
   approvalRepository: ApprovalRepository;
   auditRepository: AuditRepository;
+  budgetUsageRepository: BudgetUsageRepository;
   inboxRepository: InboxRepository;
   projectRepository: ProjectRepository;
   settingsRepository: SettingsRepository;
@@ -705,9 +752,11 @@ function createRepositories(
     const client = prismaClient;
     return {
       agentRepository: new PrismaAgentRepository(client),
+      agentRunRepository: new PrismaAgentRunRepository(client),
       apiKeyRepository: new PrismaApiKeyRepository(client),
       approvalRepository: new PrismaApprovalRepository(client),
       auditRepository: new PrismaAuditRepository(client),
+      budgetUsageRepository: new PrismaBudgetUsageRepository(client),
       inboxRepository: new PrismaInboxRepository(client),
       projectRepository: new PrismaProjectRepository(client),
       settingsRepository: new PrismaSettingsRepository(client, settingsEncryption),
@@ -717,9 +766,11 @@ function createRepositories(
 
   return {
     agentRepository: new InMemoryAgentRepository(),
+    agentRunRepository: new InMemoryAgentRunRepository(),
     apiKeyRepository: new InMemoryApiKeyRepository(),
     approvalRepository: new InMemoryApprovalRepository(),
     auditRepository: new InMemoryAuditRepository(),
+    budgetUsageRepository: new InMemoryBudgetUsageRepository(),
     inboxRepository: new InMemoryInboxRepository(),
     projectRepository: new InMemoryProjectRepository(),
     settingsRepository: new InMemorySettingsRepository(),

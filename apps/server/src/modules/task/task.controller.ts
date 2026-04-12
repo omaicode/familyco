@@ -51,6 +51,12 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     });
   });
 
+  app.get('/tasks/:id', async (request) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = taskIdParamsSchema.parse(request.params);
+    return deps.taskService.getTask(id);
+  });
+
   app.post('/tasks', async (request, reply) => {
     requireMinimumLevel(request, 'L1');
     const body = createTaskSchema.parse(request.body);

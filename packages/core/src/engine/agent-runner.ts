@@ -3,6 +3,7 @@ import { InMemoryMemoryService, type MemoryEntry, type MemoryService } from '../
 import type { ToolExecutionResult, ToolExecutor } from './tool-executor.js';
 
 export interface AgentRunRequest {
+  runId?: string;
   agentId: string;
   approvalMode: ApprovalMode;
   action: string;

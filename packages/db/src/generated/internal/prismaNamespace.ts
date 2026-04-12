@@ -389,6 +389,8 @@ export const ModelName = {
   Task: 'Task',
   ApprovalRequest: 'ApprovalRequest',
   AuditLog: 'AuditLog',
+  AgentRun: 'AgentRun',
+  BudgetUsage: 'BudgetUsage',
   InboxMessage: 'InboxMessage',
   Settings: 'Settings',
   ApiKey: 'ApiKey'
@@ -407,7 +409,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "inboxMessage" | "settings" | "apiKey"
+    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "agentRun" | "budgetUsage" | "inboxMessage" | "settings" | "apiKey"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -781,6 +783,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AgentRun: {
+      payload: Prisma.$AgentRunPayload<ExtArgs>
+      fields: Prisma.AgentRunFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AgentRunFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AgentRunFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>
+        }
+        findFirst: {
+          args: Prisma.AgentRunFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AgentRunFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>
+        }
+        findMany: {
+          args: Prisma.AgentRunFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>[]
+        }
+        create: {
+          args: Prisma.AgentRunCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>
+        }
+        createMany: {
+          args: Prisma.AgentRunCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AgentRunCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>[]
+        }
+        delete: {
+          args: Prisma.AgentRunDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>
+        }
+        update: {
+          args: Prisma.AgentRunUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>
+        }
+        deleteMany: {
+          args: Prisma.AgentRunDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AgentRunUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AgentRunUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>[]
+        }
+        upsert: {
+          args: Prisma.AgentRunUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentRunPayload>
+        }
+        aggregate: {
+          args: Prisma.AgentRunAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAgentRun>
+        }
+        groupBy: {
+          args: Prisma.AgentRunGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentRunGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AgentRunCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentRunCountAggregateOutputType> | number
+        }
+      }
+    }
+    BudgetUsage: {
+      payload: Prisma.$BudgetUsagePayload<ExtArgs>
+      fields: Prisma.BudgetUsageFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BudgetUsageFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BudgetUsageFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>
+        }
+        findFirst: {
+          args: Prisma.BudgetUsageFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BudgetUsageFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>
+        }
+        findMany: {
+          args: Prisma.BudgetUsageFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>[]
+        }
+        create: {
+          args: Prisma.BudgetUsageCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>
+        }
+        createMany: {
+          args: Prisma.BudgetUsageCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BudgetUsageCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>[]
+        }
+        delete: {
+          args: Prisma.BudgetUsageDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>
+        }
+        update: {
+          args: Prisma.BudgetUsageUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>
+        }
+        deleteMany: {
+          args: Prisma.BudgetUsageDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BudgetUsageUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BudgetUsageUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>[]
+        }
+        upsert: {
+          args: Prisma.BudgetUsageUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BudgetUsagePayload>
+        }
+        aggregate: {
+          args: Prisma.BudgetUsageAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBudgetUsage>
+        }
+        groupBy: {
+          args: Prisma.BudgetUsageGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BudgetUsageGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BudgetUsageCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BudgetUsageCountAggregateOutputType> | number
+        }
+      }
+    }
     InboxMessage: {
       payload: Prisma.$InboxMessagePayload<ExtArgs>
       fields: Prisma.InboxMessageFieldRefs
@@ -1104,11 +1254,52 @@ export const AuditLogScalarFieldEnum = {
   actorId: 'actorId',
   action: 'action',
   targetId: 'targetId',
+  traceId: 'traceId',
   payload: 'payload',
   createdAt: 'createdAt'
 } as const
 
 export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
+export const AgentRunScalarFieldEnum = {
+  id: 'id',
+  companyId: 'companyId',
+  rootAgentId: 'rootAgentId',
+  parentRunId: 'parentRunId',
+  triggerType: 'triggerType',
+  state: 'state',
+  inputSummary: 'inputSummary',
+  outputSummary: 'outputSummary',
+  linkedProjectId: 'linkedProjectId',
+  linkedTaskId: 'linkedTaskId',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AgentRunScalarFieldEnum = (typeof AgentRunScalarFieldEnum)[keyof typeof AgentRunScalarFieldEnum]
+
+
+export const BudgetUsageScalarFieldEnum = {
+  id: 'id',
+  companyId: 'companyId',
+  runId: 'runId',
+  agentId: 'agentId',
+  projectId: 'projectId',
+  taskId: 'taskId',
+  provider: 'provider',
+  model: 'model',
+  promptTokens: 'promptTokens',
+  completionTokens: 'completionTokens',
+  totalTokens: 'totalTokens',
+  estimatedCost: 'estimatedCost',
+  currency: 'currency',
+  recordedAt: 'recordedAt'
+} as const
+
+export type BudgetUsageScalarFieldEnum = (typeof BudgetUsageScalarFieldEnum)[keyof typeof BudgetUsageScalarFieldEnum]
 
 
 export const InboxMessageScalarFieldEnum = {
@@ -1233,16 +1424,23 @@ export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
 
 
 /**
- * Reference to a field of type 'Boolean'
+ * Reference to a field of type 'Int'
  */
-export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
     
 
 
 /**
- * Reference to a field of type 'Int'
+ * Reference to a field of type 'Float'
  */
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+/**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 /**
@@ -1345,6 +1543,8 @@ export type GlobalOmitConfig = {
   task?: Prisma.TaskOmit
   approvalRequest?: Prisma.ApprovalRequestOmit
   auditLog?: Prisma.AuditLogOmit
+  agentRun?: Prisma.AgentRunOmit
+  budgetUsage?: Prisma.BudgetUsageOmit
   inboxMessage?: Prisma.InboxMessageOmit
   settings?: Prisma.SettingsOmit
   apiKey?: Prisma.ApiKeyOmit

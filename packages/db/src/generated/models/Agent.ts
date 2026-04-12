@@ -236,6 +236,8 @@ export type AgentWhereInput = {
   assignedTasks?: Prisma.TaskListRelationFilter
   createdTasks?: Prisma.TaskListRelationFilter
   approvalRequests?: Prisma.ApprovalRequestListRelationFilter
+  agentRuns?: Prisma.AgentRunListRelationFilter
+  budgetUsages?: Prisma.BudgetUsageListRelationFilter
 }
 
 export type AgentOrderByWithRelationInput = {
@@ -256,6 +258,8 @@ export type AgentOrderByWithRelationInput = {
   assignedTasks?: Prisma.TaskOrderByRelationAggregateInput
   createdTasks?: Prisma.TaskOrderByRelationAggregateInput
   approvalRequests?: Prisma.ApprovalRequestOrderByRelationAggregateInput
+  agentRuns?: Prisma.AgentRunOrderByRelationAggregateInput
+  budgetUsages?: Prisma.BudgetUsageOrderByRelationAggregateInput
 }
 
 export type AgentWhereUniqueInput = Prisma.AtLeast<{
@@ -279,6 +283,8 @@ export type AgentWhereUniqueInput = Prisma.AtLeast<{
   assignedTasks?: Prisma.TaskListRelationFilter
   createdTasks?: Prisma.TaskListRelationFilter
   approvalRequests?: Prisma.ApprovalRequestListRelationFilter
+  agentRuns?: Prisma.AgentRunListRelationFilter
+  budgetUsages?: Prisma.BudgetUsageListRelationFilter
 }, "id">
 
 export type AgentOrderByWithAggregationInput = {
@@ -332,6 +338,8 @@ export type AgentCreateInput = {
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateInput = {
@@ -351,6 +359,8 @@ export type AgentUncheckedCreateInput = {
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUpdateInput = {
@@ -370,6 +380,8 @@ export type AgentUpdateInput = {
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateInput = {
@@ -389,6 +401,8 @@ export type AgentUncheckedUpdateInput = {
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentCreateManyInput = {
@@ -622,6 +636,36 @@ export type AgentUpdateOneRequiredWithoutApprovalRequestsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AgentUpdateToOneWithWhereWithoutApprovalRequestsInput, Prisma.AgentUpdateWithoutApprovalRequestsInput>, Prisma.AgentUncheckedUpdateWithoutApprovalRequestsInput>
 }
 
+export type AgentCreateNestedOneWithoutAgentRunsInput = {
+  create?: Prisma.XOR<Prisma.AgentCreateWithoutAgentRunsInput, Prisma.AgentUncheckedCreateWithoutAgentRunsInput>
+  connectOrCreate?: Prisma.AgentCreateOrConnectWithoutAgentRunsInput
+  connect?: Prisma.AgentWhereUniqueInput
+}
+
+export type AgentUpdateOneRequiredWithoutAgentRunsNestedInput = {
+  create?: Prisma.XOR<Prisma.AgentCreateWithoutAgentRunsInput, Prisma.AgentUncheckedCreateWithoutAgentRunsInput>
+  connectOrCreate?: Prisma.AgentCreateOrConnectWithoutAgentRunsInput
+  upsert?: Prisma.AgentUpsertWithoutAgentRunsInput
+  connect?: Prisma.AgentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AgentUpdateToOneWithWhereWithoutAgentRunsInput, Prisma.AgentUpdateWithoutAgentRunsInput>, Prisma.AgentUncheckedUpdateWithoutAgentRunsInput>
+}
+
+export type AgentCreateNestedOneWithoutBudgetUsagesInput = {
+  create?: Prisma.XOR<Prisma.AgentCreateWithoutBudgetUsagesInput, Prisma.AgentUncheckedCreateWithoutBudgetUsagesInput>
+  connectOrCreate?: Prisma.AgentCreateOrConnectWithoutBudgetUsagesInput
+  connect?: Prisma.AgentWhereUniqueInput
+}
+
+export type AgentUpdateOneWithoutBudgetUsagesNestedInput = {
+  create?: Prisma.XOR<Prisma.AgentCreateWithoutBudgetUsagesInput, Prisma.AgentUncheckedCreateWithoutBudgetUsagesInput>
+  connectOrCreate?: Prisma.AgentCreateOrConnectWithoutBudgetUsagesInput
+  upsert?: Prisma.AgentUpsertWithoutBudgetUsagesInput
+  disconnect?: Prisma.AgentWhereInput | boolean
+  delete?: Prisma.AgentWhereInput | boolean
+  connect?: Prisma.AgentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AgentUpdateToOneWithWhereWithoutBudgetUsagesInput, Prisma.AgentUpdateWithoutBudgetUsagesInput>, Prisma.AgentUncheckedUpdateWithoutBudgetUsagesInput>
+}
+
 export type AgentCreateWithoutChildrenInput = {
   id?: string
   name: string
@@ -638,6 +682,8 @@ export type AgentCreateWithoutChildrenInput = {
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutChildrenInput = {
@@ -656,6 +702,8 @@ export type AgentUncheckedCreateWithoutChildrenInput = {
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutChildrenInput = {
@@ -679,6 +727,8 @@ export type AgentCreateWithoutParentInput = {
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutParentInput = {
@@ -697,6 +747,8 @@ export type AgentUncheckedCreateWithoutParentInput = {
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutParentInput = {
@@ -735,6 +787,8 @@ export type AgentUpdateWithoutChildrenInput = {
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutChildrenInput = {
@@ -753,6 +807,8 @@ export type AgentUncheckedUpdateWithoutChildrenInput = {
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUpsertWithWhereUniqueWithoutParentInput = {
@@ -804,6 +860,8 @@ export type AgentCreateWithoutOwnedProjectsInput = {
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutOwnedProjectsInput = {
@@ -822,6 +880,8 @@ export type AgentUncheckedCreateWithoutOwnedProjectsInput = {
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutOwnedProjectsInput = {
@@ -856,6 +916,8 @@ export type AgentUpdateWithoutOwnedProjectsInput = {
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutOwnedProjectsInput = {
@@ -874,6 +936,8 @@ export type AgentUncheckedUpdateWithoutOwnedProjectsInput = {
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentCreateWithoutAssignedTasksInput = {
@@ -892,6 +956,8 @@ export type AgentCreateWithoutAssignedTasksInput = {
   ownedProjects?: Prisma.ProjectCreateNestedManyWithoutOwnerInput
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutAssignedTasksInput = {
@@ -910,6 +976,8 @@ export type AgentUncheckedCreateWithoutAssignedTasksInput = {
   ownedProjects?: Prisma.ProjectUncheckedCreateNestedManyWithoutOwnerInput
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutAssignedTasksInput = {
@@ -933,6 +1001,8 @@ export type AgentCreateWithoutCreatedTasksInput = {
   ownedProjects?: Prisma.ProjectCreateNestedManyWithoutOwnerInput
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutCreatedTasksInput = {
@@ -951,6 +1021,8 @@ export type AgentUncheckedCreateWithoutCreatedTasksInput = {
   ownedProjects?: Prisma.ProjectUncheckedCreateNestedManyWithoutOwnerInput
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutCreatedTasksInput = {
@@ -985,6 +1057,8 @@ export type AgentUpdateWithoutAssignedTasksInput = {
   ownedProjects?: Prisma.ProjectUpdateManyWithoutOwnerNestedInput
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutAssignedTasksInput = {
@@ -1003,6 +1077,8 @@ export type AgentUncheckedUpdateWithoutAssignedTasksInput = {
   ownedProjects?: Prisma.ProjectUncheckedUpdateManyWithoutOwnerNestedInput
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUpsertWithoutCreatedTasksInput = {
@@ -1032,6 +1108,8 @@ export type AgentUpdateWithoutCreatedTasksInput = {
   ownedProjects?: Prisma.ProjectUpdateManyWithoutOwnerNestedInput
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutCreatedTasksInput = {
@@ -1050,6 +1128,8 @@ export type AgentUncheckedUpdateWithoutCreatedTasksInput = {
   ownedProjects?: Prisma.ProjectUncheckedUpdateManyWithoutOwnerNestedInput
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentCreateWithoutApprovalRequestsInput = {
@@ -1068,6 +1148,8 @@ export type AgentCreateWithoutApprovalRequestsInput = {
   ownedProjects?: Prisma.ProjectCreateNestedManyWithoutOwnerInput
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutApprovalRequestsInput = {
@@ -1086,6 +1168,8 @@ export type AgentUncheckedCreateWithoutApprovalRequestsInput = {
   ownedProjects?: Prisma.ProjectUncheckedCreateNestedManyWithoutOwnerInput
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutApprovalRequestsInput = {
@@ -1120,6 +1204,8 @@ export type AgentUpdateWithoutApprovalRequestsInput = {
   ownedProjects?: Prisma.ProjectUpdateManyWithoutOwnerNestedInput
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutApprovalRequestsInput = {
@@ -1138,6 +1224,200 @@ export type AgentUncheckedUpdateWithoutApprovalRequestsInput = {
   ownedProjects?: Prisma.ProjectUncheckedUpdateManyWithoutOwnerNestedInput
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
+}
+
+export type AgentCreateWithoutAgentRunsInput = {
+  id?: string
+  name: string
+  role: string
+  level: string
+  department: string
+  status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
+  children?: Prisma.AgentCreateNestedManyWithoutParentInput
+  ownedProjects?: Prisma.ProjectCreateNestedManyWithoutOwnerInput
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
+}
+
+export type AgentUncheckedCreateWithoutAgentRunsInput = {
+  id?: string
+  name: string
+  role: string
+  level: string
+  department: string
+  status: string
+  parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
+  ownedProjects?: Prisma.ProjectUncheckedCreateNestedManyWithoutOwnerInput
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
+}
+
+export type AgentCreateOrConnectWithoutAgentRunsInput = {
+  where: Prisma.AgentWhereUniqueInput
+  create: Prisma.XOR<Prisma.AgentCreateWithoutAgentRunsInput, Prisma.AgentUncheckedCreateWithoutAgentRunsInput>
+}
+
+export type AgentUpsertWithoutAgentRunsInput = {
+  update: Prisma.XOR<Prisma.AgentUpdateWithoutAgentRunsInput, Prisma.AgentUncheckedUpdateWithoutAgentRunsInput>
+  create: Prisma.XOR<Prisma.AgentCreateWithoutAgentRunsInput, Prisma.AgentUncheckedCreateWithoutAgentRunsInput>
+  where?: Prisma.AgentWhereInput
+}
+
+export type AgentUpdateToOneWithWhereWithoutAgentRunsInput = {
+  where?: Prisma.AgentWhereInput
+  data: Prisma.XOR<Prisma.AgentUpdateWithoutAgentRunsInput, Prisma.AgentUncheckedUpdateWithoutAgentRunsInput>
+}
+
+export type AgentUpdateWithoutAgentRunsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  level?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
+  children?: Prisma.AgentUpdateManyWithoutParentNestedInput
+  ownedProjects?: Prisma.ProjectUpdateManyWithoutOwnerNestedInput
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
+}
+
+export type AgentUncheckedUpdateWithoutAgentRunsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  level?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
+  ownedProjects?: Prisma.ProjectUncheckedUpdateManyWithoutOwnerNestedInput
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
+}
+
+export type AgentCreateWithoutBudgetUsagesInput = {
+  id?: string
+  name: string
+  role: string
+  level: string
+  department: string
+  status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
+  children?: Prisma.AgentCreateNestedManyWithoutParentInput
+  ownedProjects?: Prisma.ProjectCreateNestedManyWithoutOwnerInput
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+}
+
+export type AgentUncheckedCreateWithoutBudgetUsagesInput = {
+  id?: string
+  name: string
+  role: string
+  level: string
+  department: string
+  status: string
+  parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
+  ownedProjects?: Prisma.ProjectUncheckedCreateNestedManyWithoutOwnerInput
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+}
+
+export type AgentCreateOrConnectWithoutBudgetUsagesInput = {
+  where: Prisma.AgentWhereUniqueInput
+  create: Prisma.XOR<Prisma.AgentCreateWithoutBudgetUsagesInput, Prisma.AgentUncheckedCreateWithoutBudgetUsagesInput>
+}
+
+export type AgentUpsertWithoutBudgetUsagesInput = {
+  update: Prisma.XOR<Prisma.AgentUpdateWithoutBudgetUsagesInput, Prisma.AgentUncheckedUpdateWithoutBudgetUsagesInput>
+  create: Prisma.XOR<Prisma.AgentCreateWithoutBudgetUsagesInput, Prisma.AgentUncheckedCreateWithoutBudgetUsagesInput>
+  where?: Prisma.AgentWhereInput
+}
+
+export type AgentUpdateToOneWithWhereWithoutBudgetUsagesInput = {
+  where?: Prisma.AgentWhereInput
+  data: Prisma.XOR<Prisma.AgentUpdateWithoutBudgetUsagesInput, Prisma.AgentUncheckedUpdateWithoutBudgetUsagesInput>
+}
+
+export type AgentUpdateWithoutBudgetUsagesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  level?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
+  children?: Prisma.AgentUpdateManyWithoutParentNestedInput
+  ownedProjects?: Prisma.ProjectUpdateManyWithoutOwnerNestedInput
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+}
+
+export type AgentUncheckedUpdateWithoutBudgetUsagesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  level?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
+  ownedProjects?: Prisma.ProjectUncheckedUpdateManyWithoutOwnerNestedInput
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
 }
 
 export type AgentCreateManyParentInput = {
@@ -1169,6 +1449,8 @@ export type AgentUpdateWithoutParentInput = {
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutParentInput = {
@@ -1187,6 +1469,8 @@ export type AgentUncheckedUpdateWithoutParentInput = {
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateManyWithoutParentInput = {
@@ -1213,6 +1497,8 @@ export type AgentCountOutputType = {
   assignedTasks: number
   createdTasks: number
   approvalRequests: number
+  agentRuns: number
+  budgetUsages: number
 }
 
 export type AgentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1221,6 +1507,8 @@ export type AgentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.
   assignedTasks?: boolean | AgentCountOutputTypeCountAssignedTasksArgs
   createdTasks?: boolean | AgentCountOutputTypeCountCreatedTasksArgs
   approvalRequests?: boolean | AgentCountOutputTypeCountApprovalRequestsArgs
+  agentRuns?: boolean | AgentCountOutputTypeCountAgentRunsArgs
+  budgetUsages?: boolean | AgentCountOutputTypeCountBudgetUsagesArgs
 }
 
 /**
@@ -1268,6 +1556,20 @@ export type AgentCountOutputTypeCountApprovalRequestsArgs<ExtArgs extends runtim
   where?: Prisma.ApprovalRequestWhereInput
 }
 
+/**
+ * AgentCountOutputType without action
+ */
+export type AgentCountOutputTypeCountAgentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AgentRunWhereInput
+}
+
+/**
+ * AgentCountOutputType without action
+ */
+export type AgentCountOutputTypeCountBudgetUsagesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BudgetUsageWhereInput
+}
+
 
 export type AgentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1287,6 +1589,8 @@ export type AgentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   assignedTasks?: boolean | Prisma.Agent$assignedTasksArgs<ExtArgs>
   createdTasks?: boolean | Prisma.Agent$createdTasksArgs<ExtArgs>
   approvalRequests?: boolean | Prisma.Agent$approvalRequestsArgs<ExtArgs>
+  agentRuns?: boolean | Prisma.Agent$agentRunsArgs<ExtArgs>
+  budgetUsages?: boolean | Prisma.Agent$budgetUsagesArgs<ExtArgs>
   _count?: boolean | Prisma.AgentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["agent"]>
 
@@ -1342,6 +1646,8 @@ export type AgentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   assignedTasks?: boolean | Prisma.Agent$assignedTasksArgs<ExtArgs>
   createdTasks?: boolean | Prisma.Agent$createdTasksArgs<ExtArgs>
   approvalRequests?: boolean | Prisma.Agent$approvalRequestsArgs<ExtArgs>
+  agentRuns?: boolean | Prisma.Agent$agentRunsArgs<ExtArgs>
+  budgetUsages?: boolean | Prisma.Agent$budgetUsagesArgs<ExtArgs>
   _count?: boolean | Prisma.AgentCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type AgentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1360,6 +1666,8 @@ export type $AgentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     assignedTasks: Prisma.$TaskPayload<ExtArgs>[]
     createdTasks: Prisma.$TaskPayload<ExtArgs>[]
     approvalRequests: Prisma.$ApprovalRequestPayload<ExtArgs>[]
+    agentRuns: Prisma.$AgentRunPayload<ExtArgs>[]
+    budgetUsages: Prisma.$BudgetUsagePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1773,6 +2081,8 @@ export interface Prisma__AgentClient<T, Null = never, ExtArgs extends runtime.Ty
   assignedTasks<T extends Prisma.Agent$assignedTasksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$assignedTasksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   createdTasks<T extends Prisma.Agent$createdTasksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$createdTasksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   approvalRequests<T extends Prisma.Agent$approvalRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$approvalRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ApprovalRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  agentRuns<T extends Prisma.Agent$agentRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$agentRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  budgetUsages<T extends Prisma.Agent$budgetUsagesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$budgetUsagesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BudgetUsagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2348,6 +2658,54 @@ export type Agent$approvalRequestsArgs<ExtArgs extends runtime.Types.Extensions.
   take?: number
   skip?: number
   distinct?: Prisma.ApprovalRequestScalarFieldEnum | Prisma.ApprovalRequestScalarFieldEnum[]
+}
+
+/**
+ * Agent.agentRuns
+ */
+export type Agent$agentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AgentRun
+   */
+  select?: Prisma.AgentRunSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AgentRun
+   */
+  omit?: Prisma.AgentRunOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AgentRunInclude<ExtArgs> | null
+  where?: Prisma.AgentRunWhereInput
+  orderBy?: Prisma.AgentRunOrderByWithRelationInput | Prisma.AgentRunOrderByWithRelationInput[]
+  cursor?: Prisma.AgentRunWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AgentRunScalarFieldEnum | Prisma.AgentRunScalarFieldEnum[]
+}
+
+/**
+ * Agent.budgetUsages
+ */
+export type Agent$budgetUsagesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BudgetUsage
+   */
+  select?: Prisma.BudgetUsageSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BudgetUsage
+   */
+  omit?: Prisma.BudgetUsageOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BudgetUsageInclude<ExtArgs> | null
+  where?: Prisma.BudgetUsageWhereInput
+  orderBy?: Prisma.BudgetUsageOrderByWithRelationInput | Prisma.BudgetUsageOrderByWithRelationInput[]
+  cursor?: Prisma.BudgetUsageWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BudgetUsageScalarFieldEnum | Prisma.BudgetUsageScalarFieldEnum[]
 }
 
 /**

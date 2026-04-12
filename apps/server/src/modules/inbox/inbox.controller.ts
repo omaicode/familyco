@@ -5,7 +5,8 @@ import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import {
   createInboxSchema,
   inboxMessageParamsSchema,
-  listInboxQuerySchema
+  listInboxQuerySchema,
+  respondInboxBodySchema
 } from './inbox.schema.js';
 
 export interface InboxModuleDeps {
@@ -67,6 +68,64 @@ export function registerInboxController(app: FastifyInstance, deps: InboxModuleD
       targetId: message.id,
       payload: {
         status: message.status
+      }
+    });
+
+    return message;
+  });
+
+  app.post('/inbox/:id/request-change', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = inboxMessageParamsSchema.parse(request.params);
+    const { responseText } = respondInboxBodySchema.parse(request.body);
+
+    const message = await deps.inboxService.updateMessage(id, {
+      payload: {
+        responseType: 'request_change',
+        responseText,
+        respondedBy: request.authContext?.subject ?? 'founder',
+        respondedAt: new Date().toISOString()
+      }
+    });
+
+    await deps.inboxService.archive(id);
+
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'inbox.message.request_change',
+      targetId: message.id,
+      payload: {
+        responseText,
+        originalType: message.type
+      }
+    });
+
+    return message;
+  });
+
+  app.post('/inbox/:id/clarification', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = inboxMessageParamsSchema.parse(request.params);
+    const { responseText } = respondInboxBodySchema.parse(request.body);
+
+    const message = await deps.inboxService.updateMessage(id, {
+      payload: {
+        responseType: 'clarification_answer',
+        responseText,
+        respondedBy: request.authContext?.subject ?? 'founder',
+        respondedAt: new Date().toISOString()
+      }
+    });
+
+    await deps.inboxService.archive(id);
+
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'inbox.message.clarification_answer',
+      targetId: message.id,
+      payload: {
+        responseText,
+        originalType: message.type
       }
     });
 

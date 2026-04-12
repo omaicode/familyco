@@ -9,7 +9,7 @@ import type {
 import type { PrismaClient } from '@familyco/db';
 
 const AGENT_LEVELS: AgentLevel[] = ['L0', 'L1', 'L2'];
-const AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'running', 'error', 'paused', 'terminated'];
+const AGENT_STATUSES: AgentStatus[] = ['active', 'idle', 'running', 'error', 'paused', 'terminated', 'archived'];
 const LEGACY_AGENT_STATUS_ALIASES: Record<string, AgentStatus> = {
   archived: 'terminated'
 };

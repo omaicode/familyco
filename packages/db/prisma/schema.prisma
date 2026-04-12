@@ -27,6 +27,8 @@ model Agent {
 	assignedTasks    Task[]            @relation("TaskAssignee")
 	createdTasks     Task[]            @relation("TaskCreator")
 	approvalRequests ApprovalRequest[] @relation("ApprovalActor")
+	agentRuns        AgentRun[]        @relation("AgentRootRuns")
+	budgetUsages     BudgetUsage[]     @relation("BudgetAgent")
 }
 
 model Project {
@@ -42,6 +44,8 @@ model Project {
 	parent   Project? @relation("ProjectHierarchy", fields: [parentProjectId], references: [id])
 	children Project[] @relation("ProjectHierarchy")
 	tasks    Task[]
+	budgetUsages BudgetUsage[] @relation("BudgetProject")
+	agentRuns    AgentRun[]    @relation("RunProject")
 }
 
 model Task {
@@ -59,6 +63,8 @@ model Task {
 	project  Project @relation(fields: [projectId], references: [id])
 	assignee Agent?  @relation("TaskAssignee", fields: [assigneeAgentId], references: [id])
 	creator  Agent   @relation("TaskCreator", fields: [createdBy], references: [id])
+	budgetUsages BudgetUsage[] @relation("BudgetTask")
+	agentRuns    AgentRun[]    @relation("RunTask")
 }
 
 model ApprovalRequest {
@@ -79,8 +85,62 @@ model AuditLog {
 	actorId   String
 	action    String
 	targetId  String?
+	traceId   String?
 	payload   Json?
 	createdAt DateTime @default(now())
+}
+
+model AgentRun {
+	id              String   @id @default(cuid())
+	companyId       String?
+	rootAgentId     String
+	parentRunId     String?
+	triggerType     String
+	state           String
+	inputSummary    String
+	outputSummary   String?
+	linkedProjectId String?
+	linkedTaskId    String?
+	startedAt       DateTime?
+	finishedAt      DateTime?
+	createdAt       DateTime @default(now())
+	updatedAt       DateTime @updatedAt
+
+	rootAgent Agent      @relation("AgentRootRuns", fields: [rootAgentId], references: [id])
+	parentRun AgentRun?  @relation("AgentRunTree", fields: [parentRunId], references: [id])
+	children  AgentRun[] @relation("AgentRunTree")
+	project   Project?   @relation("RunProject", fields: [linkedProjectId], references: [id])
+	task      Task?      @relation("RunTask", fields: [linkedTaskId], references: [id])
+	budgetUsages BudgetUsage[]
+
+	@@index([rootAgentId, createdAt])
+	@@index([state, createdAt])
+}
+
+model BudgetUsage {
+	id               String   @id @default(cuid())
+	companyId        String?
+	runId            String?
+	agentId          String?
+	projectId        String?
+	taskId           String?
+	provider         String
+	model            String
+	promptTokens     Int
+	completionTokens Int
+	totalTokens      Int
+	estimatedCost    Float
+	currency         String   @default("USD")
+	recordedAt       DateTime @default(now())
+
+	run     AgentRun? @relation(fields: [runId], references: [id])
+	agent   Agent?    @relation("BudgetAgent", fields: [agentId], references: [id])
+	project Project?  @relation("BudgetProject", fields: [projectId], references: [id])
+	task    Task?     @relation("BudgetTask", fields: [taskId], references: [id])
+
+	@@index([recordedAt])
+	@@index([provider, model])
+	@@index([runId])
 }
 
 model InboxMessage {

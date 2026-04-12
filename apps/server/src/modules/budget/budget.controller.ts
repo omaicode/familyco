@@ -1,16 +1,20 @@
-import type { AuditService, SettingsService } from '@familyco/core';
+import type { BudgetUsageService, SettingsService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
-import { estimateCostUSD, toDateString } from './budget.helpers.js';
+import { toDateString } from './budget.helpers.js';
 import type {
   BudgetReport,
   BudgetReportByAdapter,
-  BudgetReportDailyEntry
+  BudgetReportByModel,
+  BudgetReportByRun,
+  BudgetReportDailyEntry,
+  BudgetReportTimeBucketEntry,
+  BudgetReportTopEntity
 } from './budget.types.js';
 
 export interface BudgetModuleDeps {
-  auditService: AuditService;
+  budgetUsageService: BudgetUsageService;
   settingsService: SettingsService;
 }
 
@@ -22,16 +26,20 @@ export function registerBudgetController(app: FastifyInstance, deps: BudgetModul
     const from = new Date(now.getFullYear(), now.getMonth(), 1); // start of current month
     const to = now;
 
-    // Fetch adapter.chat.completed audit records for the period
-    const records = await deps.auditService.list({
-      action: 'adapter.chat.completed',
+    const records = await deps.budgetUsageService.list({
       from,
       to,
       limit: 10_000
     });
 
-    // Aggregate totals and per-adapter stats
+    // Aggregate totals and drilldowns.
     const adapterMap = new Map<string, BudgetReportByAdapter>();
+    const modelMap = new Map<string, BudgetReportByModel>();
+    const runMap = new Map<string, BudgetReportByRun>();
+    const weekMap = new Map<string, BudgetReportTimeBucketEntry>();
+    const monthMap = new Map<string, BudgetReportTimeBucketEntry>();
+    const agentMap = new Map<string, BudgetReportTopEntity>();
+    const projectMap = new Map<string, BudgetReportTopEntity>();
     const dailyMap = new Map<string, BudgetReportDailyEntry>();
 
     let totalPrompt = 0;
@@ -40,14 +48,11 @@ export function registerBudgetController(app: FastifyInstance, deps: BudgetModul
     let totalRequests = 0;
 
     for (const record of records) {
-      const payload = record.payload ?? {};
-      const adapterId = typeof payload.adapterId === 'string' ? payload.adapterId : 'unknown';
-      const model = typeof payload.model === 'string' ? payload.model : '';
-      const tokenUsage = payload.tokenUsage as { prompt?: number; completion?: number; total?: number } | undefined;
-
-      const prompt = tokenUsage?.prompt ?? 0;
-      const completion = tokenUsage?.completion ?? 0;
-      const cost = estimateCostUSD(model, prompt, completion);
+      const adapterId = record.provider;
+      const model = record.model;
+      const prompt = record.promptTokens;
+      const completion = record.completionTokens;
+      const cost = record.estimatedCost;
 
       totalPrompt += prompt;
       totalCompletion += completion;
@@ -73,8 +78,50 @@ export function registerBudgetController(app: FastifyInstance, deps: BudgetModul
         });
       }
 
+      // Per-model aggregation
+      const modelKey = `${adapterId}::${model}`;
+      const existingModel = modelMap.get(modelKey);
+      if (existingModel) {
+        existingModel.totalTokens += prompt + completion;
+        existingModel.estimatedCostUSD += cost;
+        existingModel.requestCount += 1;
+      } else {
+        modelMap.set(modelKey, {
+          model,
+          provider: adapterId,
+          totalTokens: prompt + completion,
+          estimatedCostUSD: cost,
+          requestCount: 1
+        });
+      }
+
+      // Per-run aggregation
+      if (record.runId) {
+        const existingRun = runMap.get(record.runId);
+        if (existingRun) {
+          existingRun.totalTokens += prompt + completion;
+          existingRun.estimatedCostUSD += cost;
+          existingRun.requestCount += 1;
+        } else {
+          runMap.set(record.runId, {
+            runId: record.runId,
+            totalTokens: prompt + completion,
+            estimatedCostUSD: cost,
+            requestCount: 1
+          });
+        }
+      }
+
+      if (record.agentId) {
+        upsertTopEntity(agentMap, record.agentId, prompt + completion, cost);
+      }
+
+      if (record.projectId) {
+        upsertTopEntity(projectMap, record.projectId, prompt + completion, cost);
+      }
+
       // Daily breakdown
-      const dateKey = toDateString(record.createdAt);
+      const dateKey = toDateString(record.recordedAt);
       const existingDay = dailyMap.get(dateKey);
       if (existingDay) {
         existingDay.totalTokens += prompt + completion;
@@ -88,6 +135,12 @@ export function registerBudgetController(app: FastifyInstance, deps: BudgetModul
           requestCount: 1
         });
       }
+
+      const weekKey = toIsoWeek(record.recordedAt);
+      upsertBucket(weekMap, weekKey, prompt + completion, cost);
+
+      const monthKey = toIsoMonth(record.recordedAt);
+      upsertBucket(monthMap, monthKey, prompt + completion, cost);
     }
 
     // Fill missing days in the last 30 days
@@ -133,11 +186,74 @@ export function registerBudgetController(app: FastifyInstance, deps: BudgetModul
       byAdapter: Array.from(adapterMap.values()).sort(
         (a, b) => b.estimatedCostUSD - a.estimatedCostUSD
       ),
-      dailyBreakdown
+      dailyBreakdown,
+      byModel: Array.from(modelMap.values()).sort((a, b) => b.estimatedCostUSD - a.estimatedCostUSD),
+      byRun: Array.from(runMap.values()).sort((a, b) => b.estimatedCostUSD - a.estimatedCostUSD),
+      byWeek: Array.from(weekMap.values()).sort((a, b) => a.bucket.localeCompare(b.bucket)),
+      byMonth: Array.from(monthMap.values()).sort((a, b) => a.bucket.localeCompare(b.bucket)),
+      topCostlyAgents: Array.from(agentMap.values()).sort((a, b) => b.estimatedCostUSD - a.estimatedCostUSD).slice(0, 5),
+      topCostlyProjects: Array.from(projectMap.values()).sort((a, b) => b.estimatedCostUSD - a.estimatedCostUSD).slice(0, 5)
     };
 
     return report;
   });
+}
+
+function upsertTopEntity(
+  map: Map<string, BudgetReportTopEntity>,
+  entityId: string,
+  tokens: number,
+  cost: number
+): void {
+  const existing = map.get(entityId);
+  if (existing) {
+    existing.totalTokens += tokens;
+    existing.estimatedCostUSD += cost;
+    existing.requestCount += 1;
+    return;
+  }
+
+  map.set(entityId, {
+    entityId,
+    totalTokens: tokens,
+    estimatedCostUSD: cost,
+    requestCount: 1
+  });
+}
+
+function upsertBucket(
+  map: Map<string, BudgetReportTimeBucketEntry>,
+  bucket: string,
+  tokens: number,
+  cost: number
+): void {
+  const existing = map.get(bucket);
+  if (existing) {
+    existing.totalTokens += tokens;
+    existing.estimatedCostUSD += cost;
+    existing.requestCount += 1;
+    return;
+  }
+
+  map.set(bucket, {
+    bucket,
+    totalTokens: tokens,
+    estimatedCostUSD: cost,
+    requestCount: 1
+  });
+}
+
+function toIsoMonth(date: Date): string {
+  return date.toISOString().slice(0, 7);
+}
+
+function toIsoWeek(date: Date): string {
+  const utcDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${utcDate.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
 function buildDailyBreakdown(

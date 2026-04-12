@@ -1,6 +1,6 @@
 import type { Logger } from 'pino';
 
-import { AiAdapterRegistry, type AuditService } from '@familyco/core';
+import { AiAdapterRegistry, type AuditService, type BudgetUsageService } from '@familyco/core';
 
 import { ClaudeAdapter } from './claude.adapter.js';
 import type { AdapterLogger } from './hooks/logging.hook.js';
@@ -11,6 +11,7 @@ import { OpenAiAdapter } from './openai.adapter.js';
 export interface AdapterRegistryDeps {
   logger: Logger | AdapterLogger;
   auditService: AuditService;
+  budgetUsageService: BudgetUsageService;
 }
 
 export function createAdapterRegistry(deps?: AdapterRegistryDeps): AiAdapterRegistry {
@@ -20,7 +21,7 @@ export function createAdapterRegistry(deps?: AdapterRegistryDeps): AiAdapterRegi
 
   if (deps) {
     registry.registerHook(new LoggingHook(deps.logger));
-    registry.registerHook(new TokenUsageHook(deps.auditService));
+    registry.registerHook(new TokenUsageHook(deps.auditService, deps.budgetUsageService));
   }
 
   return registry;

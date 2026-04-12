@@ -4,6 +4,15 @@ import type { ProjectRepository } from './project.repository.js';
 export class ProjectService {
   constructor(private readonly repository: ProjectRepository) {}
 
+  async getProjectById(id: string): Promise<Project> {
+    const project = await this.repository.findById(id);
+    if (!project) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
+    return project;
+  }
+
   createProject(input: CreateProjectInput): Promise<Project> {
     return this.repository.create(input);
   }

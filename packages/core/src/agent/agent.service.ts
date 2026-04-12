@@ -36,7 +36,11 @@ export class AgentService {
 
   async findExecutiveAgent(): Promise<AgentProfile | null> {
     const agents = await this.repository.list();
-    return agents.find((agent) => agent.level === 'L0' && agent.status !== 'terminated') ?? null;
+    return agents.find((agent) =>
+      agent.level === 'L0' &&
+      agent.status !== 'terminated' &&
+      agent.status !== 'archived'
+    ) ?? null;
   }
 
   async getAgentById(id: string): Promise<AgentProfile> {
@@ -139,7 +143,11 @@ export class AgentService {
 }
 
 function resolveFallbackExecutive(agents: AgentProfile[], target: AgentProfile): AgentProfile | null {
-  const activeExecutives = agents.filter((agent) => agent.level === 'L0' && agent.status !== 'terminated');
+  const activeExecutives = agents.filter((agent) =>
+    agent.level === 'L0' &&
+    agent.status !== 'terminated' &&
+    agent.status !== 'archived'
+  );
   if (target.level === 'L0' && target.status !== 'terminated') {
     return activeExecutives.find((agent) => agent.id !== target.id) ?? null;
   }
@@ -149,6 +157,10 @@ function resolveFallbackExecutive(agents: AgentProfile[], target: AgentProfile):
 
 function resolveDefaultExecutiveAgent(agents: AgentProfile[]): AgentProfile | null {
   return agents
-    .filter((agent) => agent.level === 'L0')
+    .filter((agent) =>
+      agent.level === 'L0' &&
+      agent.status !== 'terminated' &&
+      agent.status !== 'archived'
+    )
     .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())[0] ?? null;
 }

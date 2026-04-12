@@ -21,7 +21,7 @@ export const updateAgentBodySchema = z
     name: z.string().min(1).optional(),
     role: z.string().min(1).optional(),
     department: z.string().min(1).optional(),
-    status: z.enum(['active', 'idle', 'running', 'error', 'paused', 'terminated']).optional(),
+    status: z.enum(['active', 'idle', 'running', 'error', 'paused', 'terminated', 'archived']).optional(),
     aiAdapterId: z.enum(['openai', 'claude']).nullable().optional(),
     aiModel: z.string().min(1).nullable().optional()
   })

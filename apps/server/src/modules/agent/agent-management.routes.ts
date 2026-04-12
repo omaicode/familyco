@@ -18,6 +18,12 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     return deps.agentService.listAgents();
   });
 
+  app.get('/agents/:id', async (request) => {
+    requireMinimumLevel(request, 'L1');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+    return deps.agentService.getAgentById(id);
+  });
+
   app.post('/agents', async (request, reply) => {
     requireMinimumLevel(request, 'L0');
     const body = createAgentSchema.parse(request.body);
@@ -104,6 +110,72 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     });
 
     return pausedAgent;
+  });
+
+  app.post('/agents/:id/resume', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'agent.resume',
+      targetId: id,
+      payload: { status: 'active' }
+    });
+
+    if (!approval.allowed) {
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
+
+    const resumedAgent = await deps.agentService.setAgentStatus(id, 'active');
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'agent.resume',
+      targetId: resumedAgent.id,
+      payload: { status: resumedAgent.status }
+    });
+
+    return resumedAgent;
+  });
+
+  app.post('/agents/:id/archive', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+
+    const approval = await ensureApproval({
+      approvalGuard: deps.approvalGuard,
+      approvalService: deps.approvalService,
+      authContext: request.authContext,
+      action: 'agent.archive',
+      targetId: id,
+      payload: { status: 'archived' }
+    });
+
+    if (!approval.allowed) {
+      reply.code(202);
+      return {
+        approvalRequired: true,
+        approvalRequestId: approval.request.id,
+        reason: approval.reason
+      };
+    }
+
+    const archivedAgent = await deps.agentService.setAgentStatus(id, 'archived');
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'agent.archive',
+      targetId: archivedAgent.id,
+      payload: { status: archivedAgent.status }
+    });
+
+    return archivedAgent;
   });
 
   app.get('/agents/:id/children', async (request) => {

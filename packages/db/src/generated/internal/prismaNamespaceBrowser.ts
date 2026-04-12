@@ -56,6 +56,8 @@ export const ModelName = {
   Task: 'Task',
   ApprovalRequest: 'ApprovalRequest',
   AuditLog: 'AuditLog',
+  AgentRun: 'AgentRun',
+  BudgetUsage: 'BudgetUsage',
   InboxMessage: 'InboxMessage',
   Settings: 'Settings',
   ApiKey: 'ApiKey'
@@ -139,11 +141,52 @@ export const AuditLogScalarFieldEnum = {
   actorId: 'actorId',
   action: 'action',
   targetId: 'targetId',
+  traceId: 'traceId',
   payload: 'payload',
   createdAt: 'createdAt'
 } as const
 
 export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
+export const AgentRunScalarFieldEnum = {
+  id: 'id',
+  companyId: 'companyId',
+  rootAgentId: 'rootAgentId',
+  parentRunId: 'parentRunId',
+  triggerType: 'triggerType',
+  state: 'state',
+  inputSummary: 'inputSummary',
+  outputSummary: 'outputSummary',
+  linkedProjectId: 'linkedProjectId',
+  linkedTaskId: 'linkedTaskId',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AgentRunScalarFieldEnum = (typeof AgentRunScalarFieldEnum)[keyof typeof AgentRunScalarFieldEnum]
+
+
+export const BudgetUsageScalarFieldEnum = {
+  id: 'id',
+  companyId: 'companyId',
+  runId: 'runId',
+  agentId: 'agentId',
+  projectId: 'projectId',
+  taskId: 'taskId',
+  provider: 'provider',
+  model: 'model',
+  promptTokens: 'promptTokens',
+  completionTokens: 'completionTokens',
+  totalTokens: 'totalTokens',
+  estimatedCost: 'estimatedCost',
+  currency: 'currency',
+  recordedAt: 'recordedAt'
+} as const
+
+export type BudgetUsageScalarFieldEnum = (typeof BudgetUsageScalarFieldEnum)[keyof typeof BudgetUsageScalarFieldEnum]
 
 
 export const InboxMessageScalarFieldEnum = {
