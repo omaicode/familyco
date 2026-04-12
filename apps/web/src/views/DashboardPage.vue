@@ -62,7 +62,9 @@ const formatRelative = (iso: string): string => {
 
 useAutoReload(refresh);
 
-const handleStartTour = () => { tour.start(t); };
+const handleStartTour = () => { 
+  tour.start(t); 
+};
 
 onMounted(() => {
   window.addEventListener('fc:start-tour', handleStartTour);
