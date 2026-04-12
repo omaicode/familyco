@@ -199,12 +199,11 @@ async function resolveMigrationsPath(): Promise<string> {
     process.env.FAMILYCO_MIGRATIONS_PATH,
     path.resolve(process.cwd(), 'prisma/migrations'),
     path.resolve(process.cwd(), '../../prisma/migrations'),
-    path.resolve(dirname, '../../../../prisma/migrations'),
-    path.resolve(dirname, '../../../../../prisma/migrations'),
+    path.resolve(process.cwd(), '../../packages/db/prisma/migrations'),
     path.resolve((process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ?? '', 'prisma/migrations')
-  ].filter((value): value is string => Boolean(value && value.length > 0));
-
-  for (const candidate of candidates) {
+  ]
+  const filtered = candidates.filter((value): value is string => Boolean(value && value.length > 0));
+  for (const candidate of filtered) {
     if (await fileExists(candidate)) {
       return candidate;
     }
