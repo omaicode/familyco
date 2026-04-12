@@ -18,5 +18,7 @@ coverage/
 # Ignore database files
 packages/db/**/*.db
 packages/db/**/*.bak
+prisma/**/*.db
+prisma/**/*.bak
 
 .gitnexus

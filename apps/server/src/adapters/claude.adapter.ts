@@ -68,7 +68,7 @@ export class ClaudeAdapter implements AiAdapter {
       const result = streamText({
         model: anthropic(requestedModel),
         messages: [{ role: 'user', content: 'ping' }],
-        maxOutputTokens: 1
+        maxOutputTokens: 16
       });
       await result.text;
       return { ok: true, latencyMs: Date.now() - start, model: requestedModel };
