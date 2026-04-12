@@ -8,7 +8,7 @@
 
 FamilyCo là một **AI-native company operating system** cho Founder: một nền tảng nơi Founder đưa ra mục tiêu, chỉ thị và ràng buộc, còn các AI Agent vận hành như một "công ty nhỏ" với vai trò, trách nhiệm và luồng phối hợp rõ ràng.
 
-- Founder **không làm việc như nhân viên** (tự đi tạo task, cập nhật status) mà chỉ **đưa ra chỉ thị và ra quyết định** ở các điểm quan trọng.
+- Founder **không làm việc như nhân viên** mà chỉ **đưa ra chỉ thị và ra quyết định** ở các điểm quan trọng.
 - Hệ thống AI Agents đảm nhiệm phần còn lại: phân tích, lập kế hoạch, tạo task/project, báo cáo, xin duyệt và thực thi.
 - UX ưu tiên: **dễ hiểu, dễ setup, dễ quan sát** hơn là quá nhiều tùy chọn phức tạp.
 
@@ -94,7 +94,7 @@ AI Agent khi đọc tài liệu khác (Agent Hierarchy, Technical Architecture) 
 ### 4.6 Settings & Integrations
 
 - AI Providers (OpenAI, Claude, v.v.).
-- Database, Email, Webhook, Notification.
+- Email, Webhook, Notification.
 - Kết nối với Server Only (nếu Founder dùng server remote).
 
 AI Agent không được tự ý mở rộng scope (ví dụ thêm CRM, HR, Billing) nếu Founder chưa yêu cầu.
@@ -106,14 +106,11 @@ AI Agent không được tự ý mở rộng scope (ví dụ thêm CRM, HR, Bill
 Onboarding là trải nghiệm quan trọng đầu tiên; mục tiêu là **tạo được 1 L0 Agent + đề xuất org chart ban đầu** càng nhanh càng tốt.
 
 1. **Welcome** — giới thiệu ngắn: "FamilyCo giúp bạn điều hành một công ty AI với nhiều Agent chuyên trách".
-2. **AI Provider Setup** — chọn provider, nhập API key, test connection, chọn default model.
-3. **Company Profile** — tên công ty, ngành, quy mô, mục tiêu 90 ngày.
-4. **Founder Preferences** — mức tự chủ AI (auto/suggest), cách giao tiếp, ngôn ngữ, timezone.
-5. **First Executive Agent** — tạo L0 (Chief of Staff) với prompt/template gợi ý.
-6. **Optional Role Templates** — FamilyCo lưu các department/role gợi ý dưới dạng template để dùng sau này nếu Founder cần.
-7. **Finish & First Chat** — đưa Founder đến Executive Chat với vài prompt gợi ý đầu tiên.
+2. **Company Profile** — tên công ty, ngành, quy mô, mục tiêu 90 ngày.
+3. **AI Provider Setup** — chọn provider, nhập API key, test connection, chọn default model.
+4. **Finish** — đưa Founder đến Dashboard hiển thị Tour Guide.
 
-AI Agent khi thay đổi frontend/back-end liên quan onboarding phải giữ logic 7 bước này, chỉ được thay đổi wording/UX nhỏ trừ khi có yêu cầu khác.
+AI Agent khi thay đổi frontend/back-end liên quan onboarding phải giữ logic 4 bước này, chỉ được thay đổi wording/UX nhỏ trừ khi có yêu cầu khác.
 
 ---
 
@@ -128,7 +125,7 @@ Khi đề xuất UI hoặc sửa code Vue/Electron, AI Agent phải tuân thủ 
 5. **State đầy đủ** — loading dùng skeleton, empty state có hướng dẫn, error state có hành động sửa.
 
 AI Agent không nên:
-- Tự thêm animation phức tạp, gradient派, hay UI "flashy" nếu không có yêu cầu.
+- Tự thêm animation phức tạp, gradient, hay UI "flashy" nếu không có yêu cầu.
 - Thay đổi hierarchy, tên role, hoặc logic approval mà không có instruction.
 
 ---
