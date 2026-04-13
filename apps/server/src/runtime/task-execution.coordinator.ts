@@ -188,7 +188,7 @@ export class TaskExecutionCoordinator {
       systemPrompt,
       userPrompt,
       availableTools: filteredTools,
-      maxRounds: 8,
+      maxRounds: 12,
       executeTool: async (toolInput) => {
         stepCount += 1;
         this.options.eventBus?.emit('agent.run.step', {
@@ -218,11 +218,12 @@ export class TaskExecutionCoordinator {
     });
 
     const sessionStatus = resolveSessionStatus(toolsUsed);
+    const summary = loopResult.finalReply.trim() || buildFallbackSummary(task.title, toolsUsed, sessionStatus);
 
     const updatedSession: TaskSessionCheckpoint = {
       ...session,
       status: sessionStatus,
-      summary: loopResult.finalReply.slice(0, 2_000),
+      summary: summary.slice(0, 2_000),
       lastToolNames: toolsUsed,
       checkpointIndex: session.checkpointIndex + 1,
       updatedAt: new Date().toISOString()
@@ -348,4 +349,10 @@ function resolveSessionStatus(toolsUsed: string[]): TaskSessionStatus {
   }
 
   return 'completed';
+}
+
+function buildFallbackSummary(taskTitle: string, toolsUsed: string[], status: TaskSessionStatus): string {
+  const unique = [...new Set(toolsUsed)];
+  const toolList = unique.length > 0 ? unique.join(', ') : 'none';
+  return `Session ended without a final reply from the agent. Task: "${taskTitle}". Tools used: ${toolList}. Status: ${status}.`;
 }

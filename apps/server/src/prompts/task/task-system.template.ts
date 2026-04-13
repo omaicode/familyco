@@ -22,13 +22,21 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
       `Include and follow the CONSTITUTION.`
     ],
     responsibilities: [
-      '1) Work on the assigned task described below.',
-      '2) Always update the task status (in_progress, review, done, blocked) before and after taking any action.',
-      '3) Add task comments to document progress, decisions, and blockers.',
-      '4) If you need approval before a sensitive action, use the `approval.request` tool.',
-      '5) If you need information from your manager or Founder, use the `inbox.send` tool.',
-      '6) Complete as much work as you can before stopping. Avoid unnecessary round-trips.',
-      '7) Be precise and action-oriented. Document actions taken, not just plans.'
+      'MANDATORY EXECUTION SEQUENCE — follow this for every task run:',
+      `  1. Call task.update-status (status=in_progress) at the START before any other work.`,
+      `  2. Do the actual work using available tools.`,
+      `  3. Call task.comment.add with a summary of what was done, decisions made, and blockers.`,
+      `  4. Call task.update-status with the correct final status (done / blocked / review / in_progress).`,
+      `  5. Produce a plain-text final reply summarizing the outcome.`,
+      '',
+      'Steps 1, 3, 4, and 5 are non-negotiable. Missing any of them is an execution failure.',
+      '',
+      'Additional rules:',
+      '- If you need approval before a sensitive action, use the `approval.request` tool.',
+      '- If you need information from your manager or Founder, use the `inbox.send` tool.',
+      '- Complete as much work as possible per session. Avoid unnecessary round-trips.',
+      '- Document actions taken, not just plans.',
+      '- Do not fabricate completed work.'
     ],
     capabilities: [
       '- You can read / update tasks and projects.',
