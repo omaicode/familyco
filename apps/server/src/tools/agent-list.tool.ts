@@ -5,7 +5,7 @@ import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const agentListSlashSpec: SlashCommandSpec = {
   command: '/agents',
-  usage: '/agents [level=...] [status=...] [department=...] [parent=...] [q=...]',
+  usage: '/agents [level=...] [parent=...] [q=...]',
   label: 'List agents',
   description: 'List agents with optional filters.',
   insertValue: '/agents ',
@@ -15,8 +15,6 @@ export const agentListSlashSpec: SlashCommandSpec = {
     const kv = parseKeyValueArgs(args);
     return {
       level: kv.level,
-      status: kv.status,
-      department: kv.department,
       parentAgentId: kv.parent,
       query: kv.q
     };
@@ -25,15 +23,12 @@ export const agentListSlashSpec: SlashCommandSpec = {
 
 export const agentListTool: ServerToolDefinition = {
   name: 'agent.list',
-  description: 'List agents with optional filters by level, status, department, parent, and keyword.',
+  description: 'List agents with optional filters by level, parent, and keyword.',
   slashSpec: agentListSlashSpec,
   parameters: [
-    { name: 'level', type: 'L1 | L2', required: false, description: 'Agent level filter.' },
-    { name: 'status', type: 'active | idle | running | error | paused | terminated', required: false, description: 'Agent status filter.' },
-    { name: 'department', type: 'string', required: false, description: 'Department filter.' },
+    { name: 'level', type: 'L0 | L1 | L2', required: false, description: 'Agent level filter.' },
     { name: 'parentAgentId', type: 'string', required: false, description: 'Parent agent id or name.' },
-    { name: 'query', type: 'string', required: false, description: 'Keyword filter for name/role/department.' },
-    { name: 'limit', type: 'number', required: false, description: 'Max results to return (default 20, max 100).' }
+    { name: 'query', type: 'string', required: false, description: 'Keyword filter for name/role/department.' }
   ],
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
     if (!context.agentService) {
@@ -41,27 +36,16 @@ export const agentListTool: ServerToolDefinition = {
     }
 
     const level = asAgentLevel(argumentsMap.level);
-    const status = asAgentStatus(argumentsMap.status);
-    const department = asNonEmptyString(argumentsMap.department)?.toLowerCase();
     const parentAgentId = await resolveParentAgentId({
       candidate: asNonEmptyString(argumentsMap.parentAgentId),
       context
     });
     const query = asNonEmptyString(argumentsMap.query) ?? asNonEmptyString(argumentsMap.q);
     const normalizedQuery = query?.toLowerCase();
-    const limit = Math.min(Math.max(Number(argumentsMap.limit) || 20, 1), 100);
 
     const agents = await context.agentService.listAgents();
     const filtered = agents.filter((agent) => {
       if (level && agent.level !== level) {
-        return false;
-      }
-
-      if (status && agent.status !== status) {
-        return false;
-      }
-
-      if (department && agent.department.trim().toLowerCase() !== department) {
         return false;
       }
 
@@ -90,7 +74,7 @@ export const agentListTool: ServerToolDefinition = {
       toolName: 'agent.list',
       output: {
         total: filtered.length,
-        items: filtered.slice(0, limit)
+        items: filtered
       }
     };
   }
