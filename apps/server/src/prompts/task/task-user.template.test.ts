@@ -24,6 +24,8 @@ test('renderTaskUserPrompt includes mandatory execution protocol steps', () => {
   assert.ok(prompt.includes('task.update-status'), 'must reference task.update-status');
   assert.ok(prompt.includes('task.comment.add'), 'must reference task.comment.add');
   assert.ok(prompt.includes('REQUIRED'), 'must mark steps as required');
+  assert.ok(prompt.includes('final reply MUST be a non-empty assistant message'), 'must enforce non-empty final reply');
+  assert.ok(prompt.includes('Send exactly one final reply, then stop'), 'must enforce single final reply after tool calls');
 });
 
 test('renderTaskUserPrompt bakes task ID into mandatory steps', () => {

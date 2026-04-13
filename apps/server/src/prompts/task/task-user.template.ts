@@ -91,6 +91,8 @@ export function renderTaskUserPrompt(input: TaskUserPromptInput): string {
     '  - `in_progress` if more sessions are needed',
     '',
     '**Step 5 — Final reply:** Write a Markdown summary of: what was accomplished, what decisions were made, and the final status. Use bullet points and headers for readability.',
+    '  - The final reply MUST be a non-empty assistant message after all tool calls are complete.',
+    '  - Send exactly one final reply, then stop (no additional tool calls after it).',
     '  - Do NOT suggest next steps or offer options with "If you want..." or "Would you like...".',
     '  - Do NOT ask the Founder questions — if you need a decision, use `approval.request` or `inbox.send` instead.',
     '  - If blocked, state clearly what the blocker is and that an approval request has been submitted.',
