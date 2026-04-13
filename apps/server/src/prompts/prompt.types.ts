@@ -55,6 +55,7 @@ export interface HeartbeatRunPromptInput {
   agentName: string;
   agentRole: string;
   agentDepartment: string;
+  tools?: PromptToolDefinition[];
   skills?: PromptSkillDefinition[];
   timestamp: string;
 }

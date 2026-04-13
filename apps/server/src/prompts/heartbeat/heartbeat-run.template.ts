@@ -1,8 +1,9 @@
+import { renderToolLines } from '../prompt.helper.js';
 import { renderRoleGoalConstraintsTemplate } from '../prompt.pattern.js';
 import type { HeartbeatRunPromptInput } from '../prompt.types.js';
 
 export function renderHeartbeatRunPrompt(input: HeartbeatRunPromptInput): string {
-  const skillLines = renderSkillLines(input.skills ?? []);
+  const toolLines = renderToolLines(input.tools ?? []);
 
   return renderRoleGoalConstraintsTemplate({
     role: [
@@ -37,21 +38,14 @@ export function renderHeartbeatRunPrompt(input: HeartbeatRunPromptInput): string
       '- heartbeat.dispatch — dispatch selected tasks for execution',
       '- task.log — log a status note (only if no tasks to dispatch)'
     ],
-    skills: [
-      '- Do not read skills during this heartbeat run.',
-      ...skillLines
+    tools: [
+      '- You may use these tools when beneficial:',
+      ...toolLines,
+      '(Each tool is described as NAME, DESCRIPTION, ARGUMENT_SCHEMA.)'
     ],
     context: [
       `Heartbeat Timestamp: ${input.timestamp}`,
       `Your Agent ID: ${input.agentId}`
     ]
   });
-}
-
-function renderSkillLines(input: NonNullable<HeartbeatRunPromptInput['skills']>): string[] {
-  if (input.length === 0) {
-    return ['- No skills loaded for this agent.'];
-  }
-
-  return input.map((skill) => `- ${skill.id} (${skill.name}): ${skill.description} Path => ${skill.path}`);
 }

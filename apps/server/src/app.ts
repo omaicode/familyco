@@ -241,10 +241,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     agentService,
     settingsService,
     auditService,
-    skillsService,
     taskService,
     pollMs: options.heartbeatPollMs,
-    defaultHeartbeatMinutes: options.defaultHeartbeatMinutes
+    defaultHeartbeatMinutes: options.defaultHeartbeatMinutes,
+    tools: toolExecutor.listToolDefinitions()
   });
   const canProcessAsyncJobs = true;
   let migrationState: MigrationRunResult | null = null;
