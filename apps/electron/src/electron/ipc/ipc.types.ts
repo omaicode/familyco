@@ -36,8 +36,9 @@ export interface DesktopInvokeRequestMap {
   };
   'desktop:agents:list': Record<string, never>;
   'desktop:update:check': Record<string, never>;
+  'desktop:update:install': Record<string, never>;
   'desktop:dialog:open-directory': Record<string, never>;
-
+}
 export interface DesktopInvokeResponseMap {
   'desktop:health': {
     status: string;

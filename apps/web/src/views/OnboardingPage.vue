@@ -33,7 +33,7 @@ const testResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | nul
 
 // ── Folder picker state ──────────────────────────────────
 const isBrowsing = ref(false);
-const isDesktop = typeof window !== 'undefined' && typeof (window as Record<string, unknown>).familycoDesktop === 'object';
+const isDesktop = typeof window !== 'undefined' && typeof (window as unknown as Record<string, unknown>).familycoDesktop === 'object';
 
 const form = reactive({
   companyName: '',
@@ -70,7 +70,7 @@ const browseWorkspace = async () => {
   if (!isDesktop) return;
   isBrowsing.value = true;
   try {
-    const desktop = (window as Record<string, unknown>).familycoDesktop as { invoke: (channel: string, payload: Record<string, never>) => Promise<{ canceled: boolean; filePaths: string[] }> };
+    const desktop = (window as unknown as Record<string, unknown>).familycoDesktop as { invoke: (channel: string, payload: Record<string, never>) => Promise<{ canceled: boolean; filePaths: string[] }> };
     const result = await desktop.invoke('desktop:dialog:open-directory', {});
     if (!result.canceled && result.filePaths.length > 0) {
       form.workspacePath = result.filePaths[0] ?? '';

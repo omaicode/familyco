@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
-  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin,
+  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin, FolderOpen,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -19,7 +19,7 @@ import { useToast } from '../plugins/toast.plugin';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
-type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'system';
+type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'workspace' | 'system';
 
 // ── State ─────────────────────────────────────────────────
 const router = useRouter();
@@ -51,6 +51,12 @@ const agentsSaving = ref(false);
 
 // ── Provider section ref ──────────────────────────────────
 const providerSectionRef = ref<InstanceType<typeof ProviderSettingsSection> | null>(null);
+
+// ── Workspace form ────────────────────────────────────────
+const workspacePath = ref('');
+const workspaceSaving = ref(false);
+const isBrowsingWorkspace = ref(false);
+const isDesktop = typeof window !== 'undefined' && typeof (window as unknown as Record<string, unknown>).familycoDesktop === 'object';
 
 // ── Appearance ────────────────────────────────────────────
 const themePreference = ref<ThemePreference>('system');
@@ -116,6 +122,9 @@ const reload = async () => {
   const rawMode2 = getSetting('agent.defaultApprovalMode');
   agentDefaultApprovalMode.value = (rawMode2 === 'auto' || rawMode2 === 'review') ? rawMode2 : 'suggest';
 
+  // Workspace
+  workspacePath.value = typeof getSetting('workspace.path') === 'string' ? getSetting('workspace.path') as string : '';
+
   // System diagnostics
   systemInfo.runtimeMode = typeof window !== 'undefined' && typeof window.familycoDesktop?.invoke === 'function'
     ? 'Desktop app'
@@ -164,6 +173,39 @@ const saveCompany = async () => {
     setFeedback('error', err instanceof Error ? err.message : 'Failed to save company settings');
   } finally {
     companySaving.value = false;
+  }
+};
+
+// ── Save: workspace ───────────────────────────────────────
+const saveWorkspace = async () => {
+  workspaceSaving.value = true;
+  feedback.value = null;
+  try {
+    await uiRuntime.api.upsertSetting({ key: 'workspace.path', value: workspacePath.value.trim() });
+    await uiRuntime.stores.settings.load();
+    setFeedback('success', 'Workspace path saved');
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to save workspace path');
+  } finally {
+    workspaceSaving.value = false;
+  }
+};
+
+const browseWorkspace = async () => {
+  if (!isDesktop) return;
+  isBrowsingWorkspace.value = true;
+  try {
+    const desktop = (window as unknown as Record<string, unknown>).familycoDesktop as {
+      invoke: (channel: string, payload: Record<string, never>) => Promise<{ canceled: boolean; filePaths: string[] }>
+    };
+    const result = await desktop.invoke('desktop:dialog:open-directory', {});
+    if (!result.canceled && result.filePaths.length > 0) {
+      workspacePath.value = result.filePaths[0] ?? '';
+    }
+  } catch {
+    // Ignore dialog errors
+  } finally {
+    isBrowsingWorkspace.value = false;
   }
 };
 
@@ -342,6 +384,15 @@ useAutoReload(reload);
         >
           <Palette :size="15" class="st-nav-icon" />
           <span>Appearance</span>
+          <ChevronRight :size="13" class="st-nav-chevron" />
+        </button>
+        <button
+          class="st-nav-item"
+          :class="{ 'st-nav-item-active': activeSection === 'workspace' }"
+          @click="activeSection = 'workspace'"
+        >
+          <FolderOpen :size="15" class="st-nav-icon" />
+          <span>Workspace</span>
           <ChevronRight :size="13" class="st-nav-chevron" />
         </button>
         <button
@@ -604,6 +655,57 @@ useAutoReload(reload);
                 <Save :size="13" />
                 {{ themeSaving ? 'Saving…' : 'Save appearance' }}
               </button>
+            </div>
+          </div>
+
+          <!-- ── Workspace ──────────────────────────── -->
+          <div v-else-if="activeSection === 'workspace'" key="workspace">
+            <div class="st-pane-header">
+              <FolderOpen :size="16" class="st-pane-icon" />
+              <div>
+                <h4>Workspace</h4>
+                <p>Set the local folder where FamilyCo stores project files and agent outputs. New projects will be created as sub-folders inside this directory.</p>
+              </div>
+            </div>
+
+            <div class="st-field-group">
+              <label class="st-label" for="st-workspace-path">Workspace folder path</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <FcInput
+                  id="st-workspace-path"
+                  v-model="workspacePath"
+                  placeholder="/Users/you/workspace or C:\Users\you\workspace"
+                  style="flex:1;"
+                />
+                <button
+                  v-if="isDesktop"
+                  class="fc-btn-secondary fc-btn-sm"
+                  :disabled="isBrowsingWorkspace"
+                  type="button"
+                  aria-label="Browse for folder"
+                  @click="browseWorkspace"
+                >
+                  <FolderOpen :size="13" />
+                  Browse
+                </button>
+              </div>
+              <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">
+                Use an absolute path. The folder and its <code>projects/</code> sub-directory will be created automatically when a new project is added.
+              </p>
+            </div>
+
+            <div v-if="workspacePath" class="st-kv-list" style="margin-bottom:16px;">
+              <div class="st-kv-row">
+                <code class="st-kv-key">Projects will be saved to</code>
+                <span class="st-kv-value" style="word-break:break-all;">{{ workspacePath }}/projects/&lt;project-slug&gt;</span>
+              </div>
+            </div>
+
+            <div class="st-actions">
+              <FcButton variant="primary" size="sm" :disabled="workspaceSaving" @click="saveWorkspace">
+                <Save :size="13" />
+                {{ workspaceSaving ? 'Saving…' : 'Save workspace path' }}
+              </FcButton>
             </div>
           </div>
 
