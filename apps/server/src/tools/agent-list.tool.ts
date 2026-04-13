@@ -53,10 +53,6 @@ export const agentListTool: ServerToolDefinition = {
 
     const agents = await context.agentService.listAgents();
     const filtered = agents.filter((agent) => {
-      if (agent.level === 'L0') {
-        return false; // Exclude executive agents
-      }
-      
       if (level && agent.level !== level) {
         return false;
       }
@@ -101,7 +97,7 @@ export const agentListTool: ServerToolDefinition = {
 };
 
 function asAgentLevel(value: unknown): AgentLevel | undefined {
-  if (value === 'L1' || value === 'L2') {
+  if (value === 'L0' || value === 'L1' || value === 'L2') {
     return value;
   }
 
