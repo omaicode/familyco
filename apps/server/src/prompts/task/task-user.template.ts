@@ -68,13 +68,17 @@ export function renderTaskUserPrompt(input: TaskUserPromptInput): string {
     }
   }
 
+  const alreadyInProgress = input.taskStatus === 'in_progress';
+
   lines.push(
     '---',
     '## Execution Protocol',
     '',
     'Follow this sequence strictly:',
     '',
-    `**Step 1 — Mark in progress:** Call \`task.update-status\` with taskId=\`${input.taskId}\` and status=\`in_progress\` before doing any work.`,
+    alreadyInProgress
+      ? `**Step 1 — Already in progress:** Task status is already \`in_progress\`. Skip this step — do NOT call \`task.update-status\` again with \`in_progress\`.`
+      : `**Step 1 — Mark in progress:** Call \`task.update-status\` with taskId=\`${input.taskId}\` and status=\`in_progress\` before doing any work.`,
     '',
     '**Step 2 — Do the work:** Use available tools to make real progress on the task. Read relevant files, update records, or produce required outputs.',
     '',

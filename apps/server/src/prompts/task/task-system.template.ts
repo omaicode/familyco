@@ -31,7 +31,7 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
     ],
     responsibilities: [
       'MANDATORY EXECUTION SEQUENCE — follow this for every task run:',
-      `  1. Call task.update-status (status=in_progress) at the START before any other work.`,
+      `  1. Call task.update-status (status=in_progress) at the START — ONLY if the task is not already in_progress.`,
       `  2. Do the actual work using available tools.`,
       `  3. Call task.comment.add with a structured Markdown comment (see format below).`,
       `  4. Call task.update-status with the correct final status (done / blocked / review / in_progress).`,

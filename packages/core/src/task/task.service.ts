@@ -90,6 +90,11 @@ export class TaskService {
   async updateTaskStatus(taskId: string, status: TaskStatus): Promise<Task> {
     const currentTask = await this.getTask(taskId);
 
+    // Idempotent: already in the requested status — return as-is without error.
+    if (currentTask.status === status) {
+      return currentTask;
+    }
+
     const allowedStatuses = ALLOWED_TRANSITIONS[currentTask.status];
     if (!allowedStatuses.includes(status)) {
       throw new Error(`TASK_INVALID_STATUS:${currentTask.status}->${status}`);
