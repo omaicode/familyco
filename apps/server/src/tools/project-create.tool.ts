@@ -3,6 +3,7 @@ import type { AgentService, ToolExecutionResult } from '@familyco/core';
 import { resolveExecutiveAgentId } from '../modules/shared/defaults.js';
 import { asNonEmptyString, asTextString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import { ensureProjectWorkspaceDir } from '../modules/project/workspace-dir.js';
 
 export const projectCreateSlashSpec: SlashCommandSpec = {
   command: '/create-project',
@@ -51,18 +52,31 @@ export const projectCreateTool: ServerToolDefinition = {
       agentService: context.agentService,
       settingsService: context.settingsService
     });
+
     const ownerAgentId = await resolveAgentReference({
       candidate: asNonEmptyString(argumentsMap.ownerAgentId),
       fallbackAgentId: fallbackOwnerAgentId,
       agentService: context.agentService
     });
 
+    let projectDirPath: string | null = null;
+    const workspaceSetting = await context.settingsService.get('workspace.path').catch(() => null);
+    const dirPath = await ensureProjectWorkspaceDir(
+      typeof workspaceSetting?.value === 'string' ? workspaceSetting.value : null,
+      asNonEmptyString(argumentsMap.name) ?? 'Executive Initiative'
+    ).catch(() => null);
+
+    if (dirPath) {
+      projectDirPath = dirPath;
+    }    
+    
     const project = await context.projectService.createProject({
       name: asNonEmptyString(argumentsMap.name) ?? 'Executive Initiative',
       description:
         asTextString(argumentsMap.description) ??
         'Project created from the executive tool execution flow.',
-      ownerAgentId
+      ownerAgentId,
+      dirPath: projectDirPath
     });
 
     return {

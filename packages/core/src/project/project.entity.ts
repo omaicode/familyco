@@ -14,6 +14,7 @@ export interface CreateProjectInput {
   description: string;
   ownerAgentId: string;
   parentProjectId?: string | null;
+  dirPath?: string | null;
 }
 
 export interface UpdateProjectInput {
