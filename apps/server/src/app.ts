@@ -20,6 +20,7 @@ import {
   ProjectService,
   SettingsService,
   TaskService,
+  runAgentLoop,
   type AgentRunRequest,
   type AgentRunResult,
   type AgentRepository,
@@ -92,7 +93,7 @@ import { createSettingsEncryption } from './modules/settings/settings.encryption
 import { SkillsService } from './modules/skills/skills.service.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
-import { ChatEngineService } from './modules/agent/chat-engine.service.js';
+import { ChatEngineService, filterToolsForAgent } from './modules/agent/chat-engine.service.js';
 
 export type RepositoryDriver = 'memory' | 'prisma';
 export type QueueDriver = 'memory';
@@ -261,12 +262,77 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       await agentRunService.updateState(request.runId, { state: 'executing' });
     }
 
-    // Heartbeat runs need a per-request executor fork that carries both queueService
-    // (so heartbeat.dispatch can enqueue task.execute jobs) and agentId (fallback for the tool).
+    // Heartbeat runs use AI loop so we can inspect full tool trace (not only final dispatch result).
     if (request.action === 'heartbeat.tick') {
+      const agent = await agentService.getAgentById(request.agentId);
+      const adapterConfig = await chatEngineService.getAdapterConfig(agent.aiAdapterId, agent.aiModel);
       const heartbeatExecutor = toolExecutor.forkForHeartbeat(queueService, request.agentId);
-      const heartbeatRunner = new AgentRunner(approvalGuard, heartbeatExecutor, memoryService);
-      return heartbeatRunner.run(request);
+      const toolCalls: Array<{
+        toolName: string;
+        ok: boolean;
+        summary: string;
+        arguments: Record<string, unknown>;
+        output?: unknown;
+        error?: { code: string; message: string };
+      }> = [];
+
+      let finalReply = '';
+      let totalTurns = 0;
+
+      if (adapterConfig) {
+        const adapter = chatEngineService.getAdapter(adapterConfig.adapterId);
+        if (!adapter) {
+          throw new Error(`HEARTBEAT_ADAPTER_NOT_FOUND:${adapterConfig.adapterId}`);
+        }
+
+        const availableTools = filterToolsForAgent(toolExecutor.listToolDefinitions(), agent.level);
+        const loopResult = await runAgentLoop({
+          adapter,
+          apiKey: adapterConfig.apiKey,
+          model: adapterConfig.model,
+          systemPrompt: request.input,
+          userPrompt: 'Run the heartbeat procedure now.',
+          availableTools,
+          maxRounds: 8,
+          executeTool: async (toolInput) => {
+            const result = await heartbeatExecutor.execute({
+              toolName: toolInput.toolName,
+              arguments: toolInput.arguments
+            });
+            toolCalls.push({
+              toolName: result.toolName,
+              ok: result.ok,
+              summary: summarizeToolResult(result),
+              arguments: toolInput.arguments,
+              ...(result.output !== undefined ? { output: result.output } : {}),
+              ...(result.error ? { error: result.error } : {})
+            });
+            return { ok: result.ok, output: result.output, error: result.error };
+          }
+        });
+        finalReply = loopResult.finalReply;
+        totalTurns = loopResult.totalTurns;
+      } else {
+        finalReply = 'Heartbeat AI adapter is not configured. Falling back to deterministic dispatch.';
+      }
+
+      await ensureHeartbeatDispatch(request.agentId, heartbeatExecutor, toolCalls);
+
+      return {
+        status: 'completed',
+        agentId: request.agentId,
+        action: request.action,
+        toolName: request.toolName,
+        output: {
+          ok: true,
+          toolName: 'heartbeat.tick',
+          output: {
+            finalReply,
+            totalTurns,
+            toolCalls
+          }
+        }
+      };
     }
 
     return agentRunner.run(request);
@@ -301,7 +367,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         toolName: request.toolName,
         action: request.action,
         reason: result?.status === 'blocked' ? (result.reason ?? null) : null,
-        output: result?.output ? JSON.stringify(result.output).slice(0, 1_000) : null
+        output: result?.output ? JSON.stringify(result.output).slice(0, 5_000) : null,
+        heartbeatTrace: extractHeartbeatTrace(result)
       }
     });
   };
@@ -719,6 +786,142 @@ function isQueueJobRecord(
 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
+}
+
+function summarizeToolResult(result: { ok: boolean; output?: unknown; error?: { code: string; message: string } }): string {
+  if (!result.ok) {
+    return result.error?.message ?? 'Tool failed';
+  }
+
+  if (typeof result.output === 'string' && result.output.trim().length > 0) {
+    return result.output.trim().slice(0, 200);
+  }
+
+  if (result.output !== undefined && result.output !== null) {
+    try {
+      return JSON.stringify(result.output).slice(0, 200);
+    } catch {
+      return 'Tool completed';
+    }
+  }
+
+  return 'Tool completed';
+}
+
+function extractHeartbeatTrace(result: AgentRunResult | undefined): unknown {
+  if (!result?.output?.ok) {
+    return null;
+  }
+
+  const output = result.output.output;
+  if (typeof output !== 'object' || output === null) {
+    return null;
+  }
+
+  const record = output as Record<string, unknown>;
+  if (!Array.isArray(record.toolCalls)) {
+    return null;
+  }
+
+  return {
+    totalTurns: typeof record.totalTurns === 'number' ? record.totalTurns : null,
+    finalReply: typeof record.finalReply === 'string' ? record.finalReply : null,
+    toolCalls: record.toolCalls
+  };
+}
+
+async function ensureHeartbeatDispatch(
+  agentId: string,
+  heartbeatExecutor: DefaultToolExecutor,
+  toolCalls: Array<{
+    toolName: string;
+    ok: boolean;
+    summary: string;
+    arguments: Record<string, unknown>;
+    output?: unknown;
+    error?: { code: string; message: string };
+  }>
+): Promise<void> {
+  const alreadyDispatched = toolCalls.some((call) => {
+    if (call.toolName !== 'heartbeat.dispatch' || !call.ok || !isRecord(call.output)) {
+      return false;
+    }
+    const dispatchedCount = call.output.dispatchedCount;
+    return typeof dispatchedCount === 'number' && dispatchedCount > 0;
+  });
+
+  if (alreadyDispatched) {
+    return;
+  }
+
+  const listResult = await heartbeatExecutor.execute({
+    toolName: 'task.list',
+    arguments: { assigneeAgentId: agentId }
+  });
+  toolCalls.push({
+    toolName: listResult.toolName,
+    ok: listResult.ok,
+    summary: summarizeToolResult(listResult),
+    arguments: { assigneeAgentId: agentId },
+    ...(listResult.output !== undefined ? { output: listResult.output } : {}),
+    ...(listResult.error ? { error: listResult.error } : {})
+  });
+
+  if (!listResult.ok || !isRecord(listResult.output) || !Array.isArray(listResult.output.items)) {
+    return;
+  }
+
+  const actionableTaskIds = listResult.output.items
+    .filter((item): item is Record<string, unknown> => isRecord(item))
+    .filter((item) => item.status === 'pending' || item.status === 'in_progress')
+    .sort((left, right) => {
+      const statusWeight = (value: unknown): number => (value === 'in_progress' ? 0 : 1);
+      const priorityWeight = (value: unknown): number => {
+        if (value === 'urgent') return 0;
+        if (value === 'high') return 1;
+        if (value === 'medium') return 2;
+        if (value === 'low') return 3;
+        return 4;
+      };
+      const createdWeight = (value: unknown): number => {
+        if (typeof value !== 'string') return Number.MAX_SAFE_INTEGER;
+        const ts = Date.parse(value);
+        return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
+      };
+
+      const statusDiff = statusWeight(left.status) - statusWeight(right.status);
+      if (statusDiff !== 0) return statusDiff;
+      const priorityDiff = priorityWeight(left.priority) - priorityWeight(right.priority);
+      if (priorityDiff !== 0) return priorityDiff;
+      return createdWeight(left.createdAt) - createdWeight(right.createdAt);
+    })
+    .map((item) => (typeof item.id === 'string' ? item.id : ''))
+    .filter((id) => id.length > 0)
+    .slice(0, 5);
+
+  if (actionableTaskIds.length === 0) {
+    return;
+  }
+
+  const dispatchResult = await heartbeatExecutor.execute({
+    toolName: 'heartbeat.dispatch',
+    arguments: {
+      agentId,
+      taskIds: actionableTaskIds.join(',')
+    }
+  });
+  toolCalls.push({
+    toolName: dispatchResult.toolName,
+    ok: dispatchResult.ok,
+    summary: summarizeToolResult(dispatchResult),
+    arguments: { agentId, taskIds: actionableTaskIds.join(',') },
+    ...(dispatchResult.output !== undefined ? { output: dispatchResult.output } : {}),
+    ...(dispatchResult.error ? { error: dispatchResult.error } : {})
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function createCorsOriginMatcher(): (

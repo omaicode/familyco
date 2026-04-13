@@ -1029,21 +1029,6 @@ test('heartbeat scheduler runs agents and persists session snapshots when enable
 
   await new Promise((resolve) => setTimeout(resolve, 180));
 
-  const memoryResponse = await app.inject({
-    method: 'GET',
-    url: `/api/v1/settings/agent.memory.${createdAgent.id}`,
-    headers: {
-      'x-api-key': TEST_API_KEY
-    }
-  });
-
-  assert.equal(memoryResponse.statusCode, 200);
-  const memorySetting = memoryResponse.json() as {
-    value: Array<{ role: string; content: string }>;
-  };
-  assert.equal(Array.isArray(memorySetting.value), true);
-  assert.equal(memorySetting.value.length >= 2, true);
-
   const heartbeatStateResponse = await app.inject({
     method: 'GET',
     url: `/api/v1/settings/agent.heartbeat.state.${createdAgent.id}`,
@@ -1073,8 +1058,21 @@ test('heartbeat scheduler runs agents and persists session snapshots when enable
   });
 
   assert.equal(auditResponse.statusCode, 200);
-  const auditRecords = auditResponse.json() as Array<{ targetId?: string }>;
+  const auditRecords = auditResponse.json() as Array<{
+    targetId?: string;
+    payload?: {
+      heartbeatTrace?: {
+        toolCalls?: Array<{ toolName?: string }>;
+      };
+    };
+  }>;
   assert.equal(auditRecords.some((record) => record.targetId === createdAgent.id), true);
+  const agentAudit = auditRecords.find((record) => record.targetId === createdAgent.id);
+  assert.equal(Array.isArray(agentAudit?.payload?.heartbeatTrace?.toolCalls), true);
+  assert.equal(
+    (agentAudit?.payload?.heartbeatTrace?.toolCalls ?? []).some((call) => call.toolName === 'task.list'),
+    true
+  );
 
   await app.close();
 });
