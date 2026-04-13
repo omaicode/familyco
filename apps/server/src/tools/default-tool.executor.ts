@@ -97,8 +97,8 @@ export class DefaultToolExecutor implements ToolExecutor {
     return new DefaultToolExecutor({ ...this.deps, workspaceRoot });
   }
 
-  /** Create a copy of this executor configured for a heartbeat run (with queueService). */
-  forkForHeartbeat(queueService: QueueService): DefaultToolExecutor {
-    return new DefaultToolExecutor({ ...this.deps, queueService });
+  /** Create a copy of this executor configured for a heartbeat run (with queueService + agentId context). */
+  forkForHeartbeat(queueService: QueueService, agentId: string): DefaultToolExecutor {
+    return new DefaultToolExecutor({ ...this.deps, queueService, agentId });
   }
 }

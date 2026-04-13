@@ -236,10 +236,6 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     toolExecuteConcurrency
   });
 
-  // Heartbeat executor has queueService so that heartbeat.dispatch can enqueue task.execute jobs.
-  const heartbeatToolExecutor = toolExecutor.forkForHeartbeat(queueService);
-  const heartbeatAgentRunner = new AgentRunner(approvalGuard, heartbeatToolExecutor, memoryService);
-
   const heartbeatRuntime = new HeartbeatRuntimeService({
     queueService,
     agentService,
@@ -265,9 +261,15 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       await agentRunService.updateState(request.runId, { state: 'executing' });
     }
 
-    // Heartbeat runs need queueService so heartbeat.dispatch can enqueue task.execute jobs.
-    const runner = request.action === 'heartbeat.tick' ? heartbeatAgentRunner : agentRunner;
-    return runner.run(request);
+    // Heartbeat runs need a per-request executor fork that carries both queueService
+    // (so heartbeat.dispatch can enqueue task.execute jobs) and agentId (fallback for the tool).
+    if (request.action === 'heartbeat.tick') {
+      const heartbeatExecutor = toolExecutor.forkForHeartbeat(queueService, request.agentId);
+      const heartbeatRunner = new AgentRunner(approvalGuard, heartbeatExecutor, memoryService);
+      return heartbeatRunner.run(request);
+    }
+
+    return agentRunner.run(request);
   };
 
   const handleAgentRunCompleted = async (
