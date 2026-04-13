@@ -25,7 +25,7 @@ files:
       - "**/*"
   - package.json
 extraResources:
-  - from: ../../prisma/migrations
+  - from: ../db/prisma/migrations
     to: prisma/migrations
     filter:
       - "**/*"

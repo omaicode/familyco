@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import Database from 'better-sqlite3';
 
@@ -44,9 +43,22 @@ export async function runMigrationsWithSafety(): Promise<MigrationRunResult> {
 
   try {
     const dbExists = await fileExists(dbPath);
-    const backupPath = dbExists ? await createBackup(dbPath) : undefined;
-
     const db = new Database(dbPath);
+    let backupPath: string | undefined;
+    let pendingCount = 0;
+    let dbClosed = false;
+    const closeDb = (): void => {
+      if (dbClosed) {
+        return;
+      }
+
+      try {
+        db.close();
+      } finally {
+        dbClosed = true;
+      }
+    };
+
     try {
       ensureMigrationTable(db);
       const applied = new Set<string>(
@@ -60,21 +72,27 @@ export async function runMigrationsWithSafety(): Promise<MigrationRunResult> {
       );
 
       const pending = migrationFiles.filter((item) => !applied.has(item.name));
+      pendingCount = pending.length;
       if (pending.length === 0) {
         return {
           status: 'ok',
           dbPath,
           readOnlyMode: false,
           pendingCount: 0,
-          appliedCount: 0,
-          backupPath
+          appliedCount: 0
         };
       }
+
+      backupPath = dbExists ? await createBackup(dbPath) : undefined;
 
       let appliedCount = 0;
       for (const migration of pending) {
         applyMigration(db, migration);
         appliedCount += 1;
+      }
+
+      if (backupPath) {
+        await deleteBackup(backupPath);
       }
 
       await cleanupOldBackups(dbPath);
@@ -84,30 +102,51 @@ export async function runMigrationsWithSafety(): Promise<MigrationRunResult> {
         dbPath,
         readOnlyMode: false,
         pendingCount: pending.length,
-        appliedCount,
-        backupPath
+        appliedCount
       };
     } catch (error) {
-      db.close();
+      closeDb();
+      const errorDetail = error instanceof Error ? error.message : String(error);
+
       if (backupPath) {
-        await restoreBackup(backupPath, dbPath);
+        try {
+          await restoreBackup(backupPath, dbPath);
+
+          return {
+            status: 'degraded',
+            dbPath,
+            readOnlyMode: true,
+            pendingCount,
+            appliedCount: 0,
+            backupPath,
+            errorMessage: `Migration failed and database was restored from backup: ${backupPath}. Root cause: ${errorDetail}`
+          };
+        } catch (restoreError) {
+          const restoreDetail = restoreError instanceof Error ? restoreError.message : String(restoreError);
+
+          return {
+            status: 'degraded',
+            dbPath,
+            readOnlyMode: true,
+            pendingCount,
+            appliedCount: 0,
+            backupPath,
+            errorMessage: `Migration failed and backup restore also failed. Migration error: ${errorDetail}. Restore error: ${restoreDetail}`
+          };
+        }
+
       }
 
       return {
         status: 'degraded',
         dbPath,
         readOnlyMode: true,
-        pendingCount: 0,
+        pendingCount,
         appliedCount: 0,
-        backupPath,
-        errorMessage: error instanceof Error ? error.message : String(error)
+        errorMessage: `Migration failed before backup restoration: ${errorDetail}`
       };
     } finally {
-      try {
-        db.close();
-      } catch {
-        // Ignore close errors during shutdown.
-      }
+      closeDb();
     }
   } finally {
     await releaseLock(lockHandle, lockPath);
@@ -194,14 +233,13 @@ async function loadMigrationFiles(): Promise<MigrationFile[]> {
 }
 
 async function resolveMigrationsPath(): Promise<string> {
-  const dirname = path.dirname(fileURLToPath(import.meta.url));
   const candidates = [
     process.env.FAMILYCO_MIGRATIONS_PATH,
     path.resolve(process.cwd(), 'prisma/migrations'),
     path.resolve(process.cwd(), '../../prisma/migrations'),
     path.resolve(process.cwd(), '../../packages/db/prisma/migrations'),
     path.resolve((process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ?? '', 'prisma/migrations')
-  ]
+  ];
   const filtered = candidates.filter((value): value is string => Boolean(value && value.length > 0));
   for (const candidate of filtered) {
     if (await fileExists(candidate)) {
@@ -239,6 +277,10 @@ async function createBackup(dbPath: string): Promise<string> {
   const backupPath = path.join(backupsDir, `${path.basename(dbPath)}.${timestamp}.bak`);
   await fs.copyFile(dbPath, backupPath);
   return backupPath;
+}
+
+async function deleteBackup(backupPath: string): Promise<void> {
+  await fs.unlink(backupPath).catch(() => undefined);
 }
 
 async function restoreBackup(backupPath: string, dbPath: string): Promise<void> {
