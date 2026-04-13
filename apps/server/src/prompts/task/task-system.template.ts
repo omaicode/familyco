@@ -7,6 +7,13 @@ export interface TaskSystemPromptInput {
   agentDepartment: string;
   agentId: string;
   companyName: string;
+  projectId?: string;
+  projectName?: string;
+  projectDescription?: string;
+  projectOwnerAgentId?: string;
+  projectParentId?: string | null;
+  projectCreatedAt?: string;
+  projectUpdatedAt?: string;
   projectWorkspaceDir?: string;
   skills: PromptSkillDefinition[];
   tools: PromptToolDefinition[];
@@ -21,12 +28,25 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
        'All file operations (read, write, search, delete) are scoped to this directory.',
        'Use relative paths when calling file tools — they will resolve inside this directory.']
     : [];
+  const projectContextLines = input.projectId
+    ? [
+      'Project context for this task:',
+      `- Project ID: ${input.projectId}`,
+      `- Project name: ${input.projectName ?? '(unknown)'}`,
+      `- Project description: ${input.projectDescription?.trim() || '(none)'}`,
+      `- Project owner agent ID: ${input.projectOwnerAgentId ?? '(unknown)'}`,
+      `- Parent project ID: ${input.projectParentId ?? '(none)'}`,
+      `- Project created at: ${input.projectCreatedAt ?? '(unknown)'}`,
+      `- Project updated at: ${input.projectUpdatedAt ?? '(unknown)'}`
+    ]
+    : ['Project context: task is not linked to any project.'];
 
   return renderRoleGoalConstraintsTemplate({
     role: [
       `You are ${input.agentName}, acting as ${input.agentRole} in ${input.agentDepartment} at ${input.companyName}.`,
       `Your agent ID is: ${input.agentId}`,
       ...workspaceLine,
+      ...projectContextLines,
       `Include and follow the CONSTITUTION.`
     ],
     responsibilities: [

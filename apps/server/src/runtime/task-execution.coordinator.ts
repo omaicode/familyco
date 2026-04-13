@@ -243,6 +243,13 @@ export class TaskExecutionCoordinator {
       agentDepartment: agent.department,
       agentId: agent.id,
       companyName,
+      projectId: project?.id,
+      projectName: project?.name,
+      projectDescription: project?.description,
+      projectOwnerAgentId: project?.ownerAgentId,
+      projectParentId: project?.parentProjectId ?? null,
+      projectCreatedAt: project?.createdAt?.toISOString(),
+      projectUpdatedAt: project?.updatedAt?.toISOString(),
       projectWorkspaceDir,
       skills,
       tools: filteredTools
