@@ -4,6 +4,7 @@ export interface Project {
   description: string;
   ownerAgentId: string;
   parentProjectId: string | null;
+  dirPath: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

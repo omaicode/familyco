@@ -214,6 +214,7 @@ test('AgentService reassigns direct reports, tasks, and projects to the fallback
     description: 'Ops project',
     ownerAgentId: lead.id,
     parentProjectId: null,
+    dirPath: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z')
   });
@@ -576,6 +577,7 @@ class InMemoryProjectRepositoryStub implements ProjectRepository {
       description: input.description,
       ownerAgentId: input.ownerAgentId,
       parentProjectId: input.parentProjectId ?? null,
+      dirPath: null,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       updatedAt: new Date('2026-01-01T00:00:00.000Z')
     };
@@ -628,6 +630,13 @@ class InMemoryProjectRepositoryStub implements ProjectRepository {
 
     this.projects.delete(id);
     return existing;
+  }
+
+  async setDirPath(id: string, dirPath: string): Promise<void> {
+    const existing = this.projects.get(id);
+    if (existing) {
+      this.projects.set(id, { ...existing, dirPath });
+    }
   }
 
   async findById(id: string): Promise<Project | null> {

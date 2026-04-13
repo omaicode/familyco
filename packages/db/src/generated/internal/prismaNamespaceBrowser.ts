@@ -100,6 +100,7 @@ export const ProjectScalarFieldEnum = {
   description: 'description',
   ownerAgentId: 'ownerAgentId',
   parentProjectId: 'parentProjectId',
+  dirPath: 'dirPath',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

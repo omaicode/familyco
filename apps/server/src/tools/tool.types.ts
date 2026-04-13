@@ -23,6 +23,8 @@ export interface DefaultToolExecutorDeps {
   auditService?: AuditService;
   inboxService?: InboxService;
   approvalService?: ApprovalService;
+  /** Per-task working directory — scopes all file tool operations to this path. */
+  workspaceRoot?: string;
 }
 
 export interface ToolParameterDefinition {

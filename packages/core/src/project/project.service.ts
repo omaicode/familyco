@@ -25,6 +25,10 @@ export class ProjectService {
     return this.repository.update(id, input);
   }
 
+  setProjectDirPath(id: string, dirPath: string): Promise<void> {
+    return this.repository.setDirPath(id, dirPath);
+  }
+
   deleteProject(id: string): Promise<Project> {
     return this.repository.delete(id);
   }

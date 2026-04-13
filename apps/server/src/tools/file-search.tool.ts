@@ -28,13 +28,13 @@ export const fileSearchTool: ServerToolDefinition = {
     { name: 'directoryPath', type: 'string', required: false, description: 'Optional workspace-relative directory to limit the search scope.' },
     { name: 'maxResults', type: 'number', required: false, description: 'Optional result limit between 1 and 25.' }
   ],
-  async execute(argumentsMap): Promise<ToolExecutionResult> {
+  async execute(argumentsMap, context): Promise<ToolExecutionResult> {
     const query = asNonEmptyString(argumentsMap.query);
     if (!query) {
       return invalidArguments('file.search', 'file.search expects arguments.query as a non-empty string');
     }
 
-    const directoryResolution = await resolveWorkspacePath(argumentsMap.directoryPath ?? '.', 'file.search');
+    const directoryResolution = await resolveWorkspacePath(argumentsMap.directoryPath ?? '.', 'file.search', context.workspaceRoot);
     if ('ok' in directoryResolution) {
       return directoryResolution;
     }
@@ -55,7 +55,8 @@ export const fileSearchTool: ServerToolDefinition = {
     const results = await searchWorkspaceFiles({
       query,
       directoryPath: directoryResolution.path,
-      maxResults: typeof argumentsMap.maxResults === 'number' ? argumentsMap.maxResults : undefined
+      maxResults: typeof argumentsMap.maxResults === 'number' ? argumentsMap.maxResults : undefined,
+      workspaceRoot: context.workspaceRoot
     });
 
     return {

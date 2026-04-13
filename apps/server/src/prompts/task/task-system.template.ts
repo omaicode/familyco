@@ -7,6 +7,7 @@ export interface TaskSystemPromptInput {
   agentDepartment: string;
   agentId: string;
   companyName: string;
+  projectWorkspaceDir?: string;
   skills: PromptSkillDefinition[];
   tools: PromptToolDefinition[];
 }
@@ -15,10 +16,17 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
   const toolLines = renderToolLines(input.tools);
   const skillLines = renderSkillLines(input.skills);
 
+  const workspaceLine = input.projectWorkspaceDir
+    ? [`Your project working directory is: ${input.projectWorkspaceDir}`,
+       'All file operations (read, write, search, delete) are scoped to this directory.',
+       'Use relative paths when calling file tools — they will resolve inside this directory.']
+    : [];
+
   return renderRoleGoalConstraintsTemplate({
     role: [
       `You are ${input.agentName}, acting as ${input.agentRole} in ${input.agentDepartment} at ${input.companyName}.`,
       `Your agent ID is: ${input.agentId}`,
+      ...workspaceLine,
       `Include and follow the CONSTITUTION.`
     ],
     responsibilities: [

@@ -221,6 +221,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     chatEngineService,
     toolExecutor,
     taskService,
+    projectService,
     auditService,
     inboxService,
     agentService,

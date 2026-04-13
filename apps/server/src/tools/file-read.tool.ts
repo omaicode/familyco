@@ -23,8 +23,8 @@ export const fileReadTool: ServerToolDefinition = {
   parameters: [
     { name: 'path', type: 'string', required: true, description: 'Workspace-relative or absolute path to the file.' }
   ],
-  async execute(argumentsMap): Promise<ToolExecutionResult> {
-    const pathResolution = await resolveWorkspacePath(argumentsMap.path, 'file.read');
+  async execute(argumentsMap, context): Promise<ToolExecutionResult> {
+    const pathResolution = await resolveWorkspacePath(argumentsMap.path, 'file.read', context.workspaceRoot);
     if ('ok' in pathResolution) {
       return pathResolution;
     }

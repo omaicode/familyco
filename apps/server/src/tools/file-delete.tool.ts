@@ -31,8 +31,8 @@ export const fileDeleteTool: ServerToolDefinition = {
     { name: 'path', type: 'string', required: true, description: 'Workspace-relative or absolute file path.' },
     { name: 'confirm', type: 'boolean', required: true, description: 'Explicit confirmation for destructive deletion.' }
   ],
-  async execute(argumentsMap): Promise<ToolExecutionResult> {
-    const pathResolution = await resolveWorkspacePath(argumentsMap.path, 'file.delete');
+  async execute(argumentsMap, context): Promise<ToolExecutionResult> {
+    const pathResolution = await resolveWorkspacePath(argumentsMap.path, 'file.delete', context.workspaceRoot);
     if ('ok' in pathResolution) {
       return pathResolution;
     }

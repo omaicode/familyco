@@ -89,4 +89,9 @@ export class DefaultToolExecutor implements ToolExecutor {
   listToolDefinitions(): ToolDefinitionSummary[] {
     return [...this.tools.values()].map((tool) => toToolSummary(tool));
   }
+
+  /** Create a copy of this executor scoped to a specific workspace directory. */
+  fork(workspaceRoot: string): DefaultToolExecutor {
+    return new DefaultToolExecutor({ ...this.deps, workspaceRoot });
+  }
 }

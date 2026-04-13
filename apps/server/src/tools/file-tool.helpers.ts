@@ -16,15 +16,15 @@ export interface ResolvedWorkspacePath {
   relativePath: string;
 }
 
-export async function resolveWorkspacePath(candidate: unknown, toolName: string): Promise<ResolvedWorkspacePath | ToolExecutionResult> {
+export async function resolveWorkspacePath(candidate: unknown, toolName: string, workspaceRoot?: string): Promise<ResolvedWorkspacePath | ToolExecutionResult> {
   const input = typeof candidate === 'string' ? candidate.trim() : '';
   if (!input) {
     return invalidArguments(toolName, `${toolName} expects a non-empty path`);
   }
 
-  const workspaceRoot = await resolveWorkspaceRoot();
-  const resolvedPath = path.resolve(workspaceRoot, input);
-  const relativePath = path.relative(workspaceRoot, resolvedPath);
+  const root = workspaceRoot ?? await resolveWorkspaceRoot();
+  const resolvedPath = path.resolve(root, input);
+  const relativePath = path.relative(root, resolvedPath);
   if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     return invalidArguments(toolName, `${toolName} only allows paths inside the current workspace`);
   }
@@ -57,11 +57,12 @@ export async function searchWorkspaceFiles(input: {
   query: string;
   directoryPath: string;
   maxResults?: number;
+  workspaceRoot?: string;
 }): Promise<Array<{ path: string; snippet?: string }>> {
   const query = input.query.trim().toLowerCase();
   const maxResults = normalizeMaxResults(input.maxResults);
   const results: Array<{ path: string; snippet?: string }> = [];
-  const workspaceRoot = await resolveWorkspaceRoot();
+  const workspaceRoot = input.workspaceRoot ?? await resolveWorkspaceRoot();
 
   async function visitDirectory(currentPath: string): Promise<void> {
     if (results.length >= maxResults) {

@@ -71,10 +71,15 @@ export function registerProjectController(app: FastifyInstance, deps: ProjectMod
     const project = await deps.projectService.createProject(body);
 
     const workspaceSetting = await deps.settingsService.get('workspace.path').catch(() => null);
-    await ensureProjectWorkspaceDir(
+    const dirPath = await ensureProjectWorkspaceDir(
       typeof workspaceSetting?.value === 'string' ? workspaceSetting.value : null,
       project.name
-    ).catch(() => undefined);
+    ).catch(() => null);
+
+    if (dirPath) {
+      await deps.projectService.setProjectDirPath(project.id, dirPath).catch(() => undefined);
+      project.dirPath = dirPath;
+    }
 
     await deps.auditService.write({
       actorId: body.ownerAgentId,

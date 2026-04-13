@@ -6,6 +6,7 @@ import {
   type AuditService,
   type EventBus,
   type InboxService,
+  type ProjectService,
   type TaskService,
   type Task,
   runAgentLoop
@@ -39,6 +40,7 @@ export interface TaskExecutionCoordinatorOptions {
   chatEngineService: ChatEngineService;
   toolExecutor: DefaultToolExecutor;
   taskService: TaskService;
+  projectService: ProjectService;
   auditService: AuditService;
   inboxService: InboxService;
   agentService: AgentService;
@@ -159,12 +161,24 @@ export class TaskExecutionCoordinator {
     const skills = await this.resolveSkills(agent);
     const companyName = this.options.companyName ?? 'FamilyCo';
 
+    // Resolve project workspace dir for scoped file tool access
+    const project = task.projectId
+      ? await this.options.projectService.getProjectById(task.projectId).catch(() => null)
+      : null;
+    const projectWorkspaceDir = project?.dirPath ?? undefined;
+
+    // Create a per-task executor scoped to the project's workspace directory
+    const taskExecutor = projectWorkspaceDir
+      ? this.options.toolExecutor.fork(projectWorkspaceDir)
+      : this.options.toolExecutor;
+
     const systemPrompt = renderTaskSystemPrompt({
       agentName: agent.name,
       agentRole: agent.role,
       agentDepartment: agent.department,
       agentId: agent.id,
       companyName,
+      projectWorkspaceDir,
       skills,
       tools: filteredTools
     });
@@ -203,7 +217,7 @@ export class TaskExecutionCoordinator {
           toolName: toolInput.toolName,
           summary: `Calling ${toolInput.toolName}`
         });
-        const result = await this.options.toolExecutor.execute({
+        const result = await taskExecutor.execute({
           toolName: toolInput.toolName,
           arguments: toolInput.arguments
         });

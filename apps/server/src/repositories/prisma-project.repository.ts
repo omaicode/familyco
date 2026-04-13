@@ -62,6 +62,13 @@ export class PrismaProjectRepository implements ProjectRepository {
     });
   }
 
+  async setDirPath(id: string, dirPath: string): Promise<void> {
+    await this.prisma.project.update({
+      where: { id },
+      data: { dirPath }
+    });
+  }
+
   async delete(id: string): Promise<Project> {
     const project = await this.prisma.project.findUnique({
       where: { id },

@@ -34,8 +34,8 @@ export const fileWriteTool: ServerToolDefinition = {
     { name: 'content', type: 'string', required: true, description: 'Full UTF-8 text to write into the file.' },
     { name: 'overwrite', type: 'boolean', required: false, description: 'Set to true to replace an existing file.' }
   ],
-  async execute(argumentsMap): Promise<ToolExecutionResult> {
-    const pathResolution = await resolveWorkspacePath(argumentsMap.path, 'file.write');
+  async execute(argumentsMap, context): Promise<ToolExecutionResult> {
+    const pathResolution = await resolveWorkspacePath(argumentsMap.path, 'file.write', context.workspaceRoot);
     if ('ok' in pathResolution) {
       return pathResolution;
     }

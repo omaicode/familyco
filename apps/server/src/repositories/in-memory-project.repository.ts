@@ -13,6 +13,7 @@ export class InMemoryProjectRepository implements ProjectRepository {
       description: input.description,
       ownerAgentId: input.ownerAgentId,
       parentProjectId: input.parentProjectId ?? null,
+      dirPath: null,
       createdAt: now,
       updatedAt: now
     };
@@ -73,6 +74,13 @@ export class InMemoryProjectRepository implements ProjectRepository {
 
     this.projects.delete(id);
     return existing;
+  }
+
+  async setDirPath(id: string, dirPath: string): Promise<void> {
+    const existing = this.projects.get(id);
+    if (existing) {
+      this.projects.set(id, { ...existing, dirPath });
+    }
   }
 
   async findById(id: string): Promise<Project | null> {
