@@ -512,6 +512,12 @@ export default {
   'tour.step.projects.desc': 'Projects group related tasks under a common goal. Create a project and let agents break it down into smaller tasks automatically.',
   'tour.step.tasks.title': '✅ Tasks',
   'tour.step.tasks.desc': 'Tasks are the individual units of work your agents execute. You can track status, filter by owner, and review output all in one place.',
+  'tour.step.audit.title': '🔍 Audit logs',
+  'tour.step.audit.desc': 'The audit trail captures every action taken by your agents. Use it to review decisions, debug issues, and keep a record of everything that happens.',
+  'tour.step.budget.title': '💰 Budget analytics',
+  'tour.step.budget.desc': 'Keep an eye on your AI token usage and estimated spend. Set monthly limits to avoid surprises and ensure your AI team stays cost-effective.',
+  'tour.step.skills.title': '🛠️ Skills',
+  'tour.step.skills.desc': 'Configure the skills your agents can use to get work done. Connect tools, APIs, and databases to empower your AI team to take action.',
   'tour.step.settings.title': '⚙️ Settings',
   'tour.step.settings.desc': 'Manage your AI provider connection, company profile, budget limits, and appearance preferences here.',
 

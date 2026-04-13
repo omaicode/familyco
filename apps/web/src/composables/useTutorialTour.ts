@@ -61,6 +61,33 @@ const buildSteps = (t: (key: string) => string): DriveStep[] => [
     },
   },  
   {
+    element: '#tour-audit',
+    popover: {
+      title: t('tour.step.audit.title'),
+      description: t('tour.step.audit.desc'),
+      side: 'right',
+      align: 'center',
+    },
+  },    
+  {
+    element: '#tour-budget',
+    popover: {
+      title: t('tour.step.budget.title'),
+      description: t('tour.step.budget.desc'),
+      side: 'right',
+      align: 'center',
+    },
+  },    
+  {
+    element: '#tour-skills',
+    popover: {
+      title: t('tour.step.skills.title'),
+      description: t('tour.step.skills.desc'),
+      side: 'right',
+      align: 'center',
+    },
+  },   
+  {
     element: '#tour-settings',
     popover: {
       title: t('tour.step.settings.title'),
@@ -84,7 +111,7 @@ export function useTutorialTour() {
   const start = (t: (key: string) => string): void => {
     const driverObj = driver({
       animate: true,
-      allowClose: false,
+      allowClose: true,
       showProgress: true,
       progressText: t('tour.progress'),
       nextBtnText: t('tour.next'),
