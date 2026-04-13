@@ -1,6 +1,6 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString } from './tool.helpers.js';
+import { asNonEmptyString, asTextString } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const inboxSendSlashSpec: SlashCommandSpec = {
@@ -60,7 +60,7 @@ export const inboxSendTool: ServerToolDefinition = {
     const recipientId = asNonEmptyString(argumentsMap.recipientId);
     const senderId = asNonEmptyString(argumentsMap.senderId);
     const title = asNonEmptyString(argumentsMap.title);
-    const body = asNonEmptyString(argumentsMap.body);
+    const body = asTextString(argumentsMap.body);
     const rawType = asNonEmptyString(argumentsMap.type) ?? 'info';
     const taskId = asNonEmptyString(argumentsMap.taskId);
     const messageType = rawType === 'alert' || rawType === 'report' || rawType === 'approval'

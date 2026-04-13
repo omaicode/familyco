@@ -1,6 +1,6 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, summarizeSlashDescription, unavailableTool, invalidArguments } from './tool.helpers.js';
+import { asNonEmptyString, asTextString, summarizeSlashDescription, unavailableTool, invalidArguments } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const projectUpdateSlashSpec: SlashCommandSpec = {
@@ -60,7 +60,7 @@ export const projectUpdateTool: ServerToolDefinition = {
 
     const updated = await context.projectService.updateProject(project.id, {
       name: asNonEmptyString(argumentsMap.name) ?? project.name,
-      description: asNonEmptyString(argumentsMap.description) ?? project.description,
+      description: asTextString(argumentsMap.description) ?? project.description,
       ownerAgentId,
       parentProjectId
     });

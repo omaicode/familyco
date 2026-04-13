@@ -37,6 +37,20 @@ export function asNonEmptyString(value: unknown): string | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
+/**
+ * Validates a string value without collapsing internal whitespace.
+ * Use this for free-text fields (e.g. comment body, message content)
+ * where newlines and formatting must be preserved.
+ */
+export function asTextString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export function asTaskPriority(value: unknown): TaskPriority | undefined {
   return value === 'low' || value === 'medium' || value === 'high' || value === 'urgent'
     ? value

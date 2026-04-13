@@ -1,6 +1,6 @@
 import type { TaskPriority, ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, invalidArguments, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
+import { asNonEmptyString, asTextString, invalidArguments, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const taskUpdateSlashSpec: SlashCommandSpec = {
@@ -45,7 +45,7 @@ export const taskUpdateTool: ServerToolDefinition = {
 
     const existingTask = await context.taskService.getTask(taskId);
     const title = asNonEmptyString(argumentsMap.title) ?? existingTask.title;
-    const description = asNonEmptyString(argumentsMap.description) ?? existingTask.description;
+    const description = asTextString(argumentsMap.description) ?? existingTask.description;
     const projectId = await resolveProjectReference({
       candidate: asNonEmptyString(argumentsMap.projectId),
       fallbackProjectId: existingTask.projectId,

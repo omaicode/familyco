@@ -1,6 +1,6 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString } from './tool.helpers.js';
+import { asNonEmptyString, asTextString } from './tool.helpers.js';
 import type { ServerToolDefinition } from './tool.types.js';
 
 export const taskLogTool: ServerToolDefinition = {
@@ -20,7 +20,7 @@ export const taskLogTool: ServerToolDefinition = {
       toolName: 'task.log',
       output: {
         accepted: true,
-        message: asNonEmptyString(argumentsMap.message) ?? 'Task log executed',
+        message: asTextString(argumentsMap.message) ?? 'Task log executed',
         loggedAt: new Date().toISOString()
       }
     };

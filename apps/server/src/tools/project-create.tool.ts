@@ -1,7 +1,7 @@
 import type { AgentService, ToolExecutionResult } from '@familyco/core';
 
 import { resolveExecutiveAgentId } from '../modules/shared/defaults.js';
-import { asNonEmptyString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
+import { asNonEmptyString, asTextString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const projectCreateSlashSpec: SlashCommandSpec = {
@@ -60,7 +60,7 @@ export const projectCreateTool: ServerToolDefinition = {
     const project = await context.projectService.createProject({
       name: asNonEmptyString(argumentsMap.name) ?? 'Executive Initiative',
       description:
-        asNonEmptyString(argumentsMap.description) ??
+        asTextString(argumentsMap.description) ??
         'Project created from the executive tool execution flow.',
       ownerAgentId
     });

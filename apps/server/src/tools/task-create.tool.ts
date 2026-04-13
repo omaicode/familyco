@@ -1,7 +1,7 @@
 import type { AgentService, ProjectService, ToolExecutionResult } from '@familyco/core';
 
 import { resolveDefaultProjectId, resolveExecutiveAgentId } from '../modules/shared/defaults.js';
-import { asNonEmptyString, asTaskPriority, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
+import { asNonEmptyString, asTaskPriority, asTextString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const taskCreateSlashSpec: SlashCommandSpec = {
@@ -66,7 +66,7 @@ export const taskCreateTool: ServerToolDefinition = {
     }
 
     const title = asNonEmptyString(argumentsMap.title) ?? 'Executive follow-up';
-    const description = asNonEmptyString(argumentsMap.description) ?? title;
+    const description = asTextString(argumentsMap.description) ?? title;
     const fallbackAgentId = await resolveExecutiveAgentId({
       agentService: context.agentService,
       settingsService: context.settingsService

@@ -1,6 +1,6 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString } from './tool.helpers.js';
+import { asNonEmptyString, asTextString } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const taskCommentAddSlashSpec: SlashCommandSpec = {
@@ -46,7 +46,7 @@ export const taskCommentAddTool: ServerToolDefinition = {
 
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
     const taskId = asNonEmptyString(argumentsMap.taskId);
-    const body = asNonEmptyString(argumentsMap.body);
+    const body = asTextString(argumentsMap.body);
     const authorId = asNonEmptyString(argumentsMap.authorId);
     const authorLabel = asNonEmptyString(argumentsMap.authorLabel);
 
