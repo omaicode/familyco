@@ -27,7 +27,7 @@ const PRIORITY_ORDER: Record<string, number> = {
   low: 3
 };
 
-const ACTIONABLE_STATUSES = new Set(['pending', 'in_progress', 'blocked']);
+const ACTIONABLE_STATUSES = new Set(['pending', 'in_progress']);
 
 export interface TaskExecutionResult {
   taskId: string;
@@ -319,7 +319,13 @@ export class TaskExecutionCoordinator {
     });
 
     if (sessionStatus === 'completed') {
-      await this.options.taskService.updateTaskStatus(task.id, 'done').catch(() => undefined);
+      // Re-read the task's current status. The agent is instructed to call task.update-status
+      // explicitly. Only auto-set to 'done' as a fallback if the agent left it in 'in_progress'.
+      // Never override an explicit 'review', 'blocked', 'done', or other final status the agent set.
+      const freshTask = await this.options.taskService.getTask(task.id).catch(() => null);
+      if (freshTask?.status === 'in_progress') {
+        await this.options.taskService.updateTaskStatus(task.id, 'done').catch(() => undefined);
+      }
     } else if (sessionStatus === 'waiting_for_input') {
       await this.handleInfoEscalation(agent, task, loopResult.finalReply);
     }

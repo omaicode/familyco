@@ -62,13 +62,20 @@ export class InMemoryQueueService implements QueueService {
 
     const type = job.type as KnownJobType;
 
-    // Deduplicate task.execute jobs: skip if an identical pending job already exists
+    // Deduplicate task.execute jobs: skip if a pending OR running job for the same agent already exists
     if (type === 'task.execute') {
       const agentId = (job.payload as { agentId?: string }).agentId;
-      const alreadyPending = this.pendingByType['task.execute'].some(
-        (j) => (j.payload as { agentId?: string }).agentId === agentId
-      );
-      if (alreadyPending) {
+      const alreadyQueued =
+        this.pendingByType['task.execute'].some(
+          (j) => (j.payload as { agentId?: string }).agentId === agentId
+        ) ||
+        this.jobs.some(
+          (j) =>
+            j.type === 'task.execute' &&
+            j.status === 'running' &&
+            (j.payload as { agentId?: string }).agentId === agentId
+        );
+      if (alreadyQueued) {
         await Promise.resolve();
         return;
       }

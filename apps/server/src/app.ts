@@ -522,7 +522,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         settingsService,
         taskService,
         auditService,
-        inboxService
+        inboxService,
+        sessionStore: taskSessionRepository
       });
       registerAuditController(api, { auditService });
       registerBudgetController(api, { budgetUsageService, settingsService });

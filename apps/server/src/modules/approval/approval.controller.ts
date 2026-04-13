@@ -20,6 +20,7 @@ import {
   decideApprovalBodySchema,
   decideApprovalParamsSchema
 } from './approval.schema.js';
+import type { TaskSessionRepository } from '../../runtime/task-session.store.js';
 
 export interface ApprovalModuleDeps {
   approvalService: ApprovalService;
@@ -29,6 +30,7 @@ export interface ApprovalModuleDeps {
   taskService: TaskService;
   auditService: AuditService;
   inboxService: InboxService;
+  sessionStore?: TaskSessionRepository;
 }
 
 export function registerApprovalController(app: FastifyInstance, deps: ApprovalModuleDeps): void {
@@ -77,6 +79,23 @@ export function registerApprovalController(app: FastifyInstance, deps: ApprovalM
       approvalRequest.status === 'approved'
         ? await executeApprovedAction(approvalRequest, deps)
         : null;
+
+    // When an approval is granted for a task blocker, unblock the task so
+    // the next heartbeat can pick it up and continue execution.
+    if (approvalRequest.status === 'approved') {
+      const taskId = typeof approvalRequest.payload?.taskId === 'string'
+        ? approvalRequest.payload.taskId
+        : (approvalRequest.targetId ?? null);
+
+      if (taskId) {
+        const task = await deps.taskService.getTask(taskId).catch(() => null);
+        if (task?.status === 'blocked') {
+          await deps.taskService.updateTaskStatus(taskId, 'in_progress').catch(() => undefined);
+        }
+        // Clear waiting_for_approval session so heartbeat will re-trigger
+        await deps.sessionStore?.clear(taskId).catch(() => undefined);
+      }
+    }
 
     await deps.auditService.write({
       actorId: request.authContext?.subject ?? 'system',
