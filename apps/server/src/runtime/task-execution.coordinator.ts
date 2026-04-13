@@ -17,7 +17,7 @@ import { renderTaskSystemPrompt } from '../prompts/task/task-system.template.js'
 import { renderTaskUserPrompt } from '../prompts/task/task-user.template.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
 import type { DefaultToolExecutor } from '../tools/default-tool.executor.js';
-import type { TaskSessionStore, TaskSessionCheckpoint, TaskSessionStatus } from './task-session.store.js';
+import type { TaskSessionRepository, TaskSessionCheckpoint, TaskSessionStatus } from './task-session.store.js';
 
 const PRIORITY_ORDER: Record<string, number> = {
   urgent: 0,
@@ -43,7 +43,7 @@ export interface TaskExecutionCoordinatorOptions {
   inboxService: InboxService;
   agentService: AgentService;
   skillsService?: SkillsService;
-  sessionStore: TaskSessionStore;
+  sessionStore: TaskSessionRepository;
   eventBus?: EventBus;
   companyName?: string;
 }

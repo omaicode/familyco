@@ -67,6 +67,7 @@ import {
   InMemoryProjectRepository,
   InMemorySettingsRepository,
   InMemoryTaskRepository,
+  InMemoryTaskSessionRepository,
   PrismaAgentRepository,
   PrismaAgentRunRepository,
   PrismaApiKeyRepository,
@@ -76,7 +77,8 @@ import {
   PrismaInboxRepository,
   PrismaProjectRepository,
   PrismaSettingsRepository,
-  PrismaTaskRepository
+  PrismaTaskRepository,
+  PrismaTaskSessionRepository
 } from './repositories/index.js';
 import {
   InMemoryQueueService
@@ -84,7 +86,6 @@ import {
 import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
 import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
 import { TaskExecutionCoordinator } from './runtime/task-execution.coordinator.js';
-import { TaskSessionStore } from './runtime/task-session.store.js';
 import { DefaultToolExecutor } from './tools/index.js';
 import { createAdapterRegistry } from './adapters/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
@@ -167,7 +168,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     inboxRepository,
     projectRepository,
     settingsRepository,
-    taskRepository
+    taskRepository,
+    taskSessionRepository
   } = createRepositories(repositoryDriver, settingsEncryption);
   
   const eventBus = new EventBus();
@@ -215,7 +217,6 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const chatStreamRegistry = new ChatStreamRegistry();
   const chatAttachmentStore = new ChatAttachmentStore();
 
-  const taskSessionStore = new TaskSessionStore(settingsService);
   const taskCoordinator = new TaskExecutionCoordinator({
     chatEngineService,
     toolExecutor,
@@ -224,7 +225,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     inboxService,
     agentService,
     skillsService,
-    sessionStore: taskSessionStore,
+    sessionStore: taskSessionRepository,
     eventBus
   });
 
@@ -748,6 +749,7 @@ function createRepositories(
   projectRepository: ProjectRepository;
   settingsRepository: SettingsRepository;
   taskRepository: TaskRepository;
+  taskSessionRepository: import('./repositories/in-memory-task-session.repository.js').InMemoryTaskSessionRepository | import('./repositories/prisma-task-session.repository.js').PrismaTaskSessionRepository;
 } {
   if (repositoryDriver === 'prisma') {
     const client = prismaClient;
@@ -761,7 +763,8 @@ function createRepositories(
       inboxRepository: new PrismaInboxRepository(client),
       projectRepository: new PrismaProjectRepository(client),
       settingsRepository: new PrismaSettingsRepository(client, settingsEncryption),
-      taskRepository: new PrismaTaskRepository(client)
+      taskRepository: new PrismaTaskRepository(client),
+      taskSessionRepository: new PrismaTaskSessionRepository(client)
     };
   }
 
@@ -775,6 +778,7 @@ function createRepositories(
     inboxRepository: new InMemoryInboxRepository(),
     projectRepository: new InMemoryProjectRepository(),
     settingsRepository: new InMemorySettingsRepository(),
-    taskRepository: new InMemoryTaskRepository()
+    taskRepository: new InMemoryTaskRepository(),
+    taskSessionRepository: new InMemoryTaskSessionRepository()
   };
 }

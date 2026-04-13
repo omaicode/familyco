@@ -60,7 +60,8 @@ export const ModelName = {
   BudgetUsage: 'BudgetUsage',
   InboxMessage: 'InboxMessage',
   Settings: 'Settings',
-  ApiKey: 'ApiKey'
+  ApiKey: 'ApiKey',
+  TaskSessionCheckpoint: 'TaskSessionCheckpoint'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -226,6 +227,22 @@ export const ApiKeyScalarFieldEnum = {
 } as const
 
 export type ApiKeyScalarFieldEnum = (typeof ApiKeyScalarFieldEnum)[keyof typeof ApiKeyScalarFieldEnum]
+
+
+export const TaskSessionCheckpointScalarFieldEnum = {
+  id: 'id',
+  taskId: 'taskId',
+  agentId: 'agentId',
+  sessionId: 'sessionId',
+  checkpointIndex: 'checkpointIndex',
+  status: 'status',
+  summary: 'summary',
+  lastToolNames: 'lastToolNames',
+  startedAt: 'startedAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TaskSessionCheckpointScalarFieldEnum = (typeof TaskSessionCheckpointScalarFieldEnum)[keyof typeof TaskSessionCheckpointScalarFieldEnum]
 
 
 export const SortOrder = {

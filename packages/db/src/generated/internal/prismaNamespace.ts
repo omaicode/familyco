@@ -393,7 +393,8 @@ export const ModelName = {
   BudgetUsage: 'BudgetUsage',
   InboxMessage: 'InboxMessage',
   Settings: 'Settings',
-  ApiKey: 'ApiKey'
+  ApiKey: 'ApiKey',
+  TaskSessionCheckpoint: 'TaskSessionCheckpoint'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -409,7 +410,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "agentRun" | "budgetUsage" | "inboxMessage" | "settings" | "apiKey"
+    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "agentRun" | "budgetUsage" | "inboxMessage" | "settings" | "apiKey" | "taskSessionCheckpoint"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1153,6 +1154,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    TaskSessionCheckpoint: {
+      payload: Prisma.$TaskSessionCheckpointPayload<ExtArgs>
+      fields: Prisma.TaskSessionCheckpointFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TaskSessionCheckpointFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TaskSessionCheckpointFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>
+        }
+        findFirst: {
+          args: Prisma.TaskSessionCheckpointFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TaskSessionCheckpointFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>
+        }
+        findMany: {
+          args: Prisma.TaskSessionCheckpointFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>[]
+        }
+        create: {
+          args: Prisma.TaskSessionCheckpointCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>
+        }
+        createMany: {
+          args: Prisma.TaskSessionCheckpointCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TaskSessionCheckpointCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>[]
+        }
+        delete: {
+          args: Prisma.TaskSessionCheckpointDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>
+        }
+        update: {
+          args: Prisma.TaskSessionCheckpointUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>
+        }
+        deleteMany: {
+          args: Prisma.TaskSessionCheckpointDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TaskSessionCheckpointUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TaskSessionCheckpointUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>[]
+        }
+        upsert: {
+          args: Prisma.TaskSessionCheckpointUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TaskSessionCheckpointPayload>
+        }
+        aggregate: {
+          args: Prisma.TaskSessionCheckpointAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTaskSessionCheckpoint>
+        }
+        groupBy: {
+          args: Prisma.TaskSessionCheckpointGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TaskSessionCheckpointGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TaskSessionCheckpointCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TaskSessionCheckpointCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1339,6 +1414,22 @@ export const ApiKeyScalarFieldEnum = {
 } as const
 
 export type ApiKeyScalarFieldEnum = (typeof ApiKeyScalarFieldEnum)[keyof typeof ApiKeyScalarFieldEnum]
+
+
+export const TaskSessionCheckpointScalarFieldEnum = {
+  id: 'id',
+  taskId: 'taskId',
+  agentId: 'agentId',
+  sessionId: 'sessionId',
+  checkpointIndex: 'checkpointIndex',
+  status: 'status',
+  summary: 'summary',
+  lastToolNames: 'lastToolNames',
+  startedAt: 'startedAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TaskSessionCheckpointScalarFieldEnum = (typeof TaskSessionCheckpointScalarFieldEnum)[keyof typeof TaskSessionCheckpointScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1548,6 +1639,7 @@ export type GlobalOmitConfig = {
   inboxMessage?: Prisma.InboxMessageOmit
   settings?: Prisma.SettingsOmit
   apiKey?: Prisma.ApiKeyOmit
+  taskSessionCheckpoint?: Prisma.TaskSessionCheckpointOmit
 }
 
 /* Types for Logging */

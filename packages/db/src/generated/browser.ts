@@ -67,3 +67,8 @@ export type Settings = Prisma.SettingsModel
  * 
  */
 export type ApiKey = Prisma.ApiKeyModel
+/**
+ * Model TaskSessionCheckpoint
+ * 
+ */
+export type TaskSessionCheckpoint = Prisma.TaskSessionCheckpointModel

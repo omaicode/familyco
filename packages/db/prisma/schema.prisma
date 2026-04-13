@@ -172,3 +172,19 @@ model ApiKey {
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
 }
+
+model TaskSessionCheckpoint {
+	id               String   @id @default(cuid())
+	taskId           String   @unique
+	agentId          String
+	sessionId        String
+	checkpointIndex  Int      @default(0)
+	status           String
+	summary          String   @default("")
+	lastToolNames    String   @default("[]")
+	startedAt        DateTime @default(now())
+	updatedAt        DateTime @updatedAt
+
+	@@index([agentId])
+	@@index([status])
+}
