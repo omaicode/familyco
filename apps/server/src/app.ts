@@ -560,7 +560,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         taskService,
         approvalService,
         auditService,
-        approvalGuard
+        approvalGuard,
+        settingsService
       });
       registerSettingsController(api, {
         settingsService,

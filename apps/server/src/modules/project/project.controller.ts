@@ -1,9 +1,10 @@
-import { ApprovalGuard, type ApprovalService, type AuditService, type ProjectService, type TaskService } from '@familyco/core';
+import { ApprovalGuard, type ApprovalService, type AuditService, type ProjectService, type SettingsService, type TaskService } from '@familyco/core';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { ensureApproval } from '../shared/approval-flow.js';
 import { createProjectSchema, projectParamsSchema, updateProjectSchema } from './project.schema.js';
+import { ensureProjectWorkspaceDir } from './workspace-dir.js';
 
 export interface ProjectModuleDeps {
   projectService: ProjectService;
@@ -11,6 +12,7 @@ export interface ProjectModuleDeps {
   approvalService: ApprovalService;
   auditService: AuditService;
   approvalGuard: ApprovalGuard;
+  settingsService: SettingsService;
 }
 
 export function registerProjectController(app: FastifyInstance, deps: ProjectModuleDeps): void {
@@ -67,6 +69,13 @@ export function registerProjectController(app: FastifyInstance, deps: ProjectMod
     }
 
     const project = await deps.projectService.createProject(body);
+
+    const workspaceSetting = await deps.settingsService.get('workspace.path').catch(() => null);
+    await ensureProjectWorkspaceDir(
+      typeof workspaceSetting?.value === 'string' ? workspaceSetting.value : null,
+      project.name
+    ).catch(() => undefined);
+
     await deps.auditService.write({
       actorId: body.ownerAgentId,
       action: 'project.create',

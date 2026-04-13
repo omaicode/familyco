@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
 
 import type {
   DesktopInvokeRequestMap,
@@ -77,6 +77,18 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
 
     const accepted = await options.installDownloadedUpdate();
     return { accepted } satisfies DesktopInvokeResponseMap['desktop:update:install'];
+  });
+
+  ipcMain.handle('desktop:dialog:open-directory', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+    const result = await dialog.showOpenDialog(win!, {
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Select workspace folder'
+    });
+    return {
+      canceled: result.canceled,
+      filePaths: result.filePaths
+    } satisfies DesktopInvokeResponseMap['desktop:dialog:open-directory'];
   });
 };
 

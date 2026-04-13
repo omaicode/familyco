@@ -3,7 +3,7 @@ import type { SupportedLocale } from '@familyco/ui';
 import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-  Building2, Key, Users, CheckCircle2, ChevronRight, ChevronLeft,
+  Building2, FolderOpen, Key, Users, CheckCircle2, ChevronRight, ChevronLeft,
   Eye, EyeOff, AlertTriangle, ArrowRight, Sparkles, Zap, Loader2
 } from 'lucide-vue-next';
 import FamilyCoIcon from '../assets/familyco-icon.svg';
@@ -16,7 +16,7 @@ const router = useRouter();
 const { locale, setLocale, supportedLocales, t } = useI18n();
 
 const currentStep = ref(1);
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 const isSubmitting = ref(false);
 const errorMessage = ref<string | null>(null);
 const done = ref(false);
@@ -31,9 +31,14 @@ const createdResult = ref<{ executiveName: string; description: string } | null>
 const isTesting = ref(false);
 const testResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
 
+// ── Folder picker state ──────────────────────────────────
+const isBrowsing = ref(false);
+const isDesktop = typeof window !== 'undefined' && typeof (window as Record<string, unknown>).familycoDesktop === 'object';
+
 const form = reactive({
   companyName: '',
   companyDescription: '',
+  workspacePath: '',
   provider: 'openai' as AdapterId,
   apiKey: '',
   defaultModel: 'gpt-5-mini',
@@ -56,9 +61,26 @@ const canNext = computed(() => {
     return form.companyName.trim().length > 0 && form.companyDescription.trim().length > 0;
   }
 
-  if (currentStep.value === 3) return testResult.value?.ok === true;
+  if (currentStep.value === 3) return form.workspacePath.trim().length > 0;
+  if (currentStep.value === 4) return testResult.value?.ok === true;
   return true;
 });
+
+const browseWorkspace = async () => {
+  if (!isDesktop) return;
+  isBrowsing.value = true;
+  try {
+    const desktop = (window as Record<string, unknown>).familycoDesktop as { invoke: (channel: string, payload: Record<string, never>) => Promise<{ canceled: boolean; filePaths: string[] }> };
+    const result = await desktop.invoke('desktop:dialog:open-directory', {});
+    if (!result.canceled && result.filePaths.length > 0) {
+      form.workspacePath = result.filePaths[0] ?? '';
+    }
+  } catch {
+    // Ignore dialog errors
+  } finally {
+    isBrowsing.value = false;
+  }
+};
 
 const selectAdapter = (id: AdapterId) => {
   form.provider = id;
@@ -96,6 +118,9 @@ const initialize = async () => {
     await uiRuntime.api.upsertSetting({ key: 'provider.name', value: form.provider });
     await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: form.apiKey });
     await uiRuntime.api.upsertSetting({ key: 'provider.defaultModel', value: form.defaultModel });
+    if (form.workspacePath.trim()) {
+      await uiRuntime.api.upsertSetting({ key: 'workspace.path', value: form.workspacePath.trim() });
+    }
     const result = await uiRuntime.api.initializeSetup({
       companyName: form.companyName.trim(),
       companyDescription: form.companyDescription.trim(),
@@ -303,8 +328,49 @@ const handleStepAfterEnter = (): void => {
             </div>
             </template>
 
-            <!-- ── Step 3: AI Provider ──────────────────── -->
+            <!-- ── Step 3: Workspace ───────────────────── -->
             <template v-else-if="currentStep === 3">
+            <div class="ob-step-icon ob-step-icon-warning">
+              <FolderOpen :size="28" />
+            </div>
+            <h2 class="ob-title">{{ t('workspace.step.title') }}</h2>
+            <p class="ob-subtitle">{{ t('workspace.step.subtitle') }}</p>
+
+            <div class="ob-form-group">
+              <label class="ob-label">{{ t('workspace.path.label') }} <span class="ob-required">*</span></label>
+              <div class="ob-input-wrap">
+                <input
+                  v-model="form.workspacePath"
+                  class="ob-input ob-input-password"
+                  :placeholder="t('workspace.path.placeholder')"
+                  spellcheck="false"
+                />
+                <button
+                  v-if="isDesktop"
+                  type="button"
+                  class="ob-eye-btn"
+                  :disabled="isBrowsing"
+                  :aria-label="t('workspace.browse')"
+                  @click="browseWorkspace"
+                >
+                  <FolderOpen :size="15" />
+                </button>
+              </div>
+              <p class="ob-hint">{{ t('workspace.path.hint') }}</p>
+            </div>
+
+            <div class="ob-actions">
+              <button class="ob-btn-ghost" @click="prev">
+                <ChevronLeft :size="16" /> {{ t('Back') }}
+              </button>
+              <button class="ob-btn-primary" :disabled="!canNext" @click="next">
+                {{ t('Next') }} <ChevronRight :size="16" />
+              </button>
+            </div>
+            </template>
+
+            <!-- ── Step 4: AI Provider ──────────────────── -->
+            <template v-else-if="currentStep === 4">
             <div class="ob-step-icon ob-step-icon-accent">
               <Key :size="28" />
             </div>
@@ -390,7 +456,7 @@ const handleStepAfterEnter = (): void => {
             </div>
             </template>
 
-            <!-- ── Step 4: Review & Initialize ─────────── -->
+            <!-- ── Step 5: Review & Initialize ─────────── -->
             <template v-else>
             <div class="ob-step-icon ob-step-icon-success">
               <Users :size="28" />
@@ -407,6 +473,10 @@ const handleStepAfterEnter = (): void => {
               <div class="ob-summary-row">
                 <span class="ob-summary-label">{{ t('Description') }}</span>
                 <span class="ob-summary-value">{{ form.companyDescription || t('Not provided yet') }}</span>
+              </div>
+              <div class="ob-summary-row">
+                <span class="ob-summary-label">{{ t('workspace.path.label') }}</span>
+                <span class="ob-summary-value" style="word-break:break-all;">{{ form.workspacePath || t('Not provided yet') }}</span>
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">{{ t('AI provider') }}</span>
@@ -570,6 +640,12 @@ const handleStepAfterEnter = (): void => {
   background: color-mix(in srgb, var(--fc-success) 12%, var(--fc-surface));
   border-color: color-mix(in srgb, var(--fc-success) 25%, var(--fc-border-subtle));
   color: var(--fc-success);
+}
+
+.ob-step-icon-warning {
+  background: color-mix(in srgb, var(--fc-info) 12%, var(--fc-surface));
+  border-color: color-mix(in srgb, var(--fc-info) 25%, var(--fc-border-subtle));
+  color: var(--fc-info);
 }
 
 /* ── Typography ───────────────────────────────────────── */
