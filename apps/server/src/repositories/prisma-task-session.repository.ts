@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@familyco/db';
 
-import { isValidTaskSessionStatus, type TaskSessionCheckpoint, type TaskSessionRepository } from '../runtime/task-session.store.js';
+import { isValidTaskSessionStatus, type TaskSessionCheckpoint, type TaskSessionRepository, type TaskSessionToolResult } from '../runtime/task-session.store.js';
 
 export class PrismaTaskSessionRepository implements TaskSessionRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -22,6 +22,7 @@ export class PrismaTaskSessionRepository implements TaskSessionRepository {
       status: checkpoint.status,
       summary: checkpoint.summary,
       lastToolNames: JSON.stringify(checkpoint.lastToolNames),
+      toolResults: JSON.stringify(checkpoint.toolResults),
       startedAt: new Date(checkpoint.startedAt),
       updatedAt: new Date(checkpoint.updatedAt)
     };
@@ -46,21 +47,12 @@ type PrismaCheckpointRow = {
   status: string;
   summary: string;
   lastToolNames: string;
+  toolResults: string;
   startedAt: Date;
   updatedAt: Date;
 };
 
 function toCheckpoint(row: PrismaCheckpointRow): TaskSessionCheckpoint {
-  let toolNames: string[] = [];
-  try {
-    const parsed = JSON.parse(row.lastToolNames);
-    if (Array.isArray(parsed)) {
-      toolNames = parsed.filter((v): v is string => typeof v === 'string');
-    }
-  } catch {
-    // malformed JSON — treat as empty
-  }
-
   return {
     taskId: row.taskId,
     agentId: row.agentId,
@@ -68,8 +60,40 @@ function toCheckpoint(row: PrismaCheckpointRow): TaskSessionCheckpoint {
     checkpointIndex: row.checkpointIndex,
     status: isValidTaskSessionStatus(row.status) ? row.status : 'active',
     summary: row.summary,
-    lastToolNames: toolNames,
+    lastToolNames: parseStringArray(row.lastToolNames),
+    toolResults: parseToolResults(row.toolResults),
     startedAt: row.startedAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   };
+}
+
+function parseStringArray(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((v): v is string => typeof v === 'string');
+    }
+  } catch {
+    // malformed — treat as empty
+  }
+  return [];
+}
+
+function parseToolResults(raw: string): TaskSessionToolResult[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isToolResultShape);
+  } catch {
+    return [];
+  }
+}
+
+function isToolResultShape(value: unknown): value is TaskSessionToolResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).toolName === 'string' &&
+    typeof (value as Record<string, unknown>).ok === 'boolean'
+  );
 }

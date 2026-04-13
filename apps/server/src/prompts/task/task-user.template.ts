@@ -1,3 +1,10 @@
+export interface TaskSessionToolResult {
+  toolName: string;
+  ok: boolean;
+  output?: string;
+  error?: string;
+}
+
 export interface TaskUserPromptInput {
   taskId: string;
   taskTitle: string;
@@ -6,6 +13,7 @@ export interface TaskUserPromptInput {
   taskPriority: string;
   assigneeAgentId: string | null;
   previousSessionSummary?: string;
+  previousToolResults?: TaskSessionToolResult[];
   taskComments?: Array<{
     authorId: string;
     authorLabel?: string;
@@ -33,6 +41,22 @@ export function renderTaskUserPrompt(input: TaskUserPromptInput): string {
       input.previousSessionSummary,
       ''
     );
+  }
+
+  if (input.previousToolResults && input.previousToolResults.length > 0) {
+    lines.push('### Previous Tool Execution Results');
+    lines.push('These are the results from the last session. Use them to avoid repeating work and to understand what was already done.');
+    lines.push('');
+    for (const result of input.previousToolResults) {
+      const statusIcon = result.ok ? '✅' : '❌';
+      lines.push(`${statusIcon} **${result.toolName}**`);
+      if (result.ok && result.output) {
+        lines.push(`> ${result.output.replace(/\n/g, '\n> ')}`);
+      } else if (!result.ok && result.error) {
+        lines.push(`> Error: ${result.error}`);
+      }
+      lines.push('');
+    }
   }
 
   if (input.taskComments && input.taskComments.length > 0) {

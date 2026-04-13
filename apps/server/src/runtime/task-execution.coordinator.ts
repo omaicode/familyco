@@ -17,7 +17,7 @@ import { renderTaskSystemPrompt } from '../prompts/task/task-system.template.js'
 import { renderTaskUserPrompt } from '../prompts/task/task-user.template.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
 import type { DefaultToolExecutor } from '../tools/default-tool.executor.js';
-import type { TaskSessionRepository, TaskSessionCheckpoint, TaskSessionStatus } from './task-session.store.js';
+import type { TaskSessionRepository, TaskSessionCheckpoint, TaskSessionStatus, TaskSessionToolResult } from './task-session.store.js';
 
 const PRIORITY_ORDER: Record<string, number> = {
   urgent: 0,
@@ -175,6 +175,7 @@ export class TaskExecutionCoordinator {
       taskPriority: task.priority,
       assigneeAgentId: task.assigneeAgentId,
       previousSessionSummary: session.summary || undefined,
+      previousToolResults: session.toolResults.length > 0 ? session.toolResults : undefined,
       taskComments: comments
     });
 
@@ -220,11 +221,21 @@ export class TaskExecutionCoordinator {
     const sessionStatus = resolveSessionStatus(toolsUsed);
     const summary = loopResult.finalReply.trim() || buildFallbackSummary(task.title, toolsUsed, sessionStatus);
 
+    const capturedToolResults: TaskSessionToolResult[] = loopResult.turns
+      .flatMap((turn) => turn.toolResults)
+      .map((r) => ({
+        toolName: r.toolName,
+        ok: r.ok,
+        output: r.ok ? serializeOutput(r.output) : undefined,
+        error: !r.ok ? (r.error?.message ?? 'unknown error') : undefined
+      }));
+
     const updatedSession: TaskSessionCheckpoint = {
       ...session,
       status: sessionStatus,
       summary: summary.slice(0, 2_000),
       lastToolNames: toolsUsed,
+      toolResults: capturedToolResults,
       checkpointIndex: session.checkpointIndex + 1,
       updatedAt: new Date().toISOString()
     };
@@ -280,6 +291,7 @@ export class TaskExecutionCoordinator {
       status: 'active',
       summary: '',
       lastToolNames: [],
+      toolResults: [],
       startedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -355,4 +367,13 @@ function buildFallbackSummary(taskTitle: string, toolsUsed: string[], status: Ta
   const unique = [...new Set(toolsUsed)];
   const toolList = unique.length > 0 ? unique.join(', ') : 'none';
   return `Session ended without a final reply from the agent. Task: "${taskTitle}". Tools used: ${toolList}. Status: ${status}.`;
+}
+
+function serializeOutput(output: unknown): string {
+  try {
+    const raw = typeof output === 'string' ? output : JSON.stringify(output);
+    return raw.slice(0, 800);
+  } catch {
+    return String(output).slice(0, 800);
+  }
 }

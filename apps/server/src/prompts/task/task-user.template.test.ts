@@ -68,3 +68,26 @@ test('renderTaskUserPrompt uses authorId when authorLabel is absent', () => {
   });
   assert.ok(prompt.includes('agent-99'), 'must fall back to authorId');
 });
+
+test('renderTaskUserPrompt renders previousToolResults when provided', () => {
+  const prompt = renderTaskUserPrompt({
+    ...BASE_INPUT,
+    previousToolResults: [
+      { toolName: 'file.search', ok: true, output: 'Found 3 files' },
+      { toolName: 'file.read', ok: false, error: 'File not found' }
+    ]
+  });
+  assert.ok(prompt.includes('Previous Tool Execution Results'), 'must include tool results header');
+  assert.ok(prompt.includes('file.search'), 'must include tool name');
+  assert.ok(prompt.includes('Found 3 files'), 'must include tool output');
+  assert.ok(prompt.includes('file.read'), 'must include failed tool name');
+  assert.ok(prompt.includes('File not found'), 'must include error message');
+});
+
+test('renderTaskUserPrompt omits previous tool results section when empty or absent', () => {
+  const prompt = renderTaskUserPrompt(BASE_INPUT);
+  assert.ok(!prompt.includes('Previous Tool Execution Results'), 'must not include tool results header when absent');
+
+  const promptEmpty = renderTaskUserPrompt({ ...BASE_INPUT, previousToolResults: [] });
+  assert.ok(!promptEmpty.includes('Previous Tool Execution Results'), 'must not include tool results header when empty array');
+});

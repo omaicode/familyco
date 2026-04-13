@@ -182,6 +182,7 @@ model TaskSessionCheckpoint {
 	status           String
 	summary          String   @default("")
 	lastToolNames    String   @default("[]")
+	toolResults      String   @default("[]")
 	startedAt        DateTime @default(now())
 	updatedAt        DateTime @updatedAt
 

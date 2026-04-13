@@ -12,6 +12,7 @@ const BASE: TaskSessionCheckpoint = {
   status: 'active',
   summary: 'Started work.',
   lastToolNames: ['file.search', 'task.update-status'],
+  toolResults: [{ toolName: 'file.search', ok: true, output: 'Found 2 files' }],
   startedAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:01:00.000Z'
 };

@@ -43,6 +43,7 @@ export type TaskSessionCheckpointMinAggregateOutputType = {
   status: string | null
   summary: string | null
   lastToolNames: string | null
+  toolResults: string | null
   startedAt: Date | null
   updatedAt: Date | null
 }
@@ -56,6 +57,7 @@ export type TaskSessionCheckpointMaxAggregateOutputType = {
   status: string | null
   summary: string | null
   lastToolNames: string | null
+  toolResults: string | null
   startedAt: Date | null
   updatedAt: Date | null
 }
@@ -69,6 +71,7 @@ export type TaskSessionCheckpointCountAggregateOutputType = {
   status: number
   summary: number
   lastToolNames: number
+  toolResults: number
   startedAt: number
   updatedAt: number
   _all: number
@@ -92,6 +95,7 @@ export type TaskSessionCheckpointMinAggregateInputType = {
   status?: true
   summary?: true
   lastToolNames?: true
+  toolResults?: true
   startedAt?: true
   updatedAt?: true
 }
@@ -105,6 +109,7 @@ export type TaskSessionCheckpointMaxAggregateInputType = {
   status?: true
   summary?: true
   lastToolNames?: true
+  toolResults?: true
   startedAt?: true
   updatedAt?: true
 }
@@ -118,6 +123,7 @@ export type TaskSessionCheckpointCountAggregateInputType = {
   status?: true
   summary?: true
   lastToolNames?: true
+  toolResults?: true
   startedAt?: true
   updatedAt?: true
   _all?: true
@@ -218,6 +224,7 @@ export type TaskSessionCheckpointGroupByOutputType = {
   status: string
   summary: string
   lastToolNames: string
+  toolResults: string
   startedAt: Date
   updatedAt: Date
   _count: TaskSessionCheckpointCountAggregateOutputType | null
@@ -254,6 +261,7 @@ export type TaskSessionCheckpointWhereInput = {
   status?: Prisma.StringFilter<"TaskSessionCheckpoint"> | string
   summary?: Prisma.StringFilter<"TaskSessionCheckpoint"> | string
   lastToolNames?: Prisma.StringFilter<"TaskSessionCheckpoint"> | string
+  toolResults?: Prisma.StringFilter<"TaskSessionCheckpoint"> | string
   startedAt?: Prisma.DateTimeFilter<"TaskSessionCheckpoint"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"TaskSessionCheckpoint"> | Date | string
 }
@@ -267,6 +275,7 @@ export type TaskSessionCheckpointOrderByWithRelationInput = {
   status?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   lastToolNames?: Prisma.SortOrder
+  toolResults?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -283,6 +292,7 @@ export type TaskSessionCheckpointWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.StringFilter<"TaskSessionCheckpoint"> | string
   summary?: Prisma.StringFilter<"TaskSessionCheckpoint"> | string
   lastToolNames?: Prisma.StringFilter<"TaskSessionCheckpoint"> | string
+  toolResults?: Prisma.StringFilter<"TaskSessionCheckpoint"> | string
   startedAt?: Prisma.DateTimeFilter<"TaskSessionCheckpoint"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"TaskSessionCheckpoint"> | Date | string
 }, "id" | "taskId">
@@ -296,6 +306,7 @@ export type TaskSessionCheckpointOrderByWithAggregationInput = {
   status?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   lastToolNames?: Prisma.SortOrder
+  toolResults?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.TaskSessionCheckpointCountOrderByAggregateInput
@@ -317,6 +328,7 @@ export type TaskSessionCheckpointScalarWhereWithAggregatesInput = {
   status?: Prisma.StringWithAggregatesFilter<"TaskSessionCheckpoint"> | string
   summary?: Prisma.StringWithAggregatesFilter<"TaskSessionCheckpoint"> | string
   lastToolNames?: Prisma.StringWithAggregatesFilter<"TaskSessionCheckpoint"> | string
+  toolResults?: Prisma.StringWithAggregatesFilter<"TaskSessionCheckpoint"> | string
   startedAt?: Prisma.DateTimeWithAggregatesFilter<"TaskSessionCheckpoint"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"TaskSessionCheckpoint"> | Date | string
 }
@@ -330,6 +342,7 @@ export type TaskSessionCheckpointCreateInput = {
   status: string
   summary?: string
   lastToolNames?: string
+  toolResults?: string
   startedAt?: Date | string
   updatedAt?: Date | string
 }
@@ -343,6 +356,7 @@ export type TaskSessionCheckpointUncheckedCreateInput = {
   status: string
   summary?: string
   lastToolNames?: string
+  toolResults?: string
   startedAt?: Date | string
   updatedAt?: Date | string
 }
@@ -356,6 +370,7 @@ export type TaskSessionCheckpointUpdateInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   lastToolNames?: Prisma.StringFieldUpdateOperationsInput | string
+  toolResults?: Prisma.StringFieldUpdateOperationsInput | string
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -369,6 +384,7 @@ export type TaskSessionCheckpointUncheckedUpdateInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   lastToolNames?: Prisma.StringFieldUpdateOperationsInput | string
+  toolResults?: Prisma.StringFieldUpdateOperationsInput | string
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -382,6 +398,7 @@ export type TaskSessionCheckpointCreateManyInput = {
   status: string
   summary?: string
   lastToolNames?: string
+  toolResults?: string
   startedAt?: Date | string
   updatedAt?: Date | string
 }
@@ -395,6 +412,7 @@ export type TaskSessionCheckpointUpdateManyMutationInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   lastToolNames?: Prisma.StringFieldUpdateOperationsInput | string
+  toolResults?: Prisma.StringFieldUpdateOperationsInput | string
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -408,6 +426,7 @@ export type TaskSessionCheckpointUncheckedUpdateManyInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   summary?: Prisma.StringFieldUpdateOperationsInput | string
   lastToolNames?: Prisma.StringFieldUpdateOperationsInput | string
+  toolResults?: Prisma.StringFieldUpdateOperationsInput | string
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -421,6 +440,7 @@ export type TaskSessionCheckpointCountOrderByAggregateInput = {
   status?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   lastToolNames?: Prisma.SortOrder
+  toolResults?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -438,6 +458,7 @@ export type TaskSessionCheckpointMaxOrderByAggregateInput = {
   status?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   lastToolNames?: Prisma.SortOrder
+  toolResults?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -451,6 +472,7 @@ export type TaskSessionCheckpointMinOrderByAggregateInput = {
   status?: Prisma.SortOrder
   summary?: Prisma.SortOrder
   lastToolNames?: Prisma.SortOrder
+  toolResults?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -470,6 +492,7 @@ export type TaskSessionCheckpointSelect<ExtArgs extends runtime.Types.Extensions
   status?: boolean
   summary?: boolean
   lastToolNames?: boolean
+  toolResults?: boolean
   startedAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["taskSessionCheckpoint"]>
@@ -483,6 +506,7 @@ export type TaskSessionCheckpointSelectCreateManyAndReturn<ExtArgs extends runti
   status?: boolean
   summary?: boolean
   lastToolNames?: boolean
+  toolResults?: boolean
   startedAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["taskSessionCheckpoint"]>
@@ -496,6 +520,7 @@ export type TaskSessionCheckpointSelectUpdateManyAndReturn<ExtArgs extends runti
   status?: boolean
   summary?: boolean
   lastToolNames?: boolean
+  toolResults?: boolean
   startedAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["taskSessionCheckpoint"]>
@@ -509,11 +534,12 @@ export type TaskSessionCheckpointSelectScalar = {
   status?: boolean
   summary?: boolean
   lastToolNames?: boolean
+  toolResults?: boolean
   startedAt?: boolean
   updatedAt?: boolean
 }
 
-export type TaskSessionCheckpointOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "taskId" | "agentId" | "sessionId" | "checkpointIndex" | "status" | "summary" | "lastToolNames" | "startedAt" | "updatedAt", ExtArgs["result"]["taskSessionCheckpoint"]>
+export type TaskSessionCheckpointOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "taskId" | "agentId" | "sessionId" | "checkpointIndex" | "status" | "summary" | "lastToolNames" | "toolResults" | "startedAt" | "updatedAt", ExtArgs["result"]["taskSessionCheckpoint"]>
 
 export type $TaskSessionCheckpointPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TaskSessionCheckpoint"
@@ -527,6 +553,7 @@ export type $TaskSessionCheckpointPayload<ExtArgs extends runtime.Types.Extensio
     status: string
     summary: string
     lastToolNames: string
+    toolResults: string
     startedAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["taskSessionCheckpoint"]>
@@ -960,6 +987,7 @@ export interface TaskSessionCheckpointFieldRefs {
   readonly status: Prisma.FieldRef<"TaskSessionCheckpoint", 'String'>
   readonly summary: Prisma.FieldRef<"TaskSessionCheckpoint", 'String'>
   readonly lastToolNames: Prisma.FieldRef<"TaskSessionCheckpoint", 'String'>
+  readonly toolResults: Prisma.FieldRef<"TaskSessionCheckpoint", 'String'>
   readonly startedAt: Prisma.FieldRef<"TaskSessionCheckpoint", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"TaskSessionCheckpoint", 'DateTime'>
 }

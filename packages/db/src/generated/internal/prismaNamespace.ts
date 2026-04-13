@@ -1425,6 +1425,7 @@ export const TaskSessionCheckpointScalarFieldEnum = {
   status: 'status',
   summary: 'summary',
   lastToolNames: 'lastToolNames',
+  toolResults: 'toolResults',
   startedAt: 'startedAt',
   updatedAt: 'updatedAt'
 } as const

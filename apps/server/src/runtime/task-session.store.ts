@@ -5,6 +5,13 @@ export type TaskSessionStatus =
   | 'completed'
   | 'blocked';
 
+export interface TaskSessionToolResult {
+  toolName: string;
+  ok: boolean;
+  output?: string;
+  error?: string;
+}
+
 export interface TaskSessionCheckpoint {
   taskId: string;
   agentId: string;
@@ -13,6 +20,7 @@ export interface TaskSessionCheckpoint {
   status: TaskSessionStatus;
   summary: string;
   lastToolNames: string[];
+  toolResults: TaskSessionToolResult[];
   startedAt: string;
   updatedAt: string;
 }
