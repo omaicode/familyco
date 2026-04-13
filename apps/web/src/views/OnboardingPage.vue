@@ -61,7 +61,7 @@ const canNext = computed(() => {
     return form.companyName.trim().length > 0 && form.companyDescription.trim().length > 0;
   }
 
-  if (currentStep.value === 3) return form.workspacePath.trim().length > 0;
+  if (currentStep.value === 3) return form.workspacePath.trim().length > 0 || !isDesktop;
   if (currentStep.value === 4) return testResult.value?.ok === true;
   return true;
 });
@@ -338,24 +338,29 @@ const handleStepAfterEnter = (): void => {
 
             <div class="ob-form-group">
               <label class="ob-label">{{ t('workspace.path.label') }} <span class="ob-required">*</span></label>
-              <div class="ob-input-wrap">
-                <input
-                  v-model="form.workspacePath"
-                  class="ob-input ob-input-password"
-                  :placeholder="t('workspace.path.placeholder')"
-                  spellcheck="false"
-                />
-                <button
-                  v-if="isDesktop"
-                  type="button"
-                  class="ob-eye-btn"
-                  :disabled="isBrowsing"
-                  :aria-label="t('workspace.browse')"
-                  @click="browseWorkspace"
-                >
-                  <FolderOpen :size="15" />
-                </button>
+
+              <button
+                type="button"
+                class="ob-btn-folder-pick"
+                :disabled="isBrowsing"
+                :title="isDesktop ? '' : t('workspace.desktop.only')"
+                @click="isDesktop ? browseWorkspace() : undefined"
+              >
+                <FolderOpen :size="18" />
+                <span v-if="isBrowsing">{{ t('Browsing…') }}</span>
+                <span v-else-if="form.workspacePath">{{ t('workspace.change.btn') }}</span>
+                <span v-else>{{ t('workspace.choose.btn') }}</span>
+              </button>
+
+              <div v-if="form.workspacePath" class="ob-path-display">
+                <CheckCircle2 :size="13" style="color:var(--fc-success);flex-shrink:0;" />
+                <code>{{ form.workspacePath }}</code>
               </div>
+              <div v-else-if="!isDesktop" class="ob-path-display ob-path-muted">
+                <AlertTriangle :size="13" style="flex-shrink:0;" />
+                <span>{{ t('workspace.desktop.only') }}</span>
+              </div>
+
               <p class="ob-hint">{{ t('workspace.path.hint') }}</p>
             </div>
 
@@ -758,6 +763,51 @@ const handleStepAfterEnter = (): void => {
 }
 
 .ob-eye-btn:hover { color: var(--fc-text); }
+
+/* ── Folder picker button ─────────────────────────────── */
+.ob-btn-folder-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px dashed var(--fc-border-subtle);
+  border-radius: 8px;
+  background: var(--fc-surface);
+  color: var(--fc-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ob-btn-folder-pick:hover:not(:disabled) {
+  border-color: var(--fc-primary);
+  background: color-mix(in srgb, var(--fc-primary) 5%, var(--fc-surface));
+}
+.ob-btn-folder-pick:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Path display ─────────────────────────────────────── */
+.ob-path-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--fc-success) 8%, var(--fc-surface));
+  border: 1px solid color-mix(in srgb, var(--fc-success) 20%, var(--fc-border-subtle));
+  font-size: 0.8125rem;
+  word-break: break-all;
+}
+.ob-path-display code { font-size: 0.8rem; color: var(--fc-text-main); }
+.ob-path-muted {
+  background: color-mix(in srgb, var(--fc-warning) 8%, var(--fc-surface));
+  border-color: color-mix(in srgb, var(--fc-warning) 20%, var(--fc-border-subtle));
+  color: var(--fc-text-muted);
+}
 
 /* ── Select ───────────────────────────────────────────── */
 .ob-select {

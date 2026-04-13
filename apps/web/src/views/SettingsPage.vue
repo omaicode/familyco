@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
-  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin, FolderOpen,
+  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin, FolderOpen, CheckCircle2,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -669,28 +669,32 @@ useAutoReload(reload);
             </div>
 
             <div class="st-field-group">
-              <label class="st-label" for="st-workspace-path">Workspace folder path</label>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <FcInput
-                  id="st-workspace-path"
-                  v-model="workspacePath"
-                  placeholder="/Users/you/workspace or C:\Users\you\workspace"
-                  style="flex:1;"
-                />
-                <button
-                  v-if="isDesktop"
-                  class="fc-btn-secondary fc-btn-sm"
-                  :disabled="isBrowsingWorkspace"
-                  type="button"
-                  aria-label="Browse for folder"
-                  @click="browseWorkspace"
-                >
-                  <FolderOpen :size="13" />
-                  Browse
-                </button>
+              <label class="st-label">Workspace folder path</label>
+
+              <button
+                type="button"
+                class="st-folder-pick-btn"
+                :disabled="isBrowsingWorkspace"
+                :title="isDesktop ? '' : 'Folder picker requires the desktop app'"
+                @click="isDesktop ? browseWorkspace() : undefined"
+              >
+                <FolderOpen :size="16" />
+                <span v-if="isBrowsingWorkspace">Browsing…</span>
+                <span v-else-if="workspacePath">Change folder</span>
+                <span v-else>Choose workspace folder</span>
+              </button>
+
+              <div v-if="workspacePath" class="st-path-display st-path-ok">
+                <CheckCircle2 :size="13" style="color:var(--fc-success);flex-shrink:0;" />
+                <code style="word-break:break-all;">{{ workspacePath }}</code>
               </div>
+              <div v-else-if="!isDesktop" class="st-path-display st-path-warn">
+                <ShieldAlert :size="13" style="flex-shrink:0;" />
+                <span>Folder picker is only available in the desktop app. Run FamilyCo as a desktop app to set the workspace path.</span>
+              </div>
+
               <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">
-                Use an absolute path. The folder and its <code>projects/</code> sub-directory will be created automatically when a new project is added.
+                The folder and its <code>projects/</code> sub-directory will be created automatically when a new project is added.
               </p>
             </div>
 
@@ -962,6 +966,52 @@ useAutoReload(reload);
 }
 
 .st-hint:last-child { font-family: inherit; letter-spacing: normal; }
+
+/* ── Folder picker ───────────────────────────────────────── */
+.st-folder-pick-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  width: 100%;
+  border: 1.5px dashed var(--fc-border-subtle);
+  border-radius: 8px;
+  background: var(--fc-surface);
+  color: var(--fc-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 4px;
+}
+.st-folder-pick-btn:hover:not(:disabled) {
+  border-color: var(--fc-primary);
+  background: color-mix(in srgb, var(--fc-primary) 5%, var(--fc-surface));
+}
+.st-folder-pick-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.st-path-display {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  margin-bottom: 6px;
+}
+.st-path-ok {
+  background: color-mix(in srgb, var(--fc-success) 8%, var(--fc-surface));
+  border: 1px solid color-mix(in srgb, var(--fc-success) 20%, var(--fc-border-subtle));
+}
+.st-path-ok code { font-size: 0.8rem; color: var(--fc-text-main); }
+.st-path-warn {
+  background: color-mix(in srgb, var(--fc-warning) 8%, var(--fc-surface));
+  border: 1px solid color-mix(in srgb, var(--fc-warning) 20%, var(--fc-border-subtle));
+  color: var(--fc-text-muted);
+}
 
 /* ── Input / Select: styles come from global styles.css ───── */
 /* .fc-input, .fc-select, .fc-password-wrap, .fc-password-eye */
