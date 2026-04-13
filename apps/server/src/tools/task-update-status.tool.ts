@@ -9,7 +9,7 @@ export const taskUpdateStatusSlashSpec: SlashCommandSpec = {
   label: 'Update task status',
   description: 'Move a task to another valid status.',
   insertValue: '/update-task-status ',
-  levels: ['L0', 'L1'],
+  levels: ['L0', 'L1', 'L2'],
   auditAction: 'agent.chat.update-task-status',
   buildArguments: (args) => {
     const [taskId, status] = args.trim().split(/\s+/);

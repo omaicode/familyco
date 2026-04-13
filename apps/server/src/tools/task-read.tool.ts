@@ -9,7 +9,7 @@ export const taskReadSlashSpec: SlashCommandSpec = {
   label: 'Read task info',
   description: 'Get details of a single task by id or exact title.',
   insertValue: '/task-info ',
-  levels: ['L0', 'L1'],
+  levels: ['L0', 'L1', 'L2'],
   auditAction: 'agent.chat.task-info',
   buildArguments: (args) => ({
     query: asNonEmptyString(args) ?? ''

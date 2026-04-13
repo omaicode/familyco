@@ -9,7 +9,7 @@ export const taskListSlashSpec: SlashCommandSpec = {
   label: 'List tasks',
   description: 'List tasks with optional filters.',
   insertValue: '/tasks ',
-  levels: ['L0', 'L1'],
+  levels: ['L0', 'L1', 'L2'],
   auditAction: 'agent.chat.tasks',
   buildArguments: (args) => {
     const kv = parseKeyValueArgs(args);

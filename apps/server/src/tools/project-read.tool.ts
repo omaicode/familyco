@@ -9,7 +9,7 @@ export const projectReadSlashSpec: SlashCommandSpec = {
   label: 'Read project info',
   description: 'Get details of a single project by id or exact name.',
   insertValue: '/project-info ',
-  levels: ['L0', 'L1'],
+  levels: ['L0', 'L1', 'L2'],
   auditAction: 'agent.chat.project-info',
   buildArguments: (args) => ({
     query: asNonEmptyString(args) ?? ''
