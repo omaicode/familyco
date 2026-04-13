@@ -10,7 +10,8 @@ export class PrismaProjectRepository implements ProjectRepository {
         name: input.name,
         description: input.description,
         ownerAgentId: input.ownerAgentId,
-        parentProjectId: input.parentProjectId ?? null
+        parentProjectId: input.parentProjectId ?? null,
+        dirPath: input.dirPath ?? null
       }
     });
   }
