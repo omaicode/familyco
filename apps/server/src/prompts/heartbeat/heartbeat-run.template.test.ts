@@ -25,6 +25,10 @@ test('renderHeartbeatRunPrompt follows Role Goal Constraints pattern', () => {
   assert.equal(prompt.includes('Capabilities and limitations:'), true);
   assert.equal(prompt.includes('Heartbeat Timestamp: 2026-01-01T00:00:00.000Z'), true);
   assert.equal(prompt.includes('agent-001'), true);
+  assert.equal(prompt.includes('Call task.list with assigneeAgentId="agent-001" (without status filter) to fetch ALL your tasks.'), true);
+  assert.equal(prompt.includes('For each project that has actionable tasks, call project.read once'), true);
+  assert.equal(prompt.includes('Project Kickoff & Requirements'), true);
+  assert.equal(prompt.includes('Tech Setup'), true);
   assert.equal(
     prompt.includes('- agent-orchestrator (Agent Orchestrator): Manage subordinate agents. Path => /data/projects/familyco/skills/agent-orchestrator/SKILL.md'),
     true
