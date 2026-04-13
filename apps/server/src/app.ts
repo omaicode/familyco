@@ -369,10 +369,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         await heartbeatRuntime.markStarted(syntheticRequest);
 
         try {
-          const executionResult = await taskCoordinator.executeForAgent(job.payload.agentId);
+          const batchResult = await taskCoordinator.executeForAgent(job.payload.agentId);
+          const lastResult = batchResult.lastResult;
 
           const syntheticAgentResult = {
-            status: (executionResult.status === 'waiting_for_approval' || executionResult.status === 'blocked')
+            status: (lastResult.status === 'waiting_for_approval' || lastResult.status === 'blocked')
               ? ('blocked' as const)
               : ('completed' as const),
             agentId: job.payload.agentId,
@@ -385,16 +386,19 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
           await auditService.write({
             actorId: job.payload.agentId,
             action: 'engine.task.execute.completed',
-            targetId: executionResult.taskId || job.payload.agentId,
+            targetId: job.payload.agentId,
             payload: {
-              taskId: executionResult.taskId,
               agentId: job.payload.agentId,
-              status: executionResult.status,
-              summary: executionResult.summary
+              tasksRun: batchResult.tasksRun,
+              results: batchResult.results.map((r) => ({
+                taskId: r.taskId,
+                status: r.status,
+                summary: r.summary
+              }))
             }
           });
 
-          return executionResult;
+          return batchResult;
         } catch (error) {
           const normalizedError = toError(error);
           await heartbeatRuntime.markFailed(syntheticRequest, normalizedError);

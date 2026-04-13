@@ -5,29 +5,33 @@ export function renderHeartbeatRunPrompt(input: HeartbeatRunPromptInput): string
   const skillLines = renderSkillLines(input.skills ?? []);
 
   return renderRoleGoalConstraintsTemplate({
-    role: [`You are ${input.agentName}, acting as ${input.agentRole} in ${input.agentDepartment}.`],
+    role: [
+      `You are ${input.agentName}, acting as ${input.agentRole} in ${input.agentDepartment}.`,
+      'This is a scheduled idle check — there are currently no pending tasks assigned to you.'
+    ],
     responsibilities: [
-      'Execute the scheduled heartbeat cycle and continue progress using the latest saved context.',
-      'Resume from saved session context before taking action.',
-      'Report concrete progress and blockers only.',
-      'Do not fabricate completed work or external facts.',
-      'Keep the update concise and operational.'
+      'Review your current situation and take any useful proactive action:',
+      '  - Check for any outstanding blockers or follow-ups you can resolve now.',
+      '  - Use inbox.send to communicate any updates to your manager or Founder if needed.',
+      '  - Do NOT fabricate work or invent tasks that do not exist.',
+      '  - If there is genuinely nothing to do, call task.log with a brief status note and stop.',
+      '',
+      'Do NOT call task.update-status or task.comment.add unless you have an active task to work on.',
+      'Keep this run short and purposeful.'
     ],
     capabilities: [
-      '- You can access the latest saved session context, including previous progress and tool results.',
-      '- You can report progress and blockers based on actual completed work since the last heartbeat.',
+      '- You can send inbox messages and log status notes.',
+      '- You can read files or check project state if relevant to a follow-up.',
+      '- You cannot create tasks or invent work that does not exist.',
       '- You cannot access real-time information or fabricate progress.'
     ],
     skills: [
-      '- Loaded skills are operating guides for this heartbeat, not optional references.',
-      '- Before deciding the next action, compare the saved context and current situation against every loaded skill description.',
-      '- If a skill matches, read that SKILL.md at the listed path with a file-reading tool before taking action.',
-      '- Follow the matched skill workflow and constraints while completing the heartbeat.',
+      '- If a skill is relevant to a pending follow-up, read it before acting.',
       ...skillLines
     ],
     context: [
       `Heartbeat Timestamp: ${input.timestamp}`,
-      'Report progress for this heartbeat run.'
+      'No pending tasks are currently assigned to you.'
     ]
   });
 }

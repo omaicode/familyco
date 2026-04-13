@@ -36,6 +36,14 @@ export interface TaskExecutionResult {
   summary: string;
 }
 
+export interface BatchTaskExecutionResult {
+  agentId: string;
+  tasksRun: number;
+  results: TaskExecutionResult[];
+  // Last result for backward compat with heartbeat
+  lastResult: TaskExecutionResult;
+}
+
 export interface TaskExecutionCoordinatorOptions {
   chatEngineService: ChatEngineService;
   toolExecutor: DefaultToolExecutor;
@@ -53,23 +61,51 @@ export interface TaskExecutionCoordinatorOptions {
 export class TaskExecutionCoordinator {
   constructor(private readonly options: TaskExecutionCoordinatorOptions) {}
 
-  async executeForAgent(agentId: string): Promise<TaskExecutionResult> {
+  async executeForAgent(agentId: string): Promise<BatchTaskExecutionResult> {
+    const noTasksResult: TaskExecutionResult = {
+      taskId: '', agentId, status: 'no_tasks', summary: 'No actionable tasks found'
+    };
+
     const agent = await this.options.agentService.getAgentById(agentId).catch(() => null);
     if (!agent) {
-      return { taskId: '', agentId, status: 'skipped', summary: 'Agent not found' };
+      const skipped: TaskExecutionResult = { taskId: '', agentId, status: 'skipped', summary: 'Agent not found' };
+      return { agentId, tasksRun: 0, results: [skipped], lastResult: skipped };
     }
 
-    const task = await this.selectNextTask(agentId);
-    if (!task) {
-      return { taskId: '', agentId, status: 'no_tasks', summary: 'No actionable tasks found' };
+    const results: TaskExecutionResult[] = [];
+    const executedTaskIds = new Set<string>();
+
+    // Process all actionable tasks for this agent in priority order.
+    // Re-query after each run so status changes from the previous task are reflected.
+    while (true) {
+      const task = await this.selectNextTask(agentId, executedTaskIds);
+      if (!task) {
+        break;
+      }
+
+      executedTaskIds.add(task.id);
+      const result = await this.executeTask(agent, task);
+      results.push(result);
+
+      // Stop batch if the run produced a blocking or skipped outcome
+      if (result.status === 'skipped') {
+        break;
+      }
     }
 
-    return this.executeTask(agent, task);
+    if (results.length === 0) {
+      return { agentId, tasksRun: 0, results: [noTasksResult], lastResult: noTasksResult };
+    }
+
+    const lastResult = results[results.length - 1] ?? noTasksResult;
+    return { agentId, tasksRun: results.length, results, lastResult };
   }
 
-  async selectNextTask(agentId: string): Promise<Task | null> {
+  async selectNextTask(agentId: string, excludeIds?: Set<string>): Promise<Task | null> {
     const tasks = await this.options.taskService.listTasks({ assigneeAgentId: agentId });
-    const actionable = tasks.filter((t) => ACTIONABLE_STATUSES.has(t.status));
+    const actionable = tasks.filter(
+      (t) => ACTIONABLE_STATUSES.has(t.status) && !(excludeIds?.has(t.id))
+    );
 
     if (actionable.length === 0) {
       return null;
