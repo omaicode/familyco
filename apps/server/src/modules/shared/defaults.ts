@@ -1,4 +1,6 @@
 import type { AgentService, ProjectService, SettingsService } from '@familyco/core';
+import { ensureProjectWorkspaceDir } from '../project/workspace-dir';
+import { asNonEmptyString } from '../../tools/tool.helpers';
 
 interface ResolveExecutiveAgentIdInput {
   agentService: AgentService;
@@ -68,10 +70,22 @@ export async function resolveDefaultProjectId(
     return existingDefaultProject.id;
   }
 
+  let projectDirPath: string | null = null;
+  const workspaceSetting = await input.settingsService.get('workspace.path').catch(() => null);
+  const dirPath = await ensureProjectWorkspaceDir(
+    typeof workspaceSetting?.value === 'string' ? workspaceSetting.value : null,
+    'default'
+  ).catch(() => null);
+
+  if (dirPath) {
+    projectDirPath = dirPath;
+  }  
+
   const createdProject = await input.projectService.createProject({
     name: `Default`,
     description: 'Default project for founder requests that are routed to the L0 executive agent.',
-    ownerAgentId: executiveAgentId
+    ownerAgentId: executiveAgentId,
+    dirPath: projectDirPath
   });
 
   await input.settingsService.upsert({
