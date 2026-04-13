@@ -44,6 +44,10 @@ export function registerEventGateway(app: FastifyInstance, deps: EventGatewayDep
   deps.eventBus.on('task.status.updated', (payload) => forward('task.status.updated', payload));
   deps.eventBus.on('approval.requested', (payload) => forward('approval.requested', payload));
   deps.eventBus.on('approval.decided', (payload) => forward('approval.decided', payload));
+  deps.eventBus.on('agent.run.started', (payload) => forward('agent.run.started', payload));
+  deps.eventBus.on('agent.run.step', (payload) => forward('agent.run.step', payload));
+  deps.eventBus.on('agent.run.completed', (payload) => forward('agent.run.completed', payload));
+  deps.eventBus.on('agent.run.failed', (payload) => forward('agent.run.failed', payload));
 
   app.addHook('onClose', async () => {
     for (const client of clients) {

@@ -589,5 +589,19 @@ export default {
   'Approved': 'Đã duyệt',
   'Rejected': 'Đã từ chối',
   'Status changed': 'Trạng thái thay đổi',
-  'Assigned': 'Đã giao'
+  'Assigned': 'Đã giao',
+
+  // ── Agent activity widget ──────────────────────────────
+  'activity.widget.title': 'Hoạt động trực tiếp',
+  'activity.widget.empty': 'Không có hoạt động nào ngay lúc này.',
+  'activity.widget.active_count': '{count} đang chạy',
+  'activity.widget.run.started': 'Bắt đầu',
+  'activity.widget.run.completed': 'Hoàn thành',
+  'activity.widget.run.failed': 'Thất bại',
+  'activity.widget.run.waiting_approval': 'Chờ phê duyệt',
+  'activity.widget.run.waiting_input': 'Chờ thông tin',
+  'activity.widget.step': 'Bước {step}',
+  'activity.widget.tool': 'Đang dùng: {tool}',
+  'activity.widget.elapsed': '{seconds}s trước',
+  'activity.widget.close': 'Đóng bảng hoạt động'
 }

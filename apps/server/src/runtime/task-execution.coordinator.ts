@@ -4,6 +4,7 @@ import {
   type AgentProfile,
   type AgentService,
   type AuditService,
+  type EventBus,
   type InboxService,
   type TaskService,
   type Task,
@@ -43,6 +44,7 @@ export interface TaskExecutionCoordinatorOptions {
   agentService: AgentService;
   skillsService?: SkillsService;
   sessionStore: TaskSessionStore;
+  eventBus?: EventBus;
   companyName?: string;
 }
 
@@ -104,6 +106,14 @@ export class TaskExecutionCoordinator {
   private async executeTask(agent: AgentProfile, task: Task): Promise<TaskExecutionResult> {
     const session = await this.loadOrCreateSession(task, agent);
 
+    this.options.eventBus?.emit('agent.run.started', {
+      agentId: agent.id,
+      agentName: agent.name,
+      taskId: task.id,
+      sessionId: session.sessionId,
+      taskTitle: task.title
+    });
+
     const comments = await this.loadTaskComments(task.id);
 
     const adapterConfig = await this.options.chatEngineService.getAdapterConfig(
@@ -112,6 +122,12 @@ export class TaskExecutionCoordinator {
     );
 
     if (!adapterConfig) {
+      this.options.eventBus?.emit('agent.run.failed', {
+        agentId: agent.id,
+        taskId: task.id,
+        sessionId: session.sessionId,
+        error: 'No AI adapter configured for agent'
+      });
       return {
         taskId: task.id,
         agentId: agent.id,
@@ -122,6 +138,12 @@ export class TaskExecutionCoordinator {
 
     const adapter = this.options.chatEngineService.getAdapter(adapterConfig.adapterId);
     if (!adapter) {
+      this.options.eventBus?.emit('agent.run.failed', {
+        agentId: agent.id,
+        taskId: task.id,
+        sessionId: session.sessionId,
+        error: `Adapter not found: ${adapterConfig.adapterId}`
+      });
       return {
         taskId: task.id,
         agentId: agent.id,
@@ -157,6 +179,7 @@ export class TaskExecutionCoordinator {
     });
 
     const toolsUsed: string[] = [];
+    let stepCount = 0;
 
     const loopResult = await runAgentLoop({
       adapter,
@@ -167,6 +190,15 @@ export class TaskExecutionCoordinator {
       availableTools: filteredTools,
       maxRounds: 8,
       executeTool: async (toolInput) => {
+        stepCount += 1;
+        this.options.eventBus?.emit('agent.run.step', {
+          agentId: agent.id,
+          taskId: task.id,
+          sessionId: session.sessionId,
+          step: stepCount,
+          toolName: toolInput.toolName,
+          summary: `Calling ${toolInput.toolName}`
+        });
         const result = await this.options.toolExecutor.execute({
           toolName: toolInput.toolName,
           arguments: toolInput.arguments
@@ -176,6 +208,12 @@ export class TaskExecutionCoordinator {
       }
     }).catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);
+      this.options.eventBus?.emit('agent.run.failed', {
+        agentId: agent.id,
+        taskId: task.id,
+        sessionId: session.sessionId,
+        error: message
+      });
       return { finalReply: `Task execution error: ${message}`, turns: [], totalTurns: 0 };
     });
 
@@ -203,6 +241,14 @@ export class TaskExecutionCoordinator {
         toolsUsed,
         summary: updatedSession.summary.slice(0, 500)
       }
+    });
+
+    this.options.eventBus?.emit('agent.run.completed', {
+      agentId: agent.id,
+      taskId: task.id,
+      sessionId: session.sessionId,
+      status: sessionStatus,
+      summary: updatedSession.summary.slice(0, 300)
     });
 
     if (sessionStatus === 'completed') {

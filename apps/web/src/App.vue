@@ -12,6 +12,7 @@ import SplashScreen from './components/SplashScreen.vue';
 import AppSidebar from './components/AppSidebar.vue';
 import AppTopbar from './components/AppTopbar.vue';
 import FcToastViewport from './components/toast/FcToastViewport.vue';
+import AgentActivityWidget from './components/AgentActivityWidget.vue';
 import { useI18n } from './composables/useI18n';
 
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -338,6 +339,9 @@ onUnmounted(() => {
       </main>
     </div>
   </div>
+
+  <!-- ── Live agent activity widget ───────────────────── -->
+  <AgentActivityWidget v-if="!isSetupRoute" />
 </template>
 
 <style scoped>

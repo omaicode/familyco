@@ -224,7 +224,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     inboxService,
     agentService,
     skillsService,
-    sessionStore: taskSessionStore
+    sessionStore: taskSessionStore,
+    eventBus
   });
 
   const queueService = new InMemoryQueueService({
