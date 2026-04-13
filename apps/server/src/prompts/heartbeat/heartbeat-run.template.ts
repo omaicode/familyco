@@ -13,7 +13,7 @@ export function renderHeartbeatRunPrompt(input: HeartbeatRunPromptInput): string
       'Follow these steps in order:',
       '',
       'Step 1 — List your tasks:',
-      `  Call task.list with assigneeId="${input.agentId}" to see all tasks assigned to you.`,
+      `  Call task.list with assigneeAgentId="${input.agentId}" to see all tasks assigned to you.`,
       '  Focus on tasks with status "in_progress" or "pending" (not "done", "cancelled", or "blocked").',
       '',
       'Step 2 — Decide:',
