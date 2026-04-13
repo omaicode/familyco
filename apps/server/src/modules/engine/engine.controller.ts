@@ -8,6 +8,7 @@ import {
 } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
+import type { HeartbeatRuntimeService } from '../../runtime/heartbeat-runtime.service.js';
 import type { DailyQuotaGuard } from '../shared/daily-quota.guard.js';
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { ensureApproval } from '../shared/approval-flow.js';
@@ -25,6 +26,7 @@ export interface EngineModuleDeps {
   approvalGuard: ApprovalGuard;
   dailyQuotaGuard: DailyQuotaGuard;
   agentRunService: AgentRunService;
+  heartbeatRuntime?: HeartbeatRuntimeService;
 }
 
 export function registerEngineController(app: FastifyInstance, deps: EngineModuleDeps): void {
@@ -200,5 +202,25 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
       type: 'tool.execute',
       runtimeState: runLifecycle.current
     };
+  });
+
+  app.post('/engine/heartbeat/trigger', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
+
+    if (!deps.heartbeatRuntime) {
+      reply.code(503);
+      return { statusCode: 503, code: 'HEARTBEAT_NOT_AVAILABLE', message: 'Heartbeat runtime is not available.' };
+    }
+
+    await deps.heartbeatRuntime.forceRun();
+
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'heartbeat.force_trigger',
+      payload: { triggeredBy: request.authContext?.subject ?? 'system' }
+    });
+
+    reply.code(202);
+    return { triggered: true, message: 'Heartbeat force-triggered for all agents.' };
   });
 }

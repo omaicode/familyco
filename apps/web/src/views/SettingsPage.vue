@@ -310,6 +310,19 @@ const restartOnboarding = async () => {
   }
 };
 
+const triggerHeartbeat = async () => {
+  systemBusy.value = true;
+  feedback.value = null;
+  try {
+    await uiRuntime.api.triggerHeartbeat();
+    setFeedback('success', t('settings.heartbeatTriggered'));
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : 'Failed to trigger heartbeat');
+  } finally {
+    systemBusy.value = false;
+  }
+};
+
 // ── Visible settings (hide secrets) ───────────────────────
 const visibleSettings = computed(() =>
   uiRuntime.stores.settings.state.data.filter(s => !s.key.toLowerCase().includes('apikey'))
@@ -794,6 +807,21 @@ useAutoReload(reload);
                   </FcButton>
                 </div>
                 <p class="st-hint">Exports a JSON snapshot of the current workspace settings. Provider API keys are excluded for safety.</p>
+              </section>
+
+              <section class="st-system-card">
+                <div class="st-system-card-head">
+                  <h5>{{ t('settings.agentRuntime') }}</h5>
+                  <p>{{ t('settings.agentRuntimeDesc') }}</p>
+                </div>
+
+                <div class="st-system-actions">
+                  <FcButton variant="secondary" size="sm" :disabled="systemBusy" @click="triggerHeartbeat">
+                    <RefreshCw :size="13" />
+                    {{ t('settings.triggerHeartbeat') }}
+                  </FcButton>
+                </div>
+                <p class="st-hint">{{ t('settings.triggerHeartbeatHint') }}</p>
               </section>
 
               <section class="st-system-card st-system-card-danger">

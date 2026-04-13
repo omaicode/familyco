@@ -618,5 +618,10 @@ export default {
   'activity.widget.step': 'Step {{step}}',
   'activity.widget.tool': 'Using: {{tool}}',
   'activity.widget.elapsed': '{{seconds}}s ago',
-  'activity.widget.close': 'Close activity panel'
+  'activity.widget.close': 'Close activity panel',
+  'settings.agentRuntime': 'Agent runtime',
+  'settings.agentRuntimeDesc': 'Development and debugging tools for the agent heartbeat system.',
+  'settings.triggerHeartbeat': 'Force heartbeat now',
+  'settings.triggerHeartbeatHint': 'Bypasses the cooldown timer and immediately triggers a heartbeat poll for all agents. Useful for testing.',
+  'settings.heartbeatTriggered': 'Heartbeat triggered for all agents'
 };

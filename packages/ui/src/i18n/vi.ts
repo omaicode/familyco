@@ -617,5 +617,10 @@ export default {
   'activity.widget.step': 'Bước {{step}}',
   'activity.widget.tool': 'Đang dùng: {{tool}}',
   'activity.widget.elapsed': '{{seconds}}s trước',
-  'activity.widget.close': 'Đóng bảng hoạt động'
+  'activity.widget.close': 'Đóng bảng hoạt động',
+  'settings.agentRuntime': 'Agent runtime',
+  'settings.agentRuntimeDesc': 'Công cụ phát triển và kiểm tra cho hệ thống heartbeat của agent.',
+  'settings.triggerHeartbeat': 'Kích hoạt heartbeat ngay',
+  'settings.triggerHeartbeatHint': 'Bỏ qua thời gian chờ và kích hoạt ngay heartbeat cho tất cả agent. Hữu ích khi kiểm thử.',
+  'settings.heartbeatTriggered': 'Đã kích hoạt heartbeat cho tất cả agent'
 }

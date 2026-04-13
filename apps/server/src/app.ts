@@ -558,7 +558,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         approvalService,
         approvalGuard,
         dailyQuotaGuard,
-        agentRunService
+        agentRunService,
+        heartbeatRuntime
       });
       registerInboxController(api, { inboxService, auditService });
       registerProjectController(api, {

@@ -584,6 +584,7 @@ export interface FamilyCoApiContracts {
   answerInboxClarification: (payload: RespondInboxMessagePayload) => Promise<InboxMessageItem>;
   listSettings: () => Promise<SettingItem[]>;
   upsertSetting: (payload: UpsertSettingPayload) => Promise<SettingItem>;
+  triggerHeartbeat: () => Promise<{ triggered: boolean; message: string }>;
   testProviderAdapter: (payload: TestAdapterPayload) => Promise<AdapterTestResult>;
   initializeSetup: (payload: InitializeSetupPayload) => Promise<{
     companyName: string;
@@ -740,6 +741,7 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     }),
   listSettings: () => client.get<SettingItem[]>('/api/v1/settings'),
   upsertSetting: (payload) => client.post<SettingItem, UpsertSettingPayload>('/api/v1/settings', payload),
+  triggerHeartbeat: () => client.post<{ triggered: boolean; message: string }>('/api/v1/engine/heartbeat/trigger'),
   testProviderAdapter: (payload) =>
     client.post<AdapterTestResult, TestAdapterPayload>('/api/v1/provider/test', payload),
   initializeSetup: (payload) =>

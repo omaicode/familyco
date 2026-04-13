@@ -81,6 +81,32 @@ export class HeartbeatRuntimeService {
     }
   }
 
+  /**
+   * Force an immediate heartbeat poll, bypassing all cooldowns and in-flight guards.
+   * Resets nextHeartbeatAt and inFlight for every agent before polling.
+   * Used for testing/debugging from the Settings UI.
+   */
+  async forceRun(): Promise<void> {
+    const agents = await this.options.agentService.listAgents();
+
+    for (const agent of agents) {
+      if (agent.status === 'terminated') {
+        continue;
+      }
+
+      const state = await this.getState(agent.id);
+      await this.writeState(agent.id, {
+        ...state,
+        inFlight: false,
+        nextHeartbeatAt: undefined
+      });
+    }
+
+    // Reset poll-level guard so pollDueHeartbeats runs even if a cycle is already in progress.
+    this.pollInFlight = false;
+    await this.pollDueHeartbeats(new Date());
+  }
+
   async pollDueHeartbeats(now: Date = new Date()): Promise<void> {
     if (this.pollInFlight) {
       return;
