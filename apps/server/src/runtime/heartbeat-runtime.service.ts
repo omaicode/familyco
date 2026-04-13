@@ -104,8 +104,6 @@ export class HeartbeatRuntimeService {
           continue;
         }
 
-        // Paused agents can still run pending/in_progress tasks — only skip heartbeat.tick for them.
-        // We do NOT skip task execution for paused agents; paused = waiting for approval on a blocked task.
         const state = await this.getState(agent.id);
 
         if (state.inFlight) {
@@ -133,41 +131,10 @@ export class HeartbeatRuntimeService {
           }
         }
 
-        const pendingTaskCount = await this.countActionableTasks(agent.id);
-
-        if (pendingTaskCount > 0) {
-          const syntheticRequest: AgentRunRequest = {
-            agentId: agent.id,
-            approvalMode: 'auto',
-            action: 'task.execute',
-            toolName: 'task.execute',
-            toolArguments: {},
-            input: `Task execution for ${agent.name} at ${now.toISOString()}`
-          };
-
-          try {
-            await this.markQueued(syntheticRequest, now, intervalMs);
-            await this.options.queueService.enqueue({
-              type: 'task.execute',
-              payload: { agentId: agent.id }
-            });
-            pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: `queued:task.execute(${pendingTaskCount} tasks)` });
-
-            // Reset agent to idle so it is eligible for future task runs after completing
-            if (agent.status === 'paused') {
-              await this.options.agentService.setAgentStatus(agent.id, 'idle');
-            }
-          } catch (error) {
-            await this.markFailed(syntheticRequest, toError(error), new Date());
-            pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'failed:enqueue_error' });
-          }
-
-          continue;
-        }
-
-        // Paused agents with no actionable tasks stay paused (waiting for Founder decision)
+        // Always run heartbeat.tick AI — it will call task.list + heartbeat.dispatch itself.
+        // Paused agents (pending approval) are skipped since they have no actionable tasks.
         if (agent.status === 'paused') {
-          pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'skipped:paused_no_tasks' });
+          pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'skipped:paused_waiting_approval' });
           continue;
         }
 
@@ -175,11 +142,10 @@ export class HeartbeatRuntimeService {
           agentId: agent.id,
           approvalMode: 'auto',
           action: 'heartbeat.tick',
-          toolName: 'task.log',
-          toolArguments: {
-            message: `Heartbeat check for ${agent.name} at ${now.toISOString()}`
-          },
+          toolName: 'heartbeat.dispatch',
+          toolArguments: {},
           input: renderHeartbeatRunPrompt({
+            agentId: agent.id,
             agentName: agent.name,
             agentRole: agent.role,
             agentDepartment: agent.department,
@@ -192,9 +158,7 @@ export class HeartbeatRuntimeService {
           await this.markQueued(request, now, intervalMs);
           await this.options.queueService.enqueue({
             type: 'agent.run',
-            payload: {
-              request
-            }
+            payload: { request }
           });
           pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'queued:heartbeat.tick' });
         } catch (error) {
@@ -265,11 +229,9 @@ export class HeartbeatRuntimeService {
 
     const previousState = await this.getState(request.agentId);
 
-    // For task.execute completions, clear nextHeartbeatAt so remaining pending tasks
-    // are picked up on the next poll cycle (30s) rather than waiting the full interval.
-    const nextHeartbeatAt = request.action === 'task.execute'
-      ? undefined
-      : previousState.nextHeartbeatAt;
+    // For heartbeat.tick completions, nextHeartbeatAt was already set in markQueued.
+    // For dispatched task.execute runs (separate jobs), no cooldown needed — those don't use inFlight.
+    const nextHeartbeatAt = previousState.nextHeartbeatAt;
 
     await this.writeState(request.agentId, {
       ...previousState,

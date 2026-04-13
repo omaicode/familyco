@@ -51,6 +51,7 @@ export interface ChatUserPromptInput {
 }
 
 export interface HeartbeatRunPromptInput {
+  agentId: string;
   agentName: string;
   agentRole: string;
   agentDepartment: string;

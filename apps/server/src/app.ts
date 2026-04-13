@@ -210,6 +210,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     auditService,
     inboxService,
     approvalService
+    // queueService wired in after construction to avoid circular dependency
   });
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
@@ -234,6 +235,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     agentRunConcurrency,
     toolExecuteConcurrency
   });
+
+  // Heartbeat executor has queueService so that heartbeat.dispatch can enqueue task.execute jobs.
+  const heartbeatToolExecutor = toolExecutor.forkForHeartbeat(queueService);
+  const heartbeatAgentRunner = new AgentRunner(approvalGuard, heartbeatToolExecutor, memoryService);
+
   const heartbeatRuntime = new HeartbeatRuntimeService({
     queueService,
     agentService,
@@ -259,7 +265,9 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       await agentRunService.updateState(request.runId, { state: 'executing' });
     }
 
-    return agentRunner.run(request);
+    // Heartbeat runs need queueService so heartbeat.dispatch can enqueue task.execute jobs.
+    const runner = request.action === 'heartbeat.tick' ? heartbeatAgentRunner : agentRunner;
+    return runner.run(request);
   };
 
   const handleAgentRunCompleted = async (
@@ -357,26 +365,32 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         }
       },
       onTaskExecute: async (job) => {
+        const { agentId, taskId } = job.payload;
         const syntheticRequest = {
-          agentId: job.payload.agentId,
+          agentId,
           approvalMode: 'auto' as const,
           action: 'task.execute',
           toolName: 'task.execute',
           toolArguments: {},
-          input: `Task execution for agent ${job.payload.agentId}`
+          input: taskId
+            ? `Task execution for agent ${agentId}, task ${taskId}`
+            : `Task execution for agent ${agentId}`
         };
 
         await heartbeatRuntime.markStarted(syntheticRequest);
 
         try {
-          const batchResult = await taskCoordinator.executeForAgent(job.payload.agentId);
+          const batchResult = taskId
+            ? await taskCoordinator.executeTask(agentId, taskId)
+            : await taskCoordinator.executeForAgent(agentId);
+
           const lastResult = batchResult.lastResult;
 
           const syntheticAgentResult = {
             status: (lastResult.status === 'waiting_for_approval' || lastResult.status === 'blocked')
               ? ('blocked' as const)
               : ('completed' as const),
-            agentId: job.payload.agentId,
+            agentId,
             action: 'task.execute',
             toolName: 'task.execute'
           };
@@ -384,11 +398,12 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
           await heartbeatRuntime.markCompleted(syntheticRequest, syntheticAgentResult);
 
           await auditService.write({
-            actorId: job.payload.agentId,
+            actorId: agentId,
             action: 'engine.task.execute.completed',
-            targetId: job.payload.agentId,
+            targetId: agentId,
             payload: {
-              agentId: job.payload.agentId,
+              agentId,
+              taskId: taskId ?? null,
               tasksRun: batchResult.tasksRun,
               results: batchResult.results.map((r) => ({
                 taskId: r.taskId,
@@ -403,10 +418,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
           const normalizedError = toError(error);
           await heartbeatRuntime.markFailed(syntheticRequest, normalizedError);
           await auditService.write({
-            actorId: job.payload.agentId,
+            actorId: agentId,
             action: 'engine.task.execute.failed',
             payload: {
-              agentId: job.payload.agentId,
+              agentId,
+              taskId: taskId ?? null,
               error: normalizedError.message
             }
           });

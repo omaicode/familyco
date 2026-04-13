@@ -6,6 +6,7 @@ import type {
   AuditService,
   InboxService,
   ProjectService,
+  QueueService,
   SettingsService,
   TaskService,
   ToolExecutionInput,
@@ -23,6 +24,9 @@ export interface DefaultToolExecutorDeps {
   auditService?: AuditService;
   inboxService?: InboxService;
   approvalService?: ApprovalService;
+  queueService?: QueueService;
+  /** Executing agent's ID — set during heartbeat runs to scope dispatch. */
+  agentId?: string;
   /** Per-task working directory — scopes all file tool operations to this path. */
   workspaceRoot?: string;
 }

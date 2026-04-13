@@ -62,19 +62,25 @@ export class InMemoryQueueService implements QueueService {
 
     const type = job.type as KnownJobType;
 
-    // Deduplicate task.execute jobs: skip if a pending OR running job for the same agent already exists
+    // Deduplicate task.execute jobs: skip if a pending OR running job for the same (agentId, taskId) already exists
     if (type === 'task.execute') {
-      const agentId = (job.payload as { agentId?: string }).agentId;
+      const payload = job.payload as { agentId?: string; taskId?: string };
+      const agentId = payload.agentId;
+      const taskId = payload.taskId;
+
+      const isSameJob = (j: InMemoryQueueJob) => {
+        const p = j.payload as { agentId?: string; taskId?: string };
+        if (p.agentId !== agentId) return false;
+        // If both have taskId, match on taskId; otherwise match on agentId only
+        if (taskId && p.taskId) return p.taskId === taskId;
+        if (!taskId && !p.taskId) return true;
+        return false;
+      };
+
       const alreadyQueued =
-        this.pendingByType['task.execute'].some(
-          (j) => (j.payload as { agentId?: string }).agentId === agentId
-        ) ||
-        this.jobs.some(
-          (j) =>
-            j.type === 'task.execute' &&
-            j.status === 'running' &&
-            (j.payload as { agentId?: string }).agentId === agentId
-        );
+        this.pendingByType['task.execute'].some(isSameJob) ||
+        this.jobs.some((j) => j.type === 'task.execute' && j.status === 'running' && isSameJob(j));
+
       if (alreadyQueued) {
         await Promise.resolve();
         return;

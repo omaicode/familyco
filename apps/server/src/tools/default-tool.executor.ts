@@ -1,4 +1,4 @@
-import type { ToolExecutionInput, ToolExecutionResult, ToolExecutor } from '@familyco/core';
+import type { QueueService, ToolExecutionInput, ToolExecutionResult, ToolExecutor } from '@familyco/core';
 
 import { agentCreateTool } from './agent-create.tool.js';
 import { agentDeleteTool } from './agent-delete.tool.js';
@@ -13,6 +13,7 @@ import { fileDeleteTool } from './file-delete.tool.js';
 import { fileReadTool } from './file-read.tool.js';
 import { fileSearchTool } from './file-search.tool.js';
 import { fileWriteTool } from './file-write.tool.js';
+import { heartbeatDispatchTool } from './heartbeat-dispatch.tool.js';
 import { inboxSendTool } from './inbox-send.tool.js';
 import { jsonExtractTool } from './json-extract.tool.js';
 import { projectCreateTool } from './project-create.tool.js';
@@ -65,7 +66,8 @@ export class DefaultToolExecutor implements ToolExecutor {
       webSearchTool,
       confirmRequestTool,
       inboxSendTool,
-      approvalRequestTool
+      approvalRequestTool,
+      heartbeatDispatchTool
     ];
 
     for (const definition of definitions) {
@@ -93,5 +95,10 @@ export class DefaultToolExecutor implements ToolExecutor {
   /** Create a copy of this executor scoped to a specific workspace directory. */
   fork(workspaceRoot: string): DefaultToolExecutor {
     return new DefaultToolExecutor({ ...this.deps, workspaceRoot });
+  }
+
+  /** Create a copy of this executor configured for a heartbeat run (with queueService). */
+  forkForHeartbeat(queueService: QueueService): DefaultToolExecutor {
+    return new DefaultToolExecutor({ ...this.deps, queueService });
   }
 }

@@ -30,4 +30,5 @@ export * from './file-search.tool.js';
 export * from './file-read.tool.js';
 export * from './file-write.tool.js';
 export * from './file-delete.tool.js';
+export * from './heartbeat-dispatch.tool.js';
 export * from './default-tool.executor.js';

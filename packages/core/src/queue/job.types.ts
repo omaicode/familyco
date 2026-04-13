@@ -13,6 +13,8 @@ export interface ToolExecuteJobPayload {
 
 export interface TaskExecuteJobPayload {
   agentId: string;
+  /** When set, run this specific task instead of selecting the next one. */
+  taskId?: string;
 }
 
 export interface QueueJobPayloadMap {

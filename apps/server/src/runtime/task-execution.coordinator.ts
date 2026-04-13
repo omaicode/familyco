@@ -84,7 +84,7 @@ export class TaskExecutionCoordinator {
       }
 
       executedTaskIds.add(task.id);
-      const result = await this.executeTask(agent, task);
+      const result = await this.runTaskForAgent(agent, task);
       results.push(result);
 
       // Stop batch if the run produced a blocking or skipped outcome
@@ -99,6 +99,35 @@ export class TaskExecutionCoordinator {
 
     const lastResult = results[results.length - 1] ?? noTasksResult;
     return { agentId, tasksRun: results.length, results, lastResult };
+  }
+
+  /** Execute a specific task by ID. Used by heartbeat.dispatch to run individual tasks concurrently. */
+  async executeTask(agentId: string, taskId: string): Promise<BatchTaskExecutionResult> {
+    const noTaskResult: TaskExecutionResult = {
+      taskId, agentId, status: 'no_tasks', summary: `Task ${taskId} not found or not actionable`
+    };
+
+    const agent = await this.options.agentService.getAgentById(agentId).catch(() => null);
+    if (!agent) {
+      const skipped: TaskExecutionResult = { taskId, agentId, status: 'skipped', summary: 'Agent not found' };
+      return { agentId, tasksRun: 0, results: [skipped], lastResult: skipped };
+    }
+
+    const task = await this.options.taskService.getTask(taskId).catch(() => null);
+    if (!task) {
+      return { agentId, tasksRun: 0, results: [noTaskResult], lastResult: noTaskResult };
+    }
+
+    if (!ACTIONABLE_STATUSES.has(task.status)) {
+      const skipped: TaskExecutionResult = {
+        taskId, agentId, status: 'skipped',
+        summary: `Task ${taskId} is not actionable (status: ${task.status})`
+      };
+      return { agentId, tasksRun: 0, results: [skipped], lastResult: skipped };
+    }
+
+    const result = await this.runTaskForAgent(agent, task);
+    return { agentId, tasksRun: 1, results: [result], lastResult: result };
   }
 
   async selectNextTask(agentId: string, excludeIds?: Set<string>): Promise<Task | null> {
@@ -141,7 +170,7 @@ export class TaskExecutionCoordinator {
     return waiting;
   }
 
-  private async executeTask(agent: AgentProfile, task: Task): Promise<TaskExecutionResult> {
+  private async runTaskForAgent(agent: AgentProfile, task: Task): Promise<TaskExecutionResult> {
     const session = await this.loadOrCreateSession(task, agent);
 
     this.options.eventBus?.emit('agent.run.started', {

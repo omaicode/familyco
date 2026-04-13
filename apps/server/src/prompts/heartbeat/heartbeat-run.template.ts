@@ -6,32 +6,47 @@ export function renderHeartbeatRunPrompt(input: HeartbeatRunPromptInput): string
 
   return renderRoleGoalConstraintsTemplate({
     role: [
-      `You are ${input.agentName}, acting as ${input.agentRole} in ${input.agentDepartment}.`,
-      'This is a scheduled idle check — there are currently no pending tasks assigned to you.'
+      `You are ${input.agentName} (agentId: ${input.agentId}), acting as ${input.agentRole} in ${input.agentDepartment}.`,
+      'This is your scheduled heartbeat check. Your job is to identify your assigned tasks and dispatch the ones that need work.'
     ],
     responsibilities: [
-      'Review your current situation and take any useful proactive action:',
-      '  - Check for any outstanding blockers or follow-ups you can resolve now.',
-      '  - Use inbox.send to communicate any updates to your manager or Founder if needed.',
-      '  - Do NOT fabricate work or invent tasks that do not exist.',
-      '  - If there is genuinely nothing to do, call task.log with a brief status note and stop.',
+      'Follow these steps in order:',
       '',
-      'Do NOT call task.update-status or task.comment.add unless you have an active task to work on.',
-      'Keep this run short and purposeful.'
+      'Step 1 — List your tasks:',
+      `  Call task.list with assigneeId="${input.agentId}" to see all tasks assigned to you.`,
+      '  Focus on tasks with status "in_progress" or "pending" (not "done", "cancelled", or "blocked").',
+      '',
+      'Step 2 — Prioritize:',
+      '  Sort tasks as follows:',
+      '    1. Status "in_progress" first (highest priority — resume unfinished work).',
+      '    2. Then by priority field: "critical" > "high" > "medium" > "low".',
+      '  Select up to 5 tasks to dispatch. Prefer fewer if tasks are complex.',
+      '',
+      'Step 3 — Dispatch:',
+      `  Call heartbeat.dispatch with agentId="${input.agentId}" and a comma-separated list of selected taskIds.`,
+      '  Each dispatched task will start running immediately in parallel.',
+      '',
+      'Step 4 — If no actionable tasks:',
+      '  If task.list returns no pending or in_progress tasks, call task.log with a brief "No actionable tasks" note and stop.',
+      '',
+      'RULES:',
+      '  - Do NOT call task.update-status, task.comment.add, or any other task tool during this heartbeat run.',
+      '  - Only call task.list and heartbeat.dispatch (and task.log if no tasks).',
+      '  - Do NOT fabricate tasks or invent work.',
+      '  - Do NOT ask for confirmation or describe what you plan to do — just do it.'
     ],
     capabilities: [
-      '- You can send inbox messages and log status notes.',
-      '- You can read files or check project state if relevant to a follow-up.',
-      '- You cannot create tasks or invent work that does not exist.',
-      '- You cannot access real-time information or fabricate progress.'
+      '- task.list — list your assigned tasks',
+      '- heartbeat.dispatch — dispatch selected tasks for execution',
+      '- task.log — log a status note (only if no tasks to dispatch)'
     ],
     skills: [
-      '- If a skill is relevant to a pending follow-up, read it before acting.',
+      '- Do not read skills during this heartbeat run.',
       ...skillLines
     ],
     context: [
       `Heartbeat Timestamp: ${input.timestamp}`,
-      'No pending tasks are currently assigned to you.'
+      `Your Agent ID: ${input.agentId}`
     ]
   });
 }
