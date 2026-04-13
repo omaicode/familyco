@@ -61,7 +61,7 @@ const canNext = computed(() => {
     return form.companyName.trim().length > 0 && form.companyDescription.trim().length > 0;
   }
 
-  if (currentStep.value === 3) return form.workspacePath.trim().length > 0 || !isDesktop;
+  if (currentStep.value === 3) return form.workspacePath.trim().length > 0;
   if (currentStep.value === 4) return testResult.value?.ok === true;
   return true;
 });
@@ -339,27 +339,42 @@ const handleStepAfterEnter = (): void => {
             <div class="ob-form-group">
               <label class="ob-label">{{ t('workspace.path.label') }} <span class="ob-required">*</span></label>
 
-              <button
-                type="button"
-                class="ob-btn-folder-pick"
-                :disabled="isBrowsing"
-                :title="isDesktop ? '' : t('workspace.desktop.only')"
-                @click="isDesktop ? browseWorkspace() : undefined"
-              >
-                <FolderOpen :size="18" />
-                <span v-if="isBrowsing">{{ t('Browsing…') }}</span>
-                <span v-else-if="form.workspacePath">{{ t('workspace.change.btn') }}</span>
-                <span v-else>{{ t('workspace.choose.btn') }}</span>
-              </button>
+              <!-- Electron: native folder dialog -->
+              <template v-if="isDesktop">
+                <button
+                  type="button"
+                  class="ob-btn-folder-pick"
+                  :disabled="isBrowsing"
+                  @click="browseWorkspace"
+                >
+                  <FolderOpen :size="18" />
+                  <span v-if="isBrowsing">{{ t('Browsing…') }}</span>
+                  <span v-else-if="form.workspacePath">{{ t('workspace.change.btn') }}</span>
+                  <span v-else>{{ t('workspace.choose.btn') }}</span>
+                </button>
+                <div v-if="form.workspacePath" class="ob-path-display">
+                  <CheckCircle2 :size="13" style="color:var(--fc-success);flex-shrink:0;" />
+                  <code>{{ form.workspacePath }}</code>
+                </div>
+              </template>
 
-              <div v-if="form.workspacePath" class="ob-path-display">
-                <CheckCircle2 :size="13" style="color:var(--fc-success);flex-shrink:0;" />
-                <code>{{ form.workspacePath }}</code>
-              </div>
-              <div v-else-if="!isDesktop" class="ob-path-display ob-path-muted">
-                <AlertTriangle :size="13" style="flex-shrink:0;" />
-                <span>{{ t('workspace.desktop.only') }}</span>
-              </div>
+              <!-- Web: manual path input -->
+              <template v-else>
+                <div class="ob-input-group">
+                  <FolderOpen :size="15" class="ob-input-icon" />
+                  <input
+                    v-model="form.workspacePath"
+                    class="ob-input ob-input-with-icon"
+                    :placeholder="t('workspace.path.placeholder')"
+                    spellcheck="false"
+                    autocomplete="off"
+                  />
+                </div>
+                <div v-if="form.workspacePath" class="ob-path-display">
+                  <CheckCircle2 :size="13" style="color:var(--fc-success);flex-shrink:0;" />
+                  <code>{{ form.workspacePath }}</code>
+                </div>
+              </template>
 
               <p class="ob-hint">{{ t('workspace.path.hint') }}</p>
             </div>
@@ -807,6 +822,22 @@ const handleStepAfterEnter = (): void => {
   background: color-mix(in srgb, var(--fc-warning) 8%, var(--fc-surface));
   border-color: color-mix(in srgb, var(--fc-warning) 20%, var(--fc-border-subtle));
   color: var(--fc-text-muted);
+}
+
+/* ── Input with icon ──────────────────────────────────── */
+.ob-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ob-input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--fc-text-muted);
+  pointer-events: none;
+}
+.ob-input-with-icon {
+  padding-left: 36px;
 }
 
 /* ── Select ───────────────────────────────────────────── */

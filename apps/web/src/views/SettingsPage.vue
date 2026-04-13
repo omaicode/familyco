@@ -671,27 +671,41 @@ useAutoReload(reload);
             <div class="st-field-group">
               <label class="st-label">Workspace folder path</label>
 
-              <button
-                type="button"
-                class="st-folder-pick-btn"
-                :disabled="isBrowsingWorkspace"
-                :title="isDesktop ? '' : 'Folder picker requires the desktop app'"
-                @click="isDesktop ? browseWorkspace() : undefined"
-              >
-                <FolderOpen :size="16" />
-                <span v-if="isBrowsingWorkspace">Browsing…</span>
-                <span v-else-if="workspacePath">Change folder</span>
-                <span v-else>Choose workspace folder</span>
-              </button>
+              <!-- Electron: native folder dialog -->
+              <template v-if="isDesktop">
+                <button
+                  type="button"
+                  class="st-folder-pick-btn"
+                  :disabled="isBrowsingWorkspace"
+                  @click="browseWorkspace"
+                >
+                  <FolderOpen :size="16" />
+                  <span v-if="isBrowsingWorkspace">Browsing…</span>
+                  <span v-else-if="workspacePath">Change folder</span>
+                  <span v-else>Choose workspace folder</span>
+                </button>
+                <div v-if="workspacePath" class="st-path-display st-path-ok">
+                  <CheckCircle2 :size="13" style="color:var(--fc-success);flex-shrink:0;" />
+                  <code style="word-break:break-all;">{{ workspacePath }}</code>
+                </div>
+              </template>
 
-              <div v-if="workspacePath" class="st-path-display st-path-ok">
-                <CheckCircle2 :size="13" style="color:var(--fc-success);flex-shrink:0;" />
-                <code style="word-break:break-all;">{{ workspacePath }}</code>
-              </div>
-              <div v-else-if="!isDesktop" class="st-path-display st-path-warn">
-                <ShieldAlert :size="13" style="flex-shrink:0;" />
-                <span>Folder picker is only available in the desktop app. Run FamilyCo as a desktop app to set the workspace path.</span>
-              </div>
+              <!-- Web: manual path input -->
+              <template v-else>
+                <div class="st-path-input-wrap">
+                  <FolderOpen :size="15" class="st-path-input-icon" />
+                  <FcInput
+                    id="st-workspace-path"
+                    v-model="workspacePath"
+                    placeholder="/Users/you/workspace or C:\Users\you\workspace"
+                    style="padding-left:36px;"
+                  />
+                </div>
+                <div v-if="workspacePath" class="st-path-display st-path-ok" style="margin-top:6px;">
+                  <CheckCircle2 :size="13" style="color:var(--fc-success);flex-shrink:0;" />
+                  <code style="word-break:break-all;">{{ workspacePath }}</code>
+                </div>
+              </template>
 
               <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">
                 The folder and its <code>projects/</code> sub-directory will be created automatically when a new project is added.
@@ -1011,6 +1025,19 @@ useAutoReload(reload);
   background: color-mix(in srgb, var(--fc-warning) 8%, var(--fc-surface));
   border: 1px solid color-mix(in srgb, var(--fc-warning) 20%, var(--fc-border-subtle));
   color: var(--fc-text-muted);
+}
+
+.st-path-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.st-path-input-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--fc-text-muted);
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* ── Input / Select: styles come from global styles.css ───── */
