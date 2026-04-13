@@ -16,8 +16,8 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
     {
       name: 'taskIds',
       type: 'string',
-      required: true,
-      description: 'Comma-separated list of task IDs to dispatch, in execution order (highest priority first).'
+      required: false,
+      description: 'Comma-separated list of task IDs to dispatch, in execution order (highest priority first). Omit or leave empty if there are no tasks to dispatch.'
     }
   ],
 
@@ -30,7 +30,17 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
     }
 
     if (!raw) {
-      return { ok: false, toolName: 'heartbeat.dispatch', error: { code: 'MISSING_TASK_IDS', message: 'taskIds is required' } };
+      // No tasks to dispatch — return graceful success so the heartbeat doesn't log an error.
+      return {
+        ok: true,
+        toolName: 'heartbeat.dispatch',
+        output: {
+          dispatched: [],
+          skipped: [],
+          dispatchedCount: 0,
+          message: 'No tasks to dispatch.'
+        }
+      };
     }
 
     if (!context.queueService) {
@@ -43,7 +53,16 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
       .filter((s) => s.length > 0);
 
     if (taskIds.length === 0) {
-      return { ok: false, toolName: 'heartbeat.dispatch', error: { code: 'EMPTY_TASK_IDS', message: 'No valid task IDs provided' } };
+      return {
+        ok: true,
+        toolName: 'heartbeat.dispatch',
+        output: {
+          dispatched: [],
+          skipped: [],
+          dispatchedCount: 0,
+          message: 'No valid task IDs provided — nothing dispatched.'
+        }
+      };
     }
 
     const dispatched: string[] = [];

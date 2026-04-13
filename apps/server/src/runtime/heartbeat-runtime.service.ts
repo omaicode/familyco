@@ -11,7 +11,7 @@ import { renderHeartbeatRunPrompt } from '../prompts/index.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
 
 const DEFAULT_HEARTBEAT_MINUTES = 60;
-const DEFAULT_POLL_MS = 30_000;
+const DEFAULT_POLL_MS = 60_000;
 const DEFAULT_RUN_HISTORY_LIMIT = 20;
 
 type HeartbeatRunStatus = 'queued' | 'running' | 'completed' | 'blocked' | 'failed';
