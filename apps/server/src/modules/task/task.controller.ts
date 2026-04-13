@@ -438,7 +438,7 @@ function toTaskActivity(record: AuditRecord) {
     case 'task.comment.added': {
       const body = typeof payload.body === 'string' ? payload.body : '';
       kind = 'comment';
-      summary = body.slice(0, 200);
+      summary = body;
       extra = { body };
       break;
     }
@@ -447,7 +447,7 @@ function toTaskActivity(record: AuditRecord) {
       const index = typeof payload.checkpointIndex === 'number' ? payload.checkpointIndex : 0;
       const sess = typeof payload.summary === 'string' ? payload.summary : '';
       kind = 'session.checkpoint';
-      summary = sess.length > 0 ? sess.slice(0, 200) : `Checkpoint #${index} — ${status}`;
+      summary = sess.length > 0 ? sess : `Checkpoint #${index} — ${status}`;
       extra = { checkpointIndex: index, sessionStatus: status };
       break;
     }

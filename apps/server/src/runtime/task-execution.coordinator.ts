@@ -269,7 +269,7 @@ export class TaskExecutionCoordinator {
         checkpointIndex: updatedSession.checkpointIndex,
         status: updatedSession.status,
         toolsUsed,
-        summary: updatedSession.summary.slice(0, 500)
+        summary: updatedSession.summary
       }
     });
 
