@@ -78,7 +78,7 @@ export function renderTaskUserPrompt(input: TaskUserPromptInput): string {
     '',
     '**Step 2 — Do the work:** Use available tools to make real progress on the task. Read relevant files, update records, or produce required outputs.',
     '',
-    `**Step 3 — Add a progress comment:** Call \`task.comment.add\` with taskId=\`${input.taskId}\` and authorId=\`${input.assigneeAgentId ?? 'agent'}\`. Write a clear comment describing what you did, any decisions made, and any blockers encountered.`,
+    `**Step 3 — Add a progress comment:** Call \`task.comment.add\` with taskId=\`${input.taskId}\` and authorId=\`${input.assigneeAgentId ?? 'agent'}\`. The comment body MUST use structured Markdown: a \`## Summary\` section, a \`## Actions Taken\` bullet list, a \`## Decisions Made\` bullet list, and a \`## Blockers\` section. Use blank lines between sections. Do not write a single wall of text.`,
     '',
     `**Step 4 — Set final status:** Call \`task.update-status\` with taskId=\`${input.taskId}\` and status set to one of:`,
     '  - `done` if the task is fully complete',
@@ -86,7 +86,7 @@ export function renderTaskUserPrompt(input: TaskUserPromptInput): string {
     '  - `review` if work is done but needs review',
     '  - `in_progress` if more sessions are needed',
     '',
-    '**Step 5 — Final reply:** End with a plain-text summary of what was accomplished, what decisions were made, and what the next action is (if any).',
+    '**Step 5 — Final reply:** End with a Markdown-formatted summary: what was accomplished, what decisions were made, and what the next action is (if any). Use bullet points and headers for readability.',
     '',
     '> Steps 1, 3, 4, and 5 are REQUIRED. Do not stop before completing all of them.'
   );
