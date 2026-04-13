@@ -609,14 +609,14 @@ export default {
   // ── Agent activity widget ──────────────────────────────
   'activity.widget.title': 'Live Activity',
   'activity.widget.empty': 'No agent activity right now.',
-  'activity.widget.active_count': '{count} active',
+  'activity.widget.active_count': '{{count}} active',
   'activity.widget.run.started': 'Started',
   'activity.widget.run.completed': 'Completed',
   'activity.widget.run.failed': 'Failed',
   'activity.widget.run.waiting_approval': 'Waiting approval',
   'activity.widget.run.waiting_input': 'Waiting for input',
-  'activity.widget.step': 'Step {step}',
-  'activity.widget.tool': 'Using: {tool}',
-  'activity.widget.elapsed': '{seconds}s ago',
+  'activity.widget.step': 'Step {{step}}',
+  'activity.widget.tool': 'Using: {{tool}}',
+  'activity.widget.elapsed': '{{seconds}}s ago',
   'activity.widget.close': 'Close activity panel'
 };
