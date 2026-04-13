@@ -114,6 +114,8 @@ function handleMessage(event: MessageEvent): void {
     };
     upsertRun({
       sessionId,
+      agentId: String(p.agentId ?? run?.agentId ?? ''),
+      agentName: String(p.agentName ?? run?.agentName ?? ''),
       status: 'active',
       steps: [...(run?.steps ?? []), newStep]
     });
@@ -133,6 +135,8 @@ function handleMessage(event: MessageEvent): void {
             : 'completed';
     upsertRun({
       sessionId,
+      agentId: String(p.agentId ?? ''),
+      agentName: String(p.agentName ?? runs.value.find((r) => r.sessionId === sessionId)?.agentName ?? ''),
       status,
       endedAt: new Date().toISOString(),
       summary: String(p.summary ?? '')
@@ -143,6 +147,8 @@ function handleMessage(event: MessageEvent): void {
   if (data.type === 'agent.run.failed') {
     upsertRun({
       sessionId: String(p.sessionId ?? ''),
+      agentId: String(p.agentId ?? ''),
+      agentName: String(p.agentName ?? runs.value.find((r) => r.sessionId === String(p.sessionId ?? ''))?.agentName ?? ''),
       status: 'failed',
       endedAt: new Date().toISOString(),
       error: String(p.error ?? 'Unknown error')

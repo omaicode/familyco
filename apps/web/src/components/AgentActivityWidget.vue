@@ -96,6 +96,9 @@ function elapsedSeconds(run: ActiveAgentRun): string {
             <p v-if="run.status === 'failed' && run.error" class="fc-activity-run__error">
               {{ run.error }}
             </p>
+            <p v-if="(run.status === 'completed' || run.status === 'waiting_approval' || run.status === 'waiting_input') && run.summary" class="fc-activity-run__summary">
+              {{ run.summary }}
+            </p>
           </div>
         </div>
       </div>
@@ -334,6 +337,19 @@ function elapsedSeconds(run: ActiveAgentRun): string {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.fc-activity-run__summary {
+  color: var(--fc-text-secondary, #a6adc8);
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ── Panel transition ─────────────────────────────────── */

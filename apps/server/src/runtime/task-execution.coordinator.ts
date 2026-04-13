@@ -124,6 +124,7 @@ export class TaskExecutionCoordinator {
     if (!adapterConfig) {
       this.options.eventBus?.emit('agent.run.failed', {
         agentId: agent.id,
+        agentName: agent.name,
         taskId: task.id,
         sessionId: session.sessionId,
         error: 'No AI adapter configured for agent'
@@ -140,6 +141,7 @@ export class TaskExecutionCoordinator {
     if (!adapter) {
       this.options.eventBus?.emit('agent.run.failed', {
         agentId: agent.id,
+        agentName: agent.name,
         taskId: task.id,
         sessionId: session.sessionId,
         error: `Adapter not found: ${adapterConfig.adapterId}`
@@ -194,6 +196,7 @@ export class TaskExecutionCoordinator {
         stepCount += 1;
         this.options.eventBus?.emit('agent.run.step', {
           agentId: agent.id,
+          agentName: agent.name,
           taskId: task.id,
           sessionId: session.sessionId,
           step: stepCount,
@@ -211,6 +214,7 @@ export class TaskExecutionCoordinator {
       const message = err instanceof Error ? err.message : String(err);
       this.options.eventBus?.emit('agent.run.failed', {
         agentId: agent.id,
+        agentName: agent.name,
         taskId: task.id,
         sessionId: session.sessionId,
         error: message
@@ -257,6 +261,7 @@ export class TaskExecutionCoordinator {
 
     this.options.eventBus?.emit('agent.run.completed', {
       agentId: agent.id,
+      agentName: agent.name,
       taskId: task.id,
       sessionId: session.sessionId,
       status: sessionStatus,

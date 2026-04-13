@@ -95,7 +95,9 @@ function kindClass(item: TaskActivityItem): string {
           <div v-if="item.kind === 'comment' && item.body" class="activity-comment-body">
             <MarkdownPreview :source="item.body" :empty-text="t('No comment body provided.')" />
           </div>
-          <p v-else-if="item.summary" class="activity-summary">{{ item.summary }}</p>
+          <div v-else-if="item.summary" class="activity-summary">
+            <MarkdownPreview :source="item.summary" />
+          </div>
         </div>
       </li>
     </ol>
@@ -192,8 +194,6 @@ function kindClass(item: TaskActivityItem): string {
 .activity-summary {
   font-size: 12px;
   color: var(--fc-text-secondary, #aaa);
-  margin: 0;
-  line-height: 1.5;
 }
 
 .activity-comment-body {

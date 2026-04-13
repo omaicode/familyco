@@ -11,7 +11,7 @@ export interface FamilyCoEvents {
   'approval.requested': { actorId: string; action: string };
   'approval.decided': { approvalId: string; status: string };
   'agent.run.started': { agentId: string; agentName: string; taskId: string; sessionId: string; taskTitle: string };
-  'agent.run.step': { agentId: string; taskId: string; sessionId: string; step: number; toolName: string; summary: string };
-  'agent.run.completed': { agentId: string; taskId: string; sessionId: string; status: string; summary: string };
-  'agent.run.failed': { agentId: string; taskId: string; sessionId: string; error: string };
+  'agent.run.step': { agentId: string; agentName: string; taskId: string; sessionId: string; step: number; toolName: string; summary: string };
+  'agent.run.completed': { agentId: string; agentName: string; taskId: string; sessionId: string; status: string; summary: string };
+  'agent.run.failed': { agentId: string; agentName: string; taskId: string; sessionId: string; error: string };
 }
