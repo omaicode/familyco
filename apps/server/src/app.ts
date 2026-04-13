@@ -876,23 +876,6 @@ async function ensureHeartbeatDispatch(
     .filter((item) => item.status === 'pending' || item.status === 'in_progress')
     .sort((left, right) => {
       const statusWeight = (value: unknown): number => (value === 'in_progress' ? 0 : 1);
-      const phaseGateWeight = (task: Record<string, unknown>): number => {
-        const title = typeof task.title === 'string' ? task.title.toLowerCase() : '';
-        const description = typeof task.description === 'string' ? task.description.toLowerCase() : '';
-        const text = `${title} ${description}`;
-        const gatePatterns = [
-          /kickoff/,
-          /requirement/,
-          /scope/,
-          /discovery/,
-          /tech\s*setup/,
-          /setup/,
-          /foundation/,
-          /architecture/,
-          /init/
-        ];
-        return gatePatterns.some((pattern) => pattern.test(text)) ? 0 : 1;
-      };
       const priorityWeight = (value: unknown): number => {
         if (value === 'urgent') return 0;
         if (value === 'high') return 1;
@@ -908,8 +891,6 @@ async function ensureHeartbeatDispatch(
 
       const statusDiff = statusWeight(left.status) - statusWeight(right.status);
       if (statusDiff !== 0) return statusDiff;
-      const gateDiff = phaseGateWeight(left) - phaseGateWeight(right);
-      if (gateDiff !== 0) return gateDiff;
       const priorityDiff = priorityWeight(left.priority) - priorityWeight(right.priority);
       if (priorityDiff !== 0) return priorityDiff;
       return createdWeight(left.createdAt) - createdWeight(right.createdAt);
