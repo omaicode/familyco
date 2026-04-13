@@ -6,6 +6,7 @@ import type {
   SettingsService,
   TaskService
 } from '@familyco/core';
+import { AuditService } from '@familyco/core';
 import { renderHeartbeatRunPrompt } from '../prompts/index.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
 
@@ -45,6 +46,7 @@ export interface HeartbeatRuntimeOptions {
   queueService: QueueService;
   agentService: AgentService;
   settingsService: SettingsService;
+  auditService?: AuditService;
   skillsService?: SkillsService;
   taskService?: TaskService;
   pollMs?: number;
@@ -94,12 +96,18 @@ export class HeartbeatRuntimeService {
       const intervalMs = await this.resolveHeartbeatIntervalMs();
       const agents = await this.options.agentService.listAgents();
 
+      const pollSummary: Array<{ agentId: string; agentName: string; decision: string }> = [];
+
       for (const agent of agents) {
-        if (agent.status === 'paused' || agent.status === 'terminated') {
+        if (agent.status === 'terminated') {
+          pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'skipped:terminated' });
           continue;
         }
 
+        // Paused agents can still run pending/in_progress tasks — only skip heartbeat.tick for them.
+        // We do NOT skip task execution for paused agents; paused = waiting for approval on a blocked task.
         const state = await this.getState(agent.id);
+
         if (state.inFlight) {
           if (this.isStaleInFlight(state, now, intervalMs)) {
             await this.options.agentService.setAgentStatus(agent.id, 'error');
@@ -110,7 +118,9 @@ export class HeartbeatRuntimeService {
               lastCompletedAt: now.toISOString(),
               lastError: 'Heartbeat lease expired before completion and was recovered automatically.'
             });
+            pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'stale:recovered' });
           } else {
+            pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'skipped:in_flight' });
             continue;
           }
         }
@@ -118,13 +128,14 @@ export class HeartbeatRuntimeService {
         if (state.nextHeartbeatAt) {
           const nextRunAt = Date.parse(state.nextHeartbeatAt);
           if (Number.isFinite(nextRunAt) && nextRunAt > now.getTime()) {
+            pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: `skipped:cooldown_until_${state.nextHeartbeatAt}` });
             continue;
           }
         }
 
-        const hasActionableTasks = await this.agentHasActionableTasks(agent.id);
+        const pendingTaskCount = await this.countActionableTasks(agent.id);
 
-        if (hasActionableTasks) {
+        if (pendingTaskCount > 0) {
           const syntheticRequest: AgentRunRequest = {
             agentId: agent.id,
             approvalMode: 'auto',
@@ -140,10 +151,23 @@ export class HeartbeatRuntimeService {
               type: 'task.execute',
               payload: { agentId: agent.id }
             });
+            pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: `queued:task.execute(${pendingTaskCount} tasks)` });
+
+            // Reset agent to idle so it is eligible for future task runs after completing
+            if (agent.status === 'paused') {
+              await this.options.agentService.setAgentStatus(agent.id, 'idle');
+            }
           } catch (error) {
             await this.markFailed(syntheticRequest, toError(error), new Date());
+            pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'failed:enqueue_error' });
           }
 
+          continue;
+        }
+
+        // Paused agents with no actionable tasks stay paused (waiting for Founder decision)
+        if (agent.status === 'paused') {
+          pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'skipped:paused_no_tasks' });
           continue;
         }
 
@@ -172,10 +196,22 @@ export class HeartbeatRuntimeService {
               request
             }
           });
+          pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'queued:heartbeat.tick' });
         } catch (error) {
           await this.markFailed(request, toError(error), new Date());
+          pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'failed:enqueue_error' });
         }
       }
+
+      await this.options.auditService?.write({
+        actorId: 'system',
+        action: 'heartbeat.poll.completed',
+        payload: {
+          timestamp: now.toISOString(),
+          agentsChecked: agents.length,
+          summary: pollSummary
+        }
+      });
     } finally {
       this.pollInFlight = false;
     }
@@ -222,12 +258,19 @@ export class HeartbeatRuntimeService {
     result: AgentRunResult,
     completedAt: Date = new Date()
   ): Promise<void> {
-    await this.options.agentService.setAgentStatus(
-      request.agentId,
-      result.status === 'blocked' ? 'paused' : 'idle'
-    );
+    // Always return agent to idle after completing a run.
+    // A task being blocked (waiting for approval) does NOT mean the agent is paused —
+    // the agent should remain available to pick up other pending tasks.
+    await this.options.agentService.setAgentStatus(request.agentId, 'idle');
 
     const previousState = await this.getState(request.agentId);
+
+    // For task.execute completions, clear nextHeartbeatAt so remaining pending tasks
+    // are picked up on the next poll cycle (30s) rather than waiting the full interval.
+    const nextHeartbeatAt = request.action === 'task.execute'
+      ? undefined
+      : previousState.nextHeartbeatAt;
+
     await this.writeState(request.agentId, {
       ...previousState,
       inFlight: false,
@@ -235,8 +278,13 @@ export class HeartbeatRuntimeService {
       lastCompletedAt: completedAt.toISOString(),
       lastError: undefined,
       lastAction: request.action,
-      lastToolName: request.toolName
+      lastToolName: request.toolName,
+      nextHeartbeatAt
     });
+
+    const summary = result.status === 'blocked'
+      ? result.reason ?? 'Task blocked — approval request submitted'
+      : `${request.action} completed via ${request.toolName}`;
 
     await this.appendRunRecord(request.agentId, {
       id: `heartbeat-${request.agentId}-${completedAt.getTime()}`,
@@ -247,10 +295,22 @@ export class HeartbeatRuntimeService {
       scheduledAt: previousState.lastScheduledAt,
       startedAt: previousState.lastStartedAt,
       completedAt: completedAt.toISOString(),
-      summary:
-        result.status === 'blocked'
-          ? result.reason ?? 'Heartbeat blocked pending approval'
-          : `Heartbeat completed via ${request.toolName}`
+      summary
+    });
+
+    await this.options.auditService?.write({
+      actorId: request.agentId,
+      action: 'heartbeat.run.completed',
+      targetId: request.agentId,
+      payload: {
+        agentAction: request.action,
+        toolName: request.toolName,
+        status: result.status,
+        summary,
+        scheduledAt: previousState.lastScheduledAt,
+        startedAt: previousState.lastStartedAt,
+        completedAt: completedAt.toISOString()
+      }
     });
   }
 
@@ -283,6 +343,20 @@ export class HeartbeatRuntimeService {
       completedAt: completedAt.toISOString(),
       summary: error.message,
       error: error.message
+    });
+
+    await this.options.auditService?.write({
+      actorId: request.agentId,
+      action: 'heartbeat.run.failed',
+      targetId: request.agentId,
+      payload: {
+        agentAction: request.action,
+        toolName: request.toolName,
+        error: error.message,
+        scheduledAt: previousState.lastScheduledAt,
+        startedAt: previousState.lastStartedAt,
+        completedAt: completedAt.toISOString()
+      }
     });
   }
 
@@ -373,13 +447,15 @@ export class HeartbeatRuntimeService {
     });
   }
 
-  private async agentHasActionableTasks(agentId: string): Promise<boolean> {
+  private async countActionableTasks(agentId: string): Promise<number> {
     if (!this.options.taskService) {
-      return false;
+      return 0;
     }
 
+    // Only pending and in_progress are actionable for task execution.
+    // blocked = waiting for Founder approval — agent cannot act on those now.
     const tasks = await this.options.taskService.listTasks({ assigneeAgentId: agentId }).catch(() => []);
-    return tasks.some((t) => t.status === 'pending' || t.status === 'in_progress' || t.status === 'blocked');
+    return tasks.filter((t) => t.status === 'pending' || t.status === 'in_progress').length;
   }
 
   private async resolveHeartbeatIntervalMs(): Promise<number> {

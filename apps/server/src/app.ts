@@ -238,6 +238,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     queueService,
     agentService,
     settingsService,
+    auditService,
     skillsService,
     taskService,
     pollMs: options.heartbeatPollMs,
@@ -288,21 +289,9 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       payload: {
         status: result?.status,
         toolName: request.toolName,
-        action: request.action
-      }
-    });
-
-    await inboxService.createMessage({
-      recipientId: 'founder',
-      senderId: request.agentId,
-      type: 'report',
-      title: request.action === 'heartbeat.tick' ? 'Heartbeat completed' : `Agent run ${result?.status ?? 'completed'}`,
-      body:
-        request.action === 'heartbeat.tick'
-          ? `Heartbeat processed by ${request.toolName}`
-          : `Action ${request.action} processed by ${request.toolName}`,
-      payload: {
-        result
+        action: request.action,
+        reason: result?.status === 'blocked' ? (result.reason ?? null) : null,
+        output: result?.output ? JSON.stringify(result.output).slice(0, 1_000) : null
       }
     });
   };
@@ -324,19 +313,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       payload: {
         toolName: request.toolName,
         action: request.action,
-        message: error.message
-      }
-    });
-
-    await inboxService.createMessage({
-      recipientId: 'founder',
-      senderId: request.agentId,
-      type: 'alert',
-      title: request.action === 'heartbeat.tick' ? 'Heartbeat failed' : 'Agent run failed',
-      body: error.message,
-      payload: {
-        action: request.action,
-        toolName: request.toolName
+        error: error.message
       }
     });
   };
@@ -410,8 +387,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
             action: 'engine.task.execute.completed',
             targetId: executionResult.taskId || job.payload.agentId,
             payload: {
+              taskId: executionResult.taskId,
+              agentId: job.payload.agentId,
               status: executionResult.status,
-              summary: executionResult.summary.slice(0, 500)
+              summary: executionResult.summary
             }
           });
 
@@ -422,7 +401,10 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
           await auditService.write({
             actorId: job.payload.agentId,
             action: 'engine.task.execute.failed',
-            payload: { message: normalizedError.message }
+            payload: {
+              agentId: job.payload.agentId,
+              error: normalizedError.message
+            }
           });
           throw normalizedError;
         }
