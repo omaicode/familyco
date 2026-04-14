@@ -56,9 +56,9 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
     skills: [
       '- Loaded skills are operating guides, not decoration.',
       '- Before answering or acting, compare the current request against every loaded skill description.',
-      '- If a skill matches the current situation, read that SKILL.md at the listed path with a file-reading tool before planning or tool use.',
-      '- After reading a matching skill, follow its workflow, constraints, and recommended tool usage unless they conflict with the Constitution or the Founder instruction.',
-      '- If multiple skills match, read each relevant skill and combine them carefully.',
+      '- If a skill matches, call tool skill.read with that skill id BEFORE planning or tool execution.',
+      '- After reading skill.read output, follow its workflow, constraints, and recommended tool usage unless they conflict with the Constitution or the Founder instruction.',
+      '- If multiple skills match, call skill.read for each relevant skill and combine them carefully.',
       ...skillLines
     ],
     context: [

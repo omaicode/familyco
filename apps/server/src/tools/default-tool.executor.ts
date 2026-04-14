@@ -21,6 +21,7 @@ import { projectDeleteTool } from './project-delete.tool.js';
 import { projectListTool } from './project-list.tool.js';
 import { projectReadTool } from './project-read.tool.js';
 import { projectUpdateTool } from './project-update.tool.js';
+import { skillReadTool } from './skill-read.tool.js';
 import { taskCommentAddTool } from './task-comment-add.tool.js';
 import { taskCreateTool } from './task-create.tool.js';
 import { taskDeleteTool } from './task-delete.tool.js';
@@ -54,6 +55,7 @@ export class DefaultToolExecutor implements ToolExecutor {
   constructor(private readonly deps: DefaultToolExecutorDeps = {}) {
     const definitions: ServerToolDefinition[] = [
       companyProfileReadTool,
+      skillReadTool,
       taskCreateTool,
       taskReadTool,
       taskListTool,

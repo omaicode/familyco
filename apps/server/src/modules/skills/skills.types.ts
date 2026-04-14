@@ -5,6 +5,7 @@ export interface SkillItem {
   version: string | null;
   tags: string[];
   path: string;
+  content?: string;
   source: 'local';
   enabled: boolean;
 }

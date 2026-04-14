@@ -24,5 +24,5 @@ export function renderSkillLines(input: ChatSystemPromptInput['skills']): string
     return ['- No skills loaded for this agent.'];
   }
 
-  return input.map((skill) => `- ${skill.id} (${skill.name}): ${skill.description} Path => ${skill.path}`);
+  return input.map((skill) => `- ${skill.id} (${skill.name}): ${skill.description} Reference => ${skill.path}`);
 }

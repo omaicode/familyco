@@ -83,6 +83,7 @@ export class SkillsService {
         version: null,
         tags: [],
         path: `[plugin:${plugin.id}]`,
+        content: skill.content,
         source: 'local' as const,
         enabled: true,
         applyTo: skill.applyTo ?? []
