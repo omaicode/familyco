@@ -118,7 +118,8 @@ async function resolveParentAgentId(input: {
         .filter((value): value is string => typeof value === 'string' && value.length > 0)
         .some((value) => value.trim().toLowerCase() === normalized);
     });
+    const firstL0Agent = agents.find((agent) => agent.level === 'L0');
 
-    return match?.id;
+    return match?.id || firstL0Agent?.id;
   }
 }
