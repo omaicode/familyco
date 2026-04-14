@@ -194,8 +194,8 @@ const canArchive = (status: AgentStatus): boolean => ARCHIVABLE_AGENT_STATUSES.i
                   <Play :size="12" />
                   {{ busy[agent.id] ? t('Resuming…') : t('Resume') }}
                 </FcButton>
-                <FcButton
-                  v-if="canArchive(agent.status)"
+                <!-- <FcButton
+                  v-if="canArchive(agent.status) && agent.level !== 'L0'"
                   variant="ghost"
                   size="sm"
                   :disabled="busy[agent.id]"
@@ -203,7 +203,7 @@ const canArchive = (status: AgentStatus): boolean => ARCHIVABLE_AGENT_STATUSES.i
                 >
                   <Archive :size="12" />
                   {{ busy[agent.id] ? t('Archiving…') : t('Archive') }}
-                </FcButton>
+                </FcButton> -->
                 <FcButton
                   v-if="canDeleteAgent(agent)"
                   variant="danger"
