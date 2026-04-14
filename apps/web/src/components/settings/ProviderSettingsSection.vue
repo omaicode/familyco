@@ -24,14 +24,12 @@ const providerTesting = ref(false);
 const providerTestResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
 
 const providerDraft = reactive<Record<AdapterId, { apiKey: string; model: string }>>({
-  copilot: { apiKey: '', model: 'gpt-5-mini' },
   openai:  { apiKey: '', model: 'gpt-5-mini' },
   claude:  { apiKey: '', model: 'claude-sonnet-4-5' },
 });
 
 // ── Per-adapter API keys ───────────────────────────────────
 const adapterKeys = reactive<Record<AdapterId, { key: string; saving: boolean; testing: boolean; testResult: { ok: boolean; latencyMs?: number; error?: string } | null }>>({
-  copilot: { key: '', saving: false, testing: false, testResult: null },
   openai:  { key: '', saving: false, testing: false, testResult: null },
   claude:  { key: '', saving: false, testing: false, testResult: null },
 });
@@ -52,7 +50,7 @@ const load = () => {
   const storedProvider = getSetting('provider.name');
   const normalised = storedProvider === 'anthropic' ? 'claude' : storedProvider;
   const activeAdapter: AdapterId =
-    (normalised === 'copilot' || normalised === 'openai' || normalised === 'claude')
+    (normalised === 'openai' || normalised === 'claude')
       ? normalised
       : 'openai';
 

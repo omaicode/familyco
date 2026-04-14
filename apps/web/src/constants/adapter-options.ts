@@ -1,4 +1,4 @@
-export type AdapterId = 'copilot' | 'openai' | 'claude';
+export type AdapterId = 'openai' | 'claude';
 
 export interface AdapterOption {
   value: AdapterId;
@@ -8,21 +8,6 @@ export interface AdapterOption {
 }
 
 export const ADAPTER_OPTIONS: AdapterOption[] = [
-  {
-    value: 'copilot',
-    label: 'GitHub Copilot',
-    models: [
-      'gpt-5-mini',
-      'gpt-5.4-mini',
-      'gpt-5',
-      'gpt-5.4',
-      'claude-sonnet-4-5',
-      'claude-sonnet-4-6',
-      'claude-opus-4-6',
-      'claude-haiku-4-5'
-    ],
-    keyHint: 'ghp_… or ghu_…'
-  },
   {
     value: 'openai',
     label: 'OpenAI',
