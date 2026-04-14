@@ -54,7 +54,9 @@ export type ChatConnectionState = 'connecting' | 'connected' | 'disconnected';
 export type ChatFeedback = { type: 'success' | 'error' | 'info'; text: string } | null;
 
 export function sortThread(messages: ThreadMessage[]): ThreadMessage[] {
-  return [...messages].sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+  return [...messages]
+    .filter((message) => typeof message.payload?.supersededByMessageId !== 'string')
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

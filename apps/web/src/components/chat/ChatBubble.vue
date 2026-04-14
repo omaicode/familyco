@@ -74,14 +74,9 @@ const getStreamingStatus = (message: ThreadMessage): string => {
 
 const isEditableFounderMessage = (message: ThreadMessage): boolean =>
   message.direction === 'founder_to_agent'
-  && typeof props.onEditMessage === 'function'
-  && typeof message.payload?.supersededByMessageId !== 'string';
+  && typeof props.onEditMessage === 'function';
 
 const getEditBadge = (message: ThreadMessage): string | null => {
-  if (typeof message.payload?.supersededByMessageId === 'string') {
-    return t('chat.edit.label.superseded');
-  }
-
   if (typeof message.payload?.editedFromMessageId === 'string') {
     return t('chat.edit.label.edited');
   }

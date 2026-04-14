@@ -108,7 +108,6 @@ export default {
   'chat.composer.cancelEdit': 'Hủy sửa',
   'chat.edit.action': 'Sửa và gửi lại',
   'chat.edit.label.edited': 'Bản gửi lại đã sửa',
-  'chat.edit.label.superseded': 'Đã bị thay thế',
   'toast.dismiss': 'Đóng thông báo',
   'toast.notifications': 'Thông báo nổi',
   'chat.empty.title': 'Bắt đầu cuộc trò chuyện đầu tiên',

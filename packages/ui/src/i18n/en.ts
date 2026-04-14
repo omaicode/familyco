@@ -109,7 +109,6 @@ export default {
   'chat.composer.cancelEdit': 'Cancel edit',
   'chat.edit.action': 'Edit & resend',
   'chat.edit.label.edited': 'Edited resend',
-  'chat.edit.label.superseded': 'Superseded',
   'toast.dismiss': 'Dismiss notification',
   'toast.notifications': 'Toast notifications',
   'chat.empty.title': 'Start the first conversation',
