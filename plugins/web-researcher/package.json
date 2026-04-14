@@ -1,0 +1,11 @@
+{
+  "name": "@familyco-plugins/web-researcher",
+  "version": "1.0.0",
+  "description": "Adds web search and URL fetch capabilities to agents.",
+  "type": "module",
+  "private": true,
+  "familyco": {
+    "plugin": true,
+    "entry": "src/index.js"
+  }
+}

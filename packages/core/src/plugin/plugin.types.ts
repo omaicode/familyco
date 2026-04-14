@@ -100,6 +100,49 @@ export interface Plugin {
 }
 
 // ---------------------------------------------------------------------------
+// Plugin tool and skill definitions — exported by plugin entry module
+// ---------------------------------------------------------------------------
+
+export interface PluginToolParameter {
+  readonly name: string;
+  readonly type: string;
+  readonly required: boolean;
+  readonly description: string;
+}
+
+export interface PluginToolContext {
+  readonly pluginId: string;
+  readonly agentRunId: string | null;
+}
+
+export interface PluginToolResult {
+  ok: boolean;
+  output?: unknown;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface PluginToolDefinition {
+  /** Short tool name — loader will namespace it as plugin.{pluginId}.{name} */
+  readonly name: string;
+  readonly description: string;
+  readonly parameters: readonly PluginToolParameter[];
+  execute(args: Record<string, unknown>, ctx: PluginToolContext): Promise<PluginToolResult>;
+}
+
+export interface PluginSkillDefinition {
+  /** Short skill name — used as id prefix plugin:{pluginId}:{name} */
+  readonly name: string;
+  readonly description: string;
+  /** Full Markdown content injected into the agent's system prompt */
+  readonly content: string;
+  /** Optional agent level filter (e.g. ['L0', 'L1']). Omit to apply to all levels. */
+  readonly applyTo?: readonly string[];
+}
+
+// ---------------------------------------------------------------------------
 // Plugin lifecycle hooks — implemented by plugin entry module
 // ---------------------------------------------------------------------------
 
@@ -111,6 +154,30 @@ export interface PluginContext {
 }
 
 export interface PluginModule {
+  // ---------------------------------------------------------------------------
+  // Metadata — read by the loader to upsert into DB at discovery time
+  // ---------------------------------------------------------------------------
+  /** Human-readable plugin name, e.g. "Web Researcher" */
+  readonly name: string;
+  /** Short description of what this plugin does */
+  readonly description: string;
+  /** Semver version string */
+  readonly version?: string;
+  /** Author name or organisation */
+  readonly author?: string;
+  /** Searchable tags */
+  readonly tags?: readonly string[];
+  /** Default approval mode for side-effects triggered by this plugin */
+  readonly defaultApprovalMode?: ApprovalMode;
+  /**
+   * When true, this plugin is a built-in default: always active, cannot be disabled by the user.
+   * Set via `familyco.default: true` in the plugin's package.json.
+   */
+  readonly isDefault?: boolean;
+  /** Tools this plugin provides — real execute handlers, not stubs */
+  readonly tools?: readonly PluginToolDefinition[];
+  /** Skills this plugin provides — content injected into agent system prompts */
+  readonly skills?: readonly PluginSkillDefinition[];
   /** Called once when the plugin is loaded and registered */
   onRegister?(ctx: PluginContext): Promise<void> | void;
   /** Called when the plugin transitions to enabled */
@@ -154,4 +221,41 @@ export interface UpdatePluginInput {
   approvalMode?: ApprovalMode;
   checksum?: string;
   errorMessage?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// PluginRun — execution trace for a single capability invocation
+// ---------------------------------------------------------------------------
+
+export type PluginRunState = 'running' | 'completed' | 'failed';
+
+export interface PluginRun {
+  readonly id: string;
+  readonly pluginId: string;
+  readonly agentRunId: string | null;
+  /** Capability kind that was invoked */
+  readonly capability: PluginCapabilityKind;
+  readonly state: PluginRunState;
+  readonly inputJson: unknown | null;
+  readonly outputJson: unknown | null;
+  readonly errorMessage: string | null;
+  readonly startedAt: Date | null;
+  readonly finishedAt: Date | null;
+  readonly createdAt: Date;
+}
+
+export interface CreatePluginRunInput {
+  id: string;
+  pluginId: string;
+  agentRunId: string | null;
+  capability: PluginCapabilityKind;
+  inputJson: unknown | null;
+}
+
+export interface UpdatePluginRunInput {
+  id: string;
+  state: PluginRunState;
+  outputJson?: unknown | null;
+  errorMessage?: string | null;
+  finishedAt?: Date;
 }

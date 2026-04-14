@@ -604,6 +604,8 @@ export interface PluginListItem {
   errorMessage: string | null;
   discoveredAt: string;
   updatedAt: string;
+  /** True when this is a built-in default plugin that is always active and cannot be disabled. */
+  isDefault?: boolean;
 }
 
 export interface PluginsListResponse {

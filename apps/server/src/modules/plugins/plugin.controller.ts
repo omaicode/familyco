@@ -16,7 +16,7 @@ export function registerPluginsController(app: FastifyInstance, deps: PluginsMod
   app.get('/plugins', async (request) => {
     requireMinimumLevel(request, 'L0');
     const plugins = await deps.pluginService.list();
-    return { items: plugins };
+    return { items: plugins.map((p) => ({ ...p, isDefault: deps.pluginLoader.isDefault(p.id) })) };
   });
 
   /** Get a single plugin by id. */
@@ -27,7 +27,7 @@ export function registerPluginsController(app: FastifyInstance, deps: PluginsMod
     if (!plugin) {
       throw withStatusCode(new Error(`PLUGIN_NOT_FOUND:${id}`), 404);
     }
-    return plugin;
+    return { ...plugin, isDefault: deps.pluginLoader.isDefault(id) };
   });
 
   /** Re-scan the plugins/ directory for new or changed plugins. */
@@ -65,6 +65,14 @@ export function registerPluginsController(app: FastifyInstance, deps: PluginsMod
   app.post('/plugins/:id/disable', async (request) => {
     requireMinimumLevel(request, 'L0');
     const { id } = pluginParamsSchema.parse(request.params);
+
+    if (deps.pluginLoader.isDefault(id)) {
+      throw withStatusCode(
+        new Error(`PLUGIN_IS_DEFAULT:${id}`),
+        403
+      );
+    }
+
     const plugin = await deps.pluginService.disable(id);
     await deps.pluginLoader.refreshRegistry();
 

@@ -9,6 +9,8 @@ export interface EmbeddedServerBootstrapOptions {
   host?: string;
   port?: number;
   authApiKey?: string;
+  /** Absolute path to the external plugins directory. Defaults to FAMILYCO_PLUGINS_DIR env var. */
+  pluginsRootDir?: string;
 }
 
 /**
@@ -28,7 +30,8 @@ export const startEmbeddedServer = async (
     logger: true,
     repositoryDriver: 'prisma',
     queueDriver: 'memory',
-    authApiKey: options.authApiKey
+    authApiKey: options.authApiKey,
+    pluginsRootDir: options.pluginsRootDir
   });
 
   await app.listen({ host, port });

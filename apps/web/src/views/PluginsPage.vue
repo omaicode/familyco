@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { RefreshCw, Puzzle, Shield } from 'lucide-vue-next';
+import { computed, onMounted, ref } from "vue";
+import { RefreshCw, Puzzle, Shield, Lock } from "lucide-vue-next";
 
-import { uiRuntime } from '../runtime';
-import SkeletonList from '../components/SkeletonList.vue';
-import { useI18n } from '../composables/useI18n';
-import type { PluginListItem, PluginApprovalMode } from '@familyco/ui';
+import { uiRuntime } from "../runtime";
+import SkeletonList from "../components/SkeletonList.vue";
+import { useI18n } from "../composables/useI18n";
+import type { PluginListItem, PluginApprovalMode } from "@familyco/ui";
 
 const { t } = useI18n();
 const isDiscovering = ref(false);
@@ -14,12 +14,12 @@ const selectedPlugin = ref<PluginListItem | null>(null);
 
 const state = computed(() => uiRuntime.stores.plugins.state);
 const plugins = computed(() => state.value.data.items);
-const localPluginsPath = '/plugins';
+const localPluginsPath = "/plugins";
 
 const approvalOptions: { value: PluginApprovalMode; label: string }[] = [
-  { value: 'auto', label: 'auto' },
-  { value: 'suggest-only', label: 'suggest-only' },
-  { value: 'require-review', label: 'require-review' }
+  { value: "auto", label: "auto" },
+  { value: "suggest-only", label: "suggest-only" },
+  { value: "require-review", label: "require-review" },
 ];
 
 const discover = async (): Promise<void> => {
@@ -32,9 +32,10 @@ const discover = async (): Promise<void> => {
 };
 
 const togglePlugin = async (plugin: PluginListItem): Promise<void> => {
+  if (plugin.isDefault) return;
   pendingPluginId.value = plugin.id;
   try {
-    if (plugin.state === 'enabled') {
+    if (plugin.state === "enabled") {
       await uiRuntime.stores.plugins.disable(plugin.id);
     } else {
       await uiRuntime.stores.plugins.enable(plugin.id);
@@ -52,7 +53,10 @@ const closePluginModal = (): void => {
   selectedPlugin.value = null;
 };
 
-const changeApproval = async (plugin: PluginListItem, mode: PluginApprovalMode): Promise<void> => {
+const changeApproval = async (
+  plugin: PluginListItem,
+  mode: PluginApprovalMode
+): Promise<void> => {
   pendingPluginId.value = plugin.id;
   try {
     const updated = await uiRuntime.stores.plugins.updateApproval(plugin.id, mode);
@@ -66,10 +70,14 @@ const changeApproval = async (plugin: PluginListItem, mode: PluginApprovalMode):
 
 const stateBadgeClass = (s: string): string => {
   switch (s) {
-    case 'enabled': return 'plugins-state--enabled';
-    case 'disabled': return 'plugins-state--disabled';
-    case 'error': return 'plugins-state--error';
-    default: return 'plugins-state--discovered';
+    case "enabled":
+      return "plugins-state--enabled";
+    case "disabled":
+      return "plugins-state--disabled";
+    case "error":
+      return "plugins-state--error";
+    default:
+      return "plugins-state--discovered";
   }
 };
 
@@ -82,55 +90,68 @@ onMounted(() => {
   <section>
     <div class="fc-page-header">
       <div>
-        <h3>{{ t('Plugins') }}</h3>
-        <p>{{ t('Discover, enable and configure plugins that extend agent capabilities.') }}</p>
+        <h3>{{ t("Plugins") }}</h3>
+        <p>
+          {{
+            t("Discover, enable and configure plugins that extend agent capabilities.")
+          }}
+        </p>
       </div>
       <button class="fc-btn-primary" :disabled="isDiscovering" @click="discover">
         <RefreshCw :size="14" :class="{ 'fc-spin': isDiscovering }" />
-        {{ isDiscovering ? t('Discovering…') : t('Discover plugins') }}
+        {{ isDiscovering ? t("Discovering…") : t("Discover plugins") }}
       </button>
     </div>
 
     <div v-if="state.isLoading" class="fc-loading">
-      <p style="margin:0 0 10px;font-size:0.875rem;color:var(--fc-text-muted);">{{ t('Loading plugins…') }}</p>
+      <p style="margin: 0 0 10px; font-size: 0.875rem; color: var(--fc-text-muted)">
+        {{ t("Loading plugins…") }}
+      </p>
       <SkeletonList />
     </div>
 
     <div v-else-if="state.errorMessage" class="fc-error">
       <p>{{ state.errorMessage }}</p>
-      <button class="fc-btn-secondary" @click="discover">{{ t('Retry') }}</button>
+      <button class="fc-btn-secondary" @click="discover">{{ t("Retry") }}</button>
     </div>
 
     <template v-else>
       <div v-if="plugins.length === 0" class="fc-empty">
         <Puzzle :size="22" class="fc-empty-icon" />
-        <h4>{{ t('No plugins found') }}</h4>
-        <p>{{ t('Create a folder in plugins path with a PLUGIN.md file to register a new plugin.', { path: localPluginsPath }) }}</p>
+        <h4>{{ t("No plugins found") }}</h4>
+        <p>
+          {{
+            t(
+              "Create a folder in plugins path with a PLUGIN.md file to register a new plugin.",
+              { path: localPluginsPath }
+            )
+          }}
+        </p>
       </div>
 
       <article v-else class="fc-card">
         <table class="fc-budget-table">
           <thead>
             <tr>
-              <th>{{ t('Name') }}</th>
-              <th>{{ t('Capabilities') }}</th>
-              <th>{{ t('State') }}</th>
-              <th>{{ t('Actions') }}</th>
+              <th>{{ t("Name") }}</th>
+              <th>{{ t("State") }}</th>
+              <th>{{ t("Actions") }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="plugin in plugins" :key="plugin.id">
               <td>
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                  <strong>{{ plugin.name }}</strong>
-                  <span class="fc-list-meta plugins-description">{{ plugin.description }}</span>
-                </div>
-              </td>
-              <td>
-                <div class="plugins-caps">
-                  <span v-for="cap in plugin.capabilities" :key="cap.kind + cap.name" class="plugins-cap-tag">
-                    {{ cap.kind }}
-                  </span>
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <div>
+                    <strong>{{ plugin.name }}</strong>
+                    <span v-if="plugin.isDefault" class="plugins-default-badge">
+                      <Lock :size="10" style="vertical-align: middle" />
+                      {{ t("Default") }}
+                    </span>
+                  </div>
+                  <span class="fc-list-meta plugins-description">{{
+                    plugin.description
+                  }}</span>
                 </div>
               </td>
               <td>
@@ -141,19 +162,28 @@ onMounted(() => {
               <td>
                 <div class="fc-inline-actions">
                   <button class="fc-btn-secondary" @click="viewPlugin(plugin)">
-                    {{ t('View') }}
+                    {{ t("View") }}
                   </button>
                   <button
                     class="fc-btn-secondary"
-                    :disabled="pendingPluginId === plugin.id || plugin.state === 'error'"
+                    :disabled="
+                      pendingPluginId === plugin.id ||
+                      plugin.state === 'error' ||
+                      plugin.isDefault
+                    "
+                    :title="
+                      plugin.isDefault
+                        ? t('Default plugins cannot be disabled')
+                        : undefined
+                    "
                     @click="togglePlugin(plugin)"
                   >
                     {{
                       pendingPluginId === plugin.id
-                        ? t('Refreshing…')
-                        : plugin.state === 'enabled'
-                          ? t('Disable')
-                          : t('Enable')
+                        ? t("Refreshing…")
+                        : plugin.state === "enabled"
+                        ? t("Disable")
+                        : t("Enable")
                     }}
                   </button>
                 </div>
@@ -168,38 +198,75 @@ onMounted(() => {
         class="plugins-modal-wrap"
         @click.self="closePluginModal"
       >
-        <div class="plugins-modal" role="dialog" aria-modal="true" :aria-label="selectedPlugin.name">
+        <div
+          class="plugins-modal"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="selectedPlugin.name"
+        >
           <div class="plugins-modal-header">
             <div>
               <h4 class="fc-card-title">{{ selectedPlugin.name }}</h4>
-              <span class="plugins-state-badge" :class="stateBadgeClass(selectedPlugin.state)">
+              <span
+                class="plugins-state-badge"
+                :class="stateBadgeClass(selectedPlugin.state)"
+              >
                 {{ selectedPlugin.state }}
               </span>
+              <span v-if="selectedPlugin.isDefault" class="plugins-default-badge">
+                <Lock :size="10" style="vertical-align: middle" />
+                {{ t("Default") }}
+              </span>
             </div>
-            <button class="fc-btn-secondary" @click="closePluginModal">{{ t('Close') }}</button>
+            <button class="fc-btn-secondary" @click="closePluginModal">
+              {{ t("Close") }}
+            </button>
           </div>
 
           <p class="plugins-modal-description">{{ selectedPlugin.description }}</p>
 
-          <dl class="fc-list-meta" style="display:grid; grid-template-columns: auto 1fr; gap:4px 10px; margin-top: 10px;">
-            <dt>{{ t('ID') }}</dt><dd>{{ selectedPlugin.id }}</dd>
-            <dt>{{ t('Version') }}</dt><dd>{{ selectedPlugin.version }}</dd>
-            <dt>{{ t('Author') }}</dt><dd>{{ selectedPlugin.author ?? '—' }}</dd>
-            <dt>{{ t('Path') }}</dt><dd>{{ selectedPlugin.path }}</dd>
-            <dt>{{ t('Tags') }}</dt><dd>{{ selectedPlugin.tags.length > 0 ? selectedPlugin.tags.join(', ') : '—' }}</dd>
-            <dt>{{ t('Checksum') }}</dt><dd style="font-family:monospace;font-size:0.75rem;">{{ selectedPlugin.checksum }}</dd>
-            <dt>{{ t('Discovered at') }}</dt><dd>{{ selectedPlugin.discoveredAt }}</dd>
+          <dl
+            class="fc-list-meta"
+            style="
+              display: grid;
+              grid-template-columns: auto 1fr;
+              gap: 4px 10px;
+              margin-top: 10px;
+            "
+          >
+            <dt>{{ t("ID") }}</dt>
+            <dd>{{ selectedPlugin.id }}</dd>
+            <dt>{{ t("Version") }}</dt>
+            <dd>{{ selectedPlugin.version }}</dd>
+            <dt>{{ t("Author") }}</dt>
+            <dd>{{ selectedPlugin.author ?? "—" }}</dd>
+            <dt>{{ t("Path") }}</dt>
+            <dd>{{ selectedPlugin.path }}</dd>
+            <dt>{{ t("Tags") }}</dt>
+            <dd>
+              {{ selectedPlugin.tags.length > 0 ? selectedPlugin.tags.join(", ") : "—" }}
+            </dd>
+            <dt>{{ t("Checksum") }}</dt>
+            <dd style="font-family: monospace; font-size: 0.75rem">
+              {{ selectedPlugin.checksum }}
+            </dd>
+            <dt>{{ t("Discovered at") }}</dt>
+            <dd>{{ selectedPlugin.discoveredAt }}</dd>
           </dl>
 
-          <div class="plugins-caps" style="margin-top: 10px;">
-            <span v-for="cap in selectedPlugin.capabilities" :key="cap.kind + cap.name" class="plugins-cap-tag">
+          <div class="plugins-caps" style="margin-top: 10px">
+            <span
+              v-for="cap in selectedPlugin.capabilities"
+              :key="cap.kind + cap.name"
+              class="plugins-cap-tag"
+            >
               {{ cap.kind }}: {{ cap.name }}
             </span>
           </div>
 
-          <div class="plugins-approval" style="margin-top: 14px;">
+          <div class="plugins-approval" style="margin-top: 14px" v-if="!selectedPlugin.isDefault">
             <Shield :size="14" />
-            <label>{{ t('Approval mode') }}</label>
+            <label>{{ t("Approval mode") }}</label>
             <select
               :value="selectedPlugin.approvalMode"
               :disabled="pendingPluginId === selectedPlugin.id"
@@ -245,10 +312,36 @@ onMounted(() => {
   font-size: 0.75rem;
   font-weight: 500;
 }
-.plugins-state--enabled { background: #dcfce7; color: #166534; }
-.plugins-state--disabled { background: #f1f5f9; color: #475569; }
-.plugins-state--error { background: #fee2e2; color: #991b1b; }
-.plugins-state--discovered { background: #dbeafe; color: #1e40af; }
+.plugins-state--enabled {
+  background: #dcfce7;
+  color: #166534;
+}
+.plugins-state--disabled {
+  background: #f1f5f9;
+  color: #475569;
+}
+.plugins-state--error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.plugins-state--discovered {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.plugins-default-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: var(--fc-surface-hover);
+  color: var(--fc-text-muted);
+  vertical-align: middle;
+}
 
 .plugins-approval {
   display: flex;

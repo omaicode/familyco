@@ -281,9 +281,18 @@ const startDesktop = async (): Promise<void> => {
   process.env.FAMILYCO_QUEUE_DRIVER = 'memory';
   process.env.ENABLE_QUEUE_WORKERS = '0';
 
+  // Plugins are loaded from a user-writable directory outside the app bundle so
+  // they survive updates and can be managed by the user at any time.
+  // Mac:     ~/Library/Application Support/FamilyCo/plugins/
+  // Windows: C:\Users\<user>\AppData\Roaming\FamilyCo\plugins\
+  // Linux:   ~/.config/FamilyCo/plugins/
+  const pluginsRootDir = path.join(app.getPath('userData'), 'plugins');
+  mkdirSync(pluginsRootDir, { recursive: true });
+
   embeddedServer = await startEmbeddedServer({
     port: Number(process.env.DESKTOP_SERVER_PORT ?? 0),
-    host: process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1'
+    host: process.env.DESKTOP_SERVER_HOST ?? '127.0.0.1',
+    pluginsRootDir
   });
 
   updaterRuntime = startDesktopUpdater({

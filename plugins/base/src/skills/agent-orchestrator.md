@@ -1,15 +1,3 @@
----
-name: agent-orchestrator
-description: 'Manage subordinate agents with a supervisory workflow. Use for staffing, role definition, scope control, workload balancing, performance review, conflict resolution, and safe agent lifecycle management.'
-argument-hint: 'Describe the agent-management goal, current roster, and whether you need staffing, role refinement, monitoring, recovery, or retirement.'
-user-invocable: true
-metadata: 
-  version: 1.0
-  default: true
-  apply_to: ['L0']
-  tags: ['agent management', 'orchestration', 'supervisory']
----
-
 # Agent Orchestrator
 
 Use this skill when a supervisory or manager agent is responsible for managing subordinate agents themselves. Focus on the agent roster, role clarity, boundaries, oversight, and lifecycle decisions. Do not use this skill as the primary workflow for project planning or task execution tracking.

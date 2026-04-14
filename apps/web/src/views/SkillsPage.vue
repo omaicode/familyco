@@ -15,7 +15,6 @@ const selectedSkill = ref<SkillListItem | null>(null);
 const state = computed(() => uiRuntime.stores.skills.state);
 const skills = computed(() => state.value.data.items);
 const invalidSkills = computed(() => state.value.data.invalidSkills);
-const localSkillsPath = '/skills';
 
 const refresh = async (): Promise<void> => {
   isRefreshing.value = true;
@@ -92,7 +91,7 @@ onMounted(() => {
       <div v-if="skills.length === 0" class="fc-empty">
         <Sparkles :size="22" class="fc-empty-icon" />
         <h4>{{ t('No local skills found') }}</h4>
-        <p>{{ t('Create a folder in skills path with a SKILL.md file to register a new skill.', { path: localSkillsPath }) }}</p>
+        <p>{{ t('Create a folder in skills path with a SKILL.md file to register a new skill.') }}</p>
       </div>
 
       <article v-else class="fc-card">

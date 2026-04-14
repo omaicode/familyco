@@ -2,6 +2,7 @@ import type {
   Plugin,
   PluginCapabilityDescriptor,
   PluginCapabilityKind,
+  PluginModule,
   PluginState
 } from './plugin.types.js';
 
@@ -12,13 +13,25 @@ import type {
  */
 export class PluginRegistry {
   private readonly plugins = new Map<string, Plugin>();
+  private readonly loadedModules = new Map<string, PluginModule>();
 
   register(plugin: Plugin): void {
     this.plugins.set(plugin.id, plugin);
   }
 
   unregister(id: string): boolean {
+    this.loadedModules.delete(id);
     return this.plugins.delete(id);
+  }
+
+  /** Store the dynamically imported module for an enabled plugin. */
+  setLoadedModule(id: string, module: PluginModule): void {
+    this.loadedModules.set(id, module);
+  }
+
+  /** Retrieve the loaded module, if any, for a plugin. */
+  getLoadedModule(id: string): PluginModule | undefined {
+    return this.loadedModules.get(id);
   }
 
   get(id: string): Plugin | undefined {
@@ -54,5 +67,6 @@ export class PluginRegistry {
 
   clear(): void {
     this.plugins.clear();
+    this.loadedModules.clear();
   }
 }

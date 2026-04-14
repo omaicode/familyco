@@ -1,15 +1,3 @@
----
-name: project-management
-description: 'Manage projects and tasks through subordinate agents with a delegate-first workflow. Use for project planning, task breakdown, assignment, execution tracking, status reporting, and safe project/task CRUD. Prefer assigning work to worker agents instead of executing complex tasks directly.'
-argument-hint: 'Describe the project or task goal, current state, and whether you need planning, delegation, execution tracking, or reporting.'
-user-invocable: true
-metadata: 
-  version: 1.1
-  default: true
-  apply_to: ['L0']
-  tags: ['project management', 'task delegation', 'supervisory']
----
-
 # Project Management
 
 Use this skill when a manager or supervisory agent is responsible for delivering work through subordinate agents. The default behavior is delegate-first: break work into manageable units, assign each unit to the most suitable subordinate, track execution through `project.*` and `task.*`, and only perform direct execution when delegation is unnecessary or impossible.
@@ -117,7 +105,7 @@ What this project is trying to achieve.
 What is included and what is not.
 
 ## Expected Outcome
-What “done” should look like.
+What "done" should look like.
 
 ## Tech Stack
 Main technologies, frameworks, services, or platforms involved.

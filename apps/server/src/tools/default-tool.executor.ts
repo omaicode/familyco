@@ -49,6 +49,7 @@ export function filterToolDefinitionsByNames(
 
 export class DefaultToolExecutor implements ToolExecutor {
   private readonly tools = new Map<string, ServerToolDefinition>();
+  private readonly pluginTools = new Map<string, ServerToolDefinition>();
 
   constructor(private readonly deps: DefaultToolExecutorDeps = {}) {
     const definitions: ServerToolDefinition[] = [
@@ -101,7 +102,7 @@ export class DefaultToolExecutor implements ToolExecutor {
       };
     }
 
-    const tool = this.tools.get(input.toolName);
+    const tool = this.tools.get(input.toolName) ?? this.pluginTools.get(input.toolName);
     if (!tool) {
       return {
         ok: false,
@@ -125,14 +126,30 @@ export class DefaultToolExecutor implements ToolExecutor {
   }
 
   listToolDefinitions(): ToolDefinitionSummary[] {
-    return [...this.tools.values()]
+    return [...this.tools.values(), ...this.pluginTools.values()]
       .filter((tool) => this.isToolAllowed(tool.name))
       .map((tool) => toToolSummary(tool));
   }
 
+  /** Register tools provided by an enabled plugin. Replaces any previous tools for those names. */
+  registerPluginTools(tools: readonly ServerToolDefinition[]): void {
+    for (const tool of tools) {
+      this.pluginTools.set(tool.name, tool);
+    }
+  }
+
+  /** Remove all plugin-registered tools (called before re-sync). */
+  clearPluginTools(): void {
+    this.pluginTools.clear();
+  }
+
   /** Create a copy of this executor scoped to a specific workspace directory. */
   fork(workspaceRoot: string): DefaultToolExecutor {
-    return new DefaultToolExecutor({ ...this.deps, workspaceRoot });
+    const forked = new DefaultToolExecutor({ ...this.deps, workspaceRoot });
+    for (const [, tool] of this.pluginTools) {
+      forked.pluginTools.set(tool.name, tool);
+    }
+    return forked;
   }
 
   /** Create a copy of this executor configured for a heartbeat run (with queueService + agentId context). */

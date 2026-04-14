@@ -18,6 +18,7 @@ import {
   EventBus,
   InboxService,
   PluginRegistry,
+  PluginRunService,
   PluginService,
   ProjectService,
   SettingsService,
@@ -32,6 +33,7 @@ import {
   type BudgetUsageRepository,
   type InboxRepository,
   type PluginRepository as PluginRepositoryInterface,
+  type PluginRunRepository as PluginRunRepositoryInterface,
   type ProjectRepository,
   type SettingsRepository,
   type TaskRepository
@@ -69,6 +71,7 @@ import {
   InMemoryBudgetUsageRepository,
   InMemoryInboxRepository,
   InMemoryPluginRepository,
+  InMemoryPluginRunRepository,
   InMemoryProjectRepository,
   InMemorySettingsRepository,
   InMemoryTaskRepository,
@@ -81,6 +84,7 @@ import {
   PrismaBudgetUsageRepository,
   PrismaInboxRepository,
   PrismaPluginRepository,
+  PrismaPluginRunRepository,
   PrismaProjectRepository,
   PrismaSettingsRepository,
   PrismaTaskRepository,
@@ -121,7 +125,6 @@ export interface CreateAppOptions {
   enableHeartbeatScheduler?: boolean;
   heartbeatPollMs?: number;
   defaultHeartbeatMinutes?: number;
-  skillsRootDir?: string;
   pluginsRootDir?: string;
   adapterRegistry?: ReturnType<typeof createAdapterRegistry>;
 }
@@ -181,6 +184,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     budgetUsageRepository,
     inboxRepository,
     pluginRepository,
+    pluginRunRepository,
     projectRepository,
     settingsRepository,
     taskRepository,
@@ -203,22 +207,16 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const projectService = new ProjectService(projectRepository);
   const agentRunService = new AgentRunService(agentRunRepository);
   const settingsService = new SettingsService(settingsRepository);
-  const skillsService = new SkillsService(
-    settingsService,
-    options.skillsRootDir ?? path.resolve(__dirname, '../../../', 'skills')
-  );
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
   const pluginRegistry = new PluginRegistry();
   const pluginService = new PluginService(pluginRepository);
-  const pluginLoader = new PluginLoaderService({
-    pluginService,
-    pluginRegistry,
-    pluginRepository,
-    auditService,
-    pluginsRootDir: options.pluginsRootDir ?? path.resolve(__dirname, '../../../', 'plugins')
-  });
+  const pluginRunService = new PluginRunService(pluginRunRepository);
+  const skillsService = new SkillsService(
+    settingsService,
+    pluginRegistry
+  );
   const adapterRegistry = options.adapterRegistry ?? createAdapterRegistry({
     logger: app.log,
     auditService,
@@ -235,6 +233,16 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     inboxService,
     approvalService
     // queueService wired in after construction to avoid circular dependency
+  });
+  const pluginLoader = new PluginLoaderService({
+    pluginService,
+    pluginRegistry,
+    pluginRepository,
+    auditService,
+    pluginsRootDir: options.pluginsRootDir ?? process.env.FAMILYCO_PLUGINS_DIR ?? path.resolve(__dirname, '../../../', 'plugins'),
+    toolExecutor,
+    pluginRunService,
+    adapterRegistry
   });
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
@@ -906,6 +914,7 @@ function createRepositories(
   budgetUsageRepository: BudgetUsageRepository;
   inboxRepository: InboxRepository;
   pluginRepository: PluginRepositoryInterface;
+  pluginRunRepository: PluginRunRepositoryInterface;
   projectRepository: ProjectRepository;
   settingsRepository: SettingsRepository;
   taskRepository: TaskRepository;
@@ -922,6 +931,7 @@ function createRepositories(
       budgetUsageRepository: new PrismaBudgetUsageRepository(client),
       inboxRepository: new PrismaInboxRepository(client),
       pluginRepository: new PrismaPluginRepository(client),
+      pluginRunRepository: new PrismaPluginRunRepository(client),
       projectRepository: new PrismaProjectRepository(client),
       settingsRepository: new PrismaSettingsRepository(client, settingsEncryption),
       taskRepository: new PrismaTaskRepository(client),
@@ -938,6 +948,7 @@ function createRepositories(
     budgetUsageRepository: new InMemoryBudgetUsageRepository(),
     inboxRepository: new InMemoryInboxRepository(),
     pluginRepository: new InMemoryPluginRepository(),
+    pluginRunRepository: new InMemoryPluginRunRepository(),
     projectRepository: new InMemoryProjectRepository(),
     settingsRepository: new InMemorySettingsRepository(),
     taskRepository: new InMemoryTaskRepository(),
