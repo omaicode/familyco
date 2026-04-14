@@ -262,7 +262,7 @@ export function useExecutiveChat() {
     if (currentEditingMessage) {
       const editingIndex = thread.value.findIndex((message) => message.id === currentEditingMessage.id);
       if (editingIndex >= 0) {
-        thread.value = thread.value.slice(0, editingIndex + 1);
+        thread.value = thread.value.slice(0, editingIndex);
       }
     }
 
