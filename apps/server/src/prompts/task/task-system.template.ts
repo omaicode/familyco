@@ -116,12 +116,14 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
     //   '(Each tool is described as NAME, DESCRIPTION, ARGUMENT_SCHEMA.)'
     // ],
     skills: [
-      '- Loaded skills are operating guides, not decoration.',
-      '- Before answering or acting, compare the current request against every loaded skill description.',
-      '- If a skill matches the current situation, read that SKILL.md at the listed path with a file-reading tool before planning or tool use.',
-      '- After reading a matching skill, follow its workflow, constraints, and recommended tool usage unless they conflict with the Constitution or the Founder instruction.',
-      '- If multiple skills match, read each relevant skill and combine them carefully.',
-      ...skillLines
+      ...(skillLines.length > 0 ? [
+        '- Loaded skills are operating guides, not decoration.',
+        '- Before answering or acting, compare the current request against every loaded skill description.',
+        '- If a skill matches the current situation, read that SKILL.md at the listed path with a file-reading tool before planning or tool use.',
+        '- After reading a matching skill, follow its workflow, constraints, and recommended tool usage unless they conflict with the Constitution or the Founder instruction.',
+        '- If multiple skills match, read each relevant skill and combine them carefully.',
+        ...skillLines
+      ] : [])
     ]
   });
 }
