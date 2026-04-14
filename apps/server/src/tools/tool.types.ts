@@ -27,6 +27,8 @@ export interface DefaultToolExecutorDeps {
   queueService?: QueueService;
   /** Executing agent's ID — set during heartbeat runs to scope dispatch. */
   agentId?: string;
+  /** Optional tool allowlist for specialized execution contexts such as heartbeat runs. */
+  allowedToolNames?: ReadonlySet<string>;
   /** Per-task working directory — scopes all file tool operations to this path. */
   workspaceRoot?: string;
 }

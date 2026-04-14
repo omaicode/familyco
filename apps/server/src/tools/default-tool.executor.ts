@@ -33,6 +33,20 @@ import { toToolSummary } from './tool.helpers.js';
 import type { DefaultToolExecutorDeps, ServerToolDefinition, ToolDefinitionSummary } from './tool.types.js';
 import { webSearchTool } from './web-search.tool.js';
 
+export const HEARTBEAT_ALLOWED_TOOL_NAMES = new Set([
+  'task.list',
+  'task.read',
+  'task.log',
+  'heartbeat.dispatch'
+]);
+
+export function filterToolDefinitionsByNames(
+  tools: ToolDefinitionSummary[],
+  allowedToolNames: ReadonlySet<string>
+): ToolDefinitionSummary[] {
+  return tools.filter((tool) => allowedToolNames.has(tool.name));
+}
+
 export class DefaultToolExecutor implements ToolExecutor {
   private readonly tools = new Map<string, ServerToolDefinition>();
 
@@ -76,6 +90,17 @@ export class DefaultToolExecutor implements ToolExecutor {
   }
 
   async execute(input: ToolExecutionInput): Promise<ToolExecutionResult> {
+    if (!this.isToolAllowed(input.toolName)) {
+      return {
+        ok: false,
+        toolName: input.toolName,
+        error: {
+          code: 'TOOL_NOT_ALLOWED',
+          message: `${input.toolName} is not available in this execution context`
+        }
+      };
+    }
+
     const tool = this.tools.get(input.toolName);
     if (!tool) {
       throw new Error(`TOOL_NOT_FOUND:${input.toolName}`);
@@ -89,7 +114,9 @@ export class DefaultToolExecutor implements ToolExecutor {
   }
 
   listToolDefinitions(): ToolDefinitionSummary[] {
-    return [...this.tools.values()].map((tool) => toToolSummary(tool));
+    return [...this.tools.values()]
+      .filter((tool) => this.isToolAllowed(tool.name))
+      .map((tool) => toToolSummary(tool));
   }
 
   /** Create a copy of this executor scoped to a specific workspace directory. */
@@ -99,6 +126,15 @@ export class DefaultToolExecutor implements ToolExecutor {
 
   /** Create a copy of this executor configured for a heartbeat run (with queueService + agentId context). */
   forkForHeartbeat(queueService: QueueService, agentId: string): DefaultToolExecutor {
-    return new DefaultToolExecutor({ ...this.deps, queueService, agentId });
+    return new DefaultToolExecutor({
+      ...this.deps,
+      queueService,
+      agentId,
+      allowedToolNames: HEARTBEAT_ALLOWED_TOOL_NAMES
+    });
+  }
+
+  private isToolAllowed(toolName: string): boolean {
+    return this.deps.allowedToolNames?.has(toolName) ?? true;
   }
 }

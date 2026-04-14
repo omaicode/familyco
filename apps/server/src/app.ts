@@ -87,13 +87,17 @@ import {
 import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
 import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
 import { TaskExecutionCoordinator } from './runtime/task-execution.coordinator.js';
-import { DefaultToolExecutor } from './tools/index.js';
+import {
+  DefaultToolExecutor,
+  HEARTBEAT_ALLOWED_TOOL_NAMES,
+  filterToolDefinitionsByNames
+} from './tools/index.js';
 import { createAdapterRegistry } from './adapters/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
 import { SkillsService } from './modules/skills/skills.service.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
-import { ChatEngineService, filterToolsForAgent } from './modules/agent/chat-engine.service.js';
+import { ChatEngineService } from './modules/agent/chat-engine.service.js';
 
 export type RepositoryDriver = 'memory' | 'prisma';
 export type QueueDriver = 'memory';
@@ -111,6 +115,7 @@ export interface CreateAppOptions {
   heartbeatPollMs?: number;
   defaultHeartbeatMinutes?: number;
   skillsRootDir?: string;
+  adapterRegistry?: ReturnType<typeof createAdapterRegistry>;
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
@@ -196,7 +201,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
-  const adapterRegistry = createAdapterRegistry({
+  const adapterRegistry = options.adapterRegistry ?? createAdapterRegistry({
     logger: app.log,
     auditService,
     budgetUsageService
@@ -237,6 +242,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     toolExecuteConcurrency
   });
 
+  const heartbeatToolDefinitions = filterToolDefinitionsByNames(
+    toolExecutor.listToolDefinitions(),
+    HEARTBEAT_ALLOWED_TOOL_NAMES
+  );
+
   const heartbeatRuntime = new HeartbeatRuntimeService({
     queueService,
     agentService,
@@ -245,7 +255,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     taskService,
     pollMs: options.heartbeatPollMs,
     defaultHeartbeatMinutes: options.defaultHeartbeatMinutes,
-    tools: toolExecutor.listToolDefinitions()
+    tools: heartbeatToolDefinitions
   });
   const canProcessAsyncJobs = true;
   let migrationState: MigrationRunResult | null = null;
@@ -285,7 +295,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
           throw new Error(`HEARTBEAT_ADAPTER_NOT_FOUND:${adapterConfig.adapterId}`);
         }
 
-        const availableTools = filterToolsForAgent(toolExecutor.listToolDefinitions(), agent.level);
+        const availableTools = heartbeatExecutor.listToolDefinitions();
         const loopResult = await runAgentLoop({
           adapter,
           apiKey: adapterConfig.apiKey,
