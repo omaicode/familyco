@@ -17,6 +17,7 @@ export * from './stores/inbox.store.js';
 export * from './stores/project.store.js';
 export * from './stores/settings.store.js';
 export * from './stores/skills.store.js';
+export * from './stores/plugins.store.js';
 export * from './stores/task.store.js';
 export * from './pages/page-blueprints.js';
 export * from './bootstrap/ui-bootstrap.js';

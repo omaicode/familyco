@@ -8,6 +8,7 @@ export type AppRoutePath =
   | '/audit'
   | '/budget'
   | '/skills'
+  | '/plugins'
   | '/settings';
 
 export interface AppNavigationSection {
@@ -67,6 +68,11 @@ export const appNavigationSections: AppNavigationSection[] = [
     path: '/skills',
     label: 'Skills',
     description: 'Manage local SKILL.md skills and control which ones are enabled in registry.'
+  },
+  {
+    path: '/plugins',
+    label: 'Plugins',
+    description: 'Discover, enable and configure plugins that extend agent capabilities.'
   },
   {
     path: '/settings',

@@ -115,6 +115,7 @@ model AgentRun {
 	project   Project?   @relation("RunProject", fields: [linkedProjectId], references: [id])
 	task      Task?      @relation("RunTask", fields: [linkedTaskId], references: [id])
 	budgetUsages BudgetUsage[]
+	pluginRuns   PluginRun[]
 
 	@@index([rootAgentId, createdAt])
 	@@index([state, createdAt])
@@ -191,4 +192,47 @@ model TaskSessionCheckpoint {
 
 	@@index([agentId])
 	@@index([status])
+}
+
+model Plugin {
+	id             String   @id @default(cuid())
+	name           String
+	description    String
+	version        String
+	author         String?
+	tags           Json     @default("[]")
+	path           String   @unique
+	entry          String
+	capabilities   Json     @default("[]")
+	state          String   @default("discovered")
+	approvalMode   String   @default("require_review")
+	checksum       String
+	errorMessage   String?
+	discoveredAt   DateTime @default(now())
+	updatedAt      DateTime @updatedAt
+
+	runs PluginRun[]
+
+	@@index([state])
+}
+
+model PluginRun {
+	id            String    @id @default(cuid())
+	pluginId      String
+	agentRunId    String?
+	capability     String
+	state         String
+	inputJson     Json?
+	outputJson    Json?
+	errorMessage  String?
+	startedAt     DateTime?
+	finishedAt    DateTime?
+	createdAt     DateTime  @default(now())
+
+	plugin   Plugin    @relation(fields: [pluginId], references: [id])
+	agentRun AgentRun? @relation(fields: [agentRunId], references: [id])
+
+	@@index([pluginId, createdAt])
+	@@index([agentRunId])
+	@@index([state])
 }

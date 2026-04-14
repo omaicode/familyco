@@ -7,6 +7,7 @@ export * from './engine/index.js';
 export * from './events/index.js';
 export * from './inbox/index.js';
 export * from './memory/index.js';
+export * from './plugin/index.js';
 export * from './project/index.js';
 export * from './queue/index.js';
 export * from './settings/index.js';

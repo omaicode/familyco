@@ -567,6 +567,56 @@ export interface SkillsListResponse {
   invalidSkills: InvalidSkillItem[];
 }
 
+// ---------------------------------------------------------------------------
+// Plugins
+// ---------------------------------------------------------------------------
+
+export type PluginCapabilityKind =
+  | 'tool'
+  | 'skill'
+  | 'model-provider'
+  | 'web-fetch'
+  | 'web-search';
+
+export interface PluginCapabilityDescriptor {
+  kind: PluginCapabilityKind;
+  name: string;
+  description: string;
+  adapterId?: string;
+}
+
+export type PluginState = 'discovered' | 'enabled' | 'disabled' | 'error';
+export type PluginApprovalMode = 'auto' | 'suggest-only' | 'require-review';
+
+export interface PluginListItem {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  author: string | null;
+  tags: string[];
+  path: string;
+  entry: string;
+  capabilities: PluginCapabilityDescriptor[];
+  state: PluginState;
+  approvalMode: PluginApprovalMode;
+  checksum: string;
+  errorMessage: string | null;
+  discoveredAt: string;
+  updatedAt: string;
+}
+
+export interface PluginsListResponse {
+  items: PluginListItem[];
+}
+
+export interface PluginDiscoverResult {
+  added: number;
+  updated: number;
+  unchanged: number;
+  errors: Array<{ path: string; reason: string }>;
+}
+
 export interface FamilyCoApiContracts {
 
   listAgents: () => Promise<AgentListItem[]>;
@@ -622,6 +672,12 @@ export interface FamilyCoApiContracts {
   getSkill: (skillId: string) => Promise<SkillListItem>;
   enableSkill: (skillId: string) => Promise<SkillListItem>;
   disableSkill: (skillId: string) => Promise<SkillListItem>;
+  listPlugins: () => Promise<PluginsListResponse>;
+  getPlugin: (pluginId: string) => Promise<PluginListItem>;
+  discoverPlugins: () => Promise<PluginDiscoverResult>;
+  enablePlugin: (pluginId: string) => Promise<PluginListItem>;
+  disablePlugin: (pluginId: string) => Promise<PluginListItem>;
+  updatePluginApproval: (pluginId: string, approvalMode: PluginApprovalMode) => Promise<PluginListItem>;
 }
 
 export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiContracts => ({
@@ -809,5 +865,12 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   listSkills: () => client.get<SkillsListResponse>('/api/v1/skills'),
   getSkill: (skillId) => client.get<SkillListItem>(`/api/v1/skills/${skillId}`),
   enableSkill: (skillId) => client.post<SkillListItem>(`/api/v1/skills/${skillId}/enable`),
-  disableSkill: (skillId) => client.post<SkillListItem>(`/api/v1/skills/${skillId}/disable`)
+  disableSkill: (skillId) => client.post<SkillListItem>(`/api/v1/skills/${skillId}/disable`),
+  listPlugins: () => client.get<PluginsListResponse>('/api/v1/plugins'),
+  getPlugin: (pluginId) => client.get<PluginListItem>(`/api/v1/plugins/${pluginId}`),
+  discoverPlugins: () => client.post<PluginDiscoverResult>('/api/v1/plugins/discover'),
+  enablePlugin: (pluginId) => client.post<PluginListItem>(`/api/v1/plugins/${pluginId}/enable`),
+  disablePlugin: (pluginId) => client.post<PluginListItem>(`/api/v1/plugins/${pluginId}/disable`),
+  updatePluginApproval: (pluginId, approvalMode) =>
+    client.patch<PluginListItem>(`/api/v1/plugins/${pluginId}/approval`, { approvalMode })
 });

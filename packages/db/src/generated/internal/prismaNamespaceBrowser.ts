@@ -61,7 +61,9 @@ export const ModelName = {
   InboxMessage: 'InboxMessage',
   Settings: 'Settings',
   ApiKey: 'ApiKey',
-  TaskSessionCheckpoint: 'TaskSessionCheckpoint'
+  TaskSessionCheckpoint: 'TaskSessionCheckpoint',
+  Plugin: 'Plugin',
+  PluginRun: 'PluginRun'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -247,6 +249,44 @@ export const TaskSessionCheckpointScalarFieldEnum = {
 } as const
 
 export type TaskSessionCheckpointScalarFieldEnum = (typeof TaskSessionCheckpointScalarFieldEnum)[keyof typeof TaskSessionCheckpointScalarFieldEnum]
+
+
+export const PluginScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  version: 'version',
+  author: 'author',
+  tags: 'tags',
+  path: 'path',
+  entry: 'entry',
+  capabilities: 'capabilities',
+  state: 'state',
+  approvalMode: 'approvalMode',
+  checksum: 'checksum',
+  errorMessage: 'errorMessage',
+  discoveredAt: 'discoveredAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PluginScalarFieldEnum = (typeof PluginScalarFieldEnum)[keyof typeof PluginScalarFieldEnum]
+
+
+export const PluginRunScalarFieldEnum = {
+  id: 'id',
+  pluginId: 'pluginId',
+  agentRunId: 'agentRunId',
+  capability: 'capability',
+  state: 'state',
+  inputJson: 'inputJson',
+  outputJson: 'outputJson',
+  errorMessage: 'errorMessage',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type PluginRunScalarFieldEnum = (typeof PluginRunScalarFieldEnum)[keyof typeof PluginRunScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -394,7 +394,9 @@ export const ModelName = {
   InboxMessage: 'InboxMessage',
   Settings: 'Settings',
   ApiKey: 'ApiKey',
-  TaskSessionCheckpoint: 'TaskSessionCheckpoint'
+  TaskSessionCheckpoint: 'TaskSessionCheckpoint',
+  Plugin: 'Plugin',
+  PluginRun: 'PluginRun'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -410,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "agentRun" | "budgetUsage" | "inboxMessage" | "settings" | "apiKey" | "taskSessionCheckpoint"
+    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "agentRun" | "budgetUsage" | "inboxMessage" | "settings" | "apiKey" | "taskSessionCheckpoint" | "plugin" | "pluginRun"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1228,6 +1230,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Plugin: {
+      payload: Prisma.$PluginPayload<ExtArgs>
+      fields: Prisma.PluginFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PluginFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PluginFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>
+        }
+        findFirst: {
+          args: Prisma.PluginFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PluginFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>
+        }
+        findMany: {
+          args: Prisma.PluginFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>[]
+        }
+        create: {
+          args: Prisma.PluginCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>
+        }
+        createMany: {
+          args: Prisma.PluginCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PluginCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>[]
+        }
+        delete: {
+          args: Prisma.PluginDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>
+        }
+        update: {
+          args: Prisma.PluginUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>
+        }
+        deleteMany: {
+          args: Prisma.PluginDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PluginUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PluginUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>[]
+        }
+        upsert: {
+          args: Prisma.PluginUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginPayload>
+        }
+        aggregate: {
+          args: Prisma.PluginAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePlugin>
+        }
+        groupBy: {
+          args: Prisma.PluginGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PluginGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PluginCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PluginCountAggregateOutputType> | number
+        }
+      }
+    }
+    PluginRun: {
+      payload: Prisma.$PluginRunPayload<ExtArgs>
+      fields: Prisma.PluginRunFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PluginRunFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PluginRunFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>
+        }
+        findFirst: {
+          args: Prisma.PluginRunFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PluginRunFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>
+        }
+        findMany: {
+          args: Prisma.PluginRunFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>[]
+        }
+        create: {
+          args: Prisma.PluginRunCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>
+        }
+        createMany: {
+          args: Prisma.PluginRunCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PluginRunCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>[]
+        }
+        delete: {
+          args: Prisma.PluginRunDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>
+        }
+        update: {
+          args: Prisma.PluginRunUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>
+        }
+        deleteMany: {
+          args: Prisma.PluginRunDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PluginRunUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PluginRunUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>[]
+        }
+        upsert: {
+          args: Prisma.PluginRunUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PluginRunPayload>
+        }
+        aggregate: {
+          args: Prisma.PluginRunAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePluginRun>
+        }
+        groupBy: {
+          args: Prisma.PluginRunGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PluginRunGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PluginRunCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PluginRunCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1434,6 +1584,44 @@ export const TaskSessionCheckpointScalarFieldEnum = {
 } as const
 
 export type TaskSessionCheckpointScalarFieldEnum = (typeof TaskSessionCheckpointScalarFieldEnum)[keyof typeof TaskSessionCheckpointScalarFieldEnum]
+
+
+export const PluginScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  version: 'version',
+  author: 'author',
+  tags: 'tags',
+  path: 'path',
+  entry: 'entry',
+  capabilities: 'capabilities',
+  state: 'state',
+  approvalMode: 'approvalMode',
+  checksum: 'checksum',
+  errorMessage: 'errorMessage',
+  discoveredAt: 'discoveredAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PluginScalarFieldEnum = (typeof PluginScalarFieldEnum)[keyof typeof PluginScalarFieldEnum]
+
+
+export const PluginRunScalarFieldEnum = {
+  id: 'id',
+  pluginId: 'pluginId',
+  agentRunId: 'agentRunId',
+  capability: 'capability',
+  state: 'state',
+  inputJson: 'inputJson',
+  outputJson: 'outputJson',
+  errorMessage: 'errorMessage',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type PluginRunScalarFieldEnum = (typeof PluginRunScalarFieldEnum)[keyof typeof PluginRunScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1644,6 +1832,8 @@ export type GlobalOmitConfig = {
   settings?: Prisma.SettingsOmit
   apiKey?: Prisma.ApiKeyOmit
   taskSessionCheckpoint?: Prisma.TaskSessionCheckpointOmit
+  plugin?: Prisma.PluginOmit
+  pluginRun?: Prisma.PluginRunOmit
 }
 
 /* Types for Logging */

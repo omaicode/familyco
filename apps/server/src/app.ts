@@ -17,6 +17,8 @@ import {
   BudgetUsageService,
   EventBus,
   InboxService,
+  PluginRegistry,
+  PluginService,
   ProjectService,
   SettingsService,
   TaskService,
@@ -29,6 +31,7 @@ import {
   type AuditRepository,
   type BudgetUsageRepository,
   type InboxRepository,
+  type PluginRepository as PluginRepositoryInterface,
   type ProjectRepository,
   type SettingsRepository,
   type TaskRepository
@@ -65,6 +68,7 @@ import {
   InMemoryAuditRepository,
   InMemoryBudgetUsageRepository,
   InMemoryInboxRepository,
+  InMemoryPluginRepository,
   InMemoryProjectRepository,
   InMemorySettingsRepository,
   InMemoryTaskRepository,
@@ -76,6 +80,7 @@ import {
   PrismaAuditRepository,
   PrismaBudgetUsageRepository,
   PrismaInboxRepository,
+  PrismaPluginRepository,
   PrismaProjectRepository,
   PrismaSettingsRepository,
   PrismaTaskRepository,
@@ -95,6 +100,8 @@ import {
 import { createAdapterRegistry } from './adapters/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
 import { SkillsService } from './modules/skills/skills.service.js';
+import { PluginLoaderService } from './modules/plugins/plugin-loader.service.js';
+import { registerPluginsController } from './modules/plugins/plugin.controller.js';
 import { registerEventGateway } from './ws/ws-gateway.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
 import { ChatEngineService } from './modules/agent/chat-engine.service.js';
@@ -115,6 +122,7 @@ export interface CreateAppOptions {
   heartbeatPollMs?: number;
   defaultHeartbeatMinutes?: number;
   skillsRootDir?: string;
+  pluginsRootDir?: string;
   adapterRegistry?: ReturnType<typeof createAdapterRegistry>;
 }
 
@@ -172,6 +180,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     auditRepository,
     budgetUsageRepository,
     inboxRepository,
+    pluginRepository,
     projectRepository,
     settingsRepository,
     taskRepository,
@@ -201,6 +210,15 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const taskService = new TaskService(taskRepository, eventBus);
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
+  const pluginRegistry = new PluginRegistry();
+  const pluginService = new PluginService(pluginRepository);
+  const pluginLoader = new PluginLoaderService({
+    pluginService,
+    pluginRegistry,
+    pluginRepository,
+    auditService,
+    pluginsRootDir: options.pluginsRootDir ?? path.resolve(__dirname, '../../../', 'plugins')
+  });
   const adapterRegistry = options.adapterRegistry ?? createAdapterRegistry({
     logger: app.log,
     auditService,
@@ -541,6 +559,13 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     if (enableHeartbeatScheduler && canProcessAsyncJobs) {
       await heartbeatRuntime.start();
     }
+
+    // Discover plugins from filesystem (non-blocking — errors logged, not thrown)
+    try {
+      await pluginLoader.discover();
+    } catch (error) {
+      app.log.error({ err: error }, 'Plugin discovery failed during startup');
+    }
   });
 
   app.addHook('onClose', async () => {
@@ -651,6 +676,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       });
       registerSkillsController(api, {
         skillsService,
+        auditService
+      });
+      registerPluginsController(api, {
+        pluginService,
+        pluginLoader,
         auditService
       });
       registerSetupController(api, {
@@ -875,6 +905,7 @@ function createRepositories(
   auditRepository: AuditRepository;
   budgetUsageRepository: BudgetUsageRepository;
   inboxRepository: InboxRepository;
+  pluginRepository: PluginRepositoryInterface;
   projectRepository: ProjectRepository;
   settingsRepository: SettingsRepository;
   taskRepository: TaskRepository;
@@ -890,6 +921,7 @@ function createRepositories(
       auditRepository: new PrismaAuditRepository(client),
       budgetUsageRepository: new PrismaBudgetUsageRepository(client),
       inboxRepository: new PrismaInboxRepository(client),
+      pluginRepository: new PrismaPluginRepository(client),
       projectRepository: new PrismaProjectRepository(client),
       settingsRepository: new PrismaSettingsRepository(client, settingsEncryption),
       taskRepository: new PrismaTaskRepository(client),
@@ -905,6 +937,7 @@ function createRepositories(
     auditRepository: new InMemoryAuditRepository(),
     budgetUsageRepository: new InMemoryBudgetUsageRepository(),
     inboxRepository: new InMemoryInboxRepository(),
+    pluginRepository: new InMemoryPluginRepository(),
     projectRepository: new InMemoryProjectRepository(),
     settingsRepository: new InMemorySettingsRepository(),
     taskRepository: new InMemoryTaskRepository(),

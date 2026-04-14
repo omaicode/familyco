@@ -12,6 +12,7 @@ import { createInboxStore, type InboxStore } from '../stores/inbox.store.js';
 import { createProjectStore, type ProjectStore } from '../stores/project.store.js';
 import { createSettingsStore, type SettingsStore } from '../stores/settings.store.js';
 import { createSkillsStore, type SkillsStore } from '../stores/skills.store.js';
+import { createPluginsStore, type PluginsStore } from '../stores/plugins.store.js';
 import { createTaskStore, type TaskStore } from '../stores/task.store.js';
 import { buildFamilyCoCssVariables } from '../theme/css-variables.js';
 import { familyCoUITheme, type ThemePreference } from '../theme/familyco-theme.js';
@@ -32,6 +33,7 @@ export interface UIBootstrap {
     projects: ProjectStore;
     settings: SettingsStore;
     skills: SkillsStore;
+    plugins: PluginsStore;
     tasks: TaskStore;
   };
   navigation: typeof appNavigationSections;
@@ -59,6 +61,7 @@ export const bootstrapFamilyCoUI = (options: UIBootstrapOptions): UIBootstrap =>
       projects: createProjectStore(api),
       settings: createSettingsStore(api),
       skills: createSkillsStore(api),
+      plugins: createPluginsStore(api),
       tasks: createTaskStore(api)
     },
     navigation: appNavigationSections,

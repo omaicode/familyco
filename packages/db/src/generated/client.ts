@@ -96,3 +96,13 @@ export type ApiKey = Prisma.ApiKeyModel
  * 
  */
 export type TaskSessionCheckpoint = Prisma.TaskSessionCheckpointModel
+/**
+ * Model Plugin
+ * 
+ */
+export type Plugin = Prisma.PluginModel
+/**
+ * Model PluginRun
+ * 
+ */
+export type PluginRun = Prisma.PluginRunModel
