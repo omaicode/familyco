@@ -13,7 +13,7 @@ import { fileDeleteTool } from './file-delete.tool.js';
 import { fileReadTool } from './file-read.tool.js';
 import { fileSearchTool } from './file-search.tool.js';
 import { fileWriteTool } from './file-write.tool.js';
-import { heartbeatDispatchTool } from './heartbeat-dispatch.tool.js';
+import { taskDispatchTool } from './task-dispatch.tool.js';
 import { inboxSendTool } from './inbox-send.tool.js';
 import { jsonExtractTool } from './json-extract.tool.js';
 import { projectCreateTool } from './project-create.tool.js';
@@ -37,7 +37,7 @@ export const HEARTBEAT_ALLOWED_TOOL_NAMES = new Set([
   'task.list',
   'task.read',
   'task.log',
-  'heartbeat.dispatch'
+  'task.dispatch'
 ]);
 
 export function filterToolDefinitionsByNames(
@@ -81,7 +81,7 @@ export class DefaultToolExecutor implements ToolExecutor {
       confirmRequestTool,
       inboxSendTool,
       approvalRequestTool,
-      heartbeatDispatchTool
+      taskDispatchTool
     ];
 
     for (const definition of definitions) {

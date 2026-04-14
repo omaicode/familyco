@@ -273,7 +273,7 @@ test('heartbeat fallback dispatch skips high-priority tasks that are not ready',
     (record) => record.targetId === agent.id && Array.isArray(record.payload?.heartbeatTrace?.toolCalls)
   );
   const dispatchCall = agentHeartbeatAudit?.payload?.heartbeatTrace?.toolCalls?.find(
-    (call) => call.toolName === 'heartbeat.dispatch'
+    (call) => call.toolName === 'task.dispatch'
   );
 
   assert.equal(Array.isArray(dispatchCall?.output?.dispatched), true);

@@ -3,8 +3,8 @@ import type { ToolExecutionResult } from '@familyco/core';
 import { asNonEmptyString } from './tool.helpers.js';
 import type { ServerToolDefinition } from './tool.types.js';
 
-export const heartbeatDispatchTool: ServerToolDefinition = {
-  name: 'heartbeat.dispatch',
+export const taskDispatchTool: ServerToolDefinition = {
+  name: 'task.dispatch',
   description: 'Dispatch one or more of your assigned tasks for immediate execution. Each task will run as a separate concurrent job. Use this during your heartbeat run after listing your tasks.',
   parameters: [
     {
@@ -26,14 +26,14 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
     const raw = asNonEmptyString(argumentsMap.taskIds);
 
     if (!agentId) {
-      return { ok: false, toolName: 'heartbeat.dispatch', error: { code: 'MISSING_AGENT_ID', message: 'agentId is required' } };
+      return { ok: false, toolName: 'task.dispatch', error: { code: 'MISSING_AGENT_ID', message: 'agentId is required' } };
     }
 
     if (!raw) {
       // No tasks to dispatch — return graceful success so the heartbeat doesn't log an error.
       return {
         ok: true,
-        toolName: 'heartbeat.dispatch',
+        toolName: 'task.dispatch',
         output: {
           dispatched: [],
           skipped: [],
@@ -44,11 +44,11 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
     }
 
     if (!context.queueService) {
-      return { ok: false, toolName: 'heartbeat.dispatch', error: { code: 'SERVICE_UNAVAILABLE', message: 'queueService is not available' } };
+      return { ok: false, toolName: 'task.dispatch', error: { code: 'SERVICE_UNAVAILABLE', message: 'queueService is not available' } };
     }
 
     if (!context.taskService) {
-      return { ok: false, toolName: 'heartbeat.dispatch', error: { code: 'SERVICE_UNAVAILABLE', message: 'taskService is not available' } };
+      return { ok: false, toolName: 'task.dispatch', error: { code: 'SERVICE_UNAVAILABLE', message: 'taskService is not available' } };
     }
 
     const taskIds = raw
@@ -59,7 +59,7 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
     if (taskIds.length === 0) {
       return {
         ok: true,
-        toolName: 'heartbeat.dispatch',
+        toolName: 'task.dispatch',
         output: {
           dispatched: [],
           skipped: [],
@@ -109,7 +109,7 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
 
     return {
       ok: true,
-      toolName: 'heartbeat.dispatch',
+      toolName: 'task.dispatch',
       output: {
         dispatched,
         skipped,

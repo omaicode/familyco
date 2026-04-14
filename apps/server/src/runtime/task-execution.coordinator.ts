@@ -101,7 +101,7 @@ export class TaskExecutionCoordinator {
     return { agentId, tasksRun: results.length, results, lastResult };
   }
 
-  /** Execute a specific task by ID. Used by heartbeat.dispatch to run individual tasks concurrently. */
+  /** Execute a specific task by ID. Used by task.dispatch to run individual tasks concurrently. */
   async executeTask(agentId: string, taskId: string): Promise<BatchTaskExecutionResult> {
     const noTaskResult: TaskExecutionResult = {
       taskId, agentId, status: 'no_tasks', summary: `Task ${taskId} not found or not actionable`

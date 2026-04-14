@@ -31,20 +31,20 @@ export function renderHeartbeatRunPrompt(input: HeartbeatRunPromptInput): string
       '',
       'Step 3 — Dispatch:',
       '  Select up to 5 best actionable tasks after your review.',
-      `     - Call heartbeat.dispatch with agentId="${input.agentId}" and taskIds as a comma-separated list.`,
+      `     - Call task.dispatch with agentId="${input.agentId}" and taskIds as a comma-separated list.`,
       '     - STOP after dispatching. Do not call any other tools.',
       '',
       'RULES:',
       '  - Do NOT call task.update-status, task.comment.add, or any other task tool during this heartbeat run.',
-      '  - You MAY call only: task.list, task.read, heartbeat.dispatch, task.log.',
-      '  - Do NOT call heartbeat.dispatch with empty taskIds — skip it and go to task.log instead.',
+      '  - You MAY call only: task.list, task.read, task.dispatch, task.log.',
+      '  - Do NOT call task.dispatch with empty taskIds — skip it and go to task.log instead.',
       '  - Do NOT dispatch tasks whose dependsOnTaskIds or readinessRules are not satisfied.',
       '  - Do NOT fabricate tasks or invent work.',
       '  - Do NOT ask for confirmation or describe what you plan to do — just do it.'
     ],
     capabilities: [
       '- task.list — list your assigned tasks',
-      '- heartbeat.dispatch — dispatch selected tasks for execution',
+      '- task.dispatch — dispatch selected tasks for execution',
       '- task.log — log a status note (only if no tasks to dispatch)'
     ],
     tools: [

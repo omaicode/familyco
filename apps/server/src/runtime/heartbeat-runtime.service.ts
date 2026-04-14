@@ -159,7 +159,7 @@ export class HeartbeatRuntimeService {
           }
         }
 
-        // Always run heartbeat.tick AI — it will call task.list + heartbeat.dispatch itself.
+        // Always run heartbeat.tick AI — it will call task.list + task.dispatch itself.
         // Paused agents (pending approval) are skipped since they have no actionable tasks.
         if (agent.status === 'paused') {
           pollSummary.push({ agentId: agent.id, agentName: agent.name, decision: 'skipped:paused_waiting_approval' });

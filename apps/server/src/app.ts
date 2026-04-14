@@ -326,8 +326,6 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         finalReply = 'Heartbeat AI adapter is not configured. Falling back to deterministic dispatch.';
       }
 
-      await ensureHeartbeatDispatch(request.agentId, heartbeatExecutor, toolCalls);
-
       return {
         status: 'completed',
         agentId: request.agentId,
@@ -838,103 +836,6 @@ function extractHeartbeatTrace(result: AgentRunResult | undefined): unknown {
     finalReply: typeof record.finalReply === 'string' ? record.finalReply : null,
     toolCalls: record.toolCalls
   };
-}
-
-async function ensureHeartbeatDispatch(
-  agentId: string,
-  heartbeatExecutor: DefaultToolExecutor,
-  toolCalls: Array<{
-    toolName: string;
-    ok: boolean;
-    summary: string;
-    arguments: Record<string, unknown>;
-    output?: unknown;
-    error?: { code: string; message: string };
-  }>
-): Promise<void> {
-  const alreadyDispatched = toolCalls.some((call) => {
-    if (call.toolName !== 'heartbeat.dispatch' || !call.ok || !isRecord(call.output)) {
-      return false;
-    }
-    const dispatchedCount = call.output.dispatchedCount;
-    return typeof dispatchedCount === 'number' && dispatchedCount > 0;
-  });
-
-  if (alreadyDispatched) {
-    return;
-  }
-
-  const listResult = await heartbeatExecutor.execute({
-    toolName: 'task.list',
-    arguments: { assigneeAgentId: agentId }
-  });
-  toolCalls.push({
-    toolName: listResult.toolName,
-    ok: listResult.ok,
-    summary: summarizeToolResult(listResult),
-    arguments: { assigneeAgentId: agentId },
-    ...(listResult.output !== undefined ? { output: listResult.output } : {}),
-    ...(listResult.error ? { error: listResult.error } : {})
-  });
-
-  if (!listResult.ok || !isRecord(listResult.output) || !Array.isArray(listResult.output.items)) {
-    return;
-  }
-
-  const actionableTaskIds = listResult.output.items
-    .filter((item): item is Record<string, unknown> => isRecord(item))
-    .filter((item) => item.status === 'pending' || item.status === 'in_progress')
-    .filter((item) => {
-      if (!isRecord(item.readiness)) {
-        return true;
-      }
-
-      return item.readiness.ready === true;
-    })
-    .sort((left, right) => {
-      const statusWeight = (value: unknown): number => (value === 'in_progress' ? 0 : 1);
-      const priorityWeight = (value: unknown): number => {
-        if (value === 'urgent') return 0;
-        if (value === 'high') return 1;
-        if (value === 'medium') return 2;
-        if (value === 'low') return 3;
-        return 4;
-      };
-      const createdWeight = (value: unknown): number => {
-        if (typeof value !== 'string') return Number.MAX_SAFE_INTEGER;
-        const ts = Date.parse(value);
-        return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
-      };
-
-      const statusDiff = statusWeight(left.status) - statusWeight(right.status);
-      if (statusDiff !== 0) return statusDiff;
-      const priorityDiff = priorityWeight(left.priority) - priorityWeight(right.priority);
-      if (priorityDiff !== 0) return priorityDiff;
-      return createdWeight(left.createdAt) - createdWeight(right.createdAt);
-    })
-    .map((item) => (typeof item.id === 'string' ? item.id : ''))
-    .filter((id) => id.length > 0)
-    .slice(0, 5);
-
-  if (actionableTaskIds.length === 0) {
-    return;
-  }
-
-  const dispatchResult = await heartbeatExecutor.execute({
-    toolName: 'heartbeat.dispatch',
-    arguments: {
-      agentId,
-      taskIds: actionableTaskIds.join(',')
-    }
-  });
-  toolCalls.push({
-    toolName: dispatchResult.toolName,
-    ok: dispatchResult.ok,
-    summary: summarizeToolResult(dispatchResult),
-    arguments: { agentId, taskIds: actionableTaskIds.join(',') },
-    ...(dispatchResult.output !== undefined ? { output: dispatchResult.output } : {}),
-    ...(dispatchResult.error ? { error: dispatchResult.error } : {})
-  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
