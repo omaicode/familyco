@@ -29,7 +29,10 @@ test('renderHeartbeatRunPrompt follows Role Goal Constraints pattern', () => {
   assert.equal(prompt.includes('Call task.list again with assigneeAgentId="agent-001" and status="pending".'), true);
   assert.equal(prompt.includes('Use dependsOnTaskIds and readinessRules from task.list output to skip work that is not actually ready.'), true);
   assert.equal(prompt.includes('If title alone is ambiguous, call task.read for specific task(s) to clarify scope, dependencies, readinessRules, or readiness blockers.'), true);
+  assert.equal(prompt.includes('Call task.dispatch with agentId="agent-001" and taskIds as a JSON array of IDs, e.g. ["task-1","task-2"].'), true);
+  assert.equal(prompt.includes('task.dispatch is mandatory when actionable tasks exist; this heartbeat run is incomplete until the dispatch call happens.'), true);
   assert.equal(prompt.includes('You MAY call only: task.list, task.read, task.dispatch, task.log.'), true);
+  assert.equal(prompt.includes('Never replace task.dispatch with a text summary. Tool call execution is required.'), true);
   assert.equal(prompt.includes('Do NOT dispatch tasks whose dependsOnTaskIds or readinessRules are not satisfied.'), true);
   assert.equal(
     prompt.includes('- agent-orchestrator (Agent Orchestrator): Manage subordinate agents. Path => /data/projects/familyco/skills/agent-orchestrator/SKILL.md'),

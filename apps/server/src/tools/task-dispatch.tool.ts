@@ -15,21 +15,22 @@ export const taskDispatchTool: ServerToolDefinition = {
     },
     {
       name: 'taskIds',
-      type: 'string',
+      type: 'array',
       required: false,
-      description: 'Comma-separated list of task IDs to dispatch, in execution order (highest priority first). Omit or leave empty if there are no tasks to dispatch.'
+      items: { type: 'string' },
+      description: 'Ordered list of task IDs to dispatch (highest priority first). A comma-separated string is also accepted for backward compatibility.'
     }
   ],
 
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
     const agentId = asNonEmptyString(argumentsMap.agentId) ?? context.agentId;
-    const raw = asNonEmptyString(argumentsMap.taskIds);
+    const taskIds = parseTaskIds(argumentsMap.taskIds);
 
     if (!agentId) {
       return { ok: false, toolName: 'task.dispatch', error: { code: 'MISSING_AGENT_ID', message: 'agentId is required' } };
     }
 
-    if (!raw) {
+    if (taskIds.length === 0) {
       // No tasks to dispatch — return graceful success so the heartbeat doesn't log an error.
       return {
         ok: true,
@@ -49,24 +50,6 @@ export const taskDispatchTool: ServerToolDefinition = {
 
     if (!context.taskService) {
       return { ok: false, toolName: 'task.dispatch', error: { code: 'SERVICE_UNAVAILABLE', message: 'taskService is not available' } };
-    }
-
-    const taskIds = raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    if (taskIds.length === 0) {
-      return {
-        ok: true,
-        toolName: 'task.dispatch',
-        output: {
-          dispatched: [],
-          skipped: [],
-          dispatchedCount: 0,
-          message: 'No valid task IDs provided — nothing dispatched.'
-        }
-      };
     }
 
     const dispatched: string[] = [];
@@ -120,3 +103,21 @@ export const taskDispatchTool: ServerToolDefinition = {
     };
   }
 };
+
+function parseTaskIds(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => asNonEmptyString(entry))
+      .filter((entry): entry is string => typeof entry === 'string');
+  }
+
+  const raw = asNonEmptyString(value);
+  if (!raw) {
+    return [];
+  }
+
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}

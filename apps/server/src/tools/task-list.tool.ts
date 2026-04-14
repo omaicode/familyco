@@ -62,13 +62,23 @@ export const taskListTool: ServerToolDefinition = {
       query
     });
 
+    const items = tasks.slice(0, limit).map((t) => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      priority: t.priority,
+      projectId: t.projectId,
+      assigneeAgentId: t.assigneeAgentId,
+      dependsOnTaskIds: t.dependsOnTaskIds,
+      readiness: t.readiness,
+      // Keep only the first line / goal sentence to save tokens
+      description: summarizeDescription(t.description)
+    }));
+
     return {
       ok: true,
       toolName: 'task.list',
-      output: {
-        total: tasks.length,
-        items: tasks.slice(0, limit)
-      }
+      output: { total: tasks.length, items }
     };
   }
 };
@@ -125,4 +135,11 @@ async function resolveAgentReference(input: {
       .some((value) => value.trim().toLowerCase() === normalized)
   );
   return matched?.id ?? null;
+}
+
+/** Keep only the first line (usually the Goal sentence), capped at 120 chars. */
+function summarizeDescription(desc: string | null | undefined): string | null {
+  if (!desc) return null;
+  const firstLine = desc.split('\n')[0].trim();
+  return firstLine.length > 120 ? `${firstLine.slice(0, 117)}...` : firstLine;
 }

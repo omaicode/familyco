@@ -263,4 +263,59 @@ describe('runAgentLoop', () => {
     assert.equal(receivedPreviousTurns[0].length, 0);
     assert.equal(receivedPreviousTurns[1].length, 1);
   });
+
+  it('truncates oversized nested tool output fields to preserve turn payload', async () => {
+    let secondRoundOutput = '';
+    const adapterWithSpy: AiAdapter = {
+      id: 'test',
+      name: 'Test',
+      description: 'Spy adapter',
+      keyHint: 'key',
+      defaultModel: 'test-model',
+      availableModels: ['test-model'],
+      chat: async (input: AdapterChatInput): Promise<AdapterChatResult> => {
+        if ((input.previousTurns?.length ?? 0) === 0) {
+          return {
+            content: '',
+            toolCalls: [{ name: 'task.list', arguments: { status: 'pending' } }],
+            tokenUsage: { prompt: 0, completion: 0, total: 0 }
+          };
+        }
+
+        secondRoundOutput = input.previousTurns?.[0]?.toolInteractions?.[0]?.output ?? '';
+        return {
+          content: 'done',
+          toolCalls: [],
+          tokenUsage: { prompt: 0, completion: 0, total: 0 }
+        };
+      },
+      testConnection: async () => ({ ok: true, latencyMs: 0 })
+    };
+
+    const hugeDescription = 'x'.repeat(20_000);
+    await runAgentLoop({
+      adapter: adapterWithSpy,
+      apiKey: 'key',
+      model: 'gpt-4o',
+      systemPrompt: '',
+      userPrompt: 'huge payload',
+      executeTool: async () => ({
+        ok: true,
+        output: {
+          total: 1,
+          items: [
+            {
+              id: 'task-1',
+              title: 'Huge',
+              description: hugeDescription
+            }
+          ]
+        }
+      })
+    });
+
+    assert.equal(secondRoundOutput.length > 0, true);
+    assert.equal(secondRoundOutput.includes('"id":"task-1"'), true);
+    assert.equal(secondRoundOutput.includes(hugeDescription), false);
+  });
 });

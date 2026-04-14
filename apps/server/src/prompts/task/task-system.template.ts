@@ -54,7 +54,7 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
       `  1. Call task.update-status (status=in_progress) at the START — ONLY if the task is not already in_progress.`,
       `  2. Do the actual work using available tools.`,
       `  3. Call task.comment.add with a structured Markdown comment (see format below).`,
-      `  4. Call task.update-status with the correct final status (done / blocked / review / in_progress).`,
+      `  4. Call task.update-status with the correct final status (blocked / review / in_progress).`,
       `  5. Produce a final reply in Markdown format summarizing the outcome.`,
       '',
       'Steps 1, 3, 4, and 5 are non-negotiable. Missing any of them is an execution failure.',

@@ -191,12 +191,23 @@ function serializeOutput(value: unknown): string {
   }
 
   try {
-    const serialized = JSON.stringify(value);
+    const serialized = JSON.stringify(value, (_, nestedValue) => {
+      if (
+        typeof nestedValue === 'string'
+        && nestedValue.length > 2_000
+      ) {
+        return `${nestedValue.slice(0, 1_997)}...`;
+      }
+
+      return nestedValue;
+    });
     if (!serialized) {
       return '';
     }
 
-    return serialized.length > 2_000 ? `${serialized.slice(0, 1_999).trimEnd()}…` : serialized;
+    // Per-field truncation above handles individual large strings.
+    // Use a generous outer cap so multi-item lists (e.g. task.list with 6+ tasks) stay valid JSON.
+    return serialized.length > 12_000 ? `${serialized.slice(0, 11_999).trimEnd()}…` : serialized;
   } catch {
     return '';
   }
