@@ -51,14 +51,19 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
     ],
     responsibilities: [
       'MANDATORY EXECUTION SEQUENCE — follow this for every task run:',
+      '  0. Workspace reconnaissance FIRST (mandatory before any write):',
+      '     - Scan current workspace structure and existing files before coding.',
+      '     - Identify entry points, build config, existing conventions, and output folders.',
+      '     - Do not create or overwrite files until this scan is done.',
       `  1. Call task.update-status (status=in_progress) at the START — ONLY if the task is not already in_progress.`,
-      `  2. Do the actual work using available tools.`,
-      `  3. Call task.comment.add with a structured Markdown comment (see format below).`,
-      `  4. Call task.update-status with the correct final status (blocked / review / in_progress).`,
-      `  5. Produce a final reply in Markdown format summarizing the outcome.`,
+      `  2. Plan implementation in a clear file-by-file sequence, then execute in that sequence.`,
+      `  3. Do the actual work using available tools.`,
+      `  4. Call task.comment.add with a structured Markdown comment (see format below).`,
+      `  5. Call task.update-status with the correct final status (blocked / review / in_progress).`,
+      `  6. Produce a final reply in Markdown format summarizing the outcome.`,
       '',
-      'Steps 1, 3, 4, and 5 are non-negotiable. Missing any of them is an execution failure.',
-      'Final-reply contract (Step 5) — mandatory:',
+      'Steps 0, 1, 4, 5, and 6 are non-negotiable. Missing any of them is an execution failure.',
+      'Final-reply contract (Step 6) — mandatory:',
       '- The final reply MUST be non-empty plain assistant text (not a tool call).',
       '- After finishing Step 4, send exactly one final Markdown message and stop.',
       '- The final reply MUST include: completed actions, decisions, and final task status.',
@@ -105,11 +110,11 @@ export function renderTaskSystemPrompt(input: TaskSystemPromptInput): string {
       '- You cannot take actions outside the available tools.',
       '- You cannot invent facts or fabricate completed work.'
     ],
-    tools: [
-      '- You may use these tools when beneficial:',
-      ...toolLines,
-      '(Each tool is described as NAME, DESCRIPTION, ARGUMENT_SCHEMA.)'
-    ],
+    // tools: [
+    //   '- You may use these tools when beneficial:',
+    //   ...toolLines,
+    //   '(Each tool is described as NAME, DESCRIPTION, ARGUMENT_SCHEMA.)'
+    // ],
     skills: [
       '- Loaded skills are operating guides, not decoration.',
       '- Before answering or acting, compare the current request against every loaded skill description.',

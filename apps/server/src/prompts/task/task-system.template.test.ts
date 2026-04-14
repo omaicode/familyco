@@ -27,6 +27,8 @@ test('renderTaskSystemPrompt includes full project context when project is linke
   assert.equal(prompt.includes('- Project name: Website MVP'), true);
   assert.equal(prompt.includes('- Project owner agent ID: agent-owner'), true);
   assert.equal(prompt.includes('Your project working directory is: /workspace/website-mvp'), true);
+  assert.equal(prompt.includes('Workspace reconnaissance FIRST (mandatory before any write):'), true);
+  assert.equal(prompt.includes('Plan implementation in a clear file-by-file sequence, then execute in that sequence.'), true);
 });
 
 test('renderTaskSystemPrompt marks task as non-project when project is missing', () => {
@@ -42,4 +44,3 @@ test('renderTaskSystemPrompt marks task as non-project when project is missing',
 
   assert.equal(prompt.includes('Project context: task is not linked to any project.'), true);
 });
-

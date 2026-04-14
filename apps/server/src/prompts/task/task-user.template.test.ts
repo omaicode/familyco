@@ -21,9 +21,11 @@ test('renderTaskUserPrompt includes task ID and title', () => {
 test('renderTaskUserPrompt includes mandatory execution protocol steps', () => {
   const prompt = renderTaskUserPrompt(BASE_INPUT);
   assert.ok(prompt.includes('Execution Protocol'), 'must include Execution Protocol header');
+  assert.ok(prompt.includes('Step 0 — Scan workspace first'), 'must enforce workspace scan first');
+  assert.ok(prompt.includes('Do NOT create new files until this scan is complete.'), 'must block file creation before scan');
   assert.ok(prompt.includes('task.update-status'), 'must reference task.update-status');
   assert.ok(prompt.includes('task.comment.add'), 'must reference task.comment.add');
-  assert.ok(prompt.includes('REQUIRED'), 'must mark steps as required');
+  assert.ok(prompt.includes('Steps 0, 1, 4, 5, and 6 are REQUIRED'), 'must mark updated required steps');
   assert.ok(prompt.includes('final reply MUST be a non-empty assistant message'), 'must enforce non-empty final reply');
   assert.ok(prompt.includes('Send exactly one final reply, then stop'), 'must enforce single final reply after tool calls');
 });
