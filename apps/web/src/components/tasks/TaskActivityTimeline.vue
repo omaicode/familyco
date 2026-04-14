@@ -199,4 +199,12 @@ function kindClass(item: TaskActivityItem): string {
 .activity-comment-body {
   font-size: 13px;
 }
+
+.task-comments-empty {
+  border: 1px dashed var(--fc-border-subtle);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--fc-surface-muted) 35%, var(--fc-surface));
+  margin-top: 12px;
+}
 </style>
