@@ -33,10 +33,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build web + desktop
-        run: pnpm --filter @familyco/web build && pnpm --filter @familyco/electron build
+      - name: Build all packages
+        run: pnpm build
 
-      - name: Publish desktop artifacts
-        run: pnpm --filter @familyco/electron exec electron-builder --config ../../electron-builder.yml --publish always -c.publish.provider=github
+      - name: Build Electron
+        run: pnpm --filter @familyco/electron run build:electron -- --publish always -c.publish.provider=github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
