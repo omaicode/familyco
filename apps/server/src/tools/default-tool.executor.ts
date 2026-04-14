@@ -103,14 +103,25 @@ export class DefaultToolExecutor implements ToolExecutor {
 
     const tool = this.tools.get(input.toolName);
     if (!tool) {
-      throw new Error(`TOOL_NOT_FOUND:${input.toolName}`);
+      return {
+        ok: false,
+        toolName: input.toolName,
+        error: {
+          code: 'TOOL_NOT_FOUND',
+          message: `${input.toolName} is not registered`
+        }
+      };
     }
 
-    return tool.execute(input.arguments, {
-      ...this.deps,
-      executeTool: async (nestedInput) => this.execute(nestedInput),
-      listTools: () => this.listToolDefinitions()
-    });
+    try {
+      return await tool.execute(input.arguments, {
+        ...this.deps,
+        executeTool: async (nestedInput) => this.execute(nestedInput),
+        listTools: () => this.listToolDefinitions()
+      });
+    } catch (error) {
+      return toToolExecutionError(input.toolName, error);
+    }
   }
 
   listToolDefinitions(): ToolDefinitionSummary[] {
@@ -137,4 +148,30 @@ export class DefaultToolExecutor implements ToolExecutor {
   private isToolAllowed(toolName: string): boolean {
     return this.deps.allowedToolNames?.has(toolName) ?? true;
   }
+}
+
+function toToolExecutionError(toolName: string, error: unknown): ToolExecutionResult {
+  if (error instanceof Error) {
+    const [rawCode, ...rawMessage] = error.message.split(':');
+    const code = rawCode?.trim() || 'TOOL_EXECUTION_FAILED';
+    const message = rawMessage.join(':').trim() || error.message || `Tool ${toolName} execution failed`;
+
+    return {
+      ok: false,
+      toolName,
+      error: {
+        code,
+        message
+      }
+    };
+  }
+
+  return {
+    ok: false,
+    toolName,
+    error: {
+      code: 'TOOL_EXECUTION_FAILED',
+      message: `Tool ${toolName} execution failed`
+    }
+  };
 }
