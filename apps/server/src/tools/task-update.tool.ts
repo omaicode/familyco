@@ -94,10 +94,30 @@ export const taskUpdateTool: ServerToolDefinition = {
       readinessRules
     });
 
+    if(!task) {
+      return {
+        ok: false,
+        toolName: 'task.update',
+        error: {
+          code: 'task_update_failed',
+          message: `Failed to update task with id ${taskId}.`
+        }
+      };
+    }
+
     return {
       ok: true,
       toolName: 'task.update',
-      output: task
+      output: {
+        title: task.title,
+        projectId: task.projectId,
+        assigneeAgentId: task.assigneeAgentId,
+        createdBy: task.createdBy,
+        priority: task.priority,
+        status: task.status,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt           
+      }
     };
   }
 };

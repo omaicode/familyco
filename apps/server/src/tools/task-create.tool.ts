@@ -134,10 +134,31 @@ export const taskCreateTool: ServerToolDefinition = {
       readinessRules
     });
 
+    if(!task) {
+      return {
+        ok: false,
+        toolName: 'task.create',
+        error: {
+          code: 'task_creation_failed',
+          message: 'Failed to create task due to invalid arguments or internal error.'
+        }
+      };
+    }
+
     return {
       ok: true,
       toolName: 'task.create',
-      output: task
+      output: {
+      id: task.id,
+        title: task.title,
+        projectId: task.projectId,
+        assigneeAgentId: task.assigneeAgentId,
+        createdBy: task.createdBy,
+        priority: task.priority,
+        status: task.status,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt        
+      }
     };
   }
 };
