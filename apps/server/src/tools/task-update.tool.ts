@@ -54,6 +54,17 @@ export const taskUpdateTool: ServerToolDefinition = {
     }
 
     const existingTask = await context.taskService.getTask(taskId);
+    if(!existingTask) {
+      return {
+        ok: false,
+        toolName: 'task.update',
+        error: {
+          code: 'task_not_found',
+          message: `No task found with id ${taskId}.`
+        }
+      };
+    }
+    
     const title = asNonEmptyString(argumentsMap.title) ?? existingTask.title;
     const description = asTextString(argumentsMap.description) ?? existingTask.description;
     const projectId = await resolveProjectReference({
