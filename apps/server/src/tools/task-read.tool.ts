@@ -18,7 +18,7 @@ export const taskReadSlashSpec: SlashCommandSpec = {
 
 export const taskReadTool: ServerToolDefinition = {
   name: 'task.read',
-  description: 'Read a single task by id or exact title and return its latest details.',
+  description: 'Read a single task by id or exact title and return its latest details, including dependency and readiness metadata.',
   slashSpec: taskReadSlashSpec,
   parameters: [
     { name: 'query', type: 'string', required: true, description: 'Task id or exact task title.' }
@@ -34,14 +34,14 @@ export const taskReadTool: ServerToolDefinition = {
     }
 
     try {
-      const taskById = await context.taskService.getTask(query);
+      const taskById = await context.taskService.getTaskWithReadiness(query);
       return {
         ok: true,
         toolName: 'task.read',
         output: taskById
       };
     } catch {
-      const tasks = await context.taskService.listTasks({ query });
+      const tasks = await context.taskService.listTasksWithReadiness({ query });
       const exactTitleMatch = tasks.find((task) => task.title.trim().toLowerCase() === query.trim().toLowerCase());
       if (!exactTitleMatch) {
         return invalidArguments('task.read', `task not found: ${query}`);

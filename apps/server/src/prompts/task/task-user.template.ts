@@ -11,6 +11,17 @@ export interface TaskUserPromptInput {
   taskDescription: string;
   taskStatus: string;
   taskPriority: string;
+  dependsOnTaskIds?: string[];
+  readinessRules?: Array<{
+    type: string;
+    taskId: string;
+    status: string;
+    description?: string;
+  }>;
+  readiness?: {
+    ready: boolean;
+    blockers: Array<{ code: string; message: string }>;
+  };
   assigneeAgentId: string | null;
   previousSessionSummary?: string;
   previousToolResults?: TaskSessionToolResult[];
@@ -34,6 +45,39 @@ export function renderTaskUserPrompt(input: TaskUserPromptInput): string {
     input.taskDescription || '(no description)',
     ''
   ];
+
+  lines.push('### Dependencies');
+  if (input.dependsOnTaskIds && input.dependsOnTaskIds.length > 0) {
+    for (const dependencyId of input.dependsOnTaskIds) {
+      lines.push(`- ${dependencyId}`);
+    }
+  } else {
+    lines.push('- None');
+  }
+  lines.push('');
+
+  lines.push('### Readiness Rules');
+  if (input.readinessRules && input.readinessRules.length > 0) {
+    for (const rule of input.readinessRules) {
+      const suffix = rule.description ? ` — ${rule.description}` : '';
+      lines.push(`- ${rule.type}: task ${rule.taskId} must be ${rule.status}${suffix}`);
+    }
+  } else {
+    lines.push('- None');
+  }
+  lines.push('');
+
+  lines.push('### Current Readiness');
+  if (input.readiness?.ready) {
+    lines.push('- Ready to execute now.');
+  } else if (input.readiness && input.readiness.blockers.length > 0) {
+    for (const blocker of input.readiness.blockers) {
+      lines.push(`- ${blocker.message}`);
+    }
+  } else {
+    lines.push('- No readiness evaluation available.');
+  }
+  lines.push('');
 
   if (input.previousSessionSummary) {
     lines.push(
@@ -81,6 +125,7 @@ export function renderTaskUserPrompt(input: TaskUserPromptInput): string {
       : `**Step 1 — Mark in progress:** Call \`task.update-status\` with taskId=\`${input.taskId}\` and status=\`in_progress\` before doing any work.`,
     '',
     '**Step 2 — Do the work:** Use available tools to make real progress on the task. Read relevant files, update records, or produce required outputs.',
+    '  - Before making irreversible progress, respect the dependency and readiness context above.',
     '',
     `**Step 3 — Add a progress comment:** Call \`task.comment.add\` with taskId=\`${input.taskId}\` and authorId=\`${input.assigneeAgentId ?? 'agent'}\`. The comment body MUST use structured Markdown: a \`## Summary\` section, a \`## Actions Taken\` bullet list, a \`## Decisions Made\` bullet list, and a \`## Blockers\` section. Use blank lines between sections. Do not write a single wall of text.`,
     '',

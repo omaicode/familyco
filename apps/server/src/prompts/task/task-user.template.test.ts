@@ -93,3 +93,31 @@ test('renderTaskUserPrompt omits previous tool results section when empty or abs
   const promptEmpty = renderTaskUserPrompt({ ...BASE_INPUT, previousToolResults: [] });
   assert.ok(!promptEmpty.includes('Previous Tool Execution Results'), 'must not include tool results header when empty array');
 });
+
+test('renderTaskUserPrompt includes dependencies, readiness rules, and blockers when provided', () => {
+  const prompt = renderTaskUserPrompt({
+    ...BASE_INPUT,
+    dependsOnTaskIds: ['task-1', 'task-2'],
+    readinessRules: [
+      {
+        type: 'task_status',
+        taskId: 'task-2',
+        status: 'done',
+        description: 'Task 2 must be completed first.'
+      }
+    ],
+    readiness: {
+      ready: false,
+      blockers: [
+        { code: 'DEPENDENCY_NOT_DONE', message: 'Dependency task task-1 is pending; expected done.' }
+      ]
+    }
+  });
+
+  assert.ok(prompt.includes('### Dependencies'), 'must include dependencies section');
+  assert.ok(prompt.includes('task-1'), 'must include dependency id');
+  assert.ok(prompt.includes('### Readiness Rules'), 'must include readiness rules section');
+  assert.ok(prompt.includes('task_status: task task-2 must be done'), 'must include readiness rule detail');
+  assert.ok(prompt.includes('### Current Readiness'), 'must include readiness evaluation section');
+  assert.ok(prompt.includes('Dependency task task-1 is pending; expected done.'), 'must include readiness blocker');
+});

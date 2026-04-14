@@ -113,7 +113,7 @@ export class TaskExecutionCoordinator {
       return { agentId, tasksRun: 0, results: [skipped], lastResult: skipped };
     }
 
-    const task = await this.options.taskService.getTask(taskId).catch(() => null);
+    const task = await this.options.taskService.getTaskWithReadiness(taskId).catch(() => null);
     if (!task) {
       return { agentId, tasksRun: 0, results: [noTaskResult], lastResult: noTaskResult };
     }
@@ -126,14 +126,24 @@ export class TaskExecutionCoordinator {
       return { agentId, tasksRun: 0, results: [skipped], lastResult: skipped };
     }
 
+    if (!task.readiness.ready) {
+      const skipped: TaskExecutionResult = {
+        taskId,
+        agentId,
+        status: 'skipped',
+        summary: `Task ${taskId} is not ready: ${task.readiness.blockers.map((blocker) => blocker.message).join(' | ')}`
+      };
+      return { agentId, tasksRun: 0, results: [skipped], lastResult: skipped };
+    }
+
     const result = await this.runTaskForAgent(agent, task);
     return { agentId, tasksRun: 1, results: [result], lastResult: result };
   }
 
   async selectNextTask(agentId: string, excludeIds?: Set<string>): Promise<Task | null> {
-    const tasks = await this.options.taskService.listTasks({ assigneeAgentId: agentId });
+    const tasks = await this.options.taskService.listTasksWithReadiness({ assigneeAgentId: agentId });
     const actionable = tasks.filter(
-      (t) => ACTIONABLE_STATUSES.has(t.status) && !(excludeIds?.has(t.id))
+      (t) => ACTIONABLE_STATUSES.has(t.status) && !(excludeIds?.has(t.id)) && t.readiness.ready
     );
 
     if (actionable.length === 0) {
@@ -261,6 +271,9 @@ export class TaskExecutionCoordinator {
       taskDescription: task.description,
       taskStatus: task.status,
       taskPriority: task.priority,
+      dependsOnTaskIds: task.dependsOnTaskIds,
+      readinessRules: task.readinessRules,
+      readiness: await this.options.taskService.evaluateTaskReadinessForTask(task),
       assigneeAgentId: task.assigneeAgentId,
       previousSessionSummary: session.summary || undefined,
       previousToolResults: session.toolResults.length > 0 ? session.toolResults : undefined,

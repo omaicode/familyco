@@ -25,7 +25,7 @@ export const taskListSlashSpec: SlashCommandSpec = {
 
 export const taskListTool: ServerToolDefinition = {
   name: 'task.list',
-  description: 'List tasks with optional filters by status, priority, project, assignee, and search query.',
+  description: 'List tasks with optional filters by status, priority, project, assignee, and search query. Each item includes dependency and readiness metadata.',
   slashSpec: taskListSlashSpec,
   parameters: [
     { name: 'status', type: 'pending | in_progress | review | done | blocked | cancelled', required: false, description: 'Task status filter.' },
@@ -54,7 +54,7 @@ export const taskListTool: ServerToolDefinition = {
     const query = asNonEmptyString(argumentsMap.query) ?? asNonEmptyString(argumentsMap.q);
     const limit = Math.min(Math.max(Number(argumentsMap.limit) || 20, 1), 100);
 
-    const tasks = await context.taskService.listTasks({
+    const tasks = await context.taskService.listTasksWithReadiness({
       projectId,
       assigneeAgentId: assigneeAgentId ?? undefined,
       status,

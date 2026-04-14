@@ -884,6 +884,13 @@ async function ensureHeartbeatDispatch(
   const actionableTaskIds = listResult.output.items
     .filter((item): item is Record<string, unknown> => isRecord(item))
     .filter((item) => item.status === 'pending' || item.status === 'in_progress')
+    .filter((item) => {
+      if (!isRecord(item.readiness)) {
+        return true;
+      }
+
+      return item.readiness.ready === true;
+    })
     .sort((left, right) => {
       const statusWeight = (value: unknown): number => (value === 'in_progress' ? 0 : 1);
       const priorityWeight = (value: unknown): number => {

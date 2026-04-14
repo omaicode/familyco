@@ -1,6 +1,14 @@
 import type { TaskPriority, ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, asTextString, invalidArguments, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
+import {
+  asNonEmptyString,
+  asStringArray,
+  asTaskReadinessRules,
+  asTextString,
+  invalidArguments,
+  summarizeSlashDescription,
+  unavailableTool
+} from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const taskUpdateSlashSpec: SlashCommandSpec = {
@@ -22,7 +30,7 @@ export const taskUpdateSlashSpec: SlashCommandSpec = {
 
 export const taskUpdateTool: ServerToolDefinition = {
   name: 'task.update',
-  description: 'Update an existing task by id with revised title, description, assignee, project, creator, or priority.',
+  description: 'Update an existing task by id with revised title, description, assignee, project, creator, priority, dependencies, or readiness rules.',
   slashSpec: taskUpdateSlashSpec,
   parameters: [
     { name: 'taskId', type: 'string', required: true, description: 'Target task id.' },
@@ -31,7 +39,9 @@ export const taskUpdateTool: ServerToolDefinition = {
     { name: 'projectId', type: 'string', required: false, description: 'Project id or project name.' },
     { name: 'assigneeAgentId', type: 'string', required: false, description: 'Assignee agent id or name.' },
     { name: 'createdBy', type: 'string', required: false, description: 'Creator agent id or name.' },
-    { name: 'priority', type: 'low | medium | high | urgent', required: false, description: 'Task priority.' }
+    { name: 'priority', type: 'low | medium | high | urgent', required: false, description: 'Task priority.' },
+    { name: 'dependsOnTaskIds', type: 'string[]', required: false, description: 'Task IDs that must be complete before this task is ready.' },
+    { name: 'readinessRules', type: 'TaskReadinessRule[]', required: false, description: 'Machine-readable readiness rules, for example task_status checks on other tasks.' }
   ],
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
     if (!context.taskService || !context.projectService || !context.agentService) {
@@ -62,6 +72,16 @@ export const taskUpdateTool: ServerToolDefinition = {
       context
     });
     const priority = asTaskPriority(argumentsMap.priority) ?? existingTask.priority;
+    const dependsOnTaskIds = asStringArray(argumentsMap.dependsOnTaskIds);
+    const readinessRules = asTaskReadinessRules(argumentsMap.readinessRules);
+
+    if (argumentsMap.dependsOnTaskIds !== undefined && dependsOnTaskIds === undefined) {
+      return invalidArguments('task.update', 'dependsOnTaskIds must be a string array or comma-separated string');
+    }
+
+    if (argumentsMap.readinessRules !== undefined && readinessRules === undefined) {
+      return invalidArguments('task.update', 'readinessRules must be a JSON array of supported readiness rules');
+    }
 
     const task = await context.taskService.updateTask(taskId, {
       title,
@@ -69,7 +89,9 @@ export const taskUpdateTool: ServerToolDefinition = {
       projectId,
       assigneeAgentId,
       createdBy: createdBy ?? existingTask.createdBy,
-      priority
+      priority,
+      dependsOnTaskIds,
+      readinessRules
     });
 
     return {

@@ -77,7 +77,9 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       projectId,
       assigneeAgentId: body.assigneeAgentId ?? body.assignedToId ?? executiveAgentId,
       createdBy: body.createdBy ?? executiveAgentId,
-      priority: body.priority
+      priority: body.priority,
+      dependsOnTaskIds: body.dependsOnTaskIds,
+      readinessRules: body.readinessRules
     };
 
     const approval = await ensureApproval({
@@ -88,6 +90,8 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       targetId: normalizedInput.projectId,
       payload: {
         ...normalizedInput,
+        dependsOnTaskIds: body.dependsOnTaskIds,
+        readinessRules: body.readinessRules,
         dueAt: body.dueAt
       }
     });
@@ -119,16 +123,13 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
         projectId: task.projectId,
         priority: task.priority,
         assigneeAgentId: task.assigneeAgentId,
+        dependsOnTaskIds: task.dependsOnTaskIds,
+        readinessRules: task.readinessRules,
         dueAt: body.dueAt
       }
     });
 
-    if (task.assigneeAgentId) {
-      await deps.queueService.enqueue({
-        type: 'task.execute',
-        payload: { agentId: task.assigneeAgentId }
-      }).catch(() => undefined);
-    }
+    await enqueueTaskExecutionIfReady(deps, task);
 
     reply.code(201);
     return task;
@@ -166,16 +167,13 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
         title: updatedTask.title,
         projectId: updatedTask.projectId,
         priority: updatedTask.priority,
-        assigneeAgentId: updatedTask.assigneeAgentId
+        assigneeAgentId: updatedTask.assigneeAgentId,
+        dependsOnTaskIds: updatedTask.dependsOnTaskIds,
+        readinessRules: updatedTask.readinessRules
       }
     });
 
-    if (updatedTask.assigneeAgentId) {
-      await deps.queueService.enqueue({
-        type: 'task.execute',
-        payload: { agentId: updatedTask.assigneeAgentId }
-      }).catch(() => undefined);
-    }
+    await enqueueTaskExecutionIfReady(deps, updatedTask);
 
     return updatedTask;
   });
@@ -356,10 +354,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       (status === 'in_progress' || status === 'pending') &&
       updatedTask.assigneeAgentId
     ) {
-      await deps.queueService.enqueue({
-        type: 'task.execute',
-        payload: { agentId: updatedTask.assigneeAgentId }
-      }).catch(() => undefined);
+      await enqueueTaskExecutionIfReady(deps, updatedTask);
     }
 
     return updatedTask;
@@ -402,6 +397,25 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
 
     return updatedTask;
   });
+}
+
+async function enqueueTaskExecutionIfReady(
+  deps: TaskModuleDeps,
+  task: Awaited<ReturnType<TaskService['getTask']>>
+): Promise<void> {
+  if (!task.assigneeAgentId) {
+    return;
+  }
+
+  const readiness = await deps.taskService.evaluateTaskReadiness(task.id).catch(() => null);
+  if (!readiness?.ready) {
+    return;
+  }
+
+  await deps.queueService.enqueue({
+    type: 'task.execute',
+    payload: { agentId: task.assigneeAgentId }
+  }).catch(() => undefined);
 }
 
 function toTaskComment(record: AuditRecord) {

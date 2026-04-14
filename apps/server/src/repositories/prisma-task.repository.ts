@@ -1,11 +1,14 @@
-import type {
+import {
   CreateTaskInput,
   ListTasksInput,
   Task,
   TaskPriority,
+  TaskReadinessRule,
   TaskRepository,
   TaskStatus,
-  UpdateTaskInput
+  UpdateTaskInput,
+  normalizeTaskDependencyIds,
+  normalizeTaskReadinessRules
 } from '@familyco/core';
 import type { PrismaClient } from '@familyco/db';
 
@@ -32,7 +35,9 @@ export class PrismaTaskRepository implements TaskRepository {
         priority: input.priority ?? 'medium',
         projectId: input.projectId,
         assigneeAgentId: input.assigneeAgentId ?? null,
-        createdBy: input.createdBy
+        createdBy: input.createdBy,
+        dependsOnTaskIds: normalizeTaskDependencyIds(input.dependsOnTaskIds),
+        readinessRules: normalizeTaskReadinessRules(input.readinessRules)
       } as never
     });
 
@@ -125,7 +130,9 @@ export class PrismaTaskRepository implements TaskRepository {
         projectId: input.projectId,
         assigneeAgentId: input.assigneeAgentId ?? null,
         createdBy: input.createdBy,
-        priority: input.priority
+        priority: input.priority,
+        dependsOnTaskIds: normalizeTaskDependencyIds(input.dependsOnTaskIds),
+        readinessRules: normalizeTaskReadinessRules(input.readinessRules)
       } as never
     });
 
@@ -172,6 +179,8 @@ function toTask(task: {
   projectId: string;
   assigneeAgentId: string | null;
   createdBy: string;
+  dependsOnTaskIds: unknown;
+  readinessRules: unknown;
   createdAt: Date;
   updatedAt: Date;
 }): Task {
@@ -186,6 +195,44 @@ function toTask(task: {
   return {
     ...task,
     status: task.status as TaskStatus,
-    priority: task.priority as TaskPriority
+    priority: task.priority as TaskPriority,
+    dependsOnTaskIds: parseDependencyIds(task.dependsOnTaskIds),
+    readinessRules: parseReadinessRules(task.readinessRules)
   };
+}
+
+function parseDependencyIds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return normalizeTaskDependencyIds(value.filter((item): item is string => typeof item === 'string'));
+}
+
+function parseReadinessRules(value: unknown): TaskReadinessRule[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const rawRules: TaskReadinessRule[] = [];
+
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) {
+      continue;
+    }
+
+    const record = item as Record<string, unknown>;
+    if (record.type !== 'task_status' || typeof record.taskId !== 'string') {
+      continue;
+    }
+
+    rawRules.push({
+      type: 'task_status',
+      taskId: record.taskId,
+      status: record.status as TaskStatus,
+      ...(typeof record.description === 'string' ? { description: record.description } : {})
+    });
+  }
+
+  return normalizeTaskReadinessRules(rawRules);
 }

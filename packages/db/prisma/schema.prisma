@@ -58,6 +58,8 @@ model Task {
 	projectId       String
 	assigneeAgentId String?
 	createdBy       String
+	dependsOnTaskIds Json    @default("[]")
+	readinessRules   Json    @default("[]")
 	createdAt       DateTime @default(now())
 	updatedAt       DateTime @updatedAt
 

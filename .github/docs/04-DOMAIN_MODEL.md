@@ -88,8 +88,9 @@
 - description
 - status enum: backlog, ready, in_progress, waiting_approval, blocked, done, cancelled
 - priority enum: low, medium, high, critical
+- dependsOnTaskIds
+- readinessRules
 - acceptanceCriteriaMd
-- dependencyIdsJson
 - dueAt nullable
 - createdAt
 - updatedAt
@@ -173,6 +174,7 @@
 - Any run in `waiting_approval` must have at least one open InboxItem.
 - `totalTokens = promptTokens + completionTokens`.
 - A task in `done` must have non-empty completion summary.
+- A task is execution-ready only when every `dependsOnTaskIds` entry resolves to a completed task and all supported `readinessRules` are satisfied.
 
 ## Prisma notes
 - Use enum types for statuses where stable.

@@ -5,6 +5,7 @@ import type {
   ListTasksInput,
   Task,
   TaskPriority,
+  TaskReadinessRule,
   TaskRepository,
   TaskStatus,
   UpdateTaskInput
@@ -24,6 +25,8 @@ export class InMemoryTaskRepository implements TaskRepository {
       projectId: input.projectId,
       assigneeAgentId: input.assigneeAgentId ?? null,
       createdBy: input.createdBy,
+      dependsOnTaskIds: input.dependsOnTaskIds ?? [],
+      readinessRules: cloneReadinessRules(input.readinessRules ?? []),
       createdAt: now,
       updatedAt: now
     };
@@ -107,6 +110,8 @@ export class InMemoryTaskRepository implements TaskRepository {
       assigneeAgentId: input.assigneeAgentId ?? null,
       createdBy: input.createdBy,
       priority: input.priority,
+      dependsOnTaskIds: input.dependsOnTaskIds ?? task.dependsOnTaskIds,
+      readinessRules: cloneReadinessRules(input.readinessRules ?? task.readinessRules),
       updatedAt: new Date()
     };
 
@@ -155,4 +160,8 @@ export class InMemoryTaskRepository implements TaskRepository {
     this.tasks.delete(id);
     return task;
   }
+}
+
+function cloneReadinessRules(rules: TaskReadinessRule[]): TaskReadinessRule[] {
+  return rules.map((rule) => ({ ...rule }));
 }

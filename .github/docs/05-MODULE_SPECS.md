@@ -58,6 +58,7 @@ Primary command center for the Founder.
 - assign assignee agent
 - update status
 - add dependencies
+- define readiness rules
 - add acceptance criteria
 - send for approval
 

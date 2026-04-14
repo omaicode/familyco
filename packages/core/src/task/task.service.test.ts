@@ -7,6 +7,7 @@ import type {
   ListTasksInput,
   Task,
   TaskPriority,
+  TaskReadinessRule,
   TaskRepository,
   TaskStatus
 } from './index.js';
@@ -156,7 +157,11 @@ test('TaskService updates task details and deletes tasks safely', async () => {
     projectId: 'project-2',
     createdBy: 'agent-2',
     assigneeAgentId: 'agent-2',
-    priority: 'high'
+    priority: 'high',
+    dependsOnTaskIds: ['task-999'],
+    readinessRules: [
+      { type: 'task_status', taskId: 'task-3', status: 'done', description: 'Need final sign-off task done.' }
+    ]
   });
 
   assert.equal(updated.title, 'Run weekly review');
@@ -164,6 +169,10 @@ test('TaskService updates task details and deletes tasks safely', async () => {
   assert.equal(updated.createdBy, 'agent-2');
   assert.equal(updated.assigneeAgentId, 'agent-2');
   assert.equal(updated.priority, 'high');
+  assert.deepEqual(updated.dependsOnTaskIds, ['task-999']);
+  assert.deepEqual(updated.readinessRules, [
+    { type: 'task_status', taskId: 'task-3', status: 'done', description: 'Need final sign-off task done.' }
+  ]);
 
   const deleted = await service.deleteTask(task.id);
   assert.equal(deleted.id, task.id);
@@ -171,6 +180,88 @@ test('TaskService updates task details and deletes tasks safely', async () => {
   await assert.rejects(() => service.deleteTask(task.id), /TASK_NOT_FOUND/);
   const remaining = await service.listTasks();
   assert.equal(remaining.length, 0);
+});
+
+test('TaskService exposes readiness evaluation and readiness-enriched task views', async () => {
+  const repository = new InMemoryTaskRepositoryStub();
+  const service = new TaskService(repository);
+
+  const prerequisite = await service.createTask({
+    title: 'Prepare dependency',
+    description: 'Finish setup first',
+    projectId: 'project-1',
+    createdBy: 'agent-1'
+  });
+
+  const gated = await service.createTask({
+    title: 'Run dependent work',
+    description: 'Can only start after prerequisite is done',
+    projectId: 'project-1',
+    createdBy: 'agent-1',
+    dependsOnTaskIds: [prerequisite.id],
+    readinessRules: [
+      { type: 'task_status', taskId: prerequisite.id, status: 'done', description: 'Dependency must be completed.' }
+    ]
+  });
+
+  const initialReadiness = await service.evaluateTaskReadiness(gated.id);
+  assert.equal(initialReadiness.ready, false);
+  assert.equal(initialReadiness.blockers.length, 2);
+
+  await service.updateTaskStatus(prerequisite.id, 'in_progress');
+  await service.updateTaskStatus(prerequisite.id, 'review');
+  await service.updateTaskStatus(prerequisite.id, 'done');
+
+  const readinessAfterDone = await service.evaluateTaskReadiness(gated.id);
+  assert.equal(readinessAfterDone.ready, true);
+  assert.equal(readinessAfterDone.blockers.length, 0);
+
+  const taskWithReadiness = await service.getTaskWithReadiness(gated.id);
+  assert.equal(taskWithReadiness.readiness.ready, true);
+
+  const tasksWithReadiness = await service.listTasksWithReadiness({ projectId: 'project-1' });
+  const enriched = tasksWithReadiness.find((task) => task.id === gated.id);
+  assert.equal(enriched?.readiness.ready, true);
+});
+
+test('TaskService rejects self dependency and self-referential readiness rules', async () => {
+  const repository = new InMemoryTaskRepositoryStub();
+  const service = new TaskService(repository);
+
+  const task = await service.createTask({
+    title: 'Review architecture',
+    description: 'Inspect current architecture constraints',
+    projectId: 'project-1',
+    createdBy: 'agent-1'
+  });
+
+  await assert.rejects(
+    () =>
+      service.updateTask(task.id, {
+        title: task.title,
+        description: task.description,
+        projectId: task.projectId,
+        createdBy: task.createdBy,
+        assigneeAgentId: task.assigneeAgentId,
+        priority: task.priority,
+        dependsOnTaskIds: [task.id]
+      }),
+    /TASK_DEPENDS_ON_SELF/
+  );
+
+  await assert.rejects(
+    () =>
+      service.updateTask(task.id, {
+        title: task.title,
+        description: task.description,
+        projectId: task.projectId,
+        createdBy: task.createdBy,
+        assigneeAgentId: task.assigneeAgentId,
+        priority: task.priority,
+        readinessRules: [{ type: 'task_status', taskId: task.id, status: 'done' }]
+      }),
+    /TASK_READINESS_RULE_SELF_REFERENCE/
+  );
 });
 
 class InMemoryTaskRepositoryStub implements TaskRepository {
@@ -187,6 +278,8 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
       projectId: input.projectId,
       assigneeAgentId: input.assigneeAgentId ?? null,
       createdBy: input.createdBy,
+      dependsOnTaskIds: input.dependsOnTaskIds ?? [],
+      readinessRules: cloneReadinessRules(input.readinessRules ?? []),
       createdAt: now,
       updatedAt: now
     };
@@ -289,6 +382,8 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
     assigneeAgentId?: string | null;
     createdBy: string;
     priority: TaskPriority;
+    dependsOnTaskIds?: string[];
+    readinessRules?: TaskReadinessRule[];
   }): Promise<Task> {
     const existing = this.tasks.get(id);
     if (!existing) {
@@ -303,6 +398,8 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
       assigneeAgentId: input.assigneeAgentId ?? null,
       createdBy: input.createdBy,
       priority: input.priority,
+      dependsOnTaskIds: input.dependsOnTaskIds ?? existing.dependsOnTaskIds,
+      readinessRules: cloneReadinessRules(input.readinessRules ?? existing.readinessRules),
       updatedAt: new Date('2026-01-03T12:00:00.000Z')
     };
     this.tasks.set(id, updated);
@@ -318,4 +415,8 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
     this.tasks.delete(id);
     return existing;
   }
+}
+
+function cloneReadinessRules(rules: TaskReadinessRule[]): TaskReadinessRule[] {
+  return rules.map((rule) => ({ ...rule }));
 }

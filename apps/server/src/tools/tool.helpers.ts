@@ -1,4 +1,5 @@
-import type { TaskPriority, ToolExecutionResult } from '@familyco/core';
+import type { TaskPriority, TaskReadinessRule, ToolExecutionResult } from '@familyco/core';
+import { normalizeTaskDependencyIds, normalizeTaskReadinessRules } from '@familyco/core';
 
 import type { ServerToolDefinition, ToolDefinitionSummary } from './tool.types.js';
 
@@ -55,6 +56,66 @@ export function asTaskPriority(value: unknown): TaskPriority | undefined {
   return value === 'low' || value === 'medium' || value === 'high' || value === 'urgent'
     ? value
     : undefined;
+}
+
+export function asStringArray(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const normalized = value.filter((item): item is string => typeof item === 'string');
+    return normalizeTaskDependencyIds(normalized);
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (Array.isArray(parsed)) {
+      const normalized = parsed.filter((item): item is string => typeof item === 'string');
+      return normalizeTaskDependencyIds(normalized);
+    }
+  } catch {
+    // Fall through to comma-separated parsing.
+  }
+
+  return normalizeTaskDependencyIds(value.split(',').map((entry) => entry.trim()));
+}
+
+export function asTaskReadinessRules(value: unknown): TaskReadinessRule[] | undefined {
+  const parsed = parseUnknownArray(value);
+  if (!parsed) {
+    return undefined;
+  }
+
+  const rules: TaskReadinessRule[] = [];
+  for (const item of parsed) {
+    if (!isRecord(item)) {
+      return undefined;
+    }
+
+    if (item.type !== 'task_status') {
+      return undefined;
+    }
+
+    const taskId = asNonEmptyString(item.taskId);
+    const status = typeof item.status === 'string' ? item.status : undefined;
+    if (!taskId || !isTaskStatus(status)) {
+      return undefined;
+    }
+
+    rules.push({
+      type: 'task_status',
+      taskId,
+      status,
+      ...(asTextString(item.description) ? { description: asTextString(item.description) } : {})
+    });
+  }
+
+  try {
+    return normalizeTaskReadinessRules(rules);
+  } catch {
+    return undefined;
+  }
 }
 
 export function resolveDotPath(source: Record<string, unknown>, path: string): unknown {
@@ -122,4 +183,32 @@ export function parseKeyValueArgs(input: string): Record<string, string> {
   }
 
   return result;
+}
+
+function parseUnknownArray(value: unknown): unknown[] | undefined {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isTaskStatus(value: unknown): value is 'pending' | 'in_progress' | 'review' | 'done' | 'blocked' | 'cancelled' {
+  return (
+    value === 'pending'
+    || value === 'in_progress'
+    || value === 'review'
+    || value === 'done'
+    || value === 'blocked'
+    || value === 'cancelled'
+  );
 }

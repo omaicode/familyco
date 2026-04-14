@@ -227,6 +227,8 @@ test('AgentService reassigns direct reports, tasks, and projects to the fallback
     projectId: 'project-1',
     assigneeAgentId: lead.id,
     createdBy: lead.id,
+    dependsOnTaskIds: [],
+    readinessRules: [],
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z')
   });
@@ -463,6 +465,8 @@ class InMemoryTaskRepositoryStub implements TaskRepository {
       projectId: input.projectId,
       assigneeAgentId: input.assigneeAgentId ?? null,
       createdBy: input.createdBy,
+      dependsOnTaskIds: input.dependsOnTaskIds ?? [],
+      readinessRules: input.readinessRules ?? [],
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       updatedAt: new Date('2026-01-01T00:00:00.000Z')
     };

@@ -8,6 +8,38 @@ export type TaskStatus =
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+export interface TaskStatusReadinessRule {
+  type: 'task_status';
+  taskId: string;
+  status: TaskStatus;
+  description?: string;
+}
+
+export type TaskReadinessRule = TaskStatusReadinessRule;
+
+export interface TaskReadinessBlocker {
+  code:
+    | 'DEPENDENCY_CYCLE'
+    | 'DEPENDENCY_MISSING'
+    | 'DEPENDENCY_NOT_DONE'
+    | 'RULE_CYCLE'
+    | 'RULE_TASK_MISSING'
+    | 'RULE_STATUS_MISMATCH'
+    | 'RULE_UNSUPPORTED';
+  message: string;
+  taskId?: string;
+  ruleType?: string;
+  currentStatus?: TaskStatus;
+  requiredStatus?: TaskStatus;
+}
+
+export interface TaskReadinessEvaluation {
+  ready: boolean;
+  blockers: TaskReadinessBlocker[];
+  checkedDependencyCount: number;
+  checkedRuleCount: number;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -17,8 +49,14 @@ export interface Task {
   projectId: string;
   assigneeAgentId: string | null;
   createdBy: string;
+  dependsOnTaskIds: string[];
+  readinessRules: TaskReadinessRule[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface TaskWithReadiness extends Task {
+  readiness: TaskReadinessEvaluation;
 }
 
 export interface CreateTaskInput {
@@ -28,6 +66,8 @@ export interface CreateTaskInput {
   assigneeAgentId?: string | null;
   createdBy: string;
   priority?: TaskPriority;
+  dependsOnTaskIds?: string[];
+  readinessRules?: TaskReadinessRule[];
 }
 
 export interface UpdateTaskInput {
@@ -37,6 +77,8 @@ export interface UpdateTaskInput {
   assigneeAgentId?: string | null;
   createdBy: string;
   priority: TaskPriority;
+  dependsOnTaskIds?: string[];
+  readinessRules?: TaskReadinessRule[];
 }
 
 export interface ListTasksInput {

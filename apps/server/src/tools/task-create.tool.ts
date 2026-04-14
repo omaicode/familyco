@@ -1,7 +1,16 @@
 import type { AgentService, ProjectService, ToolExecutionResult } from '@familyco/core';
 
 import { resolveDefaultProjectId, resolveExecutiveAgentId } from '../modules/shared/defaults.js';
-import { asNonEmptyString, asTaskPriority, asTextString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
+import {
+  asNonEmptyString,
+  asStringArray,
+  asTaskPriority,
+  asTaskReadinessRules,
+  asTextString,
+  invalidArguments,
+  summarizeSlashDescription,
+  unavailableTool
+} from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
 
 export const taskCreateSlashSpec: SlashCommandSpec = {
@@ -58,6 +67,18 @@ export const taskCreateTool: ServerToolDefinition = {
       type: 'low | medium | high | urgent',
       required: false,
       description: 'Optional priority level for sorting and escalation.'
+    },
+    {
+      name: 'dependsOnTaskIds',
+      type: 'string[]',
+      required: false,
+      description: 'Optional list of task IDs that must be done before this task is ready.'
+    },
+    {
+      name: 'readinessRules',
+      type: 'TaskReadinessRule[]',
+      required: false,
+      description: 'Optional machine-readable readiness rules, for example task_status requirements on other task IDs.'
     }
   ],
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
@@ -91,6 +112,16 @@ export const taskCreateTool: ServerToolDefinition = {
       fallbackAgentId: assigneeAgentId,
       agentService: context.agentService
     });
+    const dependsOnTaskIds = asStringArray(argumentsMap.dependsOnTaskIds);
+    const readinessRules = asTaskReadinessRules(argumentsMap.readinessRules);
+
+    if (argumentsMap.dependsOnTaskIds !== undefined && dependsOnTaskIds === undefined) {
+      return invalidArguments('task.create', 'dependsOnTaskIds must be a string array or comma-separated string');
+    }
+
+    if (argumentsMap.readinessRules !== undefined && readinessRules === undefined) {
+      return invalidArguments('task.create', 'readinessRules must be a JSON array of supported readiness rules');
+    }
 
     const task = await context.taskService.createTask({
       title,
@@ -98,7 +129,9 @@ export const taskCreateTool: ServerToolDefinition = {
       projectId,
       assigneeAgentId,
       createdBy,
-      priority: asTaskPriority(argumentsMap.priority)
+      priority: asTaskPriority(argumentsMap.priority),
+      dependsOnTaskIds,
+      readinessRules
     });
 
     return {

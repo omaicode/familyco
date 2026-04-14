@@ -4,11 +4,18 @@ import type {
   ListTasksInput,
   Task,
   TaskPriority,
+  TaskReadinessEvaluation,
   TaskStatus,
+  TaskWithReadiness,
   UpdateTaskInput
 } from './task.entity.js';
 import type { TaskRepository } from './task.repository.js';
 import type { EventBus } from '../events/event-bus.js';
+import {
+  evaluateTaskReadiness,
+  normalizeTaskDependencyIds,
+  normalizeTaskReadinessRules
+} from './task-readiness.js';
 
 const DEFAULT_PRIORITY: TaskPriority = 'medium';
 
@@ -28,8 +35,23 @@ export class TaskService {
   ) {}
 
   async createTask(input: CreateTaskInput): Promise<Task> {
+    const title = input.title.trim();
+    const description = input.description.trim();
+
+    if (!title) {
+      throw new Error('TASK_TITLE_REQUIRED');
+    }
+
+    if (!description) {
+      throw new Error('TASK_DESCRIPTION_REQUIRED');
+    }
+
     const task = await this.repository.create({
       ...input,
+      title,
+      description,
+      dependsOnTaskIds: normalizeTaskDependencyIds(input.dependsOnTaskIds),
+      readinessRules: normalizeTaskReadinessRules(input.readinessRules),
       priority: input.priority ?? DEFAULT_PRIORITY
     });
     this.eventBus?.emit('task.created', {
@@ -47,6 +69,18 @@ export class TaskService {
     return this.listTasks({ projectId });
   }
 
+  async listTasksWithReadiness(filters: ListTasksInput = {}): Promise<TaskWithReadiness[]> {
+    const [tasks, relatedTasks] = await Promise.all([
+      this.repository.list(filters),
+      this.repository.list()
+    ]);
+
+    return tasks.map((task) => ({
+      ...task,
+      readiness: evaluateTaskReadiness({ task, relatedTasks })
+    }));
+  }
+
   async getTask(taskId: string): Promise<Task> {
     const task = await this.repository.findById(taskId);
     if (!task) {
@@ -56,8 +90,31 @@ export class TaskService {
     return task;
   }
 
+  async getTaskWithReadiness(taskId: string): Promise<TaskWithReadiness> {
+    const [task, relatedTasks] = await Promise.all([
+      this.getTask(taskId),
+      this.repository.list()
+    ]);
+
+    return {
+      ...task,
+      readiness: evaluateTaskReadiness({ task, relatedTasks })
+    };
+  }
+
+  async evaluateTaskReadiness(taskId: string): Promise<TaskReadinessEvaluation> {
+    const task = await this.getTask(taskId);
+    const relatedTasks = await this.repository.list();
+    return evaluateTaskReadiness({ task, relatedTasks });
+  }
+
+  async evaluateTaskReadinessForTask(task: Task, relatedTasks?: Task[]): Promise<TaskReadinessEvaluation> {
+    const related = relatedTasks ?? (await this.repository.list());
+    return evaluateTaskReadiness({ task, relatedTasks: related });
+  }
+
   async updateTask(taskId: string, input: UpdateTaskInput): Promise<Task> {
-    await this.getTask(taskId);
+    const currentTask = await this.getTask(taskId);
 
     const title = input.title.trim();
     const description = input.description.trim();
@@ -70,13 +127,26 @@ export class TaskService {
       throw new Error('TASK_DESCRIPTION_REQUIRED');
     }
 
+    const dependsOnTaskIds = normalizeTaskDependencyIds(input.dependsOnTaskIds ?? currentTask.dependsOnTaskIds);
+    const readinessRules = normalizeTaskReadinessRules(input.readinessRules ?? currentTask.readinessRules);
+
+    if (dependsOnTaskIds.includes(taskId)) {
+      throw new Error(`TASK_DEPENDS_ON_SELF:${taskId}`);
+    }
+
+    if (readinessRules.some((rule) => rule.taskId === taskId)) {
+      throw new Error(`TASK_READINESS_RULE_SELF_REFERENCE:${taskId}`);
+    }
+
     const updatedTask = await this.repository.update(taskId, {
       title,
       description,
       projectId: input.projectId,
       assigneeAgentId: input.assigneeAgentId ?? null,
       createdBy: input.createdBy,
-      priority: input.priority
+      priority: input.priority,
+      dependsOnTaskIds,
+      readinessRules
     });
 
     this.eventBus?.emit('task.updated', {

@@ -71,9 +71,20 @@ export interface TaskListItem {
   assigneeAgentId: string | null;
   projectId: string;
   createdBy: string;
+  dependsOnTaskIds: string[];
+  readinessRules: TaskReadinessRule[];
   createdAt: string;
   updatedAt: string;
 }
+
+export interface TaskStatusReadinessRule {
+  type: 'task_status';
+  taskId: string;
+  status: TaskListItem['status'];
+  description?: string;
+}
+
+export type TaskReadinessRule = TaskStatusReadinessRule;
 
 export interface ApprovalListItem {
   id: string;
@@ -216,6 +227,8 @@ export interface CreateTaskPayload {
   assignedToId?: string | null;
   createdBy?: string;
   priority?: TaskListItem['priority'];
+  dependsOnTaskIds?: string[];
+  readinessRules?: TaskReadinessRule[];
   dueAt?: string;
 }
 
@@ -233,6 +246,8 @@ export interface UpdateTaskPayload {
   assigneeAgentId?: string | null;
   createdBy: string;
   priority: TaskListItem['priority'];
+  dependsOnTaskIds?: string[];
+  readinessRules?: TaskReadinessRule[];
 }
 
 export interface DeleteTaskPayload {

@@ -47,6 +47,10 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
       return { ok: false, toolName: 'heartbeat.dispatch', error: { code: 'SERVICE_UNAVAILABLE', message: 'queueService is not available' } };
     }
 
+    if (!context.taskService) {
+      return { ok: false, toolName: 'heartbeat.dispatch', error: { code: 'SERVICE_UNAVAILABLE', message: 'taskService is not available' } };
+    }
+
     const taskIds = raw
       .split(',')
       .map((s) => s.trim())
@@ -67,8 +71,31 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
 
     const dispatched: string[] = [];
     const skipped: string[] = [];
+    const readinessBlocked: Array<{ taskId: string; blockers: string[] }> = [];
 
     for (const taskId of taskIds) {
+      const task = await context.taskService.getTaskWithReadiness(taskId).catch(() => null);
+      if (!task) {
+        skipped.push(taskId);
+        readinessBlocked.push({ taskId, blockers: ['Task not found.'] });
+        continue;
+      }
+
+      if (task.assigneeAgentId !== agentId) {
+        skipped.push(taskId);
+        readinessBlocked.push({ taskId, blockers: ['Task is not assigned to this agent.'] });
+        continue;
+      }
+
+      if (!task.readiness.ready) {
+        skipped.push(taskId);
+        readinessBlocked.push({
+          taskId,
+          blockers: task.readiness.blockers.map((blocker) => blocker.message)
+        });
+        continue;
+      }
+
       try {
         await context.queueService.enqueue({
           type: 'task.execute',
@@ -86,8 +113,9 @@ export const heartbeatDispatchTool: ServerToolDefinition = {
       output: {
         dispatched,
         skipped,
+        readinessBlocked,
         dispatchedCount: dispatched.length,
-        message: `Dispatched ${dispatched.length} task(s) for execution.`
+        message: `Dispatched ${dispatched.length} task(s) for execution. Skipped ${skipped.length} task(s).`
       }
     };
   }
