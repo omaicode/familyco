@@ -17,6 +17,13 @@ import { useI18n } from './composables/useI18n';
 
 type ThemePreference = 'system' | 'light' | 'dark';
 
+interface SidebarCounts {
+  agents: number;
+  projects: number;
+  tasks: number;
+  pendingApprovals: number;
+}
+
 const route = useRoute();
 const router = useRouter();
 const { t, coerceSupportedLocale } = useI18n();
@@ -78,9 +85,19 @@ watch(() => route.path, () => { mobileMenuOpen.value = false; });
 const isSetupRoute = computed(() => route.meta.hideShell === true);
 
 // ── Sidebar pending badge ─────────────────────────────────
-const pendingInboxCount = computed(() =>
-  uiRuntime.stores.inbox.state.data.approvals.filter(a => a.status === 'pending').length
-);
+const sidebarCounts = ref<SidebarCounts>({
+  agents: 0,
+  projects: 0,
+  tasks: 0,
+  pendingApprovals: 0
+});
+
+const navCounts = computed<Record<string, number>>(() => ({
+  '/agents': sidebarCounts.value.agents,
+  '/projects': sidebarCounts.value.projects,
+  '/tasks': sidebarCounts.value.tasks,
+  '/inbox': sidebarCounts.value.pendingApprovals
+}));
 
 const pageTitle = computed(() => {
   const match = uiRuntime.routes.find((item) => item.path === route.path);
@@ -194,6 +211,15 @@ const retryRuntime = async () => {
 };
 
 let healthCheckTimer: ReturnType<typeof setInterval> | null = null;
+let sidebarCountTimer: ReturnType<typeof setInterval> | null = null;
+
+const refreshSidebarCounts = async (): Promise<void> => {
+  try {
+    sidebarCounts.value = await uiRuntime.api.getDashboardSidebarCounts();
+  } catch {
+    // Keep last known counts if server is temporarily unavailable.
+  }
+};
 
 const handleWindowError = (event: ErrorEvent) => setGlobalError(event.error ?? event.message);
 const handleUnhandledRejection = (event: PromiseRejectionEvent) => setGlobalError(event.reason);
@@ -235,6 +261,7 @@ onMounted(async () => {
 
   // Splash — run health check in parallel
   void checkHealth();
+  void refreshSidebarCounts();
 
   // Dismiss splash after boot delay + loading animation
   setTimeout(() => {
@@ -249,6 +276,7 @@ onMounted(async () => {
   }, 1600);
 
   healthCheckTimer = setInterval(() => void checkHealth(), 15000);
+  sidebarCountTimer = setInterval(() => void refreshSidebarCounts(), 10000);
 });
 
 onUnmounted(() => {
@@ -257,6 +285,7 @@ onUnmounted(() => {
   window.removeEventListener('online', handleOnline);
   window.removeEventListener('offline', handleOffline);
   if (healthCheckTimer) { clearInterval(healthCheckTimer); healthCheckTimer = null; }
+  if (sidebarCountTimer) { clearInterval(sidebarCountTimer); sidebarCountTimer = null; }
   if (systemThemeMediaQuery) { systemThemeMediaQuery.removeEventListener('change', handleSystemThemeChange); systemThemeMediaQuery = null; }
 });
 </script>
@@ -277,7 +306,7 @@ onUnmounted(() => {
       :mobile-open="mobileMenuOpen"
       :nav-groups="navGroups"
       :nav-icons="navIcons"
-      :pending-inbox-count="pendingInboxCount"
+      :nav-counts="navCounts"
       @toggle="toggleSidebar"
       @close-mobile="closeMobileMenu"
     />

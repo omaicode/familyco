@@ -386,6 +386,27 @@ test('P2 routes: dashboard summary exposes KPI metrics', async () => {
   assert.equal(typeof summary.metrics.approvalLatencyMinutes, 'number');
   assert.equal(typeof summary.metrics.throughputDoneLast24h, 'number');
 
+  const sidebarCountsResponse = await app.inject({
+    method: 'GET',
+    url: '/api/v1/dashboard/sidebar-counts',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(sidebarCountsResponse.statusCode, 200);
+  const sidebarCounts = sidebarCountsResponse.json() as {
+    agents: number;
+    projects: number;
+    tasks: number;
+    pendingApprovals: number;
+  };
+
+  assert.equal(sidebarCounts.agents >= 1, true);
+  assert.equal(sidebarCounts.projects >= 1, true);
+  assert.equal(sidebarCounts.tasks >= 1, true);
+  assert.equal(typeof sidebarCounts.pendingApprovals, 'number');
+
   await app.close();
 });
 

@@ -142,6 +142,13 @@ export interface DashboardSummary {
   latestAudit: AuditListItem[];
 }
 
+export interface DashboardSidebarCounts {
+  agents: number;
+  projects: number;
+  tasks: number;
+  pendingApprovals: number;
+}
+
 export interface ListAuditPayload {
   actorId?: string;
   action?: string;
@@ -608,6 +615,7 @@ export interface FamilyCoApiContracts {
     defaultProject: ProjectListItem | null;
   }>;
   getDashboardSummary: (projectId?: string) => Promise<DashboardSummary>;
+  getDashboardSidebarCounts: () => Promise<DashboardSidebarCounts>;
   listAudit: (query?: ListAuditPayload) => Promise<AuditListItem[]>;
   getBudgetReport: () => Promise<BudgetReport>;
   listSkills: () => Promise<SkillsListResponse>;
@@ -775,6 +783,7 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
         ? `/api/v1/dashboard/summary?projectId=${encodeURIComponent(projectId)}`
         : '/api/v1/dashboard/summary'
     ),
+  getDashboardSidebarCounts: () => client.get<DashboardSidebarCounts>('/api/v1/dashboard/sidebar-counts'),
   listAudit: (query = {}) => {
     const params = new URLSearchParams();
     if (query.actorId) {

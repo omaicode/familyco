@@ -9,7 +9,7 @@ import type {
 import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
-import { dashboardSummaryQuerySchema } from './dashboard.schema.js';
+import { dashboardSidebarCountsSchema, dashboardSummaryQuerySchema } from './dashboard.schema.js';
 
 export interface DashboardModuleDeps {
   agentService: AgentService;
@@ -20,6 +20,24 @@ export interface DashboardModuleDeps {
 }
 
 export function registerDashboardController(app: FastifyInstance, deps: DashboardModuleDeps): void {
+  app.get('/dashboard/sidebar-counts', async (request) => {
+    requireMinimumLevel(request, 'L1');
+
+    const [agents, projects, tasks, approvals] = await Promise.all([
+      deps.agentService.listAgents(),
+      deps.projectService.listProjects(),
+      deps.taskService.listTasks(),
+      deps.approvalService.listApprovalRequests()
+    ]);
+
+    return dashboardSidebarCountsSchema.parse({
+      agents: agents.length,
+      projects: projects.length,
+      tasks: tasks.length,
+      pendingApprovals: approvals.filter((approval) => approval.status === 'pending').length
+    });
+  });
+
   app.get('/dashboard/summary', async (request) => {
     requireMinimumLevel(request, 'L1');
     const query = dashboardSummaryQuerySchema.parse(request.query);

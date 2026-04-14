@@ -21,7 +21,7 @@ const props = defineProps<{
   mobileOpen: boolean;
   navGroups: NavGroup[];
   navIcons: Record<string, Component>;
-  pendingInboxCount: number;
+  navCounts: Partial<Record<string, number>>;
 }>();
 
 const emit = defineEmits<{
@@ -30,6 +30,8 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const countBadgePaths = new Set(['/agents', '/projects', '/tasks', '/inbox']);
 </script>
 
 <template>
@@ -82,11 +84,11 @@ const { t } = useI18n();
             />
             <span class="fc-nav-label">{{ t(section.label) }}</span>
           </RouterLink>
-          <!-- Pending approval badge on Inbox -->
+          <!-- Sidebar count badges -->
           <span
-            v-if="section.path === '/inbox' && props.pendingInboxCount > 0"
+            v-if="countBadgePaths.has(section.path) && typeof props.navCounts[section.path] === 'number'"
             class="fc-nav-badge"
-          >{{ props.pendingInboxCount > 99 ? '99+' : props.pendingInboxCount }}</span>
+          >{{ (props.navCounts[section.path] ?? 0) > 99 ? '99+' : (props.navCounts[section.path] ?? 0) }}</span>
         </div>
       </template>
     </nav>
