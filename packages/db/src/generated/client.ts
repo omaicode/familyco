@@ -82,6 +82,16 @@ export type BudgetUsage = Prisma.BudgetUsageModel
  */
 export type InboxMessage = Prisma.InboxMessageModel
 /**
+ * Model ChatSession
+ * 
+ */
+export type ChatSession = Prisma.ChatSessionModel
+/**
+ * Model ChatMessage
+ * 
+ */
+export type ChatMessage = Prisma.ChatMessageModel
+/**
  * Model Settings
  * 
  */

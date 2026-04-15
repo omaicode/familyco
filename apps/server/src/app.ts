@@ -41,7 +41,12 @@ import {
 
 import { prismaClient } from '@familyco/db'
 import { runMigrationsWithSafety, type MigrationRunResult } from '@familyco/db';
-import { ChatAttachmentStore, ChatStreamRegistry, registerAgentController } from './modules/agent/index.js';
+import {
+  ChatAttachmentStore,
+  ChatConversationService,
+  ChatStreamRegistry,
+  registerAgentController
+} from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
@@ -69,6 +74,7 @@ import {
   InMemoryApprovalRepository,
   InMemoryAuditRepository,
   InMemoryBudgetUsageRepository,
+  InMemoryChatConversationRepository,
   InMemoryInboxRepository,
   InMemoryPluginRepository,
   InMemoryPluginRunRepository,
@@ -82,6 +88,7 @@ import {
   PrismaApprovalRepository,
   PrismaAuditRepository,
   PrismaBudgetUsageRepository,
+  PrismaChatConversationRepository,
   PrismaInboxRepository,
   PrismaPluginRepository,
   PrismaPluginRunRepository,
@@ -182,6 +189,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     approvalRepository,
     auditRepository,
     budgetUsageRepository,
+    chatConversationRepository,
     inboxRepository,
     pluginRepository,
     pluginRunRepository,
@@ -203,6 +211,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const approvalService = new ApprovalService(approvalRepository, eventBus);
   const auditService = new AuditService(auditRepository);
   const budgetUsageService = new BudgetUsageService(budgetUsageRepository);
+  const chatConversationService = new ChatConversationService(chatConversationRepository);
   const inboxService = new InboxService(inboxRepository);
   const projectService = new ProjectService(projectRepository);
   const agentRunService = new AgentRunService(agentRunRepository);
@@ -630,6 +639,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       registerAgentController(api, {
         agentService,
         inboxService,
+        chatConversationService,
         approvalService,
         auditService,
         approvalGuard,
@@ -912,6 +922,7 @@ function createRepositories(
   approvalRepository: ApprovalRepository;
   auditRepository: AuditRepository;
   budgetUsageRepository: BudgetUsageRepository;
+  chatConversationRepository: import('./modules/agent/chat-conversation.service.js').ChatConversationRepository;
   inboxRepository: InboxRepository;
   pluginRepository: PluginRepositoryInterface;
   pluginRunRepository: PluginRunRepositoryInterface;
@@ -929,6 +940,7 @@ function createRepositories(
       approvalRepository: new PrismaApprovalRepository(client),
       auditRepository: new PrismaAuditRepository(client),
       budgetUsageRepository: new PrismaBudgetUsageRepository(client),
+      chatConversationRepository: new PrismaChatConversationRepository(client),
       inboxRepository: new PrismaInboxRepository(client),
       pluginRepository: new PrismaPluginRepository(client),
       pluginRunRepository: new PrismaPluginRunRepository(client),
@@ -946,6 +958,7 @@ function createRepositories(
     approvalRepository: new InMemoryApprovalRepository(),
     auditRepository: new InMemoryAuditRepository(),
     budgetUsageRepository: new InMemoryBudgetUsageRepository(),
+    chatConversationRepository: new InMemoryChatConversationRepository(),
     inboxRepository: new InMemoryInboxRepository(),
     pluginRepository: new InMemoryPluginRepository(),
     pluginRunRepository: new InMemoryPluginRunRepository(),

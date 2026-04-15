@@ -48,6 +48,14 @@ interface AdapterConfig {
   model: string;
 }
 
+interface ChatSessionTitleInput {
+  agentAdapterId?: string | null;
+  agentModel?: string | null;
+  message: string;
+  companyProfile: { companyName: string; companyDescription: string };
+  abortSignal?: AbortSignal;
+}
+
 export class ChatEngineService {
   constructor(
     private readonly settingsService: SettingsService,
@@ -191,6 +199,39 @@ export class ChatEngineService {
     );
   }
 
+  async generateSessionTitle(input: ChatSessionTitleInput): Promise<string | null> {
+    const adapterConfig = await this.getAdapterConfig(input.agentAdapterId, input.agentModel);
+    if (!adapterConfig) {
+      return null;
+    }
+
+    const adapter = this.adapterRegistry.get(adapterConfig.adapterId);
+    if (!adapter) {
+      return null;
+    }
+
+    const result = await adapter.chat({
+      apiKey: adapterConfig.apiKey,
+      model: adapterConfig.model,
+      systemPrompt: [
+        'You generate concise chat session titles for an operator console.',
+        'Rules:',
+        '- Return a single plain-text title only.',
+        '- 3 to 8 words.',
+        '- No quotes, no markdown, no trailing punctuation.',
+        '- Capture the core intent of the message.'
+      ].join('\n'),
+      userPrompt: [
+        `Company: ${input.companyProfile.companyName}`,
+        'User message:',
+        input.message
+      ].join('\n\n'),
+      abortSignal: input.abortSignal
+    });
+
+    return normalizeGeneratedTitle(result.content);
+  }
+
   private async resolveAdapterConfig(
     agentAdapterId?: string | null,
     agentModel?: string | null
@@ -270,6 +311,33 @@ function toAdapterId(value: unknown): AdapterId | undefined {
   }
 
   return undefined;
+}
+
+function normalizeGeneratedTitle(raw: string): string | null {
+  const firstLine = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+
+  if (!firstLine) {
+    return null;
+  }
+
+  const sanitized = firstLine
+    .replace(/^['"`\-:\s]+/, '')
+    .replace(/['"`\-:\s]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (sanitized.length === 0) {
+    return null;
+  }
+
+  if (sanitized.length <= 72) {
+    return sanitized;
+  }
+
+  return `${sanitized.slice(0, 69).trimEnd()}...`;
 }
 
 const INTERNAL_TOOLS_ALWAYS_ALLOWED = new Set(['confirm.request']);

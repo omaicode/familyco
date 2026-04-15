@@ -4,7 +4,9 @@ import test from 'node:test';
 import type { AgentProfile, AgentService } from '@familyco/core';
 import { InboxService } from '@familyco/core';
 
+import { InMemoryChatConversationRepository } from '../../repositories/in-memory-chat-conversation.repository.js';
 import { InMemoryInboxRepository } from '../../repositories/in-memory-inbox.repository.js';
+import { ChatConversationService } from './chat-conversation.service.js';
 import type { ChatAttachmentData } from './chat-attachment-store.js';
 import { chunkReply, processAgentChat } from './agent-chat.service.js';
 import { toConversationHistoryEntry } from './agent-chat.helpers.js';
@@ -21,7 +23,9 @@ test('chunkReply preserves markdown newlines', () => {
 
 test('processAgentChat transcribes audio before sending transcript into chat engine', async () => {
   const inboxService = new InboxService(new InMemoryInboxRepository());
+  const chatConversationService = new ChatConversationService(new InMemoryChatConversationRepository());
   const capturedRunInputs: Array<{ message?: string; attachments?: Array<{ transcript?: string }> }> = [];
+  const capturedTitleInputs: Array<{ message: string }> = [];
   const createdAt = new Date('2025-01-01T00:00:00.000Z');
   const attachment: ChatAttachmentData = {
     id: 'audio-1',
@@ -60,6 +64,7 @@ test('processAgentChat transcribes audio before sending transcript into chat eng
         })
       } as unknown as AgentService,
       inboxService,
+      chatConversationService,
       approvalService: {} as never,
       auditService: {
         write: async () => undefined
@@ -80,6 +85,10 @@ test('processAgentChat transcribes audio before sending transcript into chat eng
         run: async (input: { attachments?: Array<{ transcript?: string }> }) => {
           capturedRunInputs.push(input);
           return { reply: 'Done.', toolCalls: [], task: null, project: null };
+        },
+        generateSessionTitle: async (input: { message: string }) => {
+          capturedTitleInputs.push(input);
+          return 'Review churn and onboarding';
         }
       } as never,
       toolExecutor: {
@@ -116,6 +125,9 @@ test('processAgentChat transcribes audio before sending transcript into chat eng
   assert.equal(capturedRunInputs.length, 1);
   assert.equal(capturedRunInputs[0]?.message, 'We should review churn and onboarding.');
   assert.equal(capturedRunInputs[0]?.attachments?.[0]?.transcript, 'We should review churn and onboarding.');
+  assert.equal(capturedTitleInputs.length, 1);
+  assert.equal(capturedTitleInputs[0]?.message, 'We should review churn and onboarding.');
+  assert.equal(result.session.title, 'Review churn and onboarding');
   const founderPayload = result.founderMessage.payload as {
     attachments?: Array<{ transcript?: string }>;
   } | null;
@@ -129,12 +141,12 @@ test('toConversationHistoryEntry appends attachment transcripts to message histo
   const createdAt = new Date('2026-04-11T07:00:00.000Z');
   const entry = toConversationHistoryEntry({
     id: 'message-1',
+    sessionId: 'session-1',
     recipientId: 'agent-1',
     senderId: 'founder',
     type: 'info',
     title: '',
     body: '',
-    status: 'read',
     createdAt,
     updatedAt: createdAt,
     payload: {

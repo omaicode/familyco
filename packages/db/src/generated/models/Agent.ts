@@ -237,6 +237,7 @@ export type AgentWhereInput = {
   createdTasks?: Prisma.TaskListRelationFilter
   approvalRequests?: Prisma.ApprovalRequestListRelationFilter
   agentRuns?: Prisma.AgentRunListRelationFilter
+  chatSessions?: Prisma.ChatSessionListRelationFilter
   budgetUsages?: Prisma.BudgetUsageListRelationFilter
 }
 
@@ -259,6 +260,7 @@ export type AgentOrderByWithRelationInput = {
   createdTasks?: Prisma.TaskOrderByRelationAggregateInput
   approvalRequests?: Prisma.ApprovalRequestOrderByRelationAggregateInput
   agentRuns?: Prisma.AgentRunOrderByRelationAggregateInput
+  chatSessions?: Prisma.ChatSessionOrderByRelationAggregateInput
   budgetUsages?: Prisma.BudgetUsageOrderByRelationAggregateInput
 }
 
@@ -284,6 +286,7 @@ export type AgentWhereUniqueInput = Prisma.AtLeast<{
   createdTasks?: Prisma.TaskListRelationFilter
   approvalRequests?: Prisma.ApprovalRequestListRelationFilter
   agentRuns?: Prisma.AgentRunListRelationFilter
+  chatSessions?: Prisma.ChatSessionListRelationFilter
   budgetUsages?: Prisma.BudgetUsageListRelationFilter
 }, "id">
 
@@ -339,6 +342,7 @@ export type AgentCreateInput = {
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
@@ -360,6 +364,7 @@ export type AgentUncheckedCreateInput = {
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
@@ -381,6 +386,7 @@ export type AgentUpdateInput = {
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
@@ -402,6 +408,7 @@ export type AgentUncheckedUpdateInput = {
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
@@ -666,6 +673,20 @@ export type AgentUpdateOneWithoutBudgetUsagesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AgentUpdateToOneWithWhereWithoutBudgetUsagesInput, Prisma.AgentUpdateWithoutBudgetUsagesInput>, Prisma.AgentUncheckedUpdateWithoutBudgetUsagesInput>
 }
 
+export type AgentCreateNestedOneWithoutChatSessionsInput = {
+  create?: Prisma.XOR<Prisma.AgentCreateWithoutChatSessionsInput, Prisma.AgentUncheckedCreateWithoutChatSessionsInput>
+  connectOrCreate?: Prisma.AgentCreateOrConnectWithoutChatSessionsInput
+  connect?: Prisma.AgentWhereUniqueInput
+}
+
+export type AgentUpdateOneRequiredWithoutChatSessionsNestedInput = {
+  create?: Prisma.XOR<Prisma.AgentCreateWithoutChatSessionsInput, Prisma.AgentUncheckedCreateWithoutChatSessionsInput>
+  connectOrCreate?: Prisma.AgentCreateOrConnectWithoutChatSessionsInput
+  upsert?: Prisma.AgentUpsertWithoutChatSessionsInput
+  connect?: Prisma.AgentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AgentUpdateToOneWithWhereWithoutChatSessionsInput, Prisma.AgentUpdateWithoutChatSessionsInput>, Prisma.AgentUncheckedUpdateWithoutChatSessionsInput>
+}
+
 export type AgentCreateWithoutChildrenInput = {
   id?: string
   name: string
@@ -683,6 +704,7 @@ export type AgentCreateWithoutChildrenInput = {
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
@@ -703,6 +725,7 @@ export type AgentUncheckedCreateWithoutChildrenInput = {
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
@@ -728,6 +751,7 @@ export type AgentCreateWithoutParentInput = {
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
@@ -748,6 +772,7 @@ export type AgentUncheckedCreateWithoutParentInput = {
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
@@ -788,6 +813,7 @@ export type AgentUpdateWithoutChildrenInput = {
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
@@ -808,6 +834,7 @@ export type AgentUncheckedUpdateWithoutChildrenInput = {
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
@@ -861,6 +888,7 @@ export type AgentCreateWithoutOwnedProjectsInput = {
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
@@ -881,6 +909,7 @@ export type AgentUncheckedCreateWithoutOwnedProjectsInput = {
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
@@ -917,6 +946,7 @@ export type AgentUpdateWithoutOwnedProjectsInput = {
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
@@ -937,6 +967,7 @@ export type AgentUncheckedUpdateWithoutOwnedProjectsInput = {
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
@@ -957,6 +988,7 @@ export type AgentCreateWithoutAssignedTasksInput = {
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
@@ -977,6 +1009,7 @@ export type AgentUncheckedCreateWithoutAssignedTasksInput = {
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
@@ -1002,6 +1035,7 @@ export type AgentCreateWithoutCreatedTasksInput = {
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
@@ -1022,6 +1056,7 @@ export type AgentUncheckedCreateWithoutCreatedTasksInput = {
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
@@ -1058,6 +1093,7 @@ export type AgentUpdateWithoutAssignedTasksInput = {
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
@@ -1078,6 +1114,7 @@ export type AgentUncheckedUpdateWithoutAssignedTasksInput = {
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
@@ -1109,6 +1146,7 @@ export type AgentUpdateWithoutCreatedTasksInput = {
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
@@ -1129,6 +1167,7 @@ export type AgentUncheckedUpdateWithoutCreatedTasksInput = {
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
@@ -1149,6 +1188,7 @@ export type AgentCreateWithoutApprovalRequestsInput = {
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
@@ -1169,6 +1209,7 @@ export type AgentUncheckedCreateWithoutApprovalRequestsInput = {
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
@@ -1205,6 +1246,7 @@ export type AgentUpdateWithoutApprovalRequestsInput = {
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
@@ -1225,6 +1267,7 @@ export type AgentUncheckedUpdateWithoutApprovalRequestsInput = {
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
@@ -1245,6 +1288,7 @@ export type AgentCreateWithoutAgentRunsInput = {
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
 }
 
@@ -1265,6 +1309,7 @@ export type AgentUncheckedCreateWithoutAgentRunsInput = {
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
   budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
 }
 
@@ -1301,6 +1346,7 @@ export type AgentUpdateWithoutAgentRunsInput = {
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
@@ -1321,6 +1367,7 @@ export type AgentUncheckedUpdateWithoutAgentRunsInput = {
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
@@ -1342,6 +1389,7 @@ export type AgentCreateWithoutBudgetUsagesInput = {
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionCreateNestedManyWithoutAgentInput
 }
 
 export type AgentUncheckedCreateWithoutBudgetUsagesInput = {
@@ -1362,6 +1410,7 @@ export type AgentUncheckedCreateWithoutBudgetUsagesInput = {
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
   agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  chatSessions?: Prisma.ChatSessionUncheckedCreateNestedManyWithoutAgentInput
 }
 
 export type AgentCreateOrConnectWithoutBudgetUsagesInput = {
@@ -1398,6 +1447,7 @@ export type AgentUpdateWithoutBudgetUsagesInput = {
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentUncheckedUpdateWithoutBudgetUsagesInput = {
@@ -1418,6 +1468,107 @@ export type AgentUncheckedUpdateWithoutBudgetUsagesInput = {
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
+}
+
+export type AgentCreateWithoutChatSessionsInput = {
+  id?: string
+  name: string
+  role: string
+  level: string
+  department: string
+  status: string
+  aiAdapterId?: string | null
+  aiModel?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  parent?: Prisma.AgentCreateNestedOneWithoutChildrenInput
+  children?: Prisma.AgentCreateNestedManyWithoutParentInput
+  ownedProjects?: Prisma.ProjectCreateNestedManyWithoutOwnerInput
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput
+  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageCreateNestedManyWithoutAgentInput
+}
+
+export type AgentUncheckedCreateWithoutChatSessionsInput = {
+  id?: string
+  name: string
+  role: string
+  level: string
+  department: string
+  status: string
+  parentAgentId?: string | null
+  aiAdapterId?: string | null
+  aiModel?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  children?: Prisma.AgentUncheckedCreateNestedManyWithoutParentInput
+  ownedProjects?: Prisma.ProjectUncheckedCreateNestedManyWithoutOwnerInput
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutActorInput
+  agentRuns?: Prisma.AgentRunUncheckedCreateNestedManyWithoutRootAgentInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedCreateNestedManyWithoutAgentInput
+}
+
+export type AgentCreateOrConnectWithoutChatSessionsInput = {
+  where: Prisma.AgentWhereUniqueInput
+  create: Prisma.XOR<Prisma.AgentCreateWithoutChatSessionsInput, Prisma.AgentUncheckedCreateWithoutChatSessionsInput>
+}
+
+export type AgentUpsertWithoutChatSessionsInput = {
+  update: Prisma.XOR<Prisma.AgentUpdateWithoutChatSessionsInput, Prisma.AgentUncheckedUpdateWithoutChatSessionsInput>
+  create: Prisma.XOR<Prisma.AgentCreateWithoutChatSessionsInput, Prisma.AgentUncheckedCreateWithoutChatSessionsInput>
+  where?: Prisma.AgentWhereInput
+}
+
+export type AgentUpdateToOneWithWhereWithoutChatSessionsInput = {
+  where?: Prisma.AgentWhereInput
+  data: Prisma.XOR<Prisma.AgentUpdateWithoutChatSessionsInput, Prisma.AgentUncheckedUpdateWithoutChatSessionsInput>
+}
+
+export type AgentUpdateWithoutChatSessionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  level?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  parent?: Prisma.AgentUpdateOneWithoutChildrenNestedInput
+  children?: Prisma.AgentUpdateManyWithoutParentNestedInput
+  ownedProjects?: Prisma.ProjectUpdateManyWithoutOwnerNestedInput
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
+}
+
+export type AgentUncheckedUpdateWithoutChatSessionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  level?: Prisma.StringFieldUpdateOperationsInput | string
+  department?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  parentAgentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiAdapterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  children?: Prisma.AgentUncheckedUpdateManyWithoutParentNestedInput
+  ownedProjects?: Prisma.ProjectUncheckedUpdateManyWithoutOwnerNestedInput
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
+  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
+  agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
 export type AgentCreateManyParentInput = {
@@ -1450,6 +1601,7 @@ export type AgentUpdateWithoutParentInput = {
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUpdateManyWithoutAgentNestedInput
 }
 
@@ -1470,6 +1622,7 @@ export type AgentUncheckedUpdateWithoutParentInput = {
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutActorNestedInput
   agentRuns?: Prisma.AgentRunUncheckedUpdateManyWithoutRootAgentNestedInput
+  chatSessions?: Prisma.ChatSessionUncheckedUpdateManyWithoutAgentNestedInput
   budgetUsages?: Prisma.BudgetUsageUncheckedUpdateManyWithoutAgentNestedInput
 }
 
@@ -1498,6 +1651,7 @@ export type AgentCountOutputType = {
   createdTasks: number
   approvalRequests: number
   agentRuns: number
+  chatSessions: number
   budgetUsages: number
 }
 
@@ -1508,6 +1662,7 @@ export type AgentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.
   createdTasks?: boolean | AgentCountOutputTypeCountCreatedTasksArgs
   approvalRequests?: boolean | AgentCountOutputTypeCountApprovalRequestsArgs
   agentRuns?: boolean | AgentCountOutputTypeCountAgentRunsArgs
+  chatSessions?: boolean | AgentCountOutputTypeCountChatSessionsArgs
   budgetUsages?: boolean | AgentCountOutputTypeCountBudgetUsagesArgs
 }
 
@@ -1566,6 +1721,13 @@ export type AgentCountOutputTypeCountAgentRunsArgs<ExtArgs extends runtime.Types
 /**
  * AgentCountOutputType without action
  */
+export type AgentCountOutputTypeCountChatSessionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ChatSessionWhereInput
+}
+
+/**
+ * AgentCountOutputType without action
+ */
 export type AgentCountOutputTypeCountBudgetUsagesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.BudgetUsageWhereInput
 }
@@ -1590,6 +1752,7 @@ export type AgentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   createdTasks?: boolean | Prisma.Agent$createdTasksArgs<ExtArgs>
   approvalRequests?: boolean | Prisma.Agent$approvalRequestsArgs<ExtArgs>
   agentRuns?: boolean | Prisma.Agent$agentRunsArgs<ExtArgs>
+  chatSessions?: boolean | Prisma.Agent$chatSessionsArgs<ExtArgs>
   budgetUsages?: boolean | Prisma.Agent$budgetUsagesArgs<ExtArgs>
   _count?: boolean | Prisma.AgentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["agent"]>
@@ -1647,6 +1810,7 @@ export type AgentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   createdTasks?: boolean | Prisma.Agent$createdTasksArgs<ExtArgs>
   approvalRequests?: boolean | Prisma.Agent$approvalRequestsArgs<ExtArgs>
   agentRuns?: boolean | Prisma.Agent$agentRunsArgs<ExtArgs>
+  chatSessions?: boolean | Prisma.Agent$chatSessionsArgs<ExtArgs>
   budgetUsages?: boolean | Prisma.Agent$budgetUsagesArgs<ExtArgs>
   _count?: boolean | Prisma.AgentCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -1667,6 +1831,7 @@ export type $AgentPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     createdTasks: Prisma.$TaskPayload<ExtArgs>[]
     approvalRequests: Prisma.$ApprovalRequestPayload<ExtArgs>[]
     agentRuns: Prisma.$AgentRunPayload<ExtArgs>[]
+    chatSessions: Prisma.$ChatSessionPayload<ExtArgs>[]
     budgetUsages: Prisma.$BudgetUsagePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -2082,6 +2247,7 @@ export interface Prisma__AgentClient<T, Null = never, ExtArgs extends runtime.Ty
   createdTasks<T extends Prisma.Agent$createdTasksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$createdTasksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   approvalRequests<T extends Prisma.Agent$approvalRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$approvalRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ApprovalRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   agentRuns<T extends Prisma.Agent$agentRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$agentRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AgentRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  chatSessions<T extends Prisma.Agent$chatSessionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$chatSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChatSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   budgetUsages<T extends Prisma.Agent$budgetUsagesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Agent$budgetUsagesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BudgetUsagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -2682,6 +2848,30 @@ export type Agent$agentRunsArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.AgentRunScalarFieldEnum | Prisma.AgentRunScalarFieldEnum[]
+}
+
+/**
+ * Agent.chatSessions
+ */
+export type Agent$chatSessionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ChatSession
+   */
+  select?: Prisma.ChatSessionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ChatSession
+   */
+  omit?: Prisma.ChatSessionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ChatSessionInclude<ExtArgs> | null
+  where?: Prisma.ChatSessionWhereInput
+  orderBy?: Prisma.ChatSessionOrderByWithRelationInput | Prisma.ChatSessionOrderByWithRelationInput[]
+  cursor?: Prisma.ChatSessionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ChatSessionScalarFieldEnum | Prisma.ChatSessionScalarFieldEnum[]
 }
 
 /**

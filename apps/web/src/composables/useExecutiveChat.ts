@@ -1,6 +1,11 @@
 import { computed, ref, watch } from 'vue';
 
-import { translate, type ChatAttachmentItem, type ChatAttachmentReference } from '@familyco/ui';
+import {
+  translate,
+  type AgentChatSession,
+  type ChatAttachmentItem,
+  type ChatAttachmentReference
+} from '@familyco/ui';
 
 import { uiRuntime } from '../runtime';
 import { type ChatFeedback, type DraftChatAttachment, type ThreadMessage, sortThread } from './executiveChat.shared';
@@ -9,14 +14,20 @@ import { useExecutiveChatStream } from './useExecutiveChatStream';
 
 const INITIAL_CHAT_PAGE_SIZE = 20;
 const OLDER_CHAT_PAGE_SIZE = 20;
+const SESSION_LIST_PAGE_SIZE = 50;
 
 export function useExecutiveChat() {
   const thread = ref<ThreadMessage[]>([]);
+  const sessions = ref<AgentChatSession[]>([]);
   const selectedAgentId = ref('');
+  const selectedSessionId = ref('');
+  const isSessionSidebarOpen = ref(true);
   const draftMessage = ref('');
   const draftAttachments = ref<DraftChatAttachment[]>([]);
   const editingMessageId = ref<string | null>(null);
   const isLoading = ref(false);
+  const isLoadingSessions = ref(false);
+  const isCreatingSession = ref(false);
   const isRefreshing = ref(false);
   const isLoadingOlder = ref(false);
   const hasMoreHistory = ref(true);
@@ -46,6 +57,39 @@ export function useExecutiveChat() {
     }, 4000);
   };
 
+  const upsertSession = (session: AgentChatSession): void => {
+    sessions.value = [
+      session,
+      ...sessions.value.filter((entry) => entry.id !== session.id)
+    ].sort((left, right) => new Date(right.lastMessageAt).getTime() - new Date(left.lastMessageAt).getTime());
+  };
+
+  const refreshSessions = async (preferredSessionId?: string): Promise<void> => {
+    if (!selectedAgentId.value) {
+      sessions.value = [];
+      selectedSessionId.value = '';
+      return;
+    }
+
+    isLoadingSessions.value = true;
+    try {
+      const listed = await uiRuntime.api.listAgentChatSessions(selectedAgentId.value, {
+        limit: SESSION_LIST_PAGE_SIZE
+      });
+      sessions.value = listed;
+
+      const preferred = preferredSessionId ?? selectedSessionId.value;
+      if (preferred && listed.some((session) => session.id === preferred)) {
+        selectedSessionId.value = preferred;
+        return;
+      }
+
+      selectedSessionId.value = listed[0]?.id ?? '';
+    } finally {
+      isLoadingSessions.value = false;
+    }
+  };
+
   const refreshThread = async (): Promise<void> => {
     if (!selectedAgentId.value) {
       thread.value = [];
@@ -54,7 +98,10 @@ export function useExecutiveChat() {
     }
 
     const recentMessages = sortThread(
-      await uiRuntime.api.getAgentChat(selectedAgentId.value, { limit: INITIAL_CHAT_PAGE_SIZE })
+      await uiRuntime.api.getAgentChat(selectedAgentId.value, {
+        ...(selectedSessionId.value ? { sessionId: selectedSessionId.value } : {}),
+        limit: INITIAL_CHAT_PAGE_SIZE
+      })
     );
 
     thread.value = recentMessages;
@@ -72,6 +119,7 @@ export function useExecutiveChat() {
     try {
       const olderMessages = sortThread(
         await uiRuntime.api.getAgentChat(selectedAgentId.value, {
+          ...(selectedSessionId.value ? { sessionId: selectedSessionId.value } : {}),
           limit: OLDER_CHAT_PAGE_SIZE,
           before: oldestMessage.createdAt
         })
@@ -99,6 +147,39 @@ export function useExecutiveChat() {
     }
   };
 
+  const createNewSession = async (): Promise<void> => {
+    if (!selectedAgentId.value || isCreatingSession.value) {
+      return;
+    }
+
+    isCreatingSession.value = true;
+    try {
+      const created = await uiRuntime.api.createAgentChatSession({
+        agentId: selectedAgentId.value
+      });
+      upsertSession(created);
+      selectedSessionId.value = created.id;
+      thread.value = [];
+      hasMoreHistory.value = false;
+    } catch (error) {
+      setFeedback('error', error instanceof Error ? error.message : t('chat.session.createFailed'));
+    } finally {
+      isCreatingSession.value = false;
+    }
+  };
+
+  const toggleSessionSidebar = (): void => {
+    isSessionSidebarOpen.value = !isSessionSidebarOpen.value;
+  };
+
+  const selectSession = (sessionId: string): void => {
+    if (sessionId === selectedSessionId.value) {
+      return;
+    }
+
+    selectedSessionId.value = sessionId;
+  };
+
   const {
     isSending,
     isStreaming,
@@ -110,10 +191,22 @@ export function useExecutiveChat() {
     sendConfirmOption
   } = useExecutiveChatStream({
     selectedAgent,
+    selectedSessionId,
     draftMessage,
     thread,
     refreshThread,
-    setFeedback
+    setFeedback,
+    onSessionResolved: ({ sessionId, session }) => {
+      if (session) {
+        upsertSession(session);
+      }
+
+      if (selectedSessionId.value !== sessionId) {
+        selectedSessionId.value = sessionId;
+      }
+
+      void refreshSessions(sessionId);
+    }
   });
 
   const connectionLabel = computed(() => {
@@ -147,10 +240,26 @@ export function useExecutiveChat() {
     hasMoreHistory.value = true;
     draftAttachments.value = [];
     editingMessageId.value = null;
+    selectedSessionId.value = '';
+    sessions.value = [];
 
     if (!isLoading.value) {
-      void refreshThread();
+      void (async () => {
+        try {
+          await refreshSessions();
+          await refreshThread();
+        } catch (error) {
+          setFeedback('error', error instanceof Error ? error.message : t('chat.session.loadFailed'));
+        }
+      })();
       connectSocket();
+    }
+  });
+
+  watch(selectedSessionId, () => {
+    hasMoreHistory.value = true;
+    if (!isLoading.value) {
+      void refreshThread();
     }
   });
 
@@ -160,6 +269,7 @@ export function useExecutiveChat() {
 
     try {
       await uiRuntime.stores.agents.loadAgents();
+      await refreshSessions();
       await refreshThread();
       connectSocket();
     } catch (error) {
@@ -251,6 +361,7 @@ export function useExecutiveChat() {
       (attachment): attachment is DraftChatAttachment & { uploadState: 'uploaded' } => attachment.uploadState === 'uploaded'
     );
     const attachmentRefs: ChatAttachmentReference[] = uploadedAttachments.map((attachment) => ({ id: attachment.id }));
+    const sessionMeta = selectedSessionId.value ? { sessionId: selectedSessionId.value } : undefined;
     const currentEditingMessage = editingMessage.value;
     const editMeta = editingMessageId.value
       ? {
@@ -267,8 +378,9 @@ export function useExecutiveChat() {
     }
 
     const sent = streamSendMessage({
-      meta: attachmentRefs.length > 0 || editMeta
+      meta: attachmentRefs.length > 0 || editMeta || sessionMeta
         ? {
+            ...(sessionMeta ?? {}),
             ...(attachmentRefs.length > 0 ? { attachments: attachmentRefs } : {}),
             ...(editMeta ?? {})
           }
@@ -289,11 +401,16 @@ export function useExecutiveChat() {
 
   return {
     thread,
+    sessions,
     selectedAgentId,
+    selectedSessionId,
+    isSessionSidebarOpen,
     draftMessage,
     draftAttachments,
     editingMessage,
     isLoading,
+    isLoadingSessions,
+    isCreatingSession,
     isRefreshing,
     isLoadingOlder,
     hasMoreHistory,
@@ -307,6 +424,9 @@ export function useExecutiveChat() {
     executiveAgents,
     selectedAgent,
     reload,
+    createNewSession,
+    toggleSessionSidebar,
+    selectSession,
     loadOlderMessages,
     uploadAttachments,
     removeDraftAttachment,

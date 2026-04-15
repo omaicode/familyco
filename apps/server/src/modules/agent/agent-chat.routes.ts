@@ -5,6 +5,8 @@ import {
   agentChatAttachmentParamsSchema,
   agentChatBodySchema,
   agentChatQuerySchema,
+  agentChatSessionQuerySchema,
+  createChatSessionBodySchema,
   pauseAgentParamsSchema
 } from './agent.schema.js';
 import { handleSocketChatMessage, processAgentChat, resolveSocketClient, sendSocketEvent, toErrorMessage } from './agent-chat.service.js';
@@ -12,20 +14,46 @@ import { buildAgentSlashRegistry } from './agent-chat.registry.js';
 import type { AgentModuleDeps } from './agent.types.js';
 
 export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleDeps): void {
+  app.get('/agents/:id/chat/sessions', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+    const { limit } = agentChatSessionQuerySchema.parse(request.query);
+    await deps.agentService.getAgentById(id);
+
+    return deps.chatConversationService.listSessions(id, 'founder', limit);
+  });
+
+  app.post('/agents/:id/chat/sessions', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
+    const { id } = pauseAgentParamsSchema.parse(request.params);
+    const body = createChatSessionBodySchema.parse(request.body ?? {});
+    await deps.agentService.getAgentById(id);
+
+    const session = await deps.chatConversationService.createSession({
+      agentId: id,
+      founderId: 'founder',
+      ...(body.title ? { title: body.title } : {})
+    });
+
+    reply.code(201);
+    return session;
+  });
+
   app.get('/agents/:id/chat', async (request) => {
     requireMinimumLevel(request, 'L0');
     const { id } = pauseAgentParamsSchema.parse(request.params);
-    const { limit, before } = agentChatQuerySchema.parse(request.query);
+    const { sessionId, limit, before } = agentChatQuerySchema.parse(request.query);
     await deps.agentService.getAgentById(id);
 
-    const conversation = await deps.inboxService.listConversation(
-      id,
+    const { messages } = await deps.chatConversationService.listConversation({
+      agentId: id,
+      founderId: 'founder',
+      ...(sessionId ? { sessionId } : {}),
       limit,
-      'founder',
-      before ? new Date(before) : undefined
-    );
+      ...(before ? { before: new Date(before) } : {})
+    });
 
-    return conversation.map((message) => ({
+    return messages.map((message) => ({
       ...message,
       direction: message.senderId === id ? 'agent_to_founder' : 'founder_to_agent'
     }));

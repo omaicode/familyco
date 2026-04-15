@@ -28,6 +28,7 @@ model Agent {
 	createdTasks     Task[]            @relation("TaskCreator")
 	approvalRequests ApprovalRequest[] @relation("ApprovalActor")
 	agentRuns        AgentRun[]        @relation("AgentRootRuns")
+	chatSessions     ChatSession[]
 	budgetUsages     BudgetUsage[]     @relation("BudgetAgent")
 }
 
@@ -158,6 +159,40 @@ model InboxMessage {
 	payload     Json?
 	createdAt   DateTime @default(now())
 	updatedAt   DateTime @updatedAt
+}
+
+model ChatSession {
+	id            String   @id @default(cuid())
+	agentId       String
+	founderId     String   @default("founder")
+	title         String   @default("New chat")
+	lastMessageAt DateTime @default(now())
+	createdAt     DateTime @default(now())
+	updatedAt     DateTime @updatedAt
+
+	agent    Agent         @relation(fields: [agentId], references: [id])
+	messages ChatMessage[]
+
+	@@index([agentId, founderId, lastMessageAt])
+	@@index([agentId, createdAt])
+}
+
+model ChatMessage {
+	id          String   @id @default(cuid())
+	sessionId   String
+	senderId    String
+	recipientId String
+	type        String
+	title       String
+	body        String
+	payload     Json?
+	createdAt   DateTime @default(now())
+	updatedAt   DateTime @updatedAt
+
+	session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+	@@index([sessionId, createdAt])
+	@@index([sessionId, senderId])
 }
 
 model Settings {

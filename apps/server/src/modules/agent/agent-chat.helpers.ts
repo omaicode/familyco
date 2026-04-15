@@ -1,20 +1,24 @@
-import type { AgentService, AuditService, InboxService } from '@familyco/core';
+import type { AgentService, AuditService } from '@familyco/core';
 import type { ChatEngineResult } from './chat-engine.service.js';
 import type { ChatToolCall, ProcessedChatResult } from './agent.types.js';
 import type { ChatAttachmentRecord } from './chat-attachment-store.js';
+import type { ChatConversationService } from './chat-conversation.service.js';
+import type { ChatMessage, ChatSession } from './chat-conversation.types.js';
 
 export async function buildProcessedChatResult(input: {
   agent: Awaited<ReturnType<AgentService['getAgentById']>>;
-  founderMessage: Awaited<ReturnType<InboxService['createMessage']>>;
+  session: ChatSession;
+  founderMessage: ChatMessage;
   engineResult: ChatEngineResult;
-  inboxService: InboxService;
+  chatConversationService: ChatConversationService;
   auditService: AuditService;
   actorId: string;
   auditAction: string;
 }): Promise<ProcessedChatResult> {
   const { reply, toolCalls, task, project, confirmRequest } = input.engineResult;
 
-  const replyMessage = await input.inboxService.createMessage({
+  const replyMessage = await input.chatConversationService.createMessage({
+    sessionId: input.session.id,
     recipientId: 'founder',
     senderId: input.agent.id,
     type: resolveReplyMessageType(toolCalls),
@@ -41,20 +45,31 @@ export async function buildProcessedChatResult(input: {
     }
   });
 
-  return { founderMessage: input.founderMessage, replyMessage, reply, toolCalls, task, project, confirmRequest };
+  return {
+    session: input.session,
+    founderMessage: input.founderMessage,
+    replyMessage,
+    reply,
+    toolCalls,
+    task,
+    project,
+    confirmRequest
+  };
 }
 
 export async function createDirectChatReply(input: {
   agent: Awaited<ReturnType<AgentService['getAgentById']>>;
-  founderMessage: Awaited<ReturnType<InboxService['createMessage']>>;
-  inboxService: InboxService;
+  session: ChatSession;
+  founderMessage: ChatMessage;
+  chatConversationService: ChatConversationService;
   auditService: AuditService;
   actorId: string;
   auditAction: string;
   replyText: string;
   messageType: 'alert' | 'info' | 'report';
 }): Promise<ProcessedChatResult> {
-  const replyMessage = await input.inboxService.createMessage({
+  const replyMessage = await input.chatConversationService.createMessage({
+    sessionId: input.session.id,
     recipientId: 'founder',
     senderId: input.agent.id,
     type: input.messageType,
@@ -75,6 +90,7 @@ export async function createDirectChatReply(input: {
   });
 
   return {
+    session: input.session,
     founderMessage: input.founderMessage,
     replyMessage,
     reply: input.replyText,
@@ -86,6 +102,7 @@ export async function createDirectChatReply(input: {
 }
 
 export async function createFounderMessage(input: {
+  sessionId: string;
   agentId: string;
   body: string;
   meta?: Record<string, unknown> | null;
@@ -93,9 +110,10 @@ export async function createFounderMessage(input: {
   editedFromMessageId?: string;
   supersedesMessageId?: string;
   slashCommand: string | null;
-  inboxService: InboxService;
-}): Promise<Awaited<ReturnType<InboxService['createMessage']>>> {
-  return input.inboxService.createMessage({
+  chatConversationService: ChatConversationService;
+}): Promise<ChatMessage> {
+  return input.chatConversationService.createMessage({
+    sessionId: input.sessionId,
     recipientId: input.agentId,
     senderId: 'founder',
     type: 'info',
@@ -113,24 +131,25 @@ export async function createFounderMessage(input: {
 }
 
 export function createEphemeralFounderMessage(
+  sessionId: string,
   agentId: string,
   message: string
-): Awaited<ReturnType<InboxService['createMessage']>> {
+): ChatMessage {
   const now = new Date();
   return {
     id: `local-${now.getTime()}`,
+    sessionId,
     recipientId: agentId,
     senderId: 'founder',
     type: 'info',
     title: buildChatTitle(message),
     body: message,
-    status: 'read',
     createdAt: now,
     updatedAt: now
   };
 }
 
-export function toConversationHistoryEntry(message: Awaited<ReturnType<InboxService['createMessage']>>): {
+export function toConversationHistoryEntry(message: ChatMessage): {
   senderId: string;
   title: string;
   body: string;

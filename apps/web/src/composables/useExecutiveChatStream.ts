@@ -1,6 +1,6 @@
 import { onBeforeUnmount, ref, type ComputedRef, type Ref } from 'vue';
 
-import { translate, type SendAgentChatPayload } from '@familyco/ui';
+import { translate, type AgentChatSession, type SendAgentChatPayload } from '@familyco/ui';
 
 import { uiRuntime } from '../runtime';
 import {
@@ -24,10 +24,12 @@ interface ExecutiveAgentSummary {
 
 interface UseExecutiveChatStreamOptions {
   selectedAgent: ComputedRef<ExecutiveAgentSummary | null>;
+  selectedSessionId: Ref<string>;
   draftMessage: Ref<string>;
   thread: Ref<ThreadMessage[]>;
   refreshThread: () => Promise<void>;
   setFeedback: (type: 'success' | 'error' | 'info', text: string) => void;
+  onSessionResolved: (input: { sessionId: string; session?: AgentChatSession }) => void;
 }
 
 interface SendStreamingMessageOptions {
@@ -36,7 +38,7 @@ interface SendStreamingMessageOptions {
 }
 
 export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
-  const { selectedAgent, draftMessage, thread, refreshThread, setFeedback } = options;
+  const { selectedAgent, selectedSessionId, draftMessage, thread, refreshThread, setFeedback, onSessionResolved } = options;
   const t = (key: string): string => translate(uiRuntime.stores.app.state.locale, key);
 
   const isSending = ref(false);
@@ -113,6 +115,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       ...thread.value,
       {
         id: `local-founder-${Date.now()}`,
+        sessionId: selectedSessionId.value || 'pending',
         senderId: 'founder',
         recipientId: selectedAgent.value.id,
         type: 'info',
@@ -173,6 +176,10 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
 
     if (event.type === 'chat.started') {
       const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : `stream-${Date.now()}`;
+      const startedSessionId = typeof event.payload?.sessionId === 'string' ? event.payload.sessionId : null;
+      if (startedSessionId) {
+        onSessionResolved({ sessionId: startedSessionId });
+      }
       activeStreamId.value = requestId;
       streamToolCalls.value = { ...streamToolCalls.value, [requestId]: [] };
       streamToolsInProgress.value = { ...streamToolsInProgress.value, [requestId]: [] };
@@ -256,6 +263,10 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
 
     if (event.type === 'chat.completed') {
       const requestId = typeof event.payload?.requestId === 'string' ? event.payload.requestId : activeStreamId.value;
+      const completedSession = isChatSessionSummary(event.payload?.session) ? event.payload.session : undefined;
+      const completedSessionId = typeof event.payload?.sessionId === 'string'
+        ? event.payload.sessionId
+        : completedSession?.id;
       const completedToolCalls = Array.isArray(event.payload?.toolCalls)
         ? event.payload.toolCalls.filter(isToolCallDetails)
         : [];
@@ -265,6 +276,13 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
         : undefined;
 
       if (requestId) {
+        if (completedSessionId) {
+          onSessionResolved({
+            sessionId: completedSessionId,
+            ...(completedSession ? { session: completedSession } : {})
+          });
+        }
+
         if (completedToolCalls.length > 0) {
           streamToolCalls.value = { ...streamToolCalls.value, [requestId]: completedToolCalls };
         }
@@ -358,6 +376,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       ...thread.value.filter((message) => message.id !== requestId),
       {
         id: requestId,
+        sessionId: (existingMessage?.sessionId ?? selectedSessionId.value) || 'pending',
         senderId: selectedAgent.value.id,
         recipientId: 'founder',
         type: toolCalls.some((toolCall) => !toolCall.ok) ? 'alert' : toolCalls.length > 0 ? 'report' : 'info',
@@ -391,6 +410,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       ...thread.value,
       {
         id: `local-confirm-${Date.now()}`,
+        sessionId: selectedSessionId.value || 'pending',
         senderId: 'founder',
         recipientId: selectedAgent.value.id,
         type: 'info',
@@ -414,6 +434,7 @@ export function useExecutiveChatStream(options: UseExecutiveChatStreamOptions) {
       ...thread.value,
       {
         id: `local-issue-${Date.now()}`,
+        sessionId: selectedSessionId.value || 'pending',
         senderId: selectedAgent.value.id,
         recipientId: 'founder',
         type: 'alert',
@@ -480,4 +501,19 @@ function isSameToolCall(left: ChatToolCallDetails, right: ChatToolCallDetails): 
     && left.summary === right.summary
     && left.error?.code === right.error?.code
     && left.error?.message === right.error?.message;
+}
+
+function isChatSessionSummary(value: unknown): value is AgentChatSession {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return typeof record.id === 'string'
+    && typeof record.agentId === 'string'
+    && typeof record.founderId === 'string'
+    && typeof record.title === 'string'
+    && typeof record.lastMessageAt === 'string'
+    && typeof record.createdAt === 'string'
+    && typeof record.updatedAt === 'string';
 }

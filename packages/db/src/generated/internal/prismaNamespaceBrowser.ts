@@ -59,6 +59,8 @@ export const ModelName = {
   AgentRun: 'AgentRun',
   BudgetUsage: 'BudgetUsage',
   InboxMessage: 'InboxMessage',
+  ChatSession: 'ChatSession',
+  ChatMessage: 'ChatMessage',
   Settings: 'Settings',
   ApiKey: 'ApiKey',
   TaskSessionCheckpoint: 'TaskSessionCheckpoint',
@@ -209,6 +211,35 @@ export const InboxMessageScalarFieldEnum = {
 } as const
 
 export type InboxMessageScalarFieldEnum = (typeof InboxMessageScalarFieldEnum)[keyof typeof InboxMessageScalarFieldEnum]
+
+
+export const ChatSessionScalarFieldEnum = {
+  id: 'id',
+  agentId: 'agentId',
+  founderId: 'founderId',
+  title: 'title',
+  lastMessageAt: 'lastMessageAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ChatSessionScalarFieldEnum = (typeof ChatSessionScalarFieldEnum)[keyof typeof ChatSessionScalarFieldEnum]
+
+
+export const ChatMessageScalarFieldEnum = {
+  id: 'id',
+  sessionId: 'sessionId',
+  senderId: 'senderId',
+  recipientId: 'recipientId',
+  type: 'type',
+  title: 'title',
+  body: 'body',
+  payload: 'payload',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
 
 
 export const SettingsScalarFieldEnum = {

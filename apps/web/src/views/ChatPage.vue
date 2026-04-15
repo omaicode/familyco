@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ArrowRight, Bot, LoaderCircle, PlugZap, RefreshCw, ShieldCheck, Wrench } from 'lucide-vue-next';
+import { Bot, LoaderCircle, PanelLeftClose, PanelLeftOpen, PlugZap, RefreshCw } from 'lucide-vue-next';
 
 import ExecutiveChatComposer from '../components/agents/ExecutiveChatComposer.vue';
+import ExecutiveChatSessionsSidebar from '../components/agents/ExecutiveChatSessionsSidebar.vue';
 import ExecutiveChatThread from '../components/agents/ExecutiveChatThread.vue';
 import FcBanner from '../components/FcBanner.vue';
 import FcButton from '../components/FcButton.vue';
@@ -13,35 +14,43 @@ import { useI18n } from '../composables/useI18n';
 
 const { t } = useI18n();
 
-  const {
-    thread,
-    selectedAgentId,
-    draftMessage,
-    draftAttachments,
-    editingMessage,
-    isLoading,
-    isRefreshing,
-    isLoadingOlder,
-    hasMoreHistory,
-    isSending,
-    isStreaming,
-    isCancelling,
-    isUploadingAttachments,
-    connectionState,
-    connectionLabel,
-    feedback,
-    executiveAgents,
-    selectedAgent,
-    reload,
-    loadOlderMessages,
-    uploadAttachments,
-    removeDraftAttachment,
-    startEditingMessage,
-    cancelEditing,
-    sendMessage,
-    cancelMessage,
-    sendConfirmOption
-  } = useExecutiveChat();
+const {
+  thread,
+  sessions,
+  selectedAgentId,
+  selectedSessionId,
+  isSessionSidebarOpen,
+  draftMessage,
+  draftAttachments,
+  editingMessage,
+  isLoading,
+  isLoadingSessions,
+  isCreatingSession,
+  isRefreshing,
+  isLoadingOlder,
+  hasMoreHistory,
+  isSending,
+  isStreaming,
+  isCancelling,
+  isUploadingAttachments,
+  connectionState,
+  connectionLabel,
+  feedback,
+  executiveAgents,
+  selectedAgent,
+  reload,
+  createNewSession,
+  toggleSessionSidebar,
+  selectSession,
+  loadOlderMessages,
+  uploadAttachments,
+  removeDraftAttachment,
+  startEditingMessage,
+  cancelEditing,
+  sendMessage,
+  cancelMessage,
+  sendConfirmOption
+} = useExecutiveChat();
 </script>
 
 <template>
@@ -91,6 +100,11 @@ const { t } = useI18n();
                 </option>
               </FcSelect>
             </div>
+
+            <FcButton variant="secondary" size="sm" @click="toggleSessionSidebar">
+              <component :is="isSessionSidebarOpen ? PanelLeftClose : PanelLeftOpen" :size="14" />
+              {{ isSessionSidebarOpen ? t('chat.session.hideSidebar') : t('chat.session.showSidebar') }}
+            </FcButton>
           </div>
 
           <div v-if="isLoading" class="fc-loading">
@@ -106,33 +120,47 @@ const { t } = useI18n();
           </div>
 
           <template v-else>
-            <ExecutiveChatThread
-              :thread="thread"
-              :selected-agent-name="selectedAgent.name"
-              :selected-agent-id="selectedAgent.id"
-              :is-streaming="isStreaming"
-              :is-loading-older="isLoadingOlder"
-              :has-more-history="hasMoreHistory"
-              :on-select-option="sendConfirmOption"
-              :on-edit-message="startEditingMessage"
-              @load-older="loadOlderMessages"
-            />
-            <ExecutiveChatComposer
-              v-model="draftMessage"
-              :agent-id="selectedAgent?.id ?? ''"
-              :attachments="draftAttachments"
-              :editing-preview="editingMessage?.body"
-              :connection-state="connectionState"
-              :is-sending="isSending"
-              :is-streaming="isStreaming"
-              :is-cancelling="isCancelling"
-              :is-uploading-attachments="isUploadingAttachments"
-              @pick-attachments="uploadAttachments"
-              @remove-attachment="removeDraftAttachment"
-              @send="sendMessage"
-              @cancel="cancelMessage"
-              @cancel-edit="cancelEditing"
-            />
+            <div class="chat-shell" :class="{ 'chat-shell--with-sidebar': isSessionSidebarOpen }">
+              <ExecutiveChatSessionsSidebar
+                v-if="isSessionSidebarOpen"
+                :sessions="sessions"
+                :selected-session-id="selectedSessionId"
+                :is-loading="isLoadingSessions"
+                :is-creating="isCreatingSession"
+                @create="createNewSession"
+                @select="selectSession"
+              />
+
+              <div class="chat-main">
+                <ExecutiveChatThread
+                  :thread="thread"
+                  :selected-agent-name="selectedAgent.name"
+                  :selected-agent-id="selectedAgent.id"
+                  :is-streaming="isStreaming"
+                  :is-loading-older="isLoadingOlder"
+                  :has-more-history="hasMoreHistory"
+                  :on-select-option="sendConfirmOption"
+                  :on-edit-message="startEditingMessage"
+                  @load-older="loadOlderMessages"
+                />
+                <ExecutiveChatComposer
+                  v-model="draftMessage"
+                  :agent-id="selectedAgent?.id ?? ''"
+                  :attachments="draftAttachments"
+                  :editing-preview="editingMessage?.body"
+                  :connection-state="connectionState"
+                  :is-sending="isSending"
+                  :is-streaming="isStreaming"
+                  :is-cancelling="isCancelling"
+                  :is-uploading-attachments="isUploadingAttachments"
+                  @pick-attachments="uploadAttachments"
+                  @remove-attachment="removeDraftAttachment"
+                  @send="sendMessage"
+                  @cancel="cancelMessage"
+                  @cancel-edit="cancelEditing"
+                />
+              </div>
+            </div>
           </template>
         </FcCard>
       </div>
@@ -198,27 +226,19 @@ const { t } = useI18n();
   min-width: 240px;
 }
 
-.chat-side-column {
-  display: flex;
-  flex-direction: column;
+.chat-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  max-width: 300px;
-  justify-self: end;
+  align-items: start;
 }
 
-.chat-side-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.chat-shell--with-sidebar {
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
 }
 
-.chat-side-item {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  color: var(--fc-text-muted);
-  line-height: 1.45;
-  font-size: 0.82rem;
+.chat-main {
+  min-width: 0;
 }
 
 @media (max-width: 980px) {
@@ -235,9 +255,9 @@ const { t } = useI18n();
     min-width: 0;
   }
 
-  .chat-side-column {
-    max-width: none;
-    justify-self: stretch;
+  .chat-shell,
+  .chat-shell--with-sidebar {
+    grid-template-columns: 1fr;
   }
 }
 </style>

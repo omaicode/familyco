@@ -46,11 +46,9 @@ const form = reactive({
 
 const adapterOptions = computed(() => ADAPTER_OPTIONS.map((option) => ({
   ...option,
-  description: option.value === 'copilot'
-    ? t('GitHub Copilot — code-aware reasoning powered by GitHub models')
-    : option.value === 'openai'
-      ? t('OpenAI gpt-5-mini — best for general-purpose agents')
-      : t('Anthropic Claude — great for reasoning and long-context tasks'),
+  description: option.value === 'openai'
+    ? t('OpenAI gpt-5-mini — best for general-purpose agents')
+    : t('Anthropic Claude — great for reasoning and long-context tasks'),
   defaultModel: getDefaultAdapterModel(option.value),
 })));
 

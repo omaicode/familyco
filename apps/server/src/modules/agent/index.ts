@@ -8,3 +8,5 @@ export * from './agent-chat.service.js';
 export * from './chat-engine.service.js';
 export * from './chat-stream-registry.js';
 export * from './chat-attachment-store.js';
+export * from './chat-conversation.types.js';
+export * from './chat-conversation.service.js';

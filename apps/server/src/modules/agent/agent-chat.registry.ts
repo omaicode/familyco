@@ -30,7 +30,7 @@ export interface BuiltinSlashResult {
   replyText: string;
   messageType: 'alert' | 'info' | 'report';
   persistFounderMessage?: boolean;
-  resetConversation?: boolean;
+  startNewSession?: boolean;
   resetMemory?: boolean;
 }
 
@@ -135,7 +135,7 @@ const builtinReset: BuiltinSlashEntry = {
   kind: 'builtin',
   name: 'reset',
   aliases: ['new'],
-  description: 'Clear the current chat history and start a fresh session. Alias: `/new`.',
+  description: 'Start a new chat session while keeping earlier sessions available. Alias: `/new`.',
   usage: '/reset',
   insertValue: '/reset',
   levels: ['L0', 'L1', 'L2'],
@@ -143,10 +143,10 @@ const builtinReset: BuiltinSlashEntry = {
     return {
       auditAction: 'agent.chat.reset',
       replyText:
-        'Started a new chat. Previous conversation history and working memory were cleared. Use `/help` to see the available chat commands.',
+        'Started a new chat session. Earlier sessions remain available in history, and the current working memory was cleared. Use `/help` to see available commands.',
       messageType: 'info',
       persistFounderMessage: false,
-      resetConversation: true,
+      startNewSession: true,
       resetMemory: true
     };
   }

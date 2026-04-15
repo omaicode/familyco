@@ -6,6 +6,7 @@ import type { ChatAttachmentData } from './chat-attachment-store.js';
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
 import type { ParsedSlashEntry } from './agent-chat.registry.js';
 import type { ChatEngineResult } from './chat-engine.service.js';
+import type { ChatSession } from './chat-conversation.types.js';
 import { toChatToolCall } from './chat-tool-call.js';
 import type {
   AgentModuleDeps,
@@ -61,11 +62,13 @@ export async function handleSocketChatMessage(input: {
 
   try {
     const body = JSON.parse(input.raw) as ChatRequestBody;
+    const requestedSessionId = readSessionId(body.meta);
 
     sendSocketEvent(proxy, 'chat.started', {
       requestId,
       agentId: input.agentId,
-      startedAt: new Date().toISOString()
+      startedAt: new Date().toISOString(),
+      ...(requestedSessionId ? { sessionId: requestedSessionId } : {})
     });
 
     let chunkIndex = 0;
@@ -131,6 +134,8 @@ export async function handleSocketChatMessage(input: {
 
     sendSocketEvent(proxy, 'chat.completed', {
       requestId,
+      sessionId: result.session.id,
+      session: result.session,
       founderMessage: result.founderMessage,
       replyMessage: result.replyMessage,
       reply: result.reply,
@@ -170,11 +175,50 @@ export async function processAgentChat(input: {
 }): Promise<ProcessedChatResult> {
   const agent = await input.deps.agentService.getAgentById(input.agentId);
   const attachments = await loadChatAttachments(input.body.meta, input.deps);
+  let requestedSessionId = readSessionId(input.body.meta);
+
+  const editedFromMessageId = typeof input.body.meta?.editedFromMessageId === 'string'
+    ? input.body.meta.editedFromMessageId
+    : undefined;
+  const supersedesMessageId = typeof input.body.meta?.supersedesMessageId === 'string'
+    ? input.body.meta.supersedesMessageId
+    : undefined;
+  const supersededMessage = supersedesMessageId
+    ? await input.deps.chatConversationService.findMessageById(supersedesMessageId)
+    : null;
+
+  if (supersedesMessageId && !supersededMessage) {
+    throw new Error(`CHAT_EDIT_TARGET_NOT_FOUND:${supersedesMessageId}`);
+  }
+
+  if (supersededMessage) {
+    if (requestedSessionId && supersededMessage.sessionId !== requestedSessionId) {
+      throw new Error(`CHAT_EDIT_TARGET_INVALID:${supersededMessage.id}`);
+    }
+
+    if (supersededMessage.senderId !== 'founder' || supersededMessage.recipientId !== agent.id) {
+      throw new Error(`CHAT_EDIT_TARGET_INVALID:${supersededMessage.id}`);
+    }
+
+    requestedSessionId = supersededMessage.sessionId;
+  }
+
+  let session = await input.deps.chatConversationService.resolveSessionForWrite({
+    agentId: agent.id,
+    founderId: 'founder',
+    ...(requestedSessionId ? { sessionId: requestedSessionId } : {})
+  });
+
+  if (supersededMessage) {
+    await input.deps.chatConversationService.deleteMessagesAfter(session.id, supersededMessage.createdAt);
+  }
+
   const registry = buildAgentSlashRegistry();
   const parsedCommand = attachments.length === 0 ? registry.parse(input.body.message) : null;
 
   if (parsedCommand) {
     return runSlashCommand({
+      session,
       agent,
       body: input.body,
       deps: input.deps,
@@ -184,35 +228,16 @@ export async function processAgentChat(input: {
     });
   }
 
-  const editedFromMessageId = typeof input.body.meta?.editedFromMessageId === 'string'
-    ? input.body.meta.editedFromMessageId
-    : undefined;
-  const supersedesMessageId = typeof input.body.meta?.supersedesMessageId === 'string'
-    ? input.body.meta.supersedesMessageId
-    : undefined;
-  const supersededMessage = supersedesMessageId
-    ? await input.deps.inboxService.findMessageById(supersedesMessageId)
-    : null;
-
-  if (supersedesMessageId && !supersededMessage) {
-    throw new Error(`CHAT_EDIT_TARGET_NOT_FOUND:${supersedesMessageId}`);
-  }
-
-  if (
-    supersededMessage
-    && (supersededMessage.senderId !== 'founder' || supersededMessage.recipientId !== agent.id)
-  ) {
-    throw new Error(`CHAT_EDIT_TARGET_INVALID:${supersededMessage.id}`);
-  }
-
-  if (supersededMessage) {
-    await input.deps.inboxService.deleteConversationAfter(agent.id, supersededMessage.createdAt);
-  }
-
   const defaultAdapter = await input.deps.settingsService.get('provider.name');
   const defaultAdapterModel = await input.deps.settingsService.get('provider.defaultModel');
-  const agentAdapterId = agent.aiAdapterId || (defaultAdapter?.value || undefined) as string | undefined; 
+  const agentAdapterId = agent.aiAdapterId || (defaultAdapter?.value || undefined) as string | undefined;
   const agentModel = agent.aiModel || (defaultAdapterModel?.value || undefined) as string | undefined;
+
+  const founderMessageCountBefore = await input.deps.chatConversationService.countMessages({
+    sessionId: session.id,
+    senderId: 'founder'
+  });
+
   const preparedAttachments = await input.deps.chatEngineService.prepareAttachments({
     agentAdapterId,
     agentModel,
@@ -245,6 +270,7 @@ export async function processAgentChat(input: {
   );
 
   const founderMessage = await createFounderMessage({
+    sessionId: session.id,
     agentId: agent.id,
     body: input.body.message,
     meta: isRecord(input.body.meta) ? input.body.meta : null,
@@ -261,16 +287,19 @@ export async function processAgentChat(input: {
     editedFromMessageId,
     supersedesMessageId,
     slashCommand: null,
-    inboxService: input.deps.inboxService
+    chatConversationService: input.deps.chatConversationService
   });
 
   const [conversationHistory, profileResult] = await Promise.all([
-    input.deps.inboxService.listConversation(agent.id, 12),
+    input.deps.chatConversationService.listMessages({
+      sessionId: session.id,
+      limit: 12
+    }),
     input.deps.toolExecutor.execute({ toolName: 'company.profile.read', arguments: {} }).catch(() => null)
   ]);
 
   if (supersededMessage) {
-    await input.deps.inboxService.updateMessage(supersededMessage.id, {
+    await input.deps.chatConversationService.updateMessage(supersededMessage.id, {
       payload: {
         ...(supersededMessage.payload ?? {}),
         supersededByMessageId: founderMessage.id,
@@ -281,6 +310,27 @@ export async function processAgentChat(input: {
 
   const companyProfile = toCompanyProfile(profileResult?.output);
   const allTools = input.deps.listTools();
+  const shouldGenerateTitle = founderMessageCountBefore === 0 && effectiveMessage.trim().length > 0;
+
+  const titleTask = shouldGenerateTitle
+    ? input.deps.chatEngineService.generateSessionTitle({
+        agentAdapterId: agentAdapterId ?? null,
+        agentModel: agentModel ?? null,
+        message: effectiveMessage,
+        companyProfile,
+        abortSignal: input.abortSignal
+      }).then(async (title) => {
+        if (!title) {
+          return session;
+        }
+
+        session = await input.deps.chatConversationService.updateSession({
+          id: session.id,
+          title
+        });
+        return session;
+      }).catch(() => session)
+    : Promise.resolve(session);
 
   const engineResult = await input.deps.chatEngineService.run({
     agentAdapterId: agent.aiAdapterId ?? null,
@@ -297,11 +347,14 @@ export async function processAgentChat(input: {
     executeTool: (toolInput) => input.deps.toolExecutor.execute(toolInput)
   });
 
+  session = await titleTask;
+
   return buildProcessedChatResult({
+    session,
     agent,
     founderMessage,
     engineResult,
-    inboxService: input.deps.inboxService,
+    chatConversationService: input.deps.chatConversationService,
     auditService: input.deps.auditService,
     actorId: input.actorId,
     auditAction: 'agent.chat'
@@ -321,6 +374,7 @@ function buildEffectiveChatMessage(message: string, attachments: Array<{ kind: s
 }
 
 async function runSlashCommand(input: {
+  session: ChatSession;
   agent: Awaited<ReturnType<AgentService['getAgentById']>>;
   body: ChatRequestBody;
   deps: AgentModuleDeps;
@@ -331,20 +385,23 @@ async function runSlashCommand(input: {
   const registry = buildAgentSlashRegistry();
   const helpText = registry.buildHelpText(input.agent.level);
   const { entry } = input.parsedCommand;
+  let session = input.session;
 
   if (!entry) {
     const founderMessage = await createFounderMessage({
+      sessionId: session.id,
       agentId: input.agent.id,
       body: input.body.message,
       meta: null,
       slashCommand: 'unknown',
-      inboxService: input.deps.inboxService
+      chatConversationService: input.deps.chatConversationService
     });
 
     return createDirectChatReply({
       agent: input.agent,
+      session,
       founderMessage,
-      inboxService: input.deps.inboxService,
+      chatConversationService: input.deps.chatConversationService,
       auditService: input.deps.auditService,
       actorId: input.actorId,
       auditAction: 'agent.chat.command.invalid',
@@ -358,17 +415,19 @@ async function runSlashCommand(input: {
 
     if (args.trim().length === 0) {
       const founderMessage = await createFounderMessage({
+        sessionId: session.id,
         agentId: input.agent.id,
         body: input.body.message,
         meta: null,
         slashCommand: entry.name,
-        inboxService: input.deps.inboxService
+        chatConversationService: input.deps.chatConversationService
       });
 
       return createDirectChatReply({
         agent: input.agent,
+        session,
         founderMessage,
-        inboxService: input.deps.inboxService,
+        chatConversationService: input.deps.chatConversationService,
         auditService: input.deps.auditService,
         actorId: input.actorId,
         auditAction: entry.auditAction + '.usage',
@@ -378,11 +437,12 @@ async function runSlashCommand(input: {
     }
 
     const founderMessage = await createFounderMessage({
+      sessionId: session.id,
       agentId: input.agent.id,
       body: input.body.message,
       meta: null,
       slashCommand: entry.name,
-      inboxService: input.deps.inboxService
+      chatConversationService: input.deps.chatConversationService
     });
 
     const toolResult = await input.deps.toolExecutor.execute({
@@ -408,10 +468,11 @@ async function runSlashCommand(input: {
     };
 
     return buildProcessedChatResult({
+      session,
       agent: input.agent,
       founderMessage,
       engineResult,
-      inboxService: input.deps.inboxService,
+      chatConversationService: input.deps.chatConversationService,
       auditService: input.deps.auditService,
       actorId: input.actorId,
       auditAction: entry.auditAction
@@ -420,8 +481,11 @@ async function runSlashCommand(input: {
 
   const builtinResult = entry.execute(input.parsedCommand.args, helpText);
 
-  if (builtinResult.resetConversation) {
-    await input.deps.inboxService.clearConversation(input.agent.id);
+  if (builtinResult.startNewSession) {
+    session = await input.deps.chatConversationService.createSession({
+      agentId: input.agent.id,
+      founderId: 'founder'
+    });
   }
 
   if (builtinResult.resetMemory) {
@@ -429,19 +493,21 @@ async function runSlashCommand(input: {
   }
 
   const founderMessage = builtinResult.persistFounderMessage === false
-    ? createEphemeralFounderMessage(input.agent.id, input.body.message)
+    ? createEphemeralFounderMessage(session.id, input.agent.id, input.body.message)
     : await createFounderMessage({
+        sessionId: session.id,
         agentId: input.agent.id,
         body: input.body.message,
         meta: null,
         slashCommand: entry.name,
-        inboxService: input.deps.inboxService
+        chatConversationService: input.deps.chatConversationService
       });
 
   return createDirectChatReply({
     agent: input.agent,
+    session,
     founderMessage,
-    inboxService: input.deps.inboxService,
+    chatConversationService: input.deps.chatConversationService,
     auditService: input.deps.auditService,
     actorId: input.actorId,
     auditAction: builtinResult.auditAction,
@@ -452,6 +518,12 @@ async function runSlashCommand(input: {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function readSessionId(meta: ChatRequestBody['meta']): string | undefined {
+  return typeof meta?.sessionId === 'string' && meta.sessionId.trim().length > 0
+    ? meta.sessionId
+    : undefined;
 }
 
 async function loadChatAttachments(

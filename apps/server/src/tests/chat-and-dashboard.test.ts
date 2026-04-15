@@ -186,6 +186,18 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   const thread = threadResponse.json() as Array<{ senderId: string; recipientId: string }>;
   assert.equal(thread.length >= 6, true);
 
+  const sessionsBeforeResetResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/agents/${l0Id}/chat/sessions`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(sessionsBeforeResetResponse.statusCode, 200);
+  const sessionsBeforeReset = sessionsBeforeResetResponse.json() as Array<{ id: string }>;
+  assert.equal(sessionsBeforeReset.length >= 1, true);
+
   const allTasksAfterToolResponse = await app.inject({
     method: 'GET',
     url: '/api/v1/tasks',
@@ -231,6 +243,18 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   assert.equal(threadAfterResetResponse.statusCode, 200);
   const threadAfterReset = threadAfterResetResponse.json() as Array<{ body: string }>;
   assert.equal(threadAfterReset.length <= 1, true);
+
+  const sessionsAfterResetResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/agents/${l0Id}/chat/sessions`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(sessionsAfterResetResponse.statusCode, 200);
+  const sessionsAfterReset = sessionsAfterResetResponse.json() as Array<{ id: string }>;
+  assert.equal(sessionsAfterReset.length >= 2, true);
 
   const settingsUpsertResponse = await app.inject({
     method: 'POST',

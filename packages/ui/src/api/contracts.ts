@@ -16,6 +16,7 @@ export interface AgentListItem {
 
 export interface AgentChatMessage {
   id: string;
+  sessionId: string;
   senderId: string;
   recipientId: string;
   type: 'approval' | 'report' | 'alert' | 'info';
@@ -33,6 +34,16 @@ export interface AgentChatMessage {
     supersededByMessageId?: string;
     [key: string]: unknown;
   };
+}
+
+export interface AgentChatSession {
+  id: string;
+  agentId: string;
+  founderId: string;
+  title: string;
+  lastMessageAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type ChatAttachmentKind = 'file' | 'audio';
@@ -405,6 +416,7 @@ export interface SendAgentChatPayload {
   agentId: string;
   message: string;
   meta?: {
+    sessionId?: string;
     projectId?: string;
     taskId?: string;
     toolCall?: ChatToolRequest;
@@ -433,6 +445,7 @@ export interface ChatToolCallItem {
 }
 
 export interface SendAgentChatResult {
+  session: AgentChatSession;
   founderMessage: AgentChatMessage;
   replyMessage: AgentChatMessage;
   reply: string;
@@ -481,8 +494,18 @@ export interface SlashCommandItem {
 }
 
 export interface GetAgentChatQuery {
+  sessionId?: string;
   limit?: number;
   before?: string;
+}
+
+export interface ListAgentChatSessionsQuery {
+  limit?: number;
+}
+
+export interface CreateAgentChatSessionPayload {
+  agentId: string;
+  title?: string;
 }
 
 export interface BudgetReportTotals {
@@ -640,6 +663,8 @@ export interface FamilyCoApiContracts {
   listAgents: () => Promise<AgentListItem[]>;
   listAgentChildren: (agentId: string) => Promise<AgentListItem[]>;
   getAgentPath: (agentId: string) => Promise<AgentListItem[]>;
+  listAgentChatSessions: (agentId: string, query?: ListAgentChatSessionsQuery) => Promise<AgentChatSession[]>;
+  createAgentChatSession: (payload: CreateAgentChatSessionPayload) => Promise<AgentChatSession>;
   getAgentChat: (agentId: string, query?: GetAgentChatQuery) => Promise<AgentChatMessage[]>;
   getAgentSlashCommands: (agentId: string) => Promise<SlashCommandItem[]>;
   sendAgentChat: (payload: SendAgentChatPayload) => Promise<SendAgentChatResult>;
@@ -702,8 +727,24 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   listAgents: () => client.get<AgentListItem[]>('/api/v1/agents'),
   listAgentChildren: (agentId) => client.get<AgentListItem[]>(`/api/v1/agents/${agentId}/children`),
   getAgentPath: (agentId) => client.get<AgentListItem[]>(`/api/v1/agents/${agentId}/path`),
+  listAgentChatSessions: (agentId, query = {}) => {
+    const params = new URLSearchParams();
+    if (typeof query.limit === 'number') {
+      params.set('limit', String(query.limit));
+    }
+
+    const suffix = params.size > 0 ? `?${params.toString()}` : '';
+    return client.get<AgentChatSession[]>(`/api/v1/agents/${agentId}/chat/sessions${suffix}`);
+  },
+  createAgentChatSession: (payload) =>
+    client.post<AgentChatSession, { title?: string }>(`/api/v1/agents/${payload.agentId}/chat/sessions`, {
+      ...(payload.title ? { title: payload.title } : {})
+    }),
   getAgentChat: (agentId, query = {}) => {
     const params = new URLSearchParams();
+    if (query.sessionId) {
+      params.set('sessionId', query.sessionId);
+    }
     if (typeof query.limit === 'number') {
       params.set('limit', String(query.limit));
     }

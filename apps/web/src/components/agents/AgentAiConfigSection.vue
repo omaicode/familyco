@@ -33,7 +33,7 @@ const hasOverride = computed(() => !!draftAdapterId.value);
 
 const load = () => {
   const id = props.agent.aiAdapterId;
-  draftAdapterId.value = (id === 'copilot' || id === 'openai' || id === 'claude') ? id : '';
+  draftAdapterId.value = (id === 'openai' || id === 'claude') ? id : '';
   draftModel.value = draftAdapterId.value
     ? normalizeAdapterModel(draftAdapterId.value, props.agent.aiModel)
     : '';

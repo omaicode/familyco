@@ -50,6 +50,7 @@ export const agentChatBodySchema = z.object({
   message: z.string().min(1),
   meta: z
     .object({
+      sessionId: z.string().min(1).optional(),
       projectId: z.string().min(1).optional(),
       taskId: z.string().min(1).optional(),
       toolCall: chatToolRequestSchema.optional(),
@@ -62,8 +63,17 @@ export const agentChatBodySchema = z.object({
 });
 
 export const agentChatQuerySchema = z.object({
+  sessionId: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(200),
   before: z.string().datetime().optional()
+});
+
+export const agentChatSessionQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50)
+});
+
+export const createChatSessionBodySchema = z.object({
+  title: z.string().min(1).max(96).optional()
 });
 
 export const agentChatAttachmentParamsSchema = z.object({

@@ -12,6 +12,8 @@ import type { ChatEngineService } from './chat-engine.service.js';
 import type { ChatStreamRegistry } from './chat-stream-registry.js';
 import type { ChatAttachmentStore } from './chat-attachment-store.js';
 import type { ToolDefinitionSummary } from '../../tools/tool.types.js';
+import type { ChatConversationService } from './chat-conversation.service.js';
+import type { ChatMessage, ChatSession } from './chat-conversation.types.js';
 
 export interface ChatToolCall {
   toolName: string;
@@ -25,8 +27,9 @@ export interface ChatToolCall {
 }
 
 export interface ProcessedChatResult {
-  founderMessage: Awaited<ReturnType<InboxService['createMessage']>>;
-  replyMessage: Awaited<ReturnType<InboxService['createMessage']>>;
+  session: ChatSession;
+  founderMessage: ChatMessage;
+  replyMessage: ChatMessage;
   reply: string;
   toolCalls: ChatToolCall[];
   task: unknown | null;
@@ -35,6 +38,7 @@ export interface ProcessedChatResult {
 }
 
 export interface ChatRequestMeta {
+  sessionId?: string;
   projectId?: string;
   taskId?: string;
   toolCall?: unknown;
@@ -53,6 +57,7 @@ export interface ChatRequestBody {
 export interface AgentModuleDeps {
   agentService: AgentService;
   inboxService: InboxService;
+  chatConversationService: ChatConversationService;
   approvalService: ApprovalService;
   auditService: AuditService;
   approvalGuard: ApprovalGuard;

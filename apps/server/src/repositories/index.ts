@@ -1,6 +1,7 @@
 export * from './in-memory-agent.repository.js';
 export * from './in-memory-api-key.repository.js';
 export * from './in-memory-agent-run.repository.js';
+export * from './in-memory-chat-conversation.repository.js';
 export * from './in-memory-approval.repository.js';
 export * from './in-memory-audit.repository.js';
 export * from './in-memory-budget.repository.js';
@@ -14,6 +15,7 @@ export * from './in-memory-task-session.repository.js';
 export * from './prisma-agent.repository.js';
 export * from './prisma-api-key.repository.js';
 export * from './prisma-agent-run.repository.js';
+export * from './prisma-chat-conversation.repository.js';
 export * from './prisma-approval.repository.js';
 export * from './prisma-audit.repository.js';
 export * from './prisma-budget.repository.js';
