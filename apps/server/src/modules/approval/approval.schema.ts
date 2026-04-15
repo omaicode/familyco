@@ -12,5 +12,6 @@ export const decideApprovalParamsSchema = z.object({
 });
 
 export const decideApprovalBodySchema = z.object({
-  status: z.enum(['approved', 'rejected'])
+  status: z.enum(['approved', 'rejected']),
+  note: z.string().trim().min(1).optional()
 });

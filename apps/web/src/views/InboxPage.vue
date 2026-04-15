@@ -20,6 +20,8 @@ const approvalFilter = ref<'pending' | 'all'>('pending');
 const messageFilter = ref<'all' | 'unread' | 'approval' | 'alert' | 'report' | 'info'>('all');
 const selectedApprovalIds = ref<string[]>([]);
 const decisionBusy = ref<Record<string, boolean>>({});
+const decisionNotes = ref<Record<string, string>>({});
+const selectedDecisionOptions = ref<Record<string, string>>({});
 const messageBusy = ref<Record<string, boolean>>({});
 const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
 const activeTab = ref<'approvals' | 'messages' | 'audit'>('approvals');
@@ -36,6 +38,8 @@ const messageResponseText = ref('');
 const reload = async () => {
   feedback.value = null;
   selectedApprovalIds.value = [];
+  decisionNotes.value = {};
+  selectedDecisionOptions.value = {};
   isLoading.value = true;
   try {
     await uiRuntime.stores.inbox.load();
@@ -80,6 +84,121 @@ const inferRisk = (action: string): 'low' | 'medium' | 'high' => {
   return 'low';
 };
 
+const getApprovalSummary = (approval: {
+  requestSummary?: string;
+  payload?: Record<string, unknown>;
+  targetId?: string;
+  action: string;
+}): string => {
+  if (typeof approval.requestSummary === 'string' && approval.requestSummary.trim().length > 0) {
+    return approval.requestSummary;
+  }
+
+  const payload = approval.payload ?? {};
+  const reason = typeof payload.reason === 'string'
+    ? payload.reason
+    : typeof payload.note === 'string'
+      ? payload.note
+      : '';
+
+  if (reason.trim().length > 0) {
+    return reason;
+  }
+
+  if (approval.targetId) {
+    return t('Approval requested for {{action}} on {{targetId}}.', {
+      action: approval.action,
+      targetId: approval.targetId
+    });
+  }
+
+  return t('Approval requested for {{action}}.', { action: approval.action });
+};
+
+const getApprovalTaskContext = (approval: {
+  taskId?: string;
+  taskTitle?: string;
+}): string | null => {
+  if (!approval.taskId) {
+    return null;
+  }
+
+  if (approval.taskTitle) {
+    return `${approval.taskTitle} (${approval.taskId})`;
+  }
+
+  return approval.taskId;
+};
+
+interface ApprovalOptionItem {
+  value: string;
+  label: string;
+}
+
+const getApprovalOptions = (approval: { payload?: Record<string, unknown> }): ApprovalOptionItem[] => {
+  const options = approval.payload?.options;
+  if (!Array.isArray(options)) {
+    return [];
+  }
+
+  return options
+    .map((option): ApprovalOptionItem | null => {
+      if (typeof option === 'string' && option.trim().length > 0) {
+        return {
+          value: option.trim(),
+          label: option.trim()
+        };
+      }
+
+      if (typeof option === 'object' && option !== null && !Array.isArray(option)) {
+        const maybeValue = typeof option.value === 'string' ? option.value.trim() : '';
+        const maybeLabel = typeof option.label === 'string' ? option.label.trim() : '';
+        if (maybeValue.length > 0) {
+          return {
+            value: maybeValue,
+            label: maybeLabel.length > 0 ? maybeLabel : maybeValue
+          };
+        }
+      }
+
+      return null;
+    })
+    .filter((item): item is ApprovalOptionItem => item !== null);
+};
+
+const getDecisionNote = (approvalId: string): string | undefined => {
+  const selectedOption = selectedDecisionOptions.value[approvalId]?.trim();
+  const noteText = decisionNotes.value[approvalId]?.trim();
+
+  if (selectedOption && noteText) {
+    return `${t('Founder selected option')}: ${selectedOption}. ${noteText}`;
+  }
+
+  if (selectedOption) {
+    return `${t('Founder selected option')}: ${selectedOption}`;
+  }
+
+  if (noteText) {
+    return noteText;
+  }
+
+  return undefined;
+};
+
+const setDecisionNote = (approvalId: string, value: string) => {
+  decisionNotes.value = {
+    ...decisionNotes.value,
+    [approvalId]: value
+  };
+};
+
+const selectDecisionOption = (approvalId: string, optionValue: string) => {
+  selectedDecisionOptions.value = {
+    ...selectedDecisionOptions.value,
+    [approvalId]: optionValue
+  };
+};
+
 const formatTime = (iso: string): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -102,6 +221,14 @@ const performDecision = async (approvalId: string, status: ApprovalDecision, not
   try {
     await uiRuntime.stores.inbox.decide({ approvalId, status, note });
     setFeedback('success', `Decision recorded — ${status}`);
+    decisionNotes.value = {
+      ...decisionNotes.value,
+      [approvalId]: ''
+    };
+    selectedDecisionOptions.value = {
+      ...selectedDecisionOptions.value,
+      [approvalId]: ''
+    };
   } catch (error) {
     setFeedback('error', error instanceof Error ? error.message : 'Failed to submit decision');
   } finally {
@@ -109,7 +236,10 @@ const performDecision = async (approvalId: string, status: ApprovalDecision, not
   }
 };
 
-const decide = (approvalId: string, status: ApprovalDecision) => performDecision(approvalId, status);
+const decide = (
+  approval: { id: string },
+  status: ApprovalDecision
+) => performDecision(approval.id, status, getDecisionNote(approval.id));
 
 const openRequestInfo = (approvalId: string) => {
   requestInfoTargetId.value = approvalId;
@@ -144,7 +274,7 @@ const toggleSelect = (id: string) => {
 const bulkDecide = async (status: ApprovalDecision) => {
   if (!canBulkDecide.value) return;
   const ids = [...selectedApprovalIds.value];
-  await Promise.all(ids.map(id => performDecision(id, status)));
+  await Promise.all(ids.map((id) => performDecision(id, status, getDecisionNote(id))));
   selectedApprovalIds.value = [];
 };
 
@@ -453,6 +583,12 @@ useAutoReload(reload);
               <div class="fc-approval-card-meta">
                 <strong>{{ approval.action }}</strong>
                 <p>{{ approval.actorId }} · {{ approval.targetType || 'operation' }}</p>
+                <p class="fc-list-meta" style="margin:4px 0 0;">
+                  {{ getApprovalSummary(approval) }}
+                </p>
+                <p v-if="getApprovalTaskContext(approval)" class="fc-list-meta" style="margin:2px 0 0;">
+                  {{ t('Task') }}: {{ getApprovalTaskContext(approval) }}
+                </p>
               </div>
 
               <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
@@ -464,10 +600,36 @@ useAutoReload(reload);
             </div>
 
             <div v-if="approval.status === 'pending'" class="fc-approval-card-actions">
+              <div v-if="getApprovalOptions(approval).length > 0" style="display:flex;flex-direction:column;gap:8px;width:100%;margin-bottom:8px;">
+                <span class="fc-list-meta">{{ t('Choose an option') }}</span>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <button
+                    v-for="option in getApprovalOptions(approval)"
+                    :key="option.value"
+                    class="fc-btn-ghost fc-btn-sm"
+                    :style="selectedDecisionOptions[approval.id] === option.value ? 'border-color:var(--fc-primary);color:var(--fc-primary);' : ''"
+                    :disabled="isBusy(decisionBusy, approval.id)"
+                    @click="selectDecisionOption(approval.id, option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+              </div>
+
+              <textarea
+                class="fc-textarea"
+                :placeholder="t('Add note for agent (optional)')"
+                rows="2"
+                :value="decisionNotes[approval.id] ?? ''"
+                :disabled="isBusy(decisionBusy, approval.id)"
+                style="margin-bottom:8px;width:100%;"
+                @input="setDecisionNote(approval.id, ($event.target as HTMLTextAreaElement).value)"
+              ></textarea>
+
               <button
                 class="fc-btn-primary fc-btn-sm"
                 :disabled="isBusy(decisionBusy, approval.id)"
-                @click="decide(approval.id, 'approved')"
+                @click="decide(approval, 'approved')"
               >
                 <Check :size="12" />
                 {{ isBusy(decisionBusy, approval.id) ? 'Saving…' : 'Approve' }}
@@ -475,7 +637,7 @@ useAutoReload(reload);
               <button
                 class="fc-btn-danger fc-btn-sm"
                 :disabled="isBusy(decisionBusy, approval.id)"
-                @click="decide(approval.id, 'rejected')"
+                @click="decide(approval, 'rejected')"
               >
                 <X :size="12" />
                 Reject

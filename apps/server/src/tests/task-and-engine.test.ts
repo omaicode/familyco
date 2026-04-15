@@ -827,6 +827,20 @@ test('agent + project + task flow works with in-memory repositories', async () =
   const decidedApproval = decideApprovalResponse.json() as { status: string };
   assert.equal(decidedApproval.status, 'approved');
 
+  const taskActivityResponse = await app.inject({
+    method: 'GET',
+    url: `/api/v1/tasks/${task.id}/activity`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(taskActivityResponse.statusCode, 200);
+  const taskActivities = taskActivityResponse.json() as Array<{ kind: string; summary: string }>;
+  assert.equal(taskActivities.some((item) => item.kind === 'approval.created'), true);
+  assert.equal(taskActivities.some((item) => item.kind === 'approval.decided'), true);
+  assert.equal(taskActivities.some((item) => item.kind === 'session.checkpoint'), true);
+
   const duplicateDecisionResponse = await app.inject({
     method: 'POST',
     url: `/api/v1/approvals/${approvalRequest.id}/decision`,

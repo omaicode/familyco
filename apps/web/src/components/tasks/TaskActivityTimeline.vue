@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TaskActivityItem } from '@familyco/ui';
+import { computed, ref, watch } from 'vue';
 import {
   CheckCircle2,
   CircleDot,
@@ -20,6 +21,23 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
+const expandedIds = ref<Record<string, boolean>>({});
+
+watch(
+  () => props.activity,
+  (next) => {
+    const nextMap: Record<string, boolean> = {};
+    for (const item of next) {
+      nextMap[item.id] = expandedIds.value[item.id] ?? false;
+    }
+    expandedIds.value = nextMap;
+  },
+  { immediate: true }
+);
+
+const allExpanded = computed(() =>
+  props.activity.length > 0 && props.activity.every((item) => expandedIds.value[item.id] === true)
+);
 
 function kindIcon(kind: TaskActivityItem['kind']) {
   switch (kind) {
@@ -69,6 +87,40 @@ function kindClass(item: TaskActivityItem): string {
   }
   return 'activity-kind';
 }
+
+function toggleItem(itemId: string): void {
+  expandedIds.value = {
+    ...expandedIds.value,
+    [itemId]: !(expandedIds.value[itemId] === true)
+  };
+}
+
+function setAllExpanded(expanded: boolean): void {
+  const nextMap: Record<string, boolean> = {};
+  for (const item of props.activity) {
+    nextMap[item.id] = expanded;
+  }
+  expandedIds.value = nextMap;
+}
+
+function sanitizePreviewText(raw: string): string {
+  return raw
+    .replace(/\*\*|__|`|~~|#+\s|\*\s|>\s/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function previewText(item: TaskActivityItem): string {
+  if (item.kind === 'comment' && item.body) {
+    return sanitizePreviewText(item.body);
+  }
+
+  return sanitizePreviewText(item.summary ?? '');
+}
+
+function isExpanded(itemId: string): boolean {
+  return expandedIds.value[itemId] === true;
+}
 </script>
 
 <template>
@@ -81,7 +133,13 @@ function kindClass(item: TaskActivityItem): string {
       {{ t('No activity yet. Activity will appear here as the agent works on this task.') }}
     </div>
 
-    <ol v-else class="activity-list">
+    <div v-else class="activity-toolbar">
+      <button class="fc-btn-ghost fc-btn-sm" @click="setAllExpanded(!allExpanded)">
+        {{ allExpanded ? t('Collapse all') : t('Expand all') }}
+      </button>
+    </div>
+
+    <ol v-if="activity.length > 0" class="activity-list">
       <li v-for="item in activity" :key="item.id" class="activity-item">
         <div class="activity-icon-col">
           <component :is="item.approvalDecision === 'rejected' ? XCircle : kindIcon(item.kind)" :size="14" />
@@ -91,13 +149,59 @@ function kindClass(item: TaskActivityItem): string {
             <span :class="kindClass(item)">{{ kindLabel(item) }}</span>
             <span class="activity-actor">{{ item.actorLabel }}</span>
             <span class="activity-time">{{ formatDateTime(item.createdAt) }}</span>
+            <button class="fc-btn-ghost fc-btn-sm activity-toggle" @click="toggleItem(item.id)">
+              {{ isExpanded(item.id) ? t('Collapse') : t('Expand') }}
+            </button>
           </div>
-          <div v-if="item.kind === 'comment' && item.body" class="activity-comment-body">
-            <MarkdownPreview :source="item.body" :empty-text="t('No comment body provided.')" />
+          <div v-if="!isExpanded(item.id)" class="activity-preview">
+            {{ previewText(item) }}
           </div>
-          <div v-else-if="item.summary" class="activity-summary">
-            <MarkdownPreview :source="item.summary" />
-          </div>
+
+          <template v-else>
+            <div v-if="item.kind === 'comment' && item.body" class="activity-comment-body">
+              <MarkdownPreview :source="item.body" :empty-text="t('No comment body provided.')" />
+            </div>
+            <div v-else-if="item.summary" class="activity-summary">
+              <MarkdownPreview :source="item.summary" />
+            </div>
+
+            <div v-if="item.kind === 'session.checkpoint'" class="activity-detail-list">
+              <div class="activity-detail-row">
+                <span class="activity-detail-label">{{ t('Checkpoint') }}:</span>
+                <span class="activity-detail-value">#{{ item.checkpointIndex ?? 0 }}</span>
+              </div>
+              <div class="activity-detail-row">
+                <span class="activity-detail-label">{{ t('Tools used') }}:</span>
+                <span class="activity-detail-value" v-if="item.toolsUsed && item.toolsUsed.length > 0">
+                  {{ item.toolsUsed.join(', ') }}
+                </span>
+                <span class="activity-detail-value" v-else>{{ t('No tools recorded') }}</span>
+              </div>
+            </div>
+
+            <div v-else-if="item.kind === 'approval.created'" class="activity-detail-list">
+              <div v-if="item.approvalAction" class="activity-detail-row">
+                <span class="activity-detail-label">{{ t('Requested action') }}:</span>
+                <span class="activity-detail-value">{{ item.approvalAction }}</span>
+              </div>
+              <div v-if="item.approvalId" class="activity-detail-row">
+                <span class="activity-detail-label">{{ t('Approval ID') }}:</span>
+                <span class="activity-detail-value">{{ item.approvalId }}</span>
+              </div>
+            </div>
+
+            <div v-else-if="item.kind === 'approval.decided'" class="activity-detail-list">
+              <div v-if="item.approvalId" class="activity-detail-row">
+                <span class="activity-detail-label">{{ t('Approval ID') }}:</span>
+                <span class="activity-detail-value">{{ item.approvalId }}</span>
+              </div>
+              <div v-if="item.decisionNote" class="activity-detail-row">
+                <span class="activity-detail-label">{{ t('Decision note') }}:</span>
+                <span class="activity-detail-value">{{ item.decisionNote }}</span>
+              </div>
+            </div>
+
+          </template>
         </div>
       </li>
     </ol>
@@ -116,6 +220,12 @@ function kindClass(item: TaskActivityItem): string {
   display: flex;
   flex-direction: column;
   gap: 0;
+}
+
+.activity-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 
 .activity-item {
@@ -188,7 +298,19 @@ function kindClass(item: TaskActivityItem): string {
 .activity-time {
   font-size: 11px;
   color: var(--fc-text-muted, #8b8b8b);
+}
+
+.activity-toggle {
   margin-left: auto;
+}
+
+.activity-preview {
+  font-size: 12px;
+  color: var(--fc-text-secondary, #aaa);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .activity-summary {
@@ -198,6 +320,29 @@ function kindClass(item: TaskActivityItem): string {
 
 .activity-comment-body {
   font-size: 13px;
+}
+
+.activity-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.activity-detail-label {
+  color: var(--fc-text-muted, #8b8b8b);
+  font-weight: 600;
+}
+
+.activity-detail-value {
+  color: var(--fc-text-secondary, #aaa);
+  word-break: break-word;
 }
 
 .task-comments-empty {

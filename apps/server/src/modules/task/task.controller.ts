@@ -223,7 +223,9 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     const ACTIVITY_ACTIONS = [
       'task.comment.added',
       'task.session.checkpoint',
+      'approval.request.create',
       'approval.request.created',
+      'approval.request.decide',
       'approval.request.decided',
       'task.status.changed',
       'task.assigned'
@@ -460,24 +462,68 @@ function toTaskActivity(record: AuditRecord) {
       const status = typeof payload.status === 'string' ? payload.status : 'active';
       const index = typeof payload.checkpointIndex === 'number' ? payload.checkpointIndex : 0;
       const sess = typeof payload.summary === 'string' ? payload.summary : '';
+      const toolsUsed = Array.isArray(payload.toolsUsed)
+        ? payload.toolsUsed.filter((item): item is string => typeof item === 'string' && item.length > 0)
+        : [];
       kind = 'session.checkpoint';
       summary = sess.length > 0 ? sess : `Checkpoint #${index} — ${status}`;
-      extra = { checkpointIndex: index, sessionStatus: status };
+      extra = {
+        checkpointIndex: index,
+        sessionStatus: status,
+        toolsUsed
+      };
       break;
     }
+    case 'approval.request.create':
     case 'approval.request.created': {
-      const action = typeof payload.action === 'string' ? payload.action : '';
+      const action = typeof payload.action === 'string'
+        ? payload.action
+        : typeof payload.approvalAction === 'string'
+          ? payload.approvalAction
+          : '';
+      const approvalId = typeof payload.approvalId === 'string'
+        ? payload.approvalId
+        : typeof payload.requestId === 'string'
+          ? payload.requestId
+          : typeof record.targetId === 'string' && record.targetId.length > 0 && record.targetId !== taskId
+            ? record.targetId
+            : undefined;
+      const detailSummary = typeof payload.summary === 'string' ? payload.summary : undefined;
       kind = 'approval.created';
-      summary = action.length > 0 ? `Approval requested: ${action}` : 'Approval requested';
+      summary = detailSummary ?? (action.length > 0 ? `Approval requested: ${action}` : 'Approval requested');
+      extra = {
+        approvalAction: action || undefined,
+        approvalId,
+        detailSummary
+      };
       break;
     }
+    case 'approval.request.decide':
     case 'approval.request.decided': {
       const decision = payload.decision === 'approved' || payload.decision === 'rejected'
         ? payload.decision
+        : payload.status === 'approved' || payload.status === 'rejected'
+          ? payload.status
         : undefined;
+      const approvalId = typeof payload.approvalId === 'string'
+        ? payload.approvalId
+        : typeof record.targetId === 'string' && record.targetId.length > 0 && record.targetId !== taskId
+          ? record.targetId
+          : undefined;
+      const detailSummary = typeof payload.summary === 'string' ? payload.summary : undefined;
+      const decisionNote = typeof payload.note === 'string'
+        ? payload.note
+        : typeof payload.reason === 'string'
+          ? payload.reason
+          : undefined;
       kind = 'approval.decided';
-      summary = decision ? `Approval ${decision}` : 'Approval decided';
-      extra = { approvalDecision: decision };
+      summary = detailSummary ?? (decision ? `Approval ${decision}` : 'Approval decided');
+      extra = {
+        approvalDecision: decision,
+        approvalId,
+        decisionNote,
+        detailSummary
+      };
       break;
     }
     case 'task.status.changed': {
