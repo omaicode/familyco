@@ -3,7 +3,7 @@ productName: FamilyCo
 artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 executableName: "familyco"
 directories:
-  output: dist/packages
+  output: ../../build
 files:
   - from: dist
     to: .
@@ -14,11 +14,32 @@ files:
     to: node_modules
     filter:
       - "**/*"
-      - "!electron*/"
-      - "!@electron*/"
-      - "!vite*/"
-      - "!@vite*/"
-      - "!vue*/"
+      - "!.pnpm${/*}"
+      - "!.bin${/*}"
+      - "!@vite${/*}"
+      - "!@vue${/*}"
+      - "!@react${/*}"
+      - "!@babel${/*}"
+      - "!@types${/*}"
+      - "!@familyco${/*}"
+      - "!@prisma${/*}"
+      - "!@turbo${/*}"
+      - "!@rolldown${/*}"
+      - "!@esbuild${/*}"
+      - "!@microsoft${/*}"
+      - "!@electric*${/*}"
+      - "!vite${/*}"
+      - "!vue${/*}"
+      - "!react${/*}"
+      - "!tailwindcss${/*}"
+      - "!chart.js${/*}"
+      - "!typescript${/*}"
+      - "!lightningcss${/*}"
+      - "!effect${/*}"
+      - "!7zip-bin${/*}"
+      - "!lucide-vue-next${/*}"
+      - "!app-builder*${/*}"
+      - "!*electron*${/*}"
   - from: ../web/dist
     to: web
     filter:
