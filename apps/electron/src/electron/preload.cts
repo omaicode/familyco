@@ -12,6 +12,7 @@ import type {
 export interface DesktopRuntimeConfig {
   apiBaseUrl: string;
   apiKey?: string;
+  platform: string;
 }
 
 export interface DesktopRendererApi {
@@ -58,7 +59,8 @@ const readArgValue = (prefix: string): string | undefined => {
 
 const runtimeConfig: DesktopRuntimeConfig = {
   apiBaseUrl: readArgValue('--familyco-api-base-url=') ?? 'http://127.0.0.1:3040',
-  apiKey: readArgValue('--familyco-api-key=')
+  apiKey: readArgValue('--familyco-api-key='),
+  platform: process.platform
 };
 
 contextBridge.exposeInMainWorld('familycoDesktop', desktopApi);

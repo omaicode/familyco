@@ -132,9 +132,119 @@ body {
   z-index: 10; gap: 12px;
 }
 
+:root[data-runtime='desktop'] .fc-topbar {
+  -webkit-app-region: drag;
+}
+
+:root[data-runtime='desktop'][data-desktop-platform='darwin'] .fc-topbar {
+  padding-top: calc(env(titlebar-area-height, 0px) + 10px);
+  padding-left: 86px;
+  padding-bottom: 12px;
+}
+
+:root[data-runtime='desktop']:not([data-desktop-platform='darwin']) .fc-topbar {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+:root[data-runtime='desktop'] .fc-topbar button,
+:root[data-runtime='desktop'] .fc-topbar select,
+:root[data-runtime='desktop'] .fc-topbar input,
+:root[data-runtime='desktop'] .fc-topbar a,
+:root[data-runtime='desktop'] .fc-topbar-right,
+:root[data-runtime='desktop'] .fc-topbar-locale,
+:root[data-runtime='desktop'] .fc-connection-dot,
+:root[data-runtime='desktop'] .fc-window-controls,
+:root[data-runtime='desktop'] .fc-window-control-btn {
+  -webkit-app-region: no-drag;
+}
+
+:root[data-runtime='desktop'] .fc-topbar-title {
+  user-select: none;
+}
+
 .fc-topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .fc-topbar-title { margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--fc-text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fc-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.fc-window-controls {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--fc-surface);
+}
+
+.fc-window-control-btn {
+  width: 30px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--fc-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.fc-window-control-btn:hover {
+  background: var(--fc-surface-muted);
+  color: var(--fc-text-main);
+}
+
+.fc-window-control-btn + .fc-window-control-btn {
+  border-left: 1px solid var(--fc-border-subtle);
+}
+
+.fc-window-control-btn-close:hover {
+  background: color-mix(in srgb, var(--fc-error) 12%, var(--fc-surface));
+  color: var(--fc-error);
+}
+
+.fc-window-glyph {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+.fc-window-glyph-minimize {
+  width: 10px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.fc-window-glyph-maximize {
+  border: 1.5px solid currentColor;
+  border-radius: 1px;
+}
+
+.fc-window-glyph-restore {
+  position: relative;
+}
+
+.fc-window-glyph-restore::before,
+.fc-window-glyph-restore::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border: 1.4px solid currentColor;
+  border-radius: 1px;
+}
+
+.fc-window-glyph-restore::before {
+  top: 1px;
+  left: 2px;
+  background: var(--fc-surface);
+}
+
+.fc-window-glyph-restore::after {
+  top: 3px;
+  left: 0;
+}
 
 .fc-hamburger {
   display: none;
@@ -511,6 +621,15 @@ body {
   .fc-sidebar-overlay { display: block; }
   .fc-hamburger { display: flex; }
   .fc-topbar { padding: 12px 16px; }
+  :root[data-runtime='desktop'][data-desktop-platform='darwin'] .fc-topbar {
+    padding-top: calc(env(titlebar-area-height, 0px) + 8px);
+    padding-left: 76px;
+    padding-bottom: 10px;
+  }
+  :root[data-runtime='desktop']:not([data-desktop-platform='darwin']) .fc-topbar {
+    padding-top: 8px;
+    padding-bottom: 10px;
+  }
   .fc-grid-kpi { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .fc-form-grid { grid-template-columns: 1fr; }
   .fc-page-header { flex-direction: column; gap: 10px; }

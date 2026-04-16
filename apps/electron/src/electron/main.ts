@@ -3,9 +3,18 @@ import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 
-import { app, BrowserWindow, dialog, Menu, Tray, nativeImage } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  Menu,
+  Tray,
+  nativeImage,
+  type BrowserWindowConstructorOptions
+} from 'electron';
 import {
   broadcastDesktopUpdateEvent,
+  broadcastDesktopSystemEvent,
   registerDesktopIpcHandlers
 } from './ipc/ipc-handlers.js';
 import type { EmbeddedServerRuntime } from './server-bootstrap.js';
@@ -87,6 +96,40 @@ interface DesktopRuntimeConfig {
   apiKey: string;
 }
 
+const FAMILYCO_WINDOW_BACKGROUND = '#f8fafc';
+
+const resolveWindowChromeOptions = (): Pick<
+  BrowserWindowConstructorOptions,
+  'backgroundColor' | 'titleBarStyle' | 'titleBarOverlay'
+> => {
+  if (process.platform === 'darwin') {
+    return {
+      backgroundColor: FAMILYCO_WINDOW_BACKGROUND,
+      titleBarStyle: 'hiddenInset',
+      titleBarOverlay: false
+    };
+  }
+
+  return {
+    backgroundColor: FAMILYCO_WINDOW_BACKGROUND,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: false
+  };
+};
+
+const emitDesktopWindowState = (): void => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  broadcastDesktopSystemEvent({
+    type: 'window-state',
+    isMaximized: mainWindow.isMaximized(),
+    isFullScreen: mainWindow.isFullScreen(),
+    isMinimized: mainWindow.isMinimized()
+  });
+};
+
 const showMainWindow = (): void => {
   if (!mainWindow) {
     return;
@@ -152,6 +195,7 @@ const ensureTray = async (): Promise<void> => {
 const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<void> => {
   const preloadPath = path.join(dirname, 'preload.cjs');
   const windowIconPath = resolveWindowIconPath();
+  const windowChromeOptions = resolveWindowChromeOptions();
   
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -168,7 +212,8 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
         `--familyco-api-base-url=${runtimeConfig.apiBaseUrl}`,
         `--familyco-api-key=${runtimeConfig.apiKey}`
       ]
-    }
+    },
+    ...windowChromeOptions
   });
 
   if (windowIconPath) {
@@ -184,6 +229,17 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
   } else {
     await mainWindow.loadFile(rendererTarget.value);
   }
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    emitDesktopWindowState();
+  });
+
+  mainWindow.on('maximize', emitDesktopWindowState);
+  mainWindow.on('unmaximize', emitDesktopWindowState);
+  mainWindow.on('enter-full-screen', emitDesktopWindowState);
+  mainWindow.on('leave-full-screen', emitDesktopWindowState);
+  mainWindow.on('restore', emitDesktopWindowState);
+  mainWindow.on('minimize', emitDesktopWindowState);
 
   mainWindow.on('close', (event) => {
     if (isQuitRequested) {

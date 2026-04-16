@@ -90,6 +90,64 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
       filePaths: result.filePaths
     } satisfies DesktopInvokeResponseMap['desktop:dialog:open-directory'];
   });
+
+  ipcMain.handle('desktop:window:minimize', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) {
+      return { accepted: false } satisfies DesktopInvokeResponseMap['desktop:window:minimize'];
+    }
+
+    win.minimize();
+    return { accepted: true } satisfies DesktopInvokeResponseMap['desktop:window:minimize'];
+  });
+
+  ipcMain.handle('desktop:window:toggle-maximize', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) {
+      return {
+        accepted: false,
+        isMaximized: false
+      } satisfies DesktopInvokeResponseMap['desktop:window:toggle-maximize'];
+    }
+
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+
+    return {
+      accepted: true,
+      isMaximized: win.isMaximized()
+    } satisfies DesktopInvokeResponseMap['desktop:window:toggle-maximize'];
+  });
+
+  ipcMain.handle('desktop:window:close', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) {
+      return { accepted: false } satisfies DesktopInvokeResponseMap['desktop:window:close'];
+    }
+
+    win.close();
+    return { accepted: true } satisfies DesktopInvokeResponseMap['desktop:window:close'];
+  });
+
+  ipcMain.handle('desktop:window:state', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) {
+      return {
+        isMaximized: false,
+        isFullScreen: false,
+        isMinimized: false
+      } satisfies DesktopInvokeResponseMap['desktop:window:state'];
+    }
+
+    return {
+      isMaximized: win.isMaximized(),
+      isFullScreen: win.isFullScreen(),
+      isMinimized: win.isMinimized()
+    } satisfies DesktopInvokeResponseMap['desktop:window:state'];
+  });
 };
 
 export const broadcastDesktopUpdateEvent = (payload: DesktopUpdateEventPayload): void => {

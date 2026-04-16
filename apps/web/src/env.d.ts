@@ -16,6 +16,7 @@ declare global {
     familycoDesktopConfig?: {
       apiBaseUrl?: string;
       apiKey?: string;
+      platform?: string;
     };
   }
 }

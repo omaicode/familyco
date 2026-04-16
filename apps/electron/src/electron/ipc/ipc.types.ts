@@ -4,7 +4,11 @@ export type DesktopInvokeChannel =
   | 'desktop:agents:list'
   | 'desktop:update:check'
   | 'desktop:update:install'
-  | 'desktop:dialog:open-directory';
+  | 'desktop:dialog:open-directory'
+  | 'desktop:window:minimize'
+  | 'desktop:window:toggle-maximize'
+  | 'desktop:window:close'
+  | 'desktop:window:state';
 
 export type DesktopEventChannel = 'desktop:update:event' | 'desktop:system:event';
 
@@ -22,10 +26,17 @@ export interface DesktopUpdateEventPayload {
   message?: string;
 }
 
-export interface DesktopSystemEventPayload {
-  type: 'startup-warning';
-  message: string;
-}
+export type DesktopSystemEventPayload =
+  | {
+      type: 'startup-warning';
+      message: string;
+    }
+  | {
+      type: 'window-state';
+      isMaximized: boolean;
+      isFullScreen: boolean;
+      isMinimized: boolean;
+    };
 
 export interface DesktopInvokeRequestMap {
   'desktop:health': {
@@ -38,6 +49,10 @@ export interface DesktopInvokeRequestMap {
   'desktop:update:check': Record<string, never>;
   'desktop:update:install': Record<string, never>;
   'desktop:dialog:open-directory': Record<string, never>;
+  'desktop:window:minimize': Record<string, never>;
+  'desktop:window:toggle-maximize': Record<string, never>;
+  'desktop:window:close': Record<string, never>;
+  'desktop:window:state': Record<string, never>;
 }
 export interface DesktopInvokeResponseMap {
   'desktop:health': {
@@ -54,5 +69,20 @@ export interface DesktopInvokeResponseMap {
   'desktop:dialog:open-directory': {
     canceled: boolean;
     filePaths: string[];
+  };
+  'desktop:window:minimize': {
+    accepted: boolean;
+  };
+  'desktop:window:toggle-maximize': {
+    accepted: boolean;
+    isMaximized: boolean;
+  };
+  'desktop:window:close': {
+    accepted: boolean;
+  };
+  'desktop:window:state': {
+    isMaximized: boolean;
+    isFullScreen: boolean;
+    isMinimized: boolean;
   };
 }

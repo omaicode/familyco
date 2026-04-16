@@ -4,6 +4,27 @@ import { buildFamilyCoCssVariables } from '@familyco/ui';
 const isDesktopRuntime = (): boolean =>
   typeof window !== 'undefined' && typeof window.familycoDesktop?.invoke === 'function';
 
+const applyRuntimeMode = (): void => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const desktopRuntime = isDesktopRuntime();
+  document.documentElement.dataset.runtime = desktopRuntime ? 'desktop' : 'web';
+
+  if (!desktopRuntime) {
+    delete document.documentElement.dataset.desktopPlatform;
+    return;
+  }
+
+  const desktopPlatform = window.familycoDesktopConfig?.platform?.trim();
+  if (desktopPlatform) {
+    document.documentElement.dataset.desktopPlatform = desktopPlatform;
+  }
+};
+
+applyRuntimeMode();
+
 const resolveApiBaseUrl = (): string => {
   if (isDesktopRuntime()) {
     return window.familycoDesktopConfig?.apiBaseUrl?.trim() || 'http://127.0.0.1:3040';
