@@ -4,9 +4,14 @@ import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Building2, FolderOpen, Key, Users, CheckCircle2, ChevronRight, ChevronLeft,
-  Eye, EyeOff, AlertTriangle, ArrowRight, Sparkles, Zap, Loader2
+  AlertTriangle, ArrowRight, Sparkles, Zap, Loader2
 } from 'lucide-vue-next';
 import FamilyCoIcon from '../assets/familyco-icon.svg';
+import FcButton from '../components/FcButton.vue';
+import FcInput from '../components/FcInput.vue';
+import FcPasswordInput from '../components/FcPasswordInput.vue';
+import FcSelect from '../components/FcSelect.vue';
+import FcTextarea from '../components/FcTextarea.vue';
 
 import { uiRuntime } from '../runtime';
 import { useI18n } from '../composables/useI18n';
@@ -20,7 +25,6 @@ const TOTAL_STEPS = 5;
 const isSubmitting = ref(false);
 const errorMessage = ref<string | null>(null);
 const done = ref(false);
-const showApiKey = ref(false);
 const stepStageRef = ref<HTMLElement | null>(null);
 const previousStepHeight = ref<number | null>(null);
 let stepHeightCleanupTimer: ReturnType<typeof setTimeout> | null = null;
@@ -83,7 +87,6 @@ const browseWorkspace = async () => {
 const selectAdapter = (id: AdapterId) => {
   form.provider = id;
   form.defaultModel = getDefaultAdapterModel(id);
-  showApiKey.value = false;
   form.apiKey = '';
   testResult.value = null;
 };
@@ -226,9 +229,9 @@ const handleStepAfterEnter = (): void => {
           {{ t('Executive ready message', { name: createdResult.executiveName }) }}
           <span v-if="createdResult.description"> {{ t('Description') }}: {{ createdResult.description }}</span>
         </p>
-        <button class="ob-btn-primary ob-btn-lg" style="width:100%;" @click="goToDashboard">
+        <FcButton class="ob-btn-primary ob-btn-lg" variant="primary" style="width:100%;" @click="goToDashboard">
           {{ t('Open Executive Chat') }} <ArrowRight :size="16" />
-        </button>
+        </FcButton>
       </div>
 
       <!-- ── Wizard card ─────────────────────────────── -->
@@ -281,9 +284,9 @@ const handleStepAfterEnter = (): void => {
               </div>
             </div>
 
-            <button class="ob-btn-primary ob-btn-lg" style="width:100%;margin-top:8px;" @click="next">
+            <FcButton class="ob-btn-primary ob-btn-lg" variant="primary" style="width:100%;margin-top:8px;" @click="next">
               {{ t('Get started') }} <ChevronRight :size="16" />
-            </button>
+            </FcButton>
             </template>
 
             <!-- ── Step 2: Company info ─────────────────── -->
@@ -296,7 +299,7 @@ const handleStepAfterEnter = (): void => {
 
             <div class="ob-form-group">
               <label class="ob-label">{{ t('Company name') }} <span class="ob-required">*</span></label>
-              <input
+              <FcInput
                 v-model="form.companyName"
                 class="ob-input"
                 placeholder="e.g. Acme Corp"
@@ -307,22 +310,22 @@ const handleStepAfterEnter = (): void => {
 
             <div class="ob-form-group">
               <label class="ob-label">{{ t('Company description') }} <span class="ob-required">*</span></label>
-              <textarea
+              <FcTextarea
                 v-model="form.companyDescription"
                 class="ob-input"
-                rows="4"
+                :rows="4"
                 placeholder="e.g. We help founders run company operations with AI-native execution, approval safety, and fast delivery."
-              ></textarea>
+              />
               <p class="ob-hint">{{ t('Keep it concise but concrete so the executive has enough context for planning and tool use.') }}</p>
             </div>
 
             <div class="ob-actions">
-              <button class="ob-btn-ghost" @click="prev">
+              <FcButton class="ob-btn-ghost" variant="ghost" @click="prev">
                 <ChevronLeft :size="16" /> {{ t('Back') }}
-              </button>
-              <button class="ob-btn-primary" :disabled="!canNext" @click="next">
+              </FcButton>
+              <FcButton class="ob-btn-primary" variant="primary" :disabled="!canNext" @click="next">
                 {{ t('Next') }} <ChevronRight :size="16" />
-              </button>
+              </FcButton>
             </div>
             </template>
 
@@ -360,7 +363,7 @@ const handleStepAfterEnter = (): void => {
               <template v-else>
                 <div class="ob-input-group">
                   <FolderOpen :size="15" class="ob-input-icon" />
-                  <input
+                  <FcInput
                     v-model="form.workspacePath"
                     class="ob-input ob-input-with-icon"
                     :placeholder="t('workspace.path.placeholder')"
@@ -378,12 +381,12 @@ const handleStepAfterEnter = (): void => {
             </div>
 
             <div class="ob-actions">
-              <button class="ob-btn-ghost" @click="prev">
+              <FcButton class="ob-btn-ghost" variant="ghost" @click="prev">
                 <ChevronLeft :size="16" /> {{ t('Back') }}
-              </button>
-              <button class="ob-btn-primary" :disabled="!canNext" @click="next">
+              </FcButton>
+              <FcButton class="ob-btn-primary" variant="primary" :disabled="!canNext" @click="next">
                 {{ t('Next') }} <ChevronRight :size="16" />
-              </button>
+              </FcButton>
             </div>
             </template>
 
@@ -412,47 +415,33 @@ const handleStepAfterEnter = (): void => {
             <!-- API Key -->
             <div class="ob-form-group">
               <label class="ob-label">{{ t('API Key') }} <span class="ob-required">*</span></label>
-              <div class="ob-input-wrap">
-                <input
-                  v-model="form.apiKey"
-                  :type="showApiKey ? 'text' : 'password'"
-                  class="ob-input ob-input-password"
-                  :placeholder="selectedAdapter.keyHint"
-                  autocomplete="off"
-                  spellcheck="false"
-                  @input="testResult = null"
-                />
-                <button
-                  type="button"
-                  class="ob-eye-btn"
-                  :aria-label="showApiKey ? t('Hide key') : t('Show key')"
-                  @click="showApiKey = !showApiKey"
-                >
-                  <component :is="showApiKey ? EyeOff : Eye" :size="15" />
-                </button>
-              </div>
+              <FcPasswordInput
+                v-model="form.apiKey"
+                :placeholder="selectedAdapter.keyHint"
+                @update:modelValue="testResult = null"
+              />
               <p class="ob-hint">{{ t('Stored locally in your database — never sent anywhere else.') }}</p>
             </div>
 
             <!-- Default model -->
             <div class="ob-form-group">
               <label class="ob-label">{{ t('Default model') }}</label>
-              <select v-model="form.defaultModel" class="ob-input ob-select">
+              <FcSelect v-model="form.defaultModel" class="ob-input ob-select">
                 <option v-for="m in selectedAdapter.models" :key="m" :value="m">{{ m }}</option>
-              </select>
+              </FcSelect>
             </div>
 
             <!-- Test connection -->
             <div class="ob-form-group">
-              <button
-                type="button"
+              <FcButton
                 class="ob-btn-test"
+                variant="secondary"
                 :disabled="!form.apiKey.trim() || isTesting"
                 @click="testConnection"
               >
                 <Loader2 v-if="isTesting" :size="14" class="ob-spin" />
                 <span>{{ isTesting ? t('Testing…') : t('Test connection') }}</span>
-              </button>
+              </FcButton>
               <div v-if="testResult" class="ob-test-result" :class="testResult.ok ? 'ob-test-ok' : 'ob-test-fail'">
                 <CheckCircle2 v-if="testResult.ok" :size="14" />
                 <AlertTriangle v-else :size="14" />
@@ -465,12 +454,12 @@ const handleStepAfterEnter = (): void => {
             </div>
 
             <div class="ob-actions">
-              <button class="ob-btn-ghost" @click="prev">
+              <FcButton class="ob-btn-ghost" variant="ghost" @click="prev">
                 <ChevronLeft :size="16" /> {{ t('Back') }}
-              </button>
-              <button class="ob-btn-primary" :disabled="!canNext" @click="next">
+              </FcButton>
+              <FcButton class="ob-btn-primary" variant="primary" :disabled="!canNext" @click="next">
                 {{ t('Next') }} <ChevronRight :size="16" />
-              </button>
+              </FcButton>
             </div>
             </template>
 
@@ -517,13 +506,13 @@ const handleStepAfterEnter = (): void => {
             </div>
 
             <div class="ob-actions">
-              <button class="ob-btn-ghost" :disabled="isSubmitting" @click="prev">
+              <FcButton class="ob-btn-ghost" variant="ghost" :disabled="isSubmitting" @click="prev">
                 <ChevronLeft :size="16" /> {{ t('Back') }}
-              </button>
-              <button class="ob-btn-primary" :disabled="isSubmitting" @click="initialize">
+              </FcButton>
+              <FcButton class="ob-btn-primary" variant="primary" :disabled="isSubmitting" @click="initialize">
                 <Zap :size="15" />
                 {{ isSubmitting ? t('Initializing…') : t('Initialize workspace') }}
-              </button>
+              </FcButton>
             </div>
             </template>
             </div>
@@ -750,32 +739,6 @@ const handleStepAfterEnter = (): void => {
   font-size: 0.8125rem;
   color: var(--fc-text-muted);
 }
-
-/* ── Password field ───────────────────────────────────── */
-.ob-input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.ob-input-password {
-  padding-right: 40px;
-}
-
-.ob-eye-btn {
-  position: absolute;
-  right: 10px;
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  color: var(--fc-text-muted);
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-}
-
-.ob-eye-btn:hover { color: var(--fc-text); }
 
 /* ── Folder picker button ─────────────────────────────── */
 .ob-btn-folder-pick {
