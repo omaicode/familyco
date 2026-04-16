@@ -230,7 +230,7 @@ export default {
   "You're all set!": 'Mọi thứ đã sẵn sàng!',
   'Executive agent {{name}} is ready.': 'Agent điều hành {{name}} đã sẵn sàng.',
   'Executive ready message': 'Agent điều hành {{name}} đã sẵn sàng.',
-  'Open Executive Chat': 'Mở trò chuyện điều hành',
+  'Go to Dashboard': 'Đi tới Bảng điều khiển',
   'Hide key': 'Ẩn khóa',
   'Show key': 'Hiện khóa',
   'Stored locally in your database — never sent anywhere else.': 'Được lưu cục bộ trong cơ sở dữ liệu của bạn — không được gửi đi nơi nào khác.',

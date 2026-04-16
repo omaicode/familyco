@@ -231,7 +231,7 @@ export default {
   "You're all set!": "You're all set!",
   'Executive agent {{name}} is ready.': 'Executive agent {{name}} is ready.',
   'Executive ready message': 'Executive agent {{name}} is ready.',
-  'Open Executive Chat': 'Open Executive Chat',
+  'Go to Dashboard': 'Go to Dashboard',
   'Hide key': 'Hide key',
   'Show key': 'Show key',
   'Stored locally in your database — never sent anywhere else.': 'Stored locally in your database — never sent anywhere else.',
