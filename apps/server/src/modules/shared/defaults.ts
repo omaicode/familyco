@@ -1,6 +1,5 @@
 import type { AgentService, ProjectService, SettingsService } from '@familyco/core';
-import { ensureProjectWorkspaceDir } from '../project/workspace-dir';
-import { asNonEmptyString } from '../../tools/tool.helpers';
+import { ensureProjectWorkspaceDir } from '../project/workspace-dir.js';
 
 interface ResolveExecutiveAgentIdInput {
   agentService: AgentService;

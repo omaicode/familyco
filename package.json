@@ -7,7 +7,7 @@
     "build": "turbo run build",
     "build:electron": "pnpm --filter @familyco/electron run build:electron",
     "dev": "turbo run dev --parallel --filter=@familyco/server --filter=@familyco/web",
-    "dev:electron": "turbo run dev --parallel --filter=@familyco/web --filter=@familyco/electron",
+    "dev:electron": "pnpm --filter './packages/**' build && pnpm --filter @familyco/server build && turbo run dev --parallel --filter=@familyco/web --filter=@familyco/electron",
     "dev:p": "turbo run dev --parallel",
     "prisma:generate": "pnpm --filter @familyco/db run prisma:generate",
     "prisma:migrate:dev": "pnpm --filter @familyco/db run prisma:migrate:dev",

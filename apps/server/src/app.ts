@@ -548,7 +548,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     if (repositoryDriver === 'prisma') {
       migrationState = await runMigrationsWithSafety();
       readOnlyMode = migrationState.readOnlyMode;
-
+      
       await auditService.write({
         actorId: 'system',
         action: migrationState.status === 'ok' ? 'db.migration.completed' : 'db.migration.failed',

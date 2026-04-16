@@ -1,4 +1,4 @@
-import { getConstitutionPrompt } from "./base/consitution";
+import { getConstitutionPrompt } from "./base/consitution.js";
 
 interface PromptTemplateInput {
   role: string[];

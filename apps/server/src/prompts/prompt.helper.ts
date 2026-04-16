@@ -1,4 +1,4 @@
-import { ChatSystemPromptInput } from "./prompt.types";
+import { ChatSystemPromptInput } from "./prompt.types.js";
 
 export function renderToolLines(input: ChatSystemPromptInput['tools']): string[] {
   if (input.length === 0) {
