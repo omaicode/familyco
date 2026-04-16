@@ -12,7 +12,7 @@
     "dev": "pnpm run rebuild:native && pnpm run build && electron dist/electron/main.js",
     "build:web": "pnpm --filter @familyco/web build",
     "build:electron": "pnpm run build:web && pnpm run build && electron-builder --config ../../electron-builder.yml --publish never",
-    "smoke": "tsx src/electron/smoke.ts",
+    "smoke": "pnpm run build && ELECTRON_RUN_AS_NODE=1 electron dist/electron/smoke.js",
     "test": "node -e \"console.log('No tests yet for @familyco/electron')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
