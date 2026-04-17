@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "FamilyCo monorepo",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omaicode/familyco.git"
+  },
   "scripts": {
     "build": "turbo run build",
     "build:electron": "pnpm build && pnpm --filter @familyco/electron run build:electron",
