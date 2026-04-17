@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -310,11 +311,13 @@ const startDesktop = async (): Promise<void> => {
   // Mac:     ~/Library/Application Support/FamilyCo/familyco.db
   // Windows: C:\Users\<user>\AppData\Roaming\FamilyCo\familyco.db
   // Linux:   ~/.config/FamilyCo/familyco.db
+  if (!fs.existsSync(app.getPath('userData'))) {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+  }  
   const dbPath = path.join(app.getPath('userData'), 'familyco.db');
-
   // Set DATABASE_URL before importing @familyco/server so the Prisma singleton
   // is initialised with the correct path.
-  process.env.DATABASE_URL = `file://${dbPath}`;
+  process.env.DATABASE_URL = `file:${dbPath}`;
 
   // Load or generate the AES-256 encryption key for sensitive settings (provider API keys).
   // The key is persisted in <userData>/settings.key so it survives app restarts.
