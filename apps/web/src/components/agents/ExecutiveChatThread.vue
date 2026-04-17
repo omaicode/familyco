@@ -95,41 +95,48 @@ watch(
 
 <template>
   <div class="chat-thread">
-    <ChatEmptyState v-if="props.thread.length === 0" />
+    <div
+      ref="scrollRef"
+      class="chat-thread-scroll"
+      :class="{ 'chat-thread-scroll--empty': props.thread.length === 0 }"
+      @scroll.passive="handleScroll"
+    >
+      <ChatEmptyState v-if="props.thread.length === 0" class="chat-thread-empty" />
 
-    <div v-else ref="scrollRef" class="chat-thread-scroll" @scroll.passive="handleScroll">
-      <div v-if="props.isLoadingOlder" class="chat-history-loading">
-        <LoaderCircle :size="12" class="chat-history-spinner" />
-        <span>{{ t('chat.thread.loadingOlder') }}</span>
-      </div>
+      <template v-else>
+        <div v-if="props.isLoadingOlder" class="chat-history-loading">
+          <LoaderCircle :size="12" class="chat-history-spinner" />
+          <span>{{ t('chat.thread.loadingOlder') }}</span>
+        </div>
 
-      <div v-if="props.isLoadingOlder" class="chat-history-skeletons" aria-hidden="true">
-        <span class="chat-history-skeleton short" />
-        <span class="chat-history-skeleton" />
-      </div>
+        <div v-if="props.isLoadingOlder" class="chat-history-skeletons" aria-hidden="true">
+          <span class="chat-history-skeleton short" />
+          <span class="chat-history-skeleton" />
+        </div>
 
-      <TransitionGroup tag="div" name="chat-bubble-list" class="chat-thread-list">
-        <ChatBubble
-          v-for="message in props.thread"
-          :key="message.id"
-          :message="message"
-          :agent-name="props.selectedAgentName"
-          :agent-id="props.selectedAgentId"
-          :streaming="isStreamingMessage(message)"
-          :on-select-option="props.onSelectOption"
-          :on-edit-message="props.onEditMessage"
-        />
-      </TransitionGroup>
+        <TransitionGroup tag="div" name="chat-bubble-list" class="chat-thread-list">
+          <ChatBubble
+            v-for="message in props.thread"
+            :key="message.id"
+            :message="message"
+            :agent-name="props.selectedAgentName"
+            :agent-id="props.selectedAgentId"
+            :streaming="isStreamingMessage(message)"
+            :on-select-option="props.onSelectOption"
+            :on-edit-message="props.onEditMessage"
+          />
+        </TransitionGroup>
 
-      <button
-        v-if="showJumpToLatest"
-        type="button"
-        class="chat-jump-latest"
-        @click="scrollToBottom()"
-      >
-        <ArrowDown :size="14" />
-        {{ t('chat.thread.jumpLatest') }}
-      </button>
+        <button
+          v-if="showJumpToLatest"
+          type="button"
+          class="chat-jump-latest"
+          @click="scrollToBottom()"
+        >
+          <ArrowDown :size="14" />
+          {{ t('chat.thread.jumpLatest') }}
+        </button>
+      </template>
     </div>
   </div>
 </template>
@@ -138,17 +145,28 @@ watch(
 .chat-thread {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 14px;
-  min-height: 220px;
+  min-height: 0;
 }
 
 .chat-thread-scroll {
   position: relative;
-  max-height: min(50vh, 680px);
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  flex-direction: column;
   overflow-y: auto;
   padding-right: 6px;
   scrollbar-gutter: stable;
+}
+
+.chat-thread-scroll--empty {
+  overflow: hidden;
+}
+
+.chat-thread-empty {
+  flex: 1;
+  min-height: 100%;
 }
 
 .chat-thread-list {

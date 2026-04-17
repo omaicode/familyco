@@ -54,7 +54,7 @@ const {
 </script>
 
 <template>
-  <section>
+  <section class="chat-page">
     <div class="fc-page-header">
       <div>
         <h3>{{ t('Chat') }}</h3>
@@ -81,8 +81,8 @@ const {
     </Transition>
 
     <div class="chat-layout">
-      <div>
-        <FcCard style="margin-bottom: 14px;">
+      <div class="chat-layout-panel">
+        <FcCard class="chat-card">
           <div class="chat-toolbar">
             <div>
               <p class="chat-caption">{{ t('Primary interaction lane') }}</p>
@@ -101,7 +101,7 @@ const {
               </FcSelect>
             </div>
 
-            <FcButton variant="secondary" size="sm" @click="toggleSessionSidebar">
+            <FcButton v-if="!isSessionSidebarOpen" variant="secondary" size="sm" @click="toggleSessionSidebar">
               <component :is="isSessionSidebarOpen ? PanelLeftClose : PanelLeftOpen" :size="14" />
               {{ isSessionSidebarOpen ? t('chat.session.hideSidebar') : t('chat.session.showSidebar') }}
             </FcButton>
@@ -127,7 +127,9 @@ const {
                 :selected-session-id="selectedSessionId"
                 :is-loading="isLoadingSessions"
                 :is-creating="isCreatingSession"
+                :show-hide-action="isSessionSidebarOpen"
                 @create="createNewSession"
+                @toggle-sidebar="toggleSessionSidebar"
                 @select="selectSession"
               />
 
@@ -182,7 +184,29 @@ const {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--fc-topbar-height) - 2rem);
+  min-height: calc(100dvh - var(--fc-topbar-height) - 2rem);
+  overflow: hidden;
+}
+
+.chat-layout-panel {
+  min-height: 0;
+}
+
+.chat-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-toolbar {
@@ -230,7 +254,10 @@ const {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
 }
 
 .chat-shell--with-sidebar {
@@ -238,10 +265,45 @@ const {
 }
 
 .chat-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   min-width: 0;
+  min-height: 0;
+}
+
+:deep(.chat-sessions) {
+  min-height: 0;
+}
+
+:deep(.chat-thread) {
+  flex: 1;
+  min-height: 0;
+}
+
+:deep(.chat-thread-scroll) {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+:deep(.chat-compose) {
+  flex-shrink: 0;
+}
+
+:deep(.fc-card) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 @media (max-width: 980px) {
+  .chat-page {
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+  }
+
   .chat-layout {
     grid-template-columns: 1fr;
   }

@@ -84,7 +84,7 @@ const isSendDisabled = computed(() =>
         id="founder-message"
         v-model="draftValue"
         class="chat-textarea"
-        rows="5"
+        rows="3"
         :placeholder="t('chat.composer.placeholder.inline-slash')"
         @keydown="handleDraftKeydown"
       ></textarea>
@@ -181,7 +181,7 @@ const isSendDisabled = computed(() =>
 
 .chat-textarea {
   width: 100%;
-  min-height: 128px;
+  min-height: 108px;
   resize: vertical;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--fc-primary) 14%, var(--fc-border-subtle));

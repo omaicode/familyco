@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { PanelLeftClose } from 'lucide-vue-next';
 
 import { type AgentChatSession } from '@familyco/ui';
 
@@ -11,11 +12,13 @@ const props = defineProps<{
   selectedSessionId: string;
   isLoading: boolean;
   isCreating: boolean;
+  showHideAction?: boolean;
 }>();
 
 const emit = defineEmits<{
   (event: 'select', sessionId: string): void;
   (event: 'create'): void;
+  (event: 'toggle-sidebar'): void;
 }>();
 
 const { t } = useI18n();
@@ -40,18 +43,25 @@ const readSessionTitle = (session: AgentChatSession): string => {
 <template>
   <aside class="chat-sessions">
     <header class="chat-sessions-header">
-      <div>
-        <h4>{{ t('chat.session.title') }}</h4>
-        <p>{{ t('chat.session.subtitle') }}</p>
+      <div class="chat-sessions-actions">
+        <FcButton
+          variant="secondary"
+          size="sm"
+          :disabled="isCreating"
+          @click="emit('create')"
+        >
+          {{ isCreating ? t('chat.session.creating') : t('chat.session.new') }}
+        </FcButton>
+
+        <FcButton
+          v-if="props.showHideAction"
+          variant="secondary"
+          size="sm"
+          @click="emit('toggle-sidebar')"
+        >
+          <PanelLeftClose :size="14" />
+        </FcButton>
       </div>
-      <FcButton
-        variant="secondary"
-        size="sm"
-        :disabled="isCreating"
-        @click="emit('create')"
-      >
-        {{ isCreating ? t('chat.session.creating') : t('chat.session.new') }}
-      </FcButton>
     </header>
 
     <div v-if="isLoading" class="chat-sessions-empty">
@@ -87,6 +97,7 @@ const readSessionTitle = (session: AgentChatSession): string => {
   padding-right: 12px;
   min-width: 250px;
   max-width: 300px;
+  min-height: 0;
 }
 
 .chat-sessions-header {
@@ -94,6 +105,15 @@ const readSessionTitle = (session: AgentChatSession): string => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
+}
+
+.chat-sessions-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .chat-sessions-header h4 {
@@ -114,7 +134,8 @@ const readSessionTitle = (session: AgentChatSession): string => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 64vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 

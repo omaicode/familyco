@@ -19,12 +19,16 @@ const { t } = useI18n();
 <style scoped>
 .chat-empty-state {
   display: flex;
+  flex: 1;
   gap: 10px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   padding: 14px;
+  min-height: 100%;
   border-radius: 12px;
   background: var(--fc-surface-muted);
   color: var(--fc-text-muted);
+  text-align: center;
 }
 
 .chat-empty-title {
