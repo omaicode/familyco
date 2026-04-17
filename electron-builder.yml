@@ -2,6 +2,10 @@ appId: com.familyco.app
 productName: FamilyCo
 artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 executableName: "familyco"
+publish:
+  provider: github
+  owner: omaicode
+  repo: familyco
 directories:
   output: ../../build
 files:
@@ -46,7 +50,7 @@ files:
       - "**/*"
   - package.json
 extraResources:
-  - from: ../db/prisma/migrations
+  - from: ../../packages/db/prisma/migrations
     to: prisma/migrations
     filter:
       - "**/*"

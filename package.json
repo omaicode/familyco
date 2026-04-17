@@ -5,7 +5,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/omaicode/familyco.git"
+    "url": "https://github.com/omaicode/familyco.git"
   },
   "scripts": {
     "build": "turbo run build",
