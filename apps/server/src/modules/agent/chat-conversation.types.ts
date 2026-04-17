@@ -6,6 +6,7 @@ export interface ChatSession {
   founderId: string;
   title: string;
   lastMessageAt: Date;
+  summary?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +28,7 @@ export interface CreateChatSessionInput {
   agentId: string;
   founderId?: string;
   title?: string;
+  summary?: string;
 }
 
 export interface CreateChatMessageInput {

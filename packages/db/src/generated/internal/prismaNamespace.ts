@@ -1701,6 +1701,7 @@ export const ChatSessionScalarFieldEnum = {
   agentId: 'agentId',
   founderId: 'founderId',
   title: 'title',
+  summary: 'summary',
   lastMessageAt: 'lastMessageAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

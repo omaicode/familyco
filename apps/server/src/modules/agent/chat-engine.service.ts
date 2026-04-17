@@ -16,6 +16,8 @@ import type { SkillsService } from '../skills/skills.service.js';
 import type { ToolDefinitionSummary } from '../../tools/tool.types.js';
 import { asNonEmptyString, isRecord } from '../../tools/tool.helpers.js';
 import { toChatToolCall } from './chat-tool-call.js';
+import { getSummaryPrompt } from '../../prompts/base/summary.prompt.js';
+import { renderHistoryLines } from '../../prompts/prompt.helper.js';
 
 export interface ChatEngineRunInput {
   agentAdapterId?: string | null;
@@ -24,6 +26,7 @@ export interface ChatEngineRunInput {
   message: string;
   companyProfile: { companyName: string; companyDescription: string };
   conversationHistory: PromptConversationEntry[];
+  conversationSummary?: string;
   availableTools: ToolDefinitionSummary[];
   attachments?: AdapterChatAttachment[];
   onEvent?: (event: AgentLoopEvent) => void;
@@ -56,6 +59,26 @@ interface ChatSessionTitleInput {
   abortSignal?: AbortSignal;
 }
 
+interface ChatSessionSummaryInput {
+  agentAdapterId?: string | null;
+  agentModel?: string | null;
+  messages: {
+    senderId: string;
+    title: string;
+    body: string;
+    createdAt: string;
+    toolCalls?: Array<{
+      toolName: string;
+      ok: boolean;
+      summary: string;
+      outputJson?: string;
+      error?: { code?: string; message: string };
+    }>;
+  }[];
+  companyProfile: { companyName: string; companyDescription: string };
+  abortSignal?: AbortSignal;  
+}
+
 export class ChatEngineService {
   constructor(
     private readonly settingsService: SettingsService,
@@ -83,7 +106,8 @@ export class ChatEngineService {
       companyDescription: input.companyProfile.companyDescription,
       skills,
       tools: filteredTools,
-      conversationHistory: input.conversationHistory
+      conversationHistory: input.conversationHistory,
+      conversationSummary: input.conversationSummary
     });
 
     const userPrompt = renderChatUserPrompt({
@@ -232,11 +256,31 @@ export class ChatEngineService {
     return normalizeGeneratedTitle(result.content);
   }
 
-  private async resolveAdapterConfig(
-    agentAdapterId?: string | null,
-    agentModel?: string | null
-  ): Promise<AdapterConfig | null> {
-    return this.getAdapterConfig(agentAdapterId, agentModel);
+  async generateSessionSummary(input: ChatSessionSummaryInput): Promise<string | null> {
+    const adapterConfig = await this.getAdapterConfig(input.agentAdapterId, input.agentModel);
+    if (!adapterConfig) {
+      return null;
+    }
+
+    const adapter = this.adapterRegistry.get(adapterConfig.adapterId);
+    if (!adapter) {
+      return null;
+    }
+
+    const historyLines = renderHistoryLines(input.messages);
+    const result = await adapter.chat({
+      apiKey: adapterConfig.apiKey,
+      model: adapterConfig.model,
+      systemPrompt: getSummaryPrompt(),
+      userPrompt: [
+        `Company: ${input.companyProfile.companyName}`,
+        'Conversation history:',
+        ...historyLines
+      ].join('\n'),
+      abortSignal: input.abortSignal
+    });
+
+    return result.content.trim().length > 0 ? result.content.trim() : null;
   }
 
   getAdapter(adapterId: string): ReturnType<AiAdapterRegistry['get']> {

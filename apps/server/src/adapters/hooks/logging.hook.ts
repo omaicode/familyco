@@ -16,7 +16,8 @@ export class LoggingHook implements AdapterHook {
         adapterId: ctx.adapterId,
         model: ctx.model,
         durationMs: ctx.durationMs,
-        tokens: ctx.result.tokenUsage
+        tokens: ctx.result.tokenUsage,
+        input: ctx.input.userPrompt.length > 50 ? `${ctx.input.userPrompt.slice(0, 50)}...` : ctx.input.userPrompt,
       },
       'adapter.chat.completed'
     );
@@ -28,7 +29,8 @@ export class LoggingHook implements AdapterHook {
         adapterId: ctx.adapterId,
         model: ctx.model,
         durationMs: ctx.durationMs,
-        error: ctx.error.message
+        error: ctx.error.message,
+        input: ctx.input.userPrompt.length > 50 ? `${ctx.input.userPrompt.slice(0, 50)}...` : ctx.input.userPrompt,
       },
       'adapter.chat.error'
     );

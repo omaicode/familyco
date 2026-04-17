@@ -84,10 +84,12 @@ export class ChatConversationService {
   async updateSession(input: {
     id: string;
     title?: string;
+    summary?: string;
     lastMessageAt?: Date;
   }): Promise<ChatSession> {
     return this.repository.updateSession(input.id, {
       ...(input.title !== undefined ? { title: normalizeSessionTitle(input.title) } : {}),
+      ...(input.summary !== undefined ? { summary: input.summary } : {}),
       ...(input.lastMessageAt ? { lastMessageAt: input.lastMessageAt } : {})
     });
   }

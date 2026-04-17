@@ -16,11 +16,9 @@ import type {
 } from './agent.types.js';
 import {
   buildProcessedChatResult,
-  chunkReply,
   createDirectChatReply,
   createEphemeralFounderMessage,
   createFounderMessage,
-  resolveSocketClient,
   sendSocketEvent,
   streamReply,
   toConversationHistoryEntry,
@@ -311,6 +309,7 @@ export async function processAgentChat(input: {
   const companyProfile = toCompanyProfile(profileResult?.output);
   const allTools = input.deps.listTools();
   const shouldGenerateTitle = founderMessageCountBefore === 0 && effectiveMessage.trim().length > 0;
+  const shouldGenerateSummary = conversationHistory.length >= 8;
 
   const titleTask = shouldGenerateTitle
     ? input.deps.chatEngineService.generateSessionTitle({
@@ -332,6 +331,25 @@ export async function processAgentChat(input: {
       }).catch(() => session)
     : Promise.resolve(session);
 
+  if (shouldGenerateSummary) {
+    input.deps.chatEngineService.generateSessionSummary({
+      agentAdapterId: agentAdapterId ?? null,
+      agentModel: agentModel ?? null,
+      messages: conversationHistory.map(toConversationHistoryEntry),
+      companyProfile,
+      abortSignal: input.abortSignal
+    }).then(async (summary) => {
+      if (!summary) {
+        return;
+      }
+
+      await input.deps.chatConversationService.updateSession({
+        id: session.id,
+        summary
+      })
+    }).catch(() => { /* ignore */ });
+  }
+
   const engineResult = await input.deps.chatEngineService.run({
     agentAdapterId: agent.aiAdapterId ?? null,
     agentModel: agent.aiModel ?? null,
@@ -340,6 +358,7 @@ export async function processAgentChat(input: {
     attachments: preparedAttachments,
     companyProfile,
     conversationHistory: conversationHistory.map(toConversationHistoryEntry),
+    conversationSummary: session.summary ?? undefined,
     availableTools: allTools,
     onEvent: input.onEvent,
     abortSignal: input.abortSignal,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard, MessagesSquare, Bot, FolderKanban, ListChecks,
@@ -107,6 +107,17 @@ const pageTitle = computed(() => {
 
 const connectionLabel = computed(() => serverReachable.value ? t('Connected') : t('Disconnected'));
 const showConnectionWarning = computed(() => !serverReachable.value);
+const isOnboardingComplete = computed(() => uiRuntime.stores.settings.state.data.some(
+  s => s.key === 'onboarding.complete' && s.value === true
+));
+const isTutorialSeen = computed(() => uiRuntime.stores.settings.state.data.some(
+  s => s.key === 'tour.seen' && s.value === true
+));
+const canAutoStartTour = computed(() => (
+  route.path === '/dashboard' &&
+  isOnboardingComplete.value &&
+  !isTutorialSeen.value
+));
 
 // ── Theme ────────────────────────────────────────────────
 const parseThemePreference = (value: unknown): ThemePreference | null => {
@@ -132,18 +143,8 @@ const loadThemePreference = async (): Promise<void> => {
     // Onboarding redirect — only on first successful settings load
     if (!hasCheckedOnboarding.value) {
       hasCheckedOnboarding.value = true;
-      const isOnboarded = uiRuntime.stores.settings.state.data.some(
-        s => s.key === 'onboarding.complete' && s.value === true
-      );
-      if (!isOnboarded && route.path !== '/setup') {
+      if (!isOnboardingComplete.value && route.path !== '/setup') {
         await router.replace('/setup');
-      } else if (isOnboarded) {
-        const tourSeen = uiRuntime.stores.settings.state.data.some(
-          s => s.key === 'tour.seen' && s.value === true
-        );
-        if (!tourSeen) {
-          pendingTour.value = true;
-        }
       }
     }
   } catch {
@@ -245,6 +246,32 @@ const toggleSidebar = () => { sidebarCollapsed.value = !sidebarCollapsed.value; 
 const toggleMobileMenu = () => { mobileMenuOpen.value = !mobileMenuOpen.value; };
 const closeMobileMenu = () => { mobileMenuOpen.value = false; };
 
+const dispatchTutorialTour = async (): Promise<void> => {
+  await nextTick();
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('fc:start-tour'));
+    });
+  });
+};
+
+watch(canAutoStartTour, (shouldStart) => {
+  if (!shouldStart) {
+    if (isTutorialSeen.value) {
+      pendingTour.value = false;
+    }
+    return;
+  }
+
+  if (showSplash.value || splashVisible.value) {
+    pendingTour.value = true;
+    return;
+  }
+
+  pendingTour.value = false;
+  void dispatchTutorialTour();
+});
+
 // ── Lifecycle ─────────────────────────────────────────────
 onMounted(async () => {
   setBrowserConnection(navigator.onLine);
@@ -269,9 +296,9 @@ onMounted(async () => {
     splashVisible.value = false;
     setTimeout(() => {
       showSplash.value = false;
-      if (pendingTour.value) {
+      if (pendingTour.value && canAutoStartTour.value) {
         pendingTour.value = false;
-        window.dispatchEvent(new CustomEvent('fc:start-tour'));
+        void dispatchTutorialTour();
       }
     }, 350);
   }, 1600);

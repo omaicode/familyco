@@ -112,21 +112,25 @@ const testConnection = async () => {
 const next = () => { if (currentStep.value < TOTAL_STEPS) currentStep.value++; };
 const prev = () => { if (currentStep.value > 1) currentStep.value--; };
 
+const upsertSetting = async (key: string, value: string | number | boolean): Promise<void> => {
+  await uiRuntime.stores.settings.upsert({ key, value });
+};
+
 const initialize = async () => {
   isSubmitting.value = true;
   errorMessage.value = null;
   try {
-    await uiRuntime.api.upsertSetting({ key: 'provider.name', value: form.provider });
-    await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: form.apiKey });
-    await uiRuntime.api.upsertSetting({ key: 'provider.defaultModel', value: form.defaultModel });
+    await upsertSetting('provider.name', form.provider);
+    await upsertSetting('provider.apiKey', form.apiKey);
+    await upsertSetting('provider.defaultModel', form.defaultModel);
     if (form.workspacePath.trim()) {
-      await uiRuntime.api.upsertSetting({ key: 'workspace.path', value: form.workspacePath.trim() });
+      await upsertSetting('workspace.path', form.workspacePath.trim());
     }
     const result = await uiRuntime.api.initializeSetup({
       companyName: form.companyName.trim(),
       companyDescription: form.companyDescription.trim(),
     });
-    await uiRuntime.api.upsertSetting({ key: 'onboarding.complete', value: true });
+    await upsertSetting('onboarding.complete', true);
     createdResult.value = {
       executiveName: result.executiveAgent.name,
       description: result.companyDescription,

@@ -105,7 +105,7 @@ export function useTutorialTour() {
     );
 
   const markSeen = (): void => {
-    void uiRuntime.api.upsertSetting({ key: TOUR_SEEN_KEY, value: true });
+    void uiRuntime.stores.settings.upsert({ key: TOUR_SEEN_KEY, value: true });
   };
 
   const start = (t: (key: string) => string): void => {

@@ -43,6 +43,7 @@ export interface ChatSystemPromptInput {
   skills: PromptSkillDefinition[];
   tools: PromptToolDefinition[];
   conversationHistory: PromptConversationEntry[];
+  conversationSummary?: string;
 }
 
 export interface ChatUserPromptInput {
