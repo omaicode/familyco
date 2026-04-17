@@ -19,7 +19,7 @@
     "@familyco/agent-runtime": "workspace:*",
     "@familyco/core": "workspace:*",
     "@familyco/db": "workspace:*",    
-    "@ai-sdk/anthropic": "^3.0.68",
+    "@ai-sdk/anthropic": "^3.0.71",
     "@ai-sdk/openai": "^3.0.52",
     "@fastify/cors": "^11.1.0",
     "@fastify/jwt": "^10.0.0",
