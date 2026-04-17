@@ -1,0 +1,59 @@
+name: Feature Request
+description: Propose an improvement to the product, developer experience, or repository workflow.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the user or engineering problem first. Solutions are easier to evaluate when the underlying need is clear.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve?
+      placeholder: As a ..., I need ..., because ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change you want.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider?
+
+  - type: textarea
+    id: success
+    attributes:
+      label: Success criteria
+      description: How will we know this feature is done and useful?
+      placeholder: |
+        - Users can ...
+        - CI validates ...
+        - Documentation covers ...
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - apps/web
+        - apps/server
+        - apps/electron
+        - packages/core
+        - packages/ui
+        - packages/db
+        - tooling / CI / repo governance
+        - documentation
+    validations:
+      required: true

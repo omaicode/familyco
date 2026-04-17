@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security disclosure
+    url: https://github.com/familyco/familyco/security/policy
+    about: Please report security vulnerabilities privately instead of opening a public issue.
+  - name: Project documentation
+    url: https://github.com/familyco/familyco/tree/main/.github/docs
+    about: Review product, architecture, and operating model docs before opening broad implementation questions.
