@@ -37,4 +37,7 @@ jobs:
       - name: Build Electron release artifacts
         run: pnpm --filter @familyco/electron run build:electron:release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          EP_GH_IGNORE_TIME: "true"
+          ELECTRON_BUILDER_BINARIES_MIRROR: "https://github.com/electron-userland/electron-builder-binaries/releases/download/"
+          NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR: "https://github.com/electron-userland/electron-builder-binaries/releases/download/"

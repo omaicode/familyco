@@ -6,6 +6,7 @@ publish:
   provider: github
   owner: omaicode
   repo: familyco
+  releaseType: release
 directories:
   output: ../../build
 files:
