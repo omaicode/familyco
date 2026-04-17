@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "postinstall": "node-gyp rebuild --directory ../../node_modules/better-sqlite3 || true",
     "prisma:generate": "prisma generate --schema=./prisma/schema.prisma",
-    "prisma:migrate:dev": "prisma migrate dev --schema=./prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate deploy --schema=./prisma/schema.prisma",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [],

@@ -11,6 +11,7 @@
     "dev:p": "turbo run dev --parallel",
     "prisma:generate": "pnpm --filter @familyco/db run prisma:generate",
     "prisma:migrate:dev": "pnpm --filter @familyco/db run prisma:migrate:dev",
+    "prisma:migrate": "pnpm --filter @familyco/db run prisma:migrate",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"
   },
