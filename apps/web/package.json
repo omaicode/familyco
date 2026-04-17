@@ -21,7 +21,7 @@
     "pinia": "^3.0.3",
     "vite-svg-loader": "^5.1.1",
     "vue": "^3.5.22",
-    "vue-router": "^4.6.3"
+    "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
