@@ -44,6 +44,7 @@ files:
       - "!lucide-vue-next${/*}"
       - "!app-builder*${/*}"
       - "!*electron*${/*}"
+      - "!**/.bin${/*}"
   - from: ../web/dist
     to: web
     filter:

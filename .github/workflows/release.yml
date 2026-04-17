@@ -34,7 +34,7 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
-      - name: Build Electron
-        run: pnpm --filter @familyco/electron run build:electron -- --publish always -c.publish.provider=github
+      - name: Build Electron release artifacts
+        run: pnpm --filter @familyco/electron run build:electron:release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
