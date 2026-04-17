@@ -113,7 +113,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
     >
       <Activity :size="18" />
       <span v-if="activeCount > 0" class="fc-activity-badge">{{ activeCount }}</span>
-      <component :is="isOpen ? ChevronDown : ChevronUp" :size="12" class="fc-activity-trigger__chevron" />
+      <component :is="isOpen ? ChevronUp : ChevronDown" :size="12" class="fc-activity-trigger__chevron" />
     </button>
   </div>
 </template>
@@ -121,14 +121,19 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 <style scoped>
 /* ── Widget container ─────────────────────────────────── */
 .fc-activity-widget {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
+  --fc-activity-bg: var(--fc-primary, #127A70);
+  --fc-activity-bg-hover: var(--fc-primary-hover, #0f6a61);
+  --fc-activity-fg: var(--fc-primary-foreground, #f5fffd);
+  --fc-activity-fg-muted: color-mix(in srgb, var(--fc-activity-fg) 72%, transparent);
+  --fc-activity-fg-soft: color-mix(in srgb, var(--fc-activity-fg) 86%, transparent);
+  --fc-activity-border: color-mix(in srgb, var(--fc-activity-fg) 16%, var(--fc-activity-bg) 84%);
+  --fc-activity-border-strong: color-mix(in srgb, var(--fc-activity-fg) 24%, var(--fc-activity-bg) 76%);
+  --fc-activity-surface: color-mix(in srgb, var(--fc-activity-fg) 8%, var(--fc-activity-bg) 92%);
+  --fc-activity-surface-hover: color-mix(in srgb, var(--fc-activity-fg) 12%, var(--fc-activity-bg) 88%);
+  --fc-activity-shadow: 0 18px 42px -24px color-mix(in srgb, black 72%, var(--fc-activity-bg) 28%);
+  display: inline-flex;
   align-items: flex-end;
-  gap: 8px;
+  position: relative;
 }
 
 /* ── Trigger button ───────────────────────────────────── */
@@ -136,38 +141,39 @@ function elapsedSeconds(run: ActiveAgentRun): string {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  background: var(--fc-bg-surface, #1e1e2e);
-  color: var(--fc-text-primary, #cdd6f4);
-  border: 1px solid var(--fc-border, #313244);
+  padding: 4px 14px;
+  background: var(--fc-activity-bg);
+  color: var(--fc-activity-fg);
+  border: 1px solid var(--fc-activity-border);
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.8125rem;
   font-weight: 500;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--fc-activity-shadow);
+  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   position: relative;
 }
 
 .fc-activity-trigger:hover {
-  background: var(--fc-bg-hover, #2a2a3c);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  background: var(--fc-activity-bg-hover);
+  border-color: var(--fc-activity-border-strong);
+  box-shadow: 0 22px 44px -26px color-mix(in srgb, black 74%, var(--fc-activity-bg) 26%);
 }
 
 .fc-activity-trigger--pulsing {
-  border-color: var(--fc-accent, #89b4fa);
-  color: var(--fc-accent, #89b4fa);
+  border-color: color-mix(in srgb, var(--fc-activity-fg) 34%, var(--fc-activity-bg) 66%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fc-activity-fg) 8%, transparent), var(--fc-activity-shadow);
   animation: fc-activity-pulse 2s ease infinite;
 }
 
 .fc-activity-trigger__chevron {
-  opacity: 0.6;
+  opacity: 0.72;
 }
 
 /* ── Active badge ─────────────────────────────────────── */
 .fc-activity-badge {
-  background: var(--fc-accent, #89b4fa);
-  color: var(--fc-bg-base, #1e1e2e);
+  background: color-mix(in srgb, var(--fc-activity-fg) 92%, var(--fc-activity-bg) 8%);
+  color: var(--fc-activity-bg);
   border-radius: 10px;
   padding: 1px 6px;
   font-size: 0.6875rem;
@@ -179,12 +185,16 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 
 /* ── Panel ────────────────────────────────────────────── */
 .fc-activity-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
   width: 320px;
   max-height: 420px;
-  background: var(--fc-bg-surface, #1e1e2e);
-  border: 1px solid var(--fc-border, #313244);
+  background: var(--fc-activity-bg);
+  border: 1px solid var(--fc-activity-border);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 28px 56px -28px color-mix(in srgb, black 74%, var(--fc-activity-bg) 26%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -195,10 +205,10 @@ function elapsedSeconds(run: ActiveAgentRun): string {
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--fc-border, #313244);
+  border-bottom: 1px solid var(--fc-activity-border);
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--fc-text-primary, #cdd6f4);
+  color: var(--fc-activity-fg);
 }
 
 .fc-activity-panel__header span {
@@ -209,16 +219,17 @@ function elapsedSeconds(run: ActiveAgentRun): string {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--fc-text-muted, #6c7086);
+  color: var(--fc-activity-fg-muted);
   padding: 2px;
   display: flex;
   align-items: center;
   border-radius: 4px;
-  transition: color 0.1s;
+  transition: color 0.1s, background 0.1s;
 }
 
 .fc-activity-panel__close:hover {
-  color: var(--fc-text-primary, #cdd6f4);
+  color: var(--fc-activity-fg);
+  background: color-mix(in srgb, var(--fc-activity-fg) 10%, transparent);
 }
 
 .fc-activity-panel__body {
@@ -233,7 +244,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 /* ── Empty state ─────────────────────────────────────── */
 .fc-activity-empty {
   font-size: 0.8rem;
-  color: var(--fc-text-muted, #6c7086);
+  color: var(--fc-activity-fg-muted);
   text-align: center;
   padding: 24px 16px;
 }
@@ -242,28 +253,29 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 .fc-activity-run {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--fc-activity-border);
+  background: var(--fc-activity-surface);
   font-size: 0.8rem;
 }
 
 .fc-activity-run--active {
-  background: color-mix(in srgb, var(--fc-accent, #89b4fa) 8%, transparent);
-  border-color: color-mix(in srgb, var(--fc-accent, #89b4fa) 25%, transparent);
+  background: color-mix(in srgb, var(--fc-info, #6bb7ff) 14%, var(--fc-activity-bg) 86%);
+  border-color: color-mix(in srgb, var(--fc-info, #6bb7ff) 32%, var(--fc-activity-bg) 68%);
 }
 
 .fc-activity-run--completed {
-  background: color-mix(in srgb, var(--fc-success, #a6e3a1) 6%, transparent);
-  border-color: color-mix(in srgb, var(--fc-success, #a6e3a1) 18%, transparent);
+  background: color-mix(in srgb, var(--fc-success, #6fd09c) 14%, var(--fc-activity-bg) 86%);
+  border-color: color-mix(in srgb, var(--fc-success, #6fd09c) 28%, var(--fc-activity-bg) 72%);
 }
 
 .fc-activity-run--failed {
-  background: color-mix(in srgb, var(--fc-danger, #f38ba8) 6%, transparent);
-  border-color: color-mix(in srgb, var(--fc-danger, #f38ba8) 18%, transparent);
+  background: color-mix(in srgb, var(--fc-error, #ff7d91) 14%, var(--fc-activity-bg) 86%);
+  border-color: color-mix(in srgb, var(--fc-error, #ff7d91) 28%, var(--fc-activity-bg) 72%);
 }
 
 .fc-activity-run--waiting {
-  background: color-mix(in srgb, var(--fc-warning, #fab387) 6%, transparent);
-  border-color: color-mix(in srgb, var(--fc-warning, #fab387) 18%, transparent);
+  background: color-mix(in srgb, var(--fc-warning, #ffd17f) 16%, var(--fc-activity-bg) 84%);
+  border-color: color-mix(in srgb, var(--fc-warning, #ffd17f) 30%, var(--fc-activity-bg) 70%);
 }
 
 .fc-activity-run__meta {
@@ -278,25 +290,25 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run--active .fc-activity-run__icon {
-  color: var(--fc-accent, #89b4fa);
+  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 86%, white 14%);
   animation: fc-activity-pulse 1.6s ease infinite;
 }
 
 .fc-activity-run--completed .fc-activity-run__icon {
-  color: var(--fc-success, #a6e3a1);
+  color: color-mix(in srgb, var(--fc-success, #6fd09c) 88%, white 12%);
 }
 
 .fc-activity-run--failed .fc-activity-run__icon {
-  color: var(--fc-danger, #f38ba8);
+  color: color-mix(in srgb, var(--fc-error, #ff7d91) 88%, white 12%);
 }
 
 .fc-activity-run--waiting .fc-activity-run__icon {
-  color: var(--fc-warning, #fab387);
+  color: color-mix(in srgb, var(--fc-warning, #ffd17f) 92%, white 8%);
 }
 
 .fc-activity-run__agent {
   font-weight: 600;
-  color: var(--fc-text-primary, #cdd6f4);
+  color: var(--fc-activity-fg);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -305,18 +317,18 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 
 .fc-activity-run__status {
   font-size: 0.7rem;
-  color: var(--fc-text-muted, #6c7086);
+  color: var(--fc-activity-fg-muted);
   white-space: nowrap;
 }
 
 .fc-activity-run__elapsed {
   font-size: 0.7rem;
-  color: var(--fc-text-muted, #6c7086);
+  color: var(--fc-activity-fg-muted);
   white-space: nowrap;
 }
 
 .fc-activity-run__task {
-  color: var(--fc-text-secondary, #a6adc8);
+  color: var(--fc-activity-fg-soft);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -324,14 +336,14 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run__tool {
-  color: var(--fc-accent, #89b4fa);
+  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 88%, white 12%);
   margin: 3px 0 0;
   font-size: 0.75rem;
-  opacity: 0.85;
+  opacity: 0.95;
 }
 
 .fc-activity-run__error {
-  color: var(--fc-danger, #f38ba8);
+  color: color-mix(in srgb, var(--fc-error, #ff7d91) 90%, white 10%);
   margin: 3px 0 0;
   font-size: 0.75rem;
   white-space: nowrap;
@@ -340,13 +352,14 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run__summary {
-  color: var(--fc-text-secondary, #a6adc8);
+  color: var(--fc-activity-fg-soft);
   margin: 4px 0 0;
   font-size: 0.75rem;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
   display: -webkit-box;
+  line-clamp: 4;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;

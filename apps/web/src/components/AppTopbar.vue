@@ -181,7 +181,9 @@ onUnmounted(() => {
       <button class="fc-hamburger" :aria-label="t('Toggle menu')" @click="emit('toggleMobile')">
         <component :is="props.mobileMenuOpen ? X : Menu" :size="18" />
       </button>
-      <h2 class="fc-topbar-title">{{ props.pageTitle }}</h2>
+      <slot name="title">
+        <h1 class="fc-topbar-title">{{ props.pageTitle }}</h1>
+      </slot>
     </div>
 
     <div class="fc-topbar-right">

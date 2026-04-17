@@ -348,7 +348,12 @@ onUnmounted(() => {
         :server-reachable="serverReachable"
         :connection-label="connectionLabel"
         @toggle-mobile="toggleMobileMenu"
-      />
+      >
+        <template #title>
+          <!-- ── Live agent activity widget ───────────────────── -->
+          <AgentActivityWidget v-if="!isSetupRoute" />
+        </template>
+      </AppTopbar>
 
       <!-- Main content -->
       <main :class="uiRuntime.layout.defaultContainerClasses.mainContent">
@@ -396,9 +401,6 @@ onUnmounted(() => {
       </main>
     </div>
   </div>
-
-  <!-- ── Live agent activity widget ───────────────────── -->
-  <AgentActivityWidget v-if="!isSetupRoute" />
 </template>
 
 <style scoped>
