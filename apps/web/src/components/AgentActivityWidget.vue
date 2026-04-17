@@ -123,13 +123,14 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 .fc-activity-widget {
   --fc-activity-bg: var(--fc-primary, #127A70);
   --fc-activity-bg-hover: var(--fc-primary-hover, #0f6a61);
-  --fc-activity-fg: var(--fc-primary-foreground, #f5fffd);
-  --fc-activity-fg-muted: color-mix(in srgb, var(--fc-activity-fg) 72%, transparent);
-  --fc-activity-fg-soft: color-mix(in srgb, var(--fc-activity-fg) 86%, transparent);
-  --fc-activity-border: color-mix(in srgb, var(--fc-activity-fg) 16%, var(--fc-activity-bg) 84%);
-  --fc-activity-border-strong: color-mix(in srgb, var(--fc-activity-fg) 24%, var(--fc-activity-bg) 76%);
-  --fc-activity-surface: color-mix(in srgb, var(--fc-activity-fg) 8%, var(--fc-activity-bg) 92%);
-  --fc-activity-surface-hover: color-mix(in srgb, var(--fc-activity-fg) 12%, var(--fc-activity-bg) 88%);
+  --fc-activity-fg: #f6fffc;
+  --fc-activity-fg-soft: color-mix(in srgb, #ffffff 90%, var(--fc-activity-bg) 10%);
+  --fc-activity-fg-muted: color-mix(in srgb, #ffffff 78%, var(--fc-activity-bg) 22%);
+  --fc-activity-fg-subtle: color-mix(in srgb, #ffffff 68%, var(--fc-activity-bg) 32%);
+  --fc-activity-border: color-mix(in srgb, #ffffff 18%, var(--fc-activity-bg) 82%);
+  --fc-activity-border-strong: color-mix(in srgb, #ffffff 28%, var(--fc-activity-bg) 72%);
+  --fc-activity-surface: color-mix(in srgb, #ffffff 9%, var(--fc-activity-bg) 91%);
+  --fc-activity-surface-hover: color-mix(in srgb, #ffffff 14%, var(--fc-activity-bg) 86%);
   --fc-activity-shadow: 0 18px 42px -24px color-mix(in srgb, black 72%, var(--fc-activity-bg) 28%);
   display: inline-flex;
   align-items: flex-end;
@@ -219,7 +220,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--fc-activity-fg-muted);
+  color: var(--fc-activity-fg-soft);
   padding: 2px;
   display: flex;
   align-items: center;
@@ -244,7 +245,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 /* ── Empty state ─────────────────────────────────────── */
 .fc-activity-empty {
   font-size: 0.8rem;
-  color: var(--fc-activity-fg-muted);
+  color: var(--fc-activity-fg-soft);
   text-align: center;
   padding: 24px 16px;
 }
@@ -317,7 +318,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 
 .fc-activity-run__status {
   font-size: 0.7rem;
-  color: var(--fc-activity-fg-muted);
+  color: var(--fc-activity-fg-soft);
   white-space: nowrap;
 }
 
@@ -328,7 +329,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run__task {
-  color: var(--fc-activity-fg-soft);
+  color: var(--fc-activity-fg);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
