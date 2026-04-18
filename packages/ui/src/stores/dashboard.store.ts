@@ -48,7 +48,7 @@ export class DashboardStore {
     });
   }
 
-  async load(projectId: string): Promise<void> {
+  async load(projectId?: string): Promise<void> {
     this.state.isLoading = true;
     this.state.errorMessage = null;
 

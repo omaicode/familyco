@@ -13,14 +13,13 @@ import { useAutoReload } from '../composables/useAutoReload';
 import { useI18n } from '../composables/useI18n';
 import { useTutorialTour } from '../composables/useTutorialTour';
 
-const projectId = ref(import.meta.env.VITE_DEFAULT_PROJECT_ID || 'demo-project');
 const isRefreshing = ref(false);
 const { t } = useI18n();
 const tour = useTutorialTour();
 
 const refresh = async () => {
   isRefreshing.value = true;
-  try { await uiRuntime.stores.dashboard.load(projectId.value); }
+  try { await uiRuntime.stores.dashboard.load(); }
   finally { isRefreshing.value = false; }
 };
 

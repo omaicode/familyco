@@ -226,7 +226,6 @@ function closeArtifactModal(): void {
                 <span class="activity-detail-value">{{ item.decisionNote }}</span>
               </div>
             </div>
-
           </template>
         </div>
       </li>
@@ -250,7 +249,11 @@ function closeArtifactModal(): void {
         </div>
 
         <div class="activity-file-modal-body">
-          <pre v-if="selectedArtifact.contentPreview && selectedArtifact.contentPreview.length > 0" class="activity-file-content">{{ selectedArtifact.contentPreview }}</pre>
+          <MarkdownPreview
+            v-if="selectedArtifact.contentPreview && selectedArtifact.contentPreview.length > 0"
+            :source="selectedArtifact.contentPreview"
+            :empty-text="t('No file content captured.')"
+          />
           <div v-else class="activity-file-empty">{{ t('No file content captured.') }}</div>
           <div v-if="selectedArtifact.contentTruncated" class="activity-file-truncated-note">
             {{ t('Snapshot is truncated. Open the file in workspace for full content.') }}
@@ -286,7 +289,7 @@ function closeArtifactModal(): void {
   grid-template-columns: 28px 1fr;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--fc-border-subtle, rgba(255,255,255,0.06));
+  border-bottom: 1px solid var(--fc-border-subtle, rgba(255, 255, 255, 0.06));
 }
 
 .activity-item:last-child {
@@ -320,7 +323,7 @@ function closeArtifactModal(): void {
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--fc-surface-2, rgba(255,255,255,0.06));
+  background: var(--fc-surface-2, rgba(255, 255, 255, 0.06));
   color: var(--fc-text-secondary, #ccc);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -419,65 +422,52 @@ function closeArtifactModal(): void {
   padding: 18px;
 }
 
-.activity-file-modal {
-  width: min(900px, 100%);
-  max-height: 84vh;
+.activity-file-modal :deep(.fc-modal-panel) {
+  width: min(960px, 100%);
+  max-height: min(86vh, 860px);
   display: flex;
   flex-direction: column;
-  background: var(--fc-surface, #101214);
-  border: 1px solid var(--fc-border-subtle, rgba(255, 255, 255, 0.08));
-  border-radius: 12px;
 }
 
 .activity-file-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--fc-border-subtle, rgba(255, 255, 255, 0.08));
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .activity-file-modal-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--fc-text-primary, #e8e8e8);
+  font-size: 0.8rem;
+  color: var(--fc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .activity-file-modal-path {
-  font-size: 12px;
-  color: var(--fc-text-secondary, #aaa);
-  word-break: break-word;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fc-text-main);
+  word-break: break-all;
 }
 
 .activity-file-modal-body {
-  padding: 14px;
-  overflow: auto;
-}
-
-.activity-file-content {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--fc-text-secondary, #ccc);
-  background: var(--fc-surface-muted, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--fc-border-subtle);
   border-radius: 10px;
-  border: 1px solid var(--fc-border-subtle, rgba(255, 255, 255, 0.08));
-  padding: 12px;
+  background: var(--fc-surface-muted);
+  padding: 10px;
   overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+  max-height: min(68vh, 700px);
 }
 
-.activity-file-empty {
+.activity-file-empty,
+.activity-file-truncated-note {
   font-size: 12px;
-  color: var(--fc-text-muted, #8b8b8b);
+  color: var(--fc-text-muted);
 }
 
 .activity-file-truncated-note {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--fc-text-muted, #8b8b8b);
+  margin-top: 8px;
 }
 
 .task-comments-empty {

@@ -337,7 +337,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run__tool {
-  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 88%, white 12%);
+  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 14%, white 86%);
   margin: 3px 0 0;
   font-size: 0.75rem;
   opacity: 0.95;

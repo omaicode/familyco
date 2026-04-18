@@ -47,7 +47,6 @@ export function registerDashboardController(app: FastifyInstance, deps: Dashboar
     const projects = query.projectId
       ? [{ id: query.projectId }]
       : await deps.projectService.listProjects().then((items) => items.map((item) => ({ id: item.id })));
-
     const tasksByProject = await Promise.all(projects.map(async (project) => deps.taskService.listProjectTasks(project.id)));
     const tasks = tasksByProject.flat();
 

@@ -1,5 +1,9 @@
 import { onMounted, onUnmounted } from 'vue';
 
+interface UseAutoReloadOptions {
+  intervalMs?: number;
+}
+
 /**
  * Wraps a page's `reload()` function so it:
  * 1. Fires on `onMounted` as normal.
@@ -10,15 +14,45 @@ import { onMounted, onUnmounted } from 'vue';
  * or a remote server is not yet ready when the renderer first mounts,
  * causing API calls to fail silently and leaving data empty.
  */
-export function useAutoReload(reload: () => Promise<void> | void): void {
-  const handleServerReady = () => { void reload(); };
+export function useAutoReload(
+  reload: () => Promise<void> | void,
+  options: UseAutoReloadOptions = {}
+): void {
+  let isReloading = false;
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  const runReload = async (): Promise<void> => {
+    if (isReloading) {
+      return;
+    }
+
+    isReloading = true;
+    try {
+      await reload();
+    } finally {
+      isReloading = false;
+    }
+  };
+
+  const handleServerReady = () => { void runReload(); };
 
   onMounted(async () => {
-    await reload();
+    await runReload();
     window.addEventListener('fc:server-ready', handleServerReady);
+
+    if (options.intervalMs && options.intervalMs > 0) {
+      pollTimer = setInterval(() => {
+        void runReload();
+      }, options.intervalMs);
+    }
   });
 
   onUnmounted(() => {
     window.removeEventListener('fc:server-ready', handleServerReady);
+
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
   });
 }

@@ -6,6 +6,7 @@ import type {
   TaskActivityItem,
   TaskCommentItem,
   TaskListItem,
+  TaskWorkspaceArtifact,
   UpdateTaskPayload
 } from '@familyco/ui';
 import { computed, reactive, ref, watch } from 'vue';
@@ -86,6 +87,18 @@ const draft = reactive({
 
 const commentDraft = ref('');
 const commentAuthorId = ref('founder');
+const selectedCommentArtifact = ref<TaskWorkspaceArtifact | null>(null);
+
+interface TaskCommentArtifactEntry {
+  id: string;
+  path: string;
+  action: TaskWorkspaceArtifact['action'];
+  actorLabel: string;
+  createdAt: string;
+  artifact: TaskWorkspaceArtifact;
+}
+
+type CommentArtifactGroups = Record<string, TaskCommentArtifactEntry[]>;
 
 watch(
   () => [props.open, props.task?.id],
@@ -133,6 +146,73 @@ const canSubmitEdit = computed(
 const canSubmitComment = computed(
   () => Boolean(commentDraft.value.trim() && selectedCommentAuthor.value)
 );
+
+const sortedComments = computed<TaskCommentItem[]>(() =>
+  [...props.comments].sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
+);
+
+const checkpointArtifacts = computed<TaskCommentArtifactEntry[]>(() =>
+  props.activity
+    .filter((item) => item.kind === 'session.checkpoint' && Array.isArray(item.workspaceArtifacts) && item.workspaceArtifacts.length > 0)
+    .flatMap((item) =>
+      (item.workspaceArtifacts ?? []).map((artifact, artifactIndex) => ({
+        id: `${item.id}-${artifactIndex}-${artifact.path}`,
+        path: artifact.path,
+        action: artifact.action,
+        actorLabel: item.actorLabel,
+        createdAt: item.createdAt,
+        artifact
+      }))
+    )
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
+);
+
+const commentArtifactsById = computed<CommentArtifactGroups>(() => {
+  const comments = sortedComments.value;
+  const map: CommentArtifactGroups = Object.fromEntries(
+    comments.map((comment) => [comment.id, [] as TaskCommentArtifactEntry[]])
+  );
+
+  if (comments.length === 0) {
+    return map;
+  }
+
+  for (const artifactEntry of checkpointArtifacts.value) {
+    const artifactTime = new Date(artifactEntry.createdAt).getTime();
+    let nearestComment = comments[0];
+    let nearestDistance = Math.abs(new Date(nearestComment.createdAt).getTime() - artifactTime);
+
+    for (let index = 1; index < comments.length; index += 1) {
+      const candidate = comments[index];
+      const candidateDistance = Math.abs(new Date(candidate.createdAt).getTime() - artifactTime);
+      const candidateTime = new Date(candidate.createdAt).getTime();
+      const nearestTime = new Date(nearestComment.createdAt).getTime();
+      const preferCandidateOnTie = candidateDistance === nearestDistance
+        && candidateTime <= artifactTime
+        && nearestTime > artifactTime;
+
+      if (candidateDistance < nearestDistance || preferCandidateOnTie) {
+        nearestComment = candidate;
+        nearestDistance = candidateDistance;
+      }
+    }
+
+    map[nearestComment.id].push(artifactEntry);
+  }
+
+  return map;
+});
+
+const standaloneArtifacts = computed<TaskCommentArtifactEntry[]>(() => {
+  if (sortedComments.value.length > 0) {
+    return [];
+  }
+
+  return checkpointArtifacts.value;
+});
+
+const artifactsForComment = (commentId: string): TaskCommentArtifactEntry[] =>
+  commentArtifactsById.value[commentId] ?? [];
 
 const submitEdit = (): void => {
   if (!props.task || !canSubmitEdit.value) {
@@ -196,6 +276,14 @@ const formatCommentCountLabel = (count: number): string =>
   count === 1 ? t('1 comment logged') : t('{{count}} comments logged', { count });
 
 const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).toUpperCase()}` : ''));
+
+const openCommentArtifactModal = (artifact: TaskWorkspaceArtifact): void => {
+  selectedCommentArtifact.value = artifact;
+};
+
+const closeCommentArtifactModal = (): void => {
+  selectedCommentArtifact.value = null;
+};
 </script>
 
 <template>
@@ -352,8 +440,8 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
               {{ t('Loading task comments…') }}
             </div>
 
-            <ul v-else-if="comments.length > 0" class="task-comment-list">
-              <li v-for="comment in comments" :key="comment.id" class="task-comment-item">
+            <ul v-else-if="sortedComments.length > 0" class="task-comment-list">
+              <li v-for="comment in sortedComments" :key="comment.id" class="task-comment-item">
                 <div class="task-comment-header">
                   <div>
                     <strong>{{ comment.authorLabel }}</strong>
@@ -365,11 +453,68 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
                 </div>
 
                 <MarkdownPreview :source="comment.body" :empty-text="t('No comment body provided.')" />
+
+                <div v-if="artifactsForComment(comment.id).length > 0" class="task-comment-artifact-group">
+                  <div class="task-comment-artifact-group-header">
+                    <h6>{{ t('Files created') }}</h6>
+                    <span>{{ artifactsForComment(comment.id).length }}</span>
+                  </div>
+
+                  <ul class="task-comment-artifact-list">
+                    <li v-for="entry in artifactsForComment(comment.id)" :key="entry.id" class="task-comment-artifact-item">
+                      <button
+                        type="button"
+                        class="fc-btn-ghost task-comment-artifact-btn"
+                        @click="openCommentArtifactModal(entry.artifact)"
+                      >
+                        <span class="task-comment-artifact-path">{{ entry.path }}</span>
+                        <span class="task-comment-artifact-meta">
+                          {{ entry.action === 'created' ? t('Created') : t('Updated') }}
+                        </span>
+                        <span class="task-comment-artifact-meta">
+                          {{ entry.actorLabel }} · {{ formatDateTime(entry.createdAt) }}
+                        </span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
               </li>
             </ul>
 
             <div v-else class="task-comments-empty">
               {{ t('No comments yet. Start the thread with context, blockers, or a quick status note.') }}
+            </div>
+
+            <div v-if="sortedComments.length === 0" class="task-comment-artifacts">
+              <div class="task-modal-section-header">
+                <h5>{{ t('Files created') }}</h5>
+              </div>
+
+              <div v-if="activityLoading" class="task-comments-empty">
+                {{ t('Loading activity history…') }}
+              </div>
+
+              <div v-else-if="standaloneArtifacts.length === 0" class="task-comments-empty">
+                {{ t('No files recorded') }}
+              </div>
+
+              <ul v-else class="task-comment-artifact-list">
+                <li v-for="entry in standaloneArtifacts" :key="entry.id" class="task-comment-artifact-item">
+                  <button
+                    type="button"
+                    class="fc-btn-ghost task-comment-artifact-btn"
+                    @click="openCommentArtifactModal(entry.artifact)"
+                  >
+                    <span class="task-comment-artifact-path">{{ entry.path }}</span>
+                    <span class="task-comment-artifact-meta">
+                      {{ entry.action === 'created' ? t('Created') : t('Updated') }}
+                    </span>
+                    <span class="task-comment-artifact-meta">
+                      {{ entry.actorLabel }} · {{ formatDateTime(entry.createdAt) }}
+                    </span>
+                  </button>
+                </li>
+              </ul>
             </div>
           </div>
 
@@ -484,6 +629,37 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
           </div>
         </template>
       </div>
+
+      <FcModalShell
+        :open="selectedCommentArtifact !== null"
+        :ariaLabel="t('File snapshot')"
+        panel-class="activity-file-modal"
+        overlay-class="activity-file-modal-overlay"
+        :z-index="120"
+        @close="closeCommentArtifactModal"
+      >
+        <div v-if="selectedCommentArtifact">
+          <div class="activity-file-modal-header">
+            <div>
+              <div class="activity-file-modal-title">{{ t('File snapshot') }}</div>
+              <div class="activity-file-modal-path">{{ selectedCommentArtifact.path }}</div>
+            </div>
+            <button type="button" class="fc-btn-ghost fc-btn-sm" @click="closeCommentArtifactModal">{{ t('Close') }}</button>
+          </div>
+
+          <div class="activity-file-modal-body">
+            <MarkdownPreview
+              v-if="selectedCommentArtifact.contentPreview && selectedCommentArtifact.contentPreview.length > 0"
+              :source="selectedCommentArtifact.contentPreview"
+              :empty-text="t('No file content captured.')"
+            />
+            <div v-else class="activity-file-empty">{{ t('No file content captured.') }}</div>
+            <div v-if="selectedCommentArtifact.contentTruncated" class="activity-file-truncated-note">
+              {{ t('Snapshot is truncated. Open the file in workspace for full content.') }}
+            </div>
+          </div>
+        </div>
+      </FcModalShell>
   </FcModalShell>
 </template>
 
@@ -592,6 +768,35 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
   margin-top: 14px;
 }
 
+.task-comment-artifacts {
+  margin-top: 14px;
+}
+
+.task-comment-artifact-group {
+  margin-top: 10px;
+}
+
+.task-comment-artifact-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-comment-artifact-group-header h6 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fc-text-faint);
+}
+
+.task-comment-artifact-group-header span {
+  font-size: 0.72rem;
+  color: var(--fc-text-muted);
+}
+
 .task-brief-box,
 .task-comment-composer,
 .task-comments-empty {
@@ -620,6 +825,45 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.task-comment-artifact-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-comment-artifact-item {
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fc-surface-muted) 50%, var(--fc-surface));
+}
+
+.task-comment-artifact-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.task-comment-artifact-path {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-text-main);
+  text-align: left;
+  word-break: break-all;
+}
+
+.task-comment-artifact-meta {
+  font-size: 0.72rem;
+  color: var(--fc-text-muted);
+  text-align: left;
 }
 
 .task-comment-header {
@@ -704,6 +948,59 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
   color: var(--fc-error);
   background: color-mix(in srgb, var(--fc-error) 10%, var(--fc-surface));
   border-color: color-mix(in srgb, var(--fc-error) 30%, var(--fc-border-subtle));
+}
+
+.activity-file-modal-overlay {
+  background: rgba(0, 0, 0, 0.45);
+  padding: 18px;
+}
+
+.activity-file-modal :deep(.fc-modal-panel) {
+  width: min(960px, 100%);
+  max-height: min(86vh, 860px);
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-file-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.activity-file-modal-title {
+  font-size: 0.8rem;
+  color: var(--fc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.activity-file-modal-path {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fc-text-main);
+  word-break: break-all;
+}
+
+.activity-file-modal-body {
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 10px;
+  background: var(--fc-surface-muted);
+  padding: 10px;
+  overflow: auto;
+  max-height: min(68vh, 700px);
+}
+
+.activity-file-empty,
+.activity-file-truncated-note {
+  font-size: 12px;
+  color: var(--fc-text-muted);
+}
+
+.activity-file-truncated-note {
+  margin-top: 8px;
 }
 
 @media (max-width: 720px) {

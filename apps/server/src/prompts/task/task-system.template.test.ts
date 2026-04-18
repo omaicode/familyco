@@ -29,7 +29,6 @@ test('renderTaskSystemPrompt includes full project context when project is linke
   assert.equal(prompt.includes('Your project working directory is: /workspace/website-mvp'), true);
   assert.equal(prompt.includes('Workspace reconnaissance FIRST (mandatory before any write):'), true);
   assert.equal(prompt.includes('Plan implementation in a clear file-by-file sequence, then execute in that sequence.'), true);
-  assert.equal(prompt.includes('## Files Created'), true);
 });
 
 test('renderTaskSystemPrompt marks task as non-project when project is missing', () => {

@@ -705,7 +705,7 @@ const addTaskComment = async (payload: CreateTaskCommentPayload): Promise<void> 
   }
 };
 
-useAutoReload(reload);
+useAutoReload(reload, { intervalMs: 10_000 });
 </script>
 
 <template>

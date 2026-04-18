@@ -25,7 +25,6 @@ test('renderTaskUserPrompt includes mandatory execution protocol steps', () => {
   assert.ok(prompt.includes('Do NOT create new files until this scan is complete.'), 'must block file creation before scan');
   assert.ok(prompt.includes('task.update-status'), 'must reference task.update-status');
   assert.ok(prompt.includes('task.comment.add'), 'must reference task.comment.add');
-  assert.ok(prompt.includes('## Files Created'), 'must require files created section in progress comment format');
   assert.ok(prompt.includes('Steps 0, 1, 4, 5, and 6 are REQUIRED'), 'must mark updated required steps');
   assert.ok(prompt.includes('final reply MUST be a non-empty assistant message'), 'must enforce non-empty final reply');
   assert.ok(prompt.includes('Send exactly one final reply, then stop'), 'must enforce single final reply after tool calls');

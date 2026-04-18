@@ -66,8 +66,6 @@ interface TaskWorkspaceArtifact {
 }
 
 const MAX_ARTIFACT_CONTENT_PREVIEW = 12_000;
-const MAX_ARTIFACT_COMMENT_PREVIEW = 2_000;
-const MAX_ARTIFACTS_IN_COMMENT = 8;
 
 export class TaskExecutionCoordinator {
   constructor(private readonly options: TaskExecutionCoordinatorOptions) {}
@@ -372,8 +370,6 @@ export class TaskExecutionCoordinator {
       }
     });
 
-    await this.writeWorkspaceArtifactsComment(agent, task, workspaceArtifacts);
-
     this.options.eventBus?.emit('agent.run.completed', {
       agentId: agent.id,
       agentName: agent.name,
@@ -480,38 +476,6 @@ export class TaskExecutionCoordinator {
 
     return skills?.map((s) => ({ id: s.id, name: s.name, description: s.description, path: s.path })) ?? [];
   }
-
-  private async writeWorkspaceArtifactsComment(
-    agent: AgentProfile,
-    task: Task,
-    workspaceArtifacts: TaskWorkspaceArtifact[]
-  ): Promise<void> {
-    if (workspaceArtifacts.length === 0) {
-      return;
-    }
-
-    const commentBody = buildWorkspaceArtifactsCommentBody(workspaceArtifacts);
-    const comment = await this.options.auditService.write({
-      actorId: agent.id,
-      action: 'task.comment.added',
-      targetId: task.id,
-      payload: {
-        body: commentBody,
-        authorType: 'agent',
-        authorLabel: agent.name,
-        source: 'task.session.artifact-summary'
-      }
-    });
-
-    this.options.eventBus?.emit('task.comment.added', {
-      taskId: task.id,
-      authorId: agent.id,
-      authorType: 'agent',
-      authorLabel: agent.name,
-      body: commentBody,
-      commentId: comment.id
-    });
-  }
 }
 
 function resolveSessionStatus(toolsUsed: string[]): TaskSessionStatus {
@@ -583,65 +547,6 @@ function captureWorkspaceArtifactFromToolCall(
   }
 
   workspaceArtifacts[existingIndex] = artifact;
-}
-
-function buildWorkspaceArtifactsCommentBody(workspaceArtifacts: TaskWorkspaceArtifact[]): string {
-  const created = workspaceArtifacts.filter((artifact) => artifact.action === 'created');
-  const updated = workspaceArtifacts.filter((artifact) => artifact.action === 'updated');
-
-  const lines: string[] = [
-    '## Summary',
-    'Updated workspace artifacts in this execution session.',
-    '',
-    '## Files Created'
-  ];
-
-  if (created.length === 0) {
-    lines.push('- None');
-  } else {
-    for (const artifact of created) {
-      lines.push(`- ${artifact.path}`);
-    }
-  }
-
-  lines.push('', '## Files Updated');
-  if (updated.length === 0) {
-    lines.push('- None');
-  } else {
-    for (const artifact of updated) {
-      lines.push(`- ${artifact.path}`);
-    }
-  }
-
-  lines.push('', '## File Content Snapshots');
-  const artifactsWithContent = workspaceArtifacts
-    .filter((artifact) => typeof artifact.contentPreview === 'string' && artifact.contentPreview.trim().length > 0)
-    .slice(0, MAX_ARTIFACTS_IN_COMMENT);
-
-  if (artifactsWithContent.length === 0) {
-    lines.push('- No snapshot captured.');
-  } else {
-    for (const artifact of artifactsWithContent) {
-      const preview = sanitizeMarkdownCodeFence(
-        artifact.contentPreview!.slice(0, MAX_ARTIFACT_COMMENT_PREVIEW).trim()
-      );
-      lines.push(`### ${artifact.path}`);
-      lines.push('```markdown');
-      lines.push(preview.length > 0 ? preview : '(empty file content)');
-      lines.push('```');
-      if (artifact.contentTruncated || artifact.contentPreview!.length > MAX_ARTIFACT_COMMENT_PREVIEW) {
-        lines.push('_Snapshot truncated in comment. Open Task Activity to view full captured content._');
-      }
-      lines.push('');
-    }
-  }
-
-  lines.push('## Blockers', '- None');
-  return lines.join('\n');
-}
-
-function sanitizeMarkdownCodeFence(value: string): string {
-  return value.replace(/```/g, '``\\`');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
