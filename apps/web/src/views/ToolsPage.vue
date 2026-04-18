@@ -53,9 +53,14 @@ const filteredTools = computed(() => {
   });
 
   return items.sort((left, right) => {
+    if (left.enabled !== right.enabled) {
+      return left.enabled ? -1 : 1;
+    }
+
     if (left.source !== right.source) {
       return left.source === 'built-in' ? -1 : 1;
     }
+
     return left.name.localeCompare(right.name);
   });
 });

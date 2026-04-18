@@ -53,7 +53,13 @@ const filteredSkills = computed(() => {
     return searchable.includes(query);
   });
 
-  return items.sort((left, right) => left.name.localeCompare(right.name));
+  return items.sort((left, right) => {
+    if (left.enabled !== right.enabled) {
+      return left.enabled ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
 });
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredSkills.value.length / pageSize.value)));
 const paginatedSkills = computed(() => {
