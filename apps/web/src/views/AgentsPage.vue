@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { RouterLink } from 'vue-router';
 import { AlertTriangle, Bot, Info, Plus, RefreshCw } from 'lucide-vue-next';
 
 import { useAgentsPage } from '../composables/useAgentsPage';
@@ -157,10 +158,10 @@ const openAgentDetails = (agentId: string): void => {
       <Bot :size="36" class="fc-empty-icon" />
       <h4>{{ t('No agents yet') }}</h4>
       <p>{{ t('One executive agent is enough to start. Add department leads and specialists later through the approval flow.') }}</p>
-      <FcButton variant="primary" @click="applyTemplate('executive')">
+      <RouterLink to="/setup" class="fc-btn-primary">
         <Plus :size="14" />
-        {{ t('Create first agent') }}
-      </FcButton>
+        {{ t('Open setup') }}
+      </RouterLink>
     </div>
 
     <div v-else>

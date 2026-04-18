@@ -35,6 +35,7 @@ import TaskFiltersModal from '../components/tasks/TaskFiltersModal.vue';
 import TaskKanbanColumn from '../components/tasks/TaskKanbanColumn.vue';
 import TaskListTable from '../components/tasks/TaskListTable.vue';
 import { useI18n } from '../composables/useI18n';
+import { parseApiError } from '../utils/api-error';
 
 type TaskStatus = TaskListItem['status'];
 type TaskPriority = TaskListItem['priority'];
@@ -131,9 +132,34 @@ const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim
 
 const projectOptions = computed(() => taskState.value.data.projects);
 const assigneeOptions = computed(() => taskState.value.data.agents.filter((agent) => agent.status !== 'terminated'));
+const defaultExecutiveAssigneeId = computed(() => {
+  const executives = assigneeOptions.value
+    .filter((agent) => agent.level === 'L0')
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+
+  return executives[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
+});
 const creatorOptions = computed(() =>
   taskState.value.data.agents.filter((agent) => agent.status !== 'terminated' && agent.level !== 'L2')
 );
+
+const resolveTaskMutationErrorMessage = (error: unknown): string => {
+  const parsed = parseApiError(error);
+
+  if (parsed.code === 'TASK_PROJECT_REQUIRED') {
+    return t('Each task must belong to a project.');
+  }
+
+  if (parsed.code === 'TASK_ASSIGNEE_REQUIRED') {
+    return t('Each task must have an assignee agent.');
+  }
+
+  if (parsed.code === 'PROJECT_NOT_FOUND') {
+    return t('Selected project was not found. Please refresh and try again.');
+  }
+
+  return parsed.message;
+};
 
 const commentAuthorOptions = computed(() => [
   { id: 'founder', label: t('Founder (Human)'), type: 'human' as const },
@@ -209,7 +235,7 @@ const resetDraft = (): void => {
   draft.title = '';
   draft.description = '';
   draft.projectId = projectOptions.value[0]?.id ?? '';
-  draft.assigneeAgentId = '';
+  draft.assigneeAgentId = defaultExecutiveAssigneeId.value;
   draft.createdBy = creatorOptions.value[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
   draft.priority = 'medium';
 };
@@ -244,6 +270,10 @@ const reload = async (): Promise<void> => {
 
     if (!draft.createdBy || !assigneeOptions.value.some((agent) => agent.id === draft.createdBy)) {
       draft.createdBy = creatorOptions.value[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
+    }
+
+    if (!draft.assigneeAgentId || !assigneeOptions.value.some((agent) => agent.id === draft.assigneeAgentId)) {
+      draft.assigneeAgentId = defaultExecutiveAssigneeId.value;
     }
   } finally {
     isRefreshing.value = false;
@@ -387,14 +417,25 @@ const createTask = async (): Promise<void> => {
     return;
   }
 
+  if (!draft.projectId) {
+    setFeedback('error', t('Select a project before creating the task.'));
+    return;
+  }
+
+  const assigneeAgentId = draft.assigneeAgentId || defaultExecutiveAssigneeId.value;
+  if (!assigneeAgentId) {
+    setFeedback('error', t('Select an assignee agent before creating the task.'));
+    return;
+  }
+
   isCreating.value = true;
 
   try {
     const result = await uiRuntime.stores.tasks.createTask({
       title: normalizeText(draft.title),
       description: draft.description.trim(),
-      projectId: draft.projectId || undefined,
-      assigneeAgentId: draft.assigneeAgentId || null,
+      projectId: draft.projectId,
+      assigneeAgentId,
       createdBy: draft.createdBy || undefined,
       priority: draft.priority
     });
@@ -408,7 +449,7 @@ const createTask = async (): Promise<void> => {
     resetDraft();
     showCreateForm.value = false;
   } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : 'Failed to create task');
+    setFeedback('error', resolveTaskMutationErrorMessage(error) || t('Failed to create task'));
   } finally {
     isCreating.value = false;
   }
@@ -584,10 +625,26 @@ const closeTaskModal = (): void => {
 };
 
 const saveTaskChanges = async (payload: UpdateTaskPayload): Promise<void> => {
+  const normalizedProjectId = payload.projectId.trim();
+  if (!normalizedProjectId) {
+    setFeedback('error', t('Select a project before saving task changes.'));
+    return;
+  }
+
+  const normalizedAssigneeAgentId = payload.assigneeAgentId?.trim() || defaultExecutiveAssigneeId.value;
+  if (!normalizedAssigneeAgentId) {
+    setFeedback('error', t('Select an assignee agent before saving task changes.'));
+    return;
+  }
+
   isTaskMutating.value = true;
 
   try {
-    const result = await uiRuntime.stores.tasks.updateTask(payload);
+    const result = await uiRuntime.stores.tasks.updateTask({
+      ...payload,
+      projectId: normalizedProjectId,
+      assigneeAgentId: normalizedAssigneeAgentId
+    });
 
     if ('approvalRequired' in result) {
       setFeedback('info', `${t('Task update queued for approval')}${result.reason ? ` — ${result.reason}` : ''}.`);
@@ -600,7 +657,7 @@ const saveTaskChanges = async (payload: UpdateTaskPayload): Promise<void> => {
     setFeedback('success', t('Task updated successfully.'));
     await Promise.all([loadTaskComments(result.id), loadTaskActivity(result.id)]);
   } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : t('Failed to update task'));
+    setFeedback('error', resolveTaskMutationErrorMessage(error) || t('Failed to update task'));
   } finally {
     isTaskMutating.value = false;
   }
@@ -727,6 +784,7 @@ useAutoReload(reload);
       :comments-loading="commentsLoading"
       :comment-submitting="commentSubmitting"
       :activity-loading="activityLoading"
+      :default-assignee-id="defaultExecutiveAssigneeId"
       :format-relative="formatRelative"
       :get-project-name="getProjectName"
       :get-agent-name="getAgentName"
@@ -791,7 +849,7 @@ useAutoReload(reload);
               <FcInput v-model="draft.title" placeholder="e.g. Review onboarding checklist" />
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">{{ t('Project') }} <span class="fc-label-optional">{{ t('optional') }}</span></label>
+              <label class="fc-label">{{ t('Project') }}</label>
               <FcSelect v-model="draft.projectId">
                 <option v-for="project in projectOptions" :key="project.id" :value="project.id">
                   {{ project.name }}
@@ -799,9 +857,8 @@ useAutoReload(reload);
               </FcSelect>
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">{{ t('Assignee') }} <span class="fc-label-optional">{{ t('defaults to L0') }}</span></label>
+              <label class="fc-label">{{ t('Assignee') }}</label>
               <FcSelect v-model="draft.assigneeAgentId">
-                <option value="">{{ t('Executive agent') }}</option>
                 <option v-for="agent in assigneeOptions" :key="agent.id" :value="agent.id">
                   {{ agent.name }} · {{ agent.role }}
                 </option>
@@ -841,7 +898,7 @@ useAutoReload(reload);
           <div class="fc-toolbar">
             <FcButton
               variant="primary"
-              :disabled="isCreating || !draft.title || !draft.description"
+              :disabled="isCreating || !draft.title || !draft.description || !draft.projectId || !draft.assigneeAgentId"
               @click="createTask"
             >
               <Plus :size="14" />

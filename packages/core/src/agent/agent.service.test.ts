@@ -111,7 +111,7 @@ test('AgentService updates editable profile fields for an existing agent', async
   assert.equal(updated.parentAgentId, null);
 });
 
-test('AgentService blocks deleting the last active L0 executive', async () => {
+test('AgentService blocks creating a second active L0 executive', async () => {
   const repository = new InMemoryAgentRepositoryStub();
   const service = new AgentService(repository);
 
@@ -121,23 +121,21 @@ test('AgentService blocks deleting the last active L0 executive', async () => {
     level: 'L0',
     department: 'Executive'
   });
-  const secondaryExecutive = await service.createAgent({
-    name: 'Secondary Executive',
-    role: 'Executive',
-    level: 'L0',
-    department: 'Executive'
-  });
-  await service.setAgentStatus('agent-1', 'terminated');
-
-  await assert.rejects(() => service.deleteAgent(secondaryExecutive.id), /AGENT_DELETE_LAST_EXECUTIVE/);
+  await assert.rejects(
+    () =>
+      service.createAgent({
+        name: 'Secondary Executive',
+        role: 'Executive',
+        level: 'L0',
+        department: 'Executive'
+      }),
+    /AGENT_L0_ALREADY_EXISTS/
+  );
 });
 
-test('AgentService deletes an L0 executive when another active L0 exists', async () => {
+test('AgentService allows creating L1 and L2 agents when an L0 executive exists', async () => {
   const repository = new InMemoryAgentRepositoryStub();
-  const taskRepository = new InMemoryTaskRepositoryStub();
-  const projectRepository = new InMemoryProjectRepositoryStub();
-  const approvalRepository = new InMemoryApprovalRepositoryStub();
-  const service = new AgentService(repository, undefined, taskRepository, projectRepository, approvalRepository);
+  const service = new AgentService(repository);
 
   await service.createAgent({
     name: 'Default Executive',
@@ -145,16 +143,22 @@ test('AgentService deletes an L0 executive when another active L0 exists', async
     level: 'L0',
     department: 'Executive'
   });
-  const secondaryExecutive = await service.createAgent({
-    name: 'Executive B',
-    role: 'Executive',
-    level: 'L0',
-    department: 'Executive'
+
+  const lead = await service.createAgent({
+    name: 'Operations Lead',
+    role: 'Lead',
+    level: 'L1',
+    department: 'Operations'
+  });
+  const specialist = await service.createAgent({
+    name: 'Ops Specialist',
+    role: 'Specialist',
+    level: 'L2',
+    department: 'Operations'
   });
 
-  const result = await service.deleteAgent(secondaryExecutive.id);
-  assert.equal(result.deletedAgentIds.includes(secondaryExecutive.id), true);
-  assert.equal(result.fallbackAgentId.length > 0, true);
+  assert.equal(lead.level, 'L1');
+  assert.equal(specialist.level, 'L2');
 });
 
 test('AgentService blocks deleting the default L0 executive', async () => {
@@ -166,12 +170,6 @@ test('AgentService blocks deleting the default L0 executive', async () => {
 
   const defaultExecutive = await service.createAgent({
     name: 'Default Executive',
-    role: 'Executive',
-    level: 'L0',
-    department: 'Executive'
-  });
-  await service.createAgent({
-    name: 'Secondary Executive',
     role: 'Executive',
     level: 'L0',
     department: 'Executive'

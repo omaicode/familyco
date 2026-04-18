@@ -38,6 +38,8 @@ export class TaskService {
   async createTask(input: CreateTaskInput): Promise<Task> {
     const title = input.title.trim();
     const description = input.description.trim();
+    const projectId = input.projectId.trim();
+    const assigneeAgentId = input.assigneeAgentId?.trim();
 
     if (!title) {
       throw new Error('TASK_TITLE_REQUIRED');
@@ -47,10 +49,20 @@ export class TaskService {
       throw new Error('TASK_DESCRIPTION_REQUIRED');
     }
 
+    if (!projectId) {
+      throw new Error('TASK_PROJECT_REQUIRED');
+    }
+
+    if (!assigneeAgentId) {
+      throw new Error('TASK_ASSIGNEE_REQUIRED');
+    }
+
     const task = await this.repository.create({
       ...input,
       title,
       description,
+      projectId,
+      assigneeAgentId,
       dependsOnTaskIds: normalizeTaskDependencyIds(input.dependsOnTaskIds),
       readinessRules: normalizeTaskReadinessRules(input.readinessRules),
       priority: input.priority ?? DEFAULT_PRIORITY
@@ -135,6 +147,8 @@ export class TaskService {
 
     const title = input.title.trim();
     const description = input.description.trim();
+    const projectId = input.projectId.trim();
+    const assigneeAgentId = input.assigneeAgentId?.trim() ?? currentTask.assigneeAgentId?.trim();
 
     if (!title) {
       throw new Error('TASK_TITLE_REQUIRED');
@@ -142,6 +156,14 @@ export class TaskService {
 
     if (!description) {
       throw new Error('TASK_DESCRIPTION_REQUIRED');
+    }
+
+    if (!projectId) {
+      throw new Error('TASK_PROJECT_REQUIRED');
+    }
+
+    if (!assigneeAgentId) {
+      throw new Error('TASK_ASSIGNEE_REQUIRED');
     }
 
     const dependsOnTaskIds = normalizeTaskDependencyIds(input.dependsOnTaskIds ?? currentTask.dependsOnTaskIds);
@@ -158,8 +180,8 @@ export class TaskService {
     const updatedTask = await this.repository.update(taskId, {
       title,
       description,
-      projectId: input.projectId,
-      assigneeAgentId: input.assigneeAgentId ?? null,
+      projectId,
+      assigneeAgentId,
       createdBy: input.createdBy,
       priority: input.priority,
       dependsOnTaskIds,

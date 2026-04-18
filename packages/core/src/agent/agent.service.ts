@@ -21,6 +21,19 @@ export class AgentService {
   ) {}
 
   async createAgent(input: CreateAgentInput): Promise<AgentProfile> {
+    if (input.level === 'L0') {
+      const existingAgents = await this.repository.list();
+      const hasActiveExecutive = existingAgents.some((agent) =>
+        agent.level === 'L0' &&
+        agent.status !== 'terminated' &&
+        agent.status !== 'archived'
+      );
+
+      if (hasActiveExecutive) {
+        throw new Error('AGENT_L0_ALREADY_EXISTS');
+      }
+    }
+
     const agent = await this.repository.create(input);
     this.eventBus?.emit('agent.created', { agentId: agent.id });
     return agent;

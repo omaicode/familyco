@@ -10,6 +10,7 @@ import {
   type AgentActionResult,
   type AgentDeleteActionResult
 } from './agents-page.config';
+import { parseApiError } from '../utils/api-error';
 
 type FeedbackType = 'success' | 'error' | 'info';
 
@@ -39,6 +40,15 @@ interface UseAgentPageActionsOptions {
 }
 
 export function useAgentPageActions(options: UseAgentPageActionsOptions) {
+  const resolveCreateAgentErrorMessage = (error: unknown): string => {
+    const parsed = parseApiError(error);
+    if (parsed.code === 'AGENT_L0_ALREADY_EXISTS') {
+      return options.t('Only one active L0 executive is allowed.');
+    }
+
+    return parsed.message || options.t('Failed to create agent');
+  };
+
   const createAgent = async (): Promise<void> => {
     if (!options.draft.name.trim() || !options.draft.role.trim() || !options.draft.department.trim()) {
       return;
@@ -51,7 +61,7 @@ export function useAgentPageActions(options: UseAgentPageActionsOptions) {
         role: options.draft.role.trim(),
         level: options.draft.level,
         department: options.draft.department.trim(),
-        parentAgentId: options.draft.level === 'L0' ? null : options.draft.parentAgentId || null
+        parentAgentId: options.draft.parentAgentId || null
       }) as AgentActionResult;
 
       if (isApprovalResponse(result)) {
@@ -69,7 +79,7 @@ export function useAgentPageActions(options: UseAgentPageActionsOptions) {
       options.resetDraft();
       options.showCreateForm.value = false;
     } catch (error) {
-      options.setFeedback('error', error instanceof Error ? error.message : 'Failed to create agent');
+      options.setFeedback('error', resolveCreateAgentErrorMessage(error));
     } finally {
       options.isCreating.value = false;
     }

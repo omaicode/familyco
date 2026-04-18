@@ -29,8 +29,8 @@ export const projectDeleteTool: ServerToolDefinition = {
     { name: 'confirm', type: 'boolean', required: true, description: 'Explicit confirmation flag for destructive action.' }
   ],
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
-    if (!context.projectService) {
-      return unavailableTool('project.delete', 'project.delete requires projectService');
+    if (!context.projectService || !context.settingsService) {
+      return unavailableTool('project.delete', 'project.delete requires projectService and settingsService');
     }
 
     const projectIdOrName = asNonEmptyString(argumentsMap.projectId);
@@ -50,6 +50,11 @@ export const projectDeleteTool: ServerToolDefinition = {
     );
     if (!project) {
       return invalidArguments('project.delete', `project not found: ${projectIdOrName}`);
+    }
+
+    const storedDefaultProjectId = await context.settingsService.get('defaults.projectId').catch(() => null);
+    if (storedDefaultProjectId?.value === project.id) {
+      return invalidArguments('project.delete', 'default project cannot be deleted');
     }
 
     const deletedProject = await context.projectService.deleteProject(project.id);

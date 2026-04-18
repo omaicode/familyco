@@ -161,6 +161,16 @@ export function registerProjectController(app: FastifyInstance, deps: ProjectMod
     requireMinimumLevel(request, 'L1');
     const { id } = projectParamsSchema.parse(request.params);
 
+    const storedDefaultProjectId = await deps.settingsService.get('defaults.projectId').catch(() => null);
+    if (storedDefaultProjectId?.value === id) {
+      reply.code(400);
+      return {
+        statusCode: 400,
+        code: 'PROJECT_DELETE_DEFAULT_FORBIDDEN',
+        message: 'The default project cannot be deleted.'
+      };
+    }
+
     const [projects, linkedTasks] = await Promise.all([
       deps.projectService.listProjects(),
       deps.taskService.listProjectTasks(id)

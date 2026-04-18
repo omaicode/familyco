@@ -43,6 +43,7 @@ const props = defineProps<{
   getAgentLabel: (agentId: string | null | undefined) => string;
   riskLabel: (risk: RiskLevel) => string;
   riskTone: (risk: RiskLevel) => 'low' | 'medium' | 'high';
+  deleteDisabledReason?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -79,7 +80,7 @@ const canDelete = computed(() => {
     return false;
   }
 
-  return props.project.counts.total === 0 && props.project.childCount === 0;
+  return props.project.counts.total === 0 && props.project.childCount === 0 && !props.deleteDisabledReason;
 });
 
 const availableParentProjects = computed(() => {
@@ -276,7 +277,10 @@ const confirmDelete = (): void => {
             </ul>
 
             <p v-if="!canDelete" class="project-delete-warning">
-              Clear all tasks and child projects first, then return here to delete it.
+              {{
+                deleteDisabledReason ||
+                  'Clear all tasks and child projects first, then return here to delete it.'
+              }}
             </p>
 
             <div class="fc-toolbar">

@@ -84,6 +84,17 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       readinessRules: body.readinessRules
     };
 
+    try {
+      await deps.projectService.getProjectById(normalizedInput.projectId);
+    } catch {
+      reply.code(404);
+      return {
+        statusCode: 404,
+        code: 'PROJECT_NOT_FOUND',
+        message: 'Project not found.'
+      };
+    }
+
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
@@ -141,6 +152,25 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     requireMinimumLevel(request, 'L1');
     const { id } = taskIdParamsSchema.parse(request.params);
     const body = updateTaskBodySchema.parse(request.body);
+    const executiveAgentId = await resolveExecutiveAgentId({
+      agentService: deps.agentService,
+      settingsService: deps.settingsService
+    });
+    const normalizedInput = {
+      ...body,
+      assigneeAgentId: body.assigneeAgentId ?? executiveAgentId
+    };
+
+    try {
+      await deps.projectService.getProjectById(normalizedInput.projectId);
+    } catch {
+      reply.code(404);
+      return {
+        statusCode: 404,
+        code: 'PROJECT_NOT_FOUND',
+        message: 'Project not found.'
+      };
+    }
 
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
@@ -148,7 +178,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       authContext: request.authContext,
       action: 'task.update',
       targetId: id,
-      payload: body
+      payload: normalizedInput
     });
 
     if (!approval.allowed) {
@@ -160,9 +190,9 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       };
     }
 
-    const updatedTask = await deps.taskService.updateTask(id, body);
+    const updatedTask = await deps.taskService.updateTask(id, normalizedInput);
     await deps.auditService.write({
-      actorId: request.authContext?.subject ?? body.createdBy,
+      actorId: request.authContext?.subject ?? normalizedInput.createdBy,
       action: 'task.update',
       targetId: updatedTask.id,
       payload: {

@@ -60,19 +60,23 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
       };
     }
 
-    const agent = await deps.agentService.createAgent(body);
-    await deps.auditService.write({
-      actorId: request.authContext?.subject ?? 'system',
-      action: 'agent.create',
-      targetId: agent.id,
-      payload: {
-        level: agent.level,
-        department: agent.department
-      }
-    });
+    try {
+      const agent = await deps.agentService.createAgent(body);
+      await deps.auditService.write({
+        actorId: request.authContext?.subject ?? 'system',
+        action: 'agent.create',
+        targetId: agent.id,
+        payload: {
+          level: agent.level,
+          department: agent.department
+        }
+      });
 
-    reply.code(201);
-    return agent;
+      reply.code(201);
+      return agent;
+    } catch (error) {
+      return sendAgentCreateError(reply, error);
+    }
   });
 
   app.post('/agents/:id/pause', async (request, reply) => {
@@ -323,6 +327,19 @@ function sendAgentDeleteError(reply: { code: (statusCode: number) => void }, err
       statusCode: 400,
       code: 'AGENT_DELETE_FALLBACK_NOT_FOUND',
       message: 'No active executive agent is available to receive the reassigned work.'
+    };
+  }
+
+  throw error;
+}
+
+function sendAgentCreateError(reply: { code: (statusCode: number) => void }, error: unknown) {
+  if (error instanceof Error && error.message === 'AGENT_L0_ALREADY_EXISTS') {
+    reply.code(400);
+    return {
+      statusCode: 400,
+      code: 'AGENT_L0_ALREADY_EXISTS',
+      message: 'Only one active L0 executive is allowed. Please create an L1 or L2 agent.'
     };
   }
 

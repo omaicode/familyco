@@ -50,6 +50,7 @@ const props = defineProps<{
   assigneeOptions: AgentListItem[];
   creatorOptions: AgentListItem[];
   commentAuthorOptions: CommentAuthorOption[];
+  defaultAssigneeId: string;
   busy: boolean;
   commentsLoading: boolean;
   commentSubmitting: boolean;
@@ -95,7 +96,7 @@ watch(
     draft.title = props.task.title;
     draft.description = props.task.description;
     draft.projectId = props.task.projectId;
-    draft.assigneeAgentId = props.task.assigneeAgentId ?? '';
+    draft.assigneeAgentId = props.task.assigneeAgentId ?? props.defaultAssigneeId;
     draft.createdBy = props.task.createdBy;
     draft.priority = props.task.priority;
 
@@ -126,7 +127,7 @@ const selectedCommentAuthor = computed(
 );
 
 const canSubmitEdit = computed(
-  () => Boolean(draft.title.trim() && draft.description.trim() && draft.projectId && draft.createdBy)
+  () => Boolean(draft.title.trim() && draft.description.trim() && draft.projectId && draft.assigneeAgentId && draft.createdBy)
 );
 const canSubmitComment = computed(
   () => Boolean(commentDraft.value.trim() && selectedCommentAuthor.value)
@@ -142,7 +143,7 @@ const submitEdit = (): void => {
     title: draft.title.trim(),
     description: draft.description.trim(),
     projectId: draft.projectId,
-    assigneeAgentId: draft.assigneeAgentId || null,
+    assigneeAgentId: draft.assigneeAgentId,
     createdBy: draft.createdBy,
     priority: draft.priority
   });
@@ -394,7 +395,6 @@ const taskCode = computed(() => (props.task ? `TASK-${props.task.id.slice(0, 8).
             <div class="fc-form-group">
               <label class="fc-label">{{ t('Assignee') }}</label>
               <FcSelect v-model="draft.assigneeAgentId">
-                <option value="">{{ t('Unassigned') }}</option>
                 <option v-for="agent in assigneeOptions" :key="agent.id" :value="agent.id">
                   {{ agent.name }} · {{ agent.role }}
                 </option>

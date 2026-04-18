@@ -1,5 +1,6 @@
 import type { TaskPriority, ToolExecutionResult } from '@familyco/core';
 
+import { resolveExecutiveAgentId } from '../modules/shared/defaults.js';
 import {
   asNonEmptyString,
   asStringArray,
@@ -72,9 +73,15 @@ export const taskUpdateTool: ServerToolDefinition = {
       fallbackProjectId: existingTask.projectId,
       context
     });
+    const executiveAgentId = context.settingsService
+      ? await resolveExecutiveAgentId({
+          agentService: context.agentService,
+          settingsService: context.settingsService
+        })
+      : existingTask.createdBy;
     const assigneeAgentId = await resolveAgentReference({
       candidate: asNonEmptyString(argumentsMap.assigneeAgentId),
-      fallbackAgentId: existingTask.assigneeAgentId,
+      fallbackAgentId: existingTask.assigneeAgentId ?? executiveAgentId,
       context
     });
     const createdBy = await resolveAgentReference({
@@ -98,7 +105,7 @@ export const taskUpdateTool: ServerToolDefinition = {
       title,
       description,
       projectId,
-      assigneeAgentId,
+      assigneeAgentId: assigneeAgentId ?? executiveAgentId,
       createdBy: createdBy ?? existingTask.createdBy,
       priority,
       dependsOnTaskIds,
