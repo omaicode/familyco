@@ -109,7 +109,7 @@ export class ChatEngineService {
       conversationHistory: input.conversationHistory,
       conversationSummary: input.conversationSummary
     });
-    console.debug('Rendered system prompt:', systemPrompt);
+    // console.debug('Rendered system prompt:', systemPrompt);
     const userPrompt = renderChatUserPrompt({
       message: input.message,
       conversationHistory: input.conversationHistory
