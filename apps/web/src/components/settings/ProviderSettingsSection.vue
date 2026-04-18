@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue';
 import {
-  Save, Loader2, CheckCircle2, AlertTriangle
+  Save, CheckCircle2, AlertTriangle
 } from 'lucide-vue-next';
 import FcButton from '../FcButton.vue';
 import FcPasswordInput from '../FcPasswordInput.vue';
@@ -20,7 +20,6 @@ const emit = defineEmits<{
 const providerName = ref<AdapterId>('openai');
 const providerModel = ref('gpt-5-mini');
 const providerSaving = ref(false);
-const providerTesting = ref(false);
 const providerTestResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
 
 const providerDraft = reactive<Record<AdapterId, { apiKey: string; model: string }>>({
@@ -84,53 +83,42 @@ const onAdapterChange = (newAdapter: AdapterId) => {
   providerTestResult.value = null;
 };
 
-// ── Test primary adapter ───────────────────────────────────
-const testPrimaryAdapter = async () => {
-  const key = providerDraft[providerName.value].apiKey;
-  if (!key.trim()) return;
-  providerTesting.value = true;
-  providerTestResult.value = null;
-  try {
-    const result = await uiRuntime.api.testProviderAdapter({
-      adapterId: providerName.value,
-      apiKey: key.trim(),
-      model: providerModel.value,
-    });
-    providerTestResult.value = { ok: result.ok, latencyMs: result.latencyMs, error: result.error };
-  } catch (err) {
-    providerTestResult.value = { ok: false, error: err instanceof Error ? err.message : 'Connection test failed' };
-  } finally {
-    providerTesting.value = false;
-  }
-};
-
-// ── Test per-adapter key ───────────────────────────────────
-const testAdapterKey = async (adapterId: AdapterId) => {
-  const key = adapterKeys[adapterId].key;
-  if (!key.trim()) return;
-  adapterKeys[adapterId].testing = true;
-  adapterKeys[adapterId].testResult = null;
-  const model = getDefaultAdapterModel(adapterId);
-  try {
-    const result = await uiRuntime.api.testProviderAdapter({ adapterId, apiKey: key.trim(), model });
-    adapterKeys[adapterId].testResult = { ok: result.ok, latencyMs: result.latencyMs, error: result.error };
-  } catch (err) {
-    adapterKeys[adapterId].testResult = { ok: false, error: err instanceof Error ? err.message : 'Connection test failed' };
-  } finally {
-    adapterKeys[adapterId].testing = false;
-  }
-};
-
 // ── Save primary adapter ───────────────────────────────────
 const savePrimaryAdapter = async () => {
+  const apiKey = providerDraft[providerName.value].apiKey.trim();
+  if (!apiKey) {
+    emit('feedback', 'error', t('Connection failed'));
+    return;
+  }
+
   providerSaving.value = true;
+  providerTestResult.value = null;
+
   try {
+    const testResult = await uiRuntime.api.testProviderAdapter({
+      adapterId: providerName.value,
+      apiKey,
+      model: providerModel.value,
+    });
+
+    providerTestResult.value = {
+      ok: testResult.ok,
+      latencyMs: testResult.latencyMs,
+      error: testResult.error
+    };
+
+    if (!testResult.ok) {
+      emit('feedback', 'error', testResult.error ?? t('Connection failed'));
+      return;
+    }
+
     await uiRuntime.api.upsertSetting({ key: 'provider.name', value: providerName.value });
-    await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: providerDraft[providerName.value].apiKey });
+    await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: apiKey });
     await uiRuntime.api.upsertSetting({ key: 'provider.defaultModel', value: providerModel.value });
     await uiRuntime.stores.settings.load();
     emit('feedback', 'success', 'Provider settings saved');
   } catch (err) {
+    providerTestResult.value = { ok: false, error: err instanceof Error ? err.message : 'Connection test failed' };
     emit('feedback', 'error', err instanceof Error ? err.message : 'Failed to save provider settings');
   } finally {
     providerSaving.value = false;
@@ -139,14 +127,38 @@ const savePrimaryAdapter = async () => {
 
 // ── Save per-adapter key ───────────────────────────────────
 const saveAdapterKey = async (adapterId: AdapterId) => {
+  const apiKey = adapterKeys[adapterId].key.trim();
+  if (!apiKey) {
+    emit('feedback', 'error', t('Connection failed'));
+    return;
+  }
+
   adapterKeys[adapterId].saving = true;
+  adapterKeys[adapterId].testing = true;
+
   try {
-    await uiRuntime.api.upsertSetting({ key: `provider.${adapterId}.apiKey`, value: adapterKeys[adapterId].key });
+    const model = getDefaultAdapterModel(adapterId);
+    const testResult = await uiRuntime.api.testProviderAdapter({ adapterId, apiKey, model });
+
+    adapterKeys[adapterId].testResult = {
+      ok: testResult.ok,
+      latencyMs: testResult.latencyMs,
+      error: testResult.error
+    };
+
+    if (!testResult.ok) {
+      emit('feedback', 'error', testResult.error ?? t('Connection failed'));
+      return;
+    }
+
+    await uiRuntime.api.upsertSetting({ key: `provider.${adapterId}.apiKey`, value: apiKey });
     await uiRuntime.stores.settings.load();
     emit('feedback', 'success', `${ADAPTER_OPTIONS.find(a => a.value === adapterId)!.label} API key saved`);
   } catch (err) {
+    adapterKeys[adapterId].testResult = { ok: false, error: err instanceof Error ? err.message : 'Connection test failed' };
     emit('feedback', 'error', err instanceof Error ? err.message : 'Failed to save API key');
   } finally {
+    adapterKeys[adapterId].testing = false;
     adapterKeys[adapterId].saving = false;
   }
 };
@@ -201,25 +213,14 @@ watch(() => uiRuntime.stores.settings.state.data, load, { immediate: true });
     <p class="pss-hint">{{ t('Stored locally in your workspace database. Never logged or sent externally.') }}</p>
   </div>
 
-  <div class="pss-field-group">
-    <button
-      type="button"
-      class="pss-btn-test"
-      :disabled="!providerDraft[providerName].apiKey.trim() || providerTesting"
-      @click="testPrimaryAdapter"
-    >
-      <Loader2 v-if="providerTesting" :size="13" class="pss-spin" />
-      <span>{{ providerTesting ? t('Testing…') : t('Test connection') }}</span>
-    </button>
-    <div v-if="providerTestResult" class="pss-test-result" :class="providerTestResult.ok ? 'pss-test-ok' : 'pss-test-fail'">
-      <CheckCircle2 v-if="providerTestResult.ok" :size="13" />
-      <AlertTriangle v-else :size="13" />
-      <span v-if="providerTestResult.ok">
-        {{ t('API key is valid and connection is live.') }}
-        <span v-if="providerTestResult.latencyMs" class="pss-test-latency">{{ providerTestResult.latencyMs }}{{ t('ms') }}</span>
-      </span>
-      <span v-else>{{ providerTestResult.error ?? t('Connection failed') }}</span>
-    </div>
+  <div v-if="providerTestResult" class="pss-test-result" :class="providerTestResult.ok ? 'pss-test-ok' : 'pss-test-fail'">
+    <CheckCircle2 v-if="providerTestResult.ok" :size="13" />
+    <AlertTriangle v-else :size="13" />
+    <span v-if="providerTestResult.ok">
+      {{ t('API key is valid and connection is live.') }}
+      <span v-if="providerTestResult.latencyMs" class="pss-test-latency">{{ providerTestResult.latencyMs }}{{ t('ms') }}</span>
+    </span>
+    <span v-else>{{ providerTestResult.error ?? t('Connection failed') }}</span>
   </div>
 
   <div class="pss-actions">
@@ -251,18 +252,9 @@ watch(() => uiRuntime.stores.settings.state.data, load, { immediate: true });
         :placeholder="adapter.keyHint"
         @input="adapterKeys[adapter.value].testResult = null"
       />
-      <button
-        type="button"
-        class="pss-btn-test pss-btn-inline"
-        :disabled="!adapterKeys[adapter.value].key.trim() || adapterKeys[adapter.value].testing"
-        @click="testAdapterKey(adapter.value)"
-      >
-        <Loader2 v-if="adapterKeys[adapter.value].testing" :size="12" class="pss-spin" />
-        <span>{{ adapterKeys[adapter.value].testing ? t('Testing…') : t('Test connection') }}</span>
-      </button>
-      <FcButton variant="ghost" size="sm" :disabled="adapterKeys[adapter.value].saving" @click="saveAdapterKey(adapter.value)">
+      <FcButton variant="ghost" size="sm" :disabled="adapterKeys[adapter.value].saving || adapterKeys[adapter.value].testing || !adapterKeys[adapter.value].key.trim()" @click="saveAdapterKey(adapter.value)">
         <Save :size="12" />
-        {{ adapterKeys[adapter.value].saving ? t('Saving…') : t('Save') }}
+        {{ adapterKeys[adapter.value].saving || adapterKeys[adapter.value].testing ? t('Saving…') : t('Save') }}
       </FcButton>
     </div>
     <div v-if="adapterKeys[adapter.value].testResult" class="pss-test-result" :class="adapterKeys[adapter.value].testResult!.ok ? 'pss-test-ok' : 'pss-test-fail'">
@@ -356,24 +348,6 @@ watch(() => uiRuntime.stores.settings.state.data, load, { immediate: true });
 }
 .pss-inline-row > :first-child { flex: 1; }
 
-.pss-btn-test {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 13px;
-  border-radius: 7px;
-  border: 1px solid var(--fc-border-subtle);
-  background: var(--fc-surface);
-  color: var(--fc-text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: border-color 0.15s, color 0.15s;
-}
-.pss-btn-test:not(:disabled):hover { border-color: var(--fc-accent); color: var(--fc-text); }
-.pss-btn-test:disabled { opacity: 0.45; cursor: not-allowed; }
-.pss-btn-inline { padding: 6px 11px; font-size: 11.5px; }
-
 .pss-test-result {
   display: flex;
   align-items: center;
@@ -386,7 +360,4 @@ watch(() => uiRuntime.stores.settings.state.data, load, { immediate: true });
 .pss-test-ok { background: color-mix(in srgb, #22c55e 12%, transparent); color: #16a34a; }
 .pss-test-fail { background: color-mix(in srgb, #ef4444 12%, transparent); color: #dc2626; }
 .pss-test-latency { margin-left: 5px; opacity: 0.65; font-size: 10.5px; }
-
-@keyframes pss-spin { to { transform: rotate(360deg); } }
-.pss-spin { animation: pss-spin 0.8s linear infinite; }
 </style>
