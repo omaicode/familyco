@@ -11,9 +11,10 @@ import type {
   SettingsService,
   TaskService,
   ToolExecutionInput,
-  ToolExecutionResult
+  ToolExecutionResult,
+  PluginToolCustomFieldDefinition
 } from '@familyco/core';
-import type { SkillsService } from '../modules/skills/skills.service.js';
+import type { SkillsService } from '../skills/skills.service.js';
 
 export interface DefaultToolExecutorDeps {
   agentService?: AgentService;
@@ -70,5 +71,6 @@ export interface ServerToolDefinition {
   readonly description: string;
   readonly parameters: readonly ToolParameterDefinition[];
   readonly slashSpec?: SlashCommandSpec;
+  readonly customFields?: Readonly<Record<string, PluginToolCustomFieldDefinition>>;
   execute(argumentsMap: Record<string, unknown>, context: ServerToolContext): Promise<ToolExecutionResult>;
 }

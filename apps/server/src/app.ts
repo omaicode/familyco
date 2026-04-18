@@ -108,7 +108,7 @@ import {
   DefaultToolExecutor,
   HEARTBEAT_ALLOWED_TOOL_NAMES,
   filterToolDefinitionsByNames
-} from './tools/index.js';
+} from './modules/tools/index.js';
 import { createAdapterRegistry } from './adapters/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
 import { SkillsService } from './modules/skills/skills.service.js';

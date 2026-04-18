@@ -1,6 +1,6 @@
 import type { AgentService, ProjectService, ToolExecutionResult } from '@familyco/core';
 
-import { resolveDefaultProjectId, resolveExecutiveAgentId } from '../modules/shared/defaults.js';
+import { resolveDefaultProjectId, resolveExecutiveAgentId } from '../shared/defaults.js';
 import {
   asNonEmptyString,
   asStringArray,

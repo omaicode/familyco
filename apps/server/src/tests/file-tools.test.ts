@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { DefaultToolExecutor } from '../tools/default-tool.executor.js';
+import { DefaultToolExecutor } from '../modules/tools/default-tool.executor.js';
 
 test('file tools can search, read, write, and delete workspace files', async () => {
   const workspaceRoot = await resolveRepoRoot(process.cwd());

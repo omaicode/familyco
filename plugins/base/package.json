@@ -1,8 +1,8 @@
 {
   "name": "@familyco/plugin-base",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "type": "module",
-  "description": "Built-in skills for agent orchestration and project management.",
+  "description": "Built-in tools and skills for orchestration, multi-industry operations playbooks, and Tavily research.",
   "familyco": {
     "plugin": true,
     "default": true,

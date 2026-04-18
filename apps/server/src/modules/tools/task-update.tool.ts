@@ -1,6 +1,6 @@
 import type { TaskPriority, ToolExecutionResult } from '@familyco/core';
 
-import { resolveExecutiveAgentId } from '../modules/shared/defaults.js';
+import { resolveExecutiveAgentId } from '../shared/defaults.js';
 import {
   asNonEmptyString,
   asStringArray,

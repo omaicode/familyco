@@ -17,7 +17,7 @@ import type { ChatEngineService } from '../modules/agent/chat-engine.service.js'
 import { renderTaskSystemPrompt } from '../prompts/task/task-system.template.js';
 import { renderTaskUserPrompt } from '../prompts/task/task-user.template.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
-import type { DefaultToolExecutor } from '../tools/default-tool.executor.js';
+import type { DefaultToolExecutor } from '../modules/tools/default-tool.executor.js';
 import type { TaskSessionRepository, TaskSessionCheckpoint, TaskSessionStatus, TaskSessionToolResult } from './task-session.store.js';
 
 const PRIORITY_ORDER: Record<string, number> = {

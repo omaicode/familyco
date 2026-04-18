@@ -1,6 +1,6 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { extractEntityLabel, isRecord } from '../../tools/tool.helpers.js';
+import { extractEntityLabel, isRecord } from '../tools/tool.helpers.js';
 import type { ChatToolCall } from './agent.types.js';
 
 type ChatToolCallResultLike = Pick<ToolExecutionResult, 'toolName' | 'ok' | 'output' | 'error'>;

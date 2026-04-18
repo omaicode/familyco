@@ -32,7 +32,6 @@ import { taskUpdateStatusTool } from './task-update-status.tool.js';
 import { taskUpdateTool } from './task-update.tool.js';
 import { toToolSummary } from './tool.helpers.js';
 import type { DefaultToolExecutorDeps, ServerToolDefinition, ToolDefinitionSummary } from './tool.types.js';
-import { webSearchTool } from './web-search.tool.js';
 
 export const HEARTBEAT_ALLOWED_TOOL_NAMES = new Set([
   'task.list',
@@ -80,7 +79,6 @@ export class DefaultToolExecutor implements ToolExecutor {
       fileReadTool,
       fileWriteTool,
       fileDeleteTool,
-      webSearchTool,
       confirmRequestTool,
       inboxSendTool,
       approvalRequestTool,

@@ -19,7 +19,7 @@ import type {
   CreatePluginInput,
   ToolExecutionResult
 } from '@familyco/core';
-import type { ServerToolDefinition } from '../../tools/tool.types.js';
+import type { ServerToolDefinition } from '../tools/tool.types.js';
 
 /** Shape of the `familyco` field inside a plugin's package.json */
 interface FamilyCoPluginManifest {

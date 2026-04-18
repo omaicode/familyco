@@ -1,9 +1,9 @@
 import type { AgentService, ToolExecutionResult } from '@familyco/core';
 
-import { resolveExecutiveAgentId } from '../modules/shared/defaults.js';
+import { resolveExecutiveAgentId } from '../shared/defaults.js';
 import { asNonEmptyString, asTextString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
 import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
-import { ensureProjectWorkspaceDir } from '../modules/project/workspace-dir.js';
+import { ensureProjectWorkspaceDir } from '../project/workspace-dir.js';
 
 export const projectCreateSlashSpec: SlashCommandSpec = {
   command: '/create-project',

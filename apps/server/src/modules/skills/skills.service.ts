@@ -31,7 +31,7 @@ export class SkillsService {
 
     return this.collectPluginSkills()
       .filter((item) => !registry.disabled.includes(item.id))
-      .filter((item) => pluginSkillAppliesToAgent(item.applyTo, target));
+      .filter((item) => pluginSkillAppliesToAgent(item.applyTo, target))
   }
 
   async getById(id: string): Promise<SkillItem | null> {
@@ -85,7 +85,7 @@ export class SkillsService {
         path: `[plugin:${plugin.id}]`,
         content: skill.content,
         source: 'local' as const,
-        enabled: true,
+        enabled: skill.enabledByDefault ?? false,
         applyTo: skill.applyTo ?? []
       }));
     });
