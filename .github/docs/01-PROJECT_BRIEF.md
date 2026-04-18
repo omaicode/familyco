@@ -30,6 +30,8 @@ The Executive Agent interprets it, creates a plan, creates or updates projects a
 - Audit Log
 - Budget
 - Skills
+- Tools
+- Plugins
 - Settings
 
 ## Product editions

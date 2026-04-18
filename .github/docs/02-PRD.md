@@ -9,12 +9,15 @@ Build a product that lets a Founder run a company composed of AI agents through 
 - Agents can pause for approval using Inbox items.
 - Founder can inspect audit history and token/cost usage.
 - Founder can enable or disable skills.
+- Founder can enable/disable plugin tools and configure required tool fields before use.
 - Founder can configure company settings and model providers.
 
 ## Functional requirements
 
 ### FR-01 Chat
 - Founder can start a conversation with the Executive Agent.
+- Chat supports multiple sessions per agent, and Founder can switch sessions from the session sidebar.
+- The most recently selected chat session should be restored when Founder returns to Chat page.
 - Messages can include plain text and references to projects, tasks, agents, and inbox items.
 - Chat messages can trigger workflows.
 - Chat transcript must preserve agent decisions and clarifications.
@@ -71,6 +74,19 @@ Build a product that lets a Founder run a company composed of AI agents through 
 - Founder can switch light or dark mode.
 - Founder can configure AI providers such as OpenAI and Claude using API keys.
 - Founder can define global defaults for model, temperature, cost guardrails, and approval behavior.
+
+### FR-10 Tools
+- Founder can view all tools available to the runtime (built-in and plugin-provided).
+- Built-in tools remain immutable and always enabled.
+- Plugin tools can be enabled or disabled.
+- Plugin tools may declare custom fields (text, number, boolean, select).
+- Required custom fields must be configured before a plugin tool can be enabled or used.
+- Tool configuration values are persisted in settings and reused at execution time.
+
+### FR-11 Plugins
+- Founder can discover, enable, and disable plugins.
+- Enabled plugins can contribute tools and skills into runtime inventories.
+- Plugin tool names are namespaced and must be available to chat execution and prompt context when enabled.
 
 ## Non-functional requirements
 - Desktop-first experience.

@@ -12,6 +12,8 @@ Primary command center for the Founder.
 
 ### Required behaviors
 - Founder can send a directive.
+- Founder can create/select chat sessions per executive agent.
+- When Founder returns to Chat page, the previously selected session should be re-activated.
 - Messages may reference projects, tasks, agents, and inbox items.
 - AI replies should contain structured sections: understanding, plan, approvals, next steps.
 - Chat should display when an action created or updated entities.
@@ -138,3 +140,35 @@ Founder handles approval and clarification without reading the full audit trail.
 - base url optional
 - default model
 - connection status
+
+## 10. Tools
+### Required views
+- tool inventory (built-in + plugin tools)
+- tool detail/config panel
+- status and missing-required-config indicators
+
+### Required actions
+- enable plugin tool
+- disable plugin tool
+- view parameter schema
+- update custom field values for plugin tools
+
+### Required constraints
+- built-in tools are immutable
+- plugin tools with missing required custom fields cannot be enabled
+- enabled plugin tools must be available to chat engine prompt/tool context
+
+## 11. Plugins
+### Required views
+- plugin inventory
+- plugin capability list (tools, skills, providers)
+- plugin state and approval mode
+
+### Required actions
+- discover plugins
+- enable/disable plugin
+- update plugin approval mode
+
+### Required integration behavior
+- enabling plugin refreshes tool/skill inventories
+- disabling plugin removes plugin tools from active runtime usage
