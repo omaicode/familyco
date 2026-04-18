@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RefreshCw, Sparkles, AlertTriangle } from 'lucide-vue-next';
 
 import { uiRuntime } from '../runtime';
+import FcPagination from '../components/FcPagination.vue';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useI18n } from '../composables/useI18n';
 import type { SkillListItem } from '@familyco/ui';
@@ -11,10 +12,54 @@ const { t } = useI18n();
 const isRefreshing = ref(false);
 const pendingSkillId = ref<string | null>(null);
 const selectedSkill = ref<SkillListItem | null>(null);
+const currentPage = ref(1);
+const pageSize = ref(10);
+
+type SkillSourceFilter = 'all' | 'local';
+type SkillStatusFilter = 'all' | 'enabled' | 'disabled';
+
+const filters = reactive<{ query: string; source: SkillSourceFilter; status: SkillStatusFilter }>({
+  query: '',
+  source: 'all',
+  status: 'all'
+});
 
 const state = computed(() => uiRuntime.stores.skills.state);
 const skills = computed(() => state.value.data.items);
 const invalidSkills = computed(() => state.value.data.invalidSkills);
+const normalizedQuery = computed(() => filters.query.trim().toLowerCase());
+const hasActiveFilters = computed(
+  () => normalizedQuery.value.length > 0 || filters.source !== 'all' || filters.status !== 'all'
+);
+const filteredSkills = computed(() => {
+  const query = normalizedQuery.value;
+  const items = skills.value.filter((skill) => {
+    if (filters.source !== 'all' && skill.source !== filters.source) {
+      return false;
+    }
+
+    if (filters.status !== 'all') {
+      const expectedEnabled = filters.status === 'enabled';
+      if (skill.enabled !== expectedEnabled) {
+        return false;
+      }
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    const searchable = `${skill.name}\n${skill.description}\n${skill.path}\n${skill.id}`.toLowerCase();
+    return searchable.includes(query);
+  });
+
+  return items.sort((left, right) => left.name.localeCompare(right.name));
+});
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredSkills.value.length / pageSize.value)));
+const paginatedSkills = computed(() => {
+  const offset = (currentPage.value - 1) * pageSize.value;
+  return filteredSkills.value.slice(offset, offset + pageSize.value);
+});
 
 const refresh = async (): Promise<void> => {
   isRefreshing.value = true;
@@ -45,6 +90,29 @@ const viewSkill = (skill: SkillListItem): void => {
 const closeSkillModal = (): void => {
   selectedSkill.value = null;
 };
+
+const resetFilters = (): void => {
+  filters.query = '';
+  filters.source = 'all';
+  filters.status = 'all';
+};
+
+watch(
+  () => [filters.query, filters.source, filters.status],
+  () => {
+    currentPage.value = 1;
+  }
+);
+
+watch(pageSize, () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (value) => {
+  if (currentPage.value > value) {
+    currentPage.value = value;
+  }
+});
 
 onMounted(() => {
   void uiRuntime.stores.skills.load();
@@ -95,7 +163,36 @@ onMounted(() => {
       </div>
 
       <article v-else class="fc-card">
+        <div class="skills-filters">
+          <input
+            v-model="filters.query"
+            class="fc-input"
+            type="search"
+            :placeholder="t('Search skills…')"
+          />
+          <select v-model="filters.source" class="fc-input">
+            <option value="all">{{ t('All sources') }}</option>
+            <option value="local">{{ t('Local') }}</option>
+          </select>
+          <select v-model="filters.status" class="fc-input">
+            <option value="all">{{ t('All statuses') }}</option>
+            <option value="enabled">{{ t('Enabled') }}</option>
+            <option value="disabled">{{ t('Disabled') }}</option>
+          </select>
+          <button class="fc-btn-ghost" :disabled="!hasActiveFilters" @click="resetFilters">
+            {{ t('Reset filters') }}
+          </button>
+        </div>
+
+        <div v-if="filteredSkills.length === 0" class="fc-empty" style="margin-top: 8px;">
+          <Sparkles :size="22" class="fc-empty-icon" />
+          <h4>{{ t('No matches for this filter') }}</h4>
+          <p>{{ t('Try a wider search or clear the active filters.') }}</p>
+          <button class="fc-btn-secondary" @click="resetFilters">{{ t('Reset filters') }}</button>
+        </div>
+
         <table class="fc-budget-table">
+          <template v-if="filteredSkills.length > 0">
           <thead>
             <tr>
               <th>{{ t('Name') }}</th>
@@ -103,7 +200,7 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="skill in skills" :key="skill.id">
+            <tr v-for="skill in paginatedSkills" :key="skill.id">
               <td>
                 <div style="display:flex; flex-direction:column; gap:4px;">
                   <strong>{{ skill.name }}</strong>
@@ -132,7 +229,15 @@ onMounted(() => {
               </td>
             </tr>
           </tbody>
+          </template>
         </table>
+
+        <FcPagination
+          v-if="filteredSkills.length > 0"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total-items="filteredSkills.length"
+        />
 
       </article>
 
@@ -168,10 +273,23 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.skills-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 180px 180px auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .skills-description {
   max-width: 620px;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+  .skills-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 .skills-modal-wrap {

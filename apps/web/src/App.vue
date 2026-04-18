@@ -4,7 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard, MessagesSquare, Bot, FolderKanban, ListChecks,
   Inbox, ShieldCheck, Settings, Wallet, Puzzle,
-  Wifi, WifiOff, RefreshCw, AlertTriangle, BookOpen
+  Wifi, WifiOff, RefreshCw, AlertTriangle, BookOpen, Wrench
 } from 'lucide-vue-next';
 
 import { uiRuntime, applyRuntimeTheme } from './runtime';
@@ -58,6 +58,7 @@ const navIcons: Record<string, typeof LayoutDashboard> = {
   '/audit':     ShieldCheck,
   '/budget':    Wallet,
   '/skills':    BookOpen,
+  '/tools':     Wrench,
   '/plugins':   Puzzle,
   '/settings':  Settings,
 };
@@ -77,7 +78,7 @@ const navGroups = [
   },
   {
     label: 'System',
-    items: uiRuntime.navigation.filter(n => ['/skills', '/plugins', '/settings'].includes(n.path)),
+    items: uiRuntime.navigation.filter(n => ['/skills', '/tools', '/plugins', '/settings'].includes(n.path)),
   },
 ];
 

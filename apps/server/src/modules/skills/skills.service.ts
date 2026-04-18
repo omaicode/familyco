@@ -21,7 +21,7 @@ export class SkillsService {
     const items = this.collectPluginSkills();
 
     return {
-      items: items.map((item) => ({ ...item, enabled: !registry.disabled.includes(item.id) })),
+      items: items.map((item) => ({ ...item, enabled: isPluginSkillEnabled(item, registry) })),
       invalidSkills: []
     };
   }
@@ -30,7 +30,7 @@ export class SkillsService {
     const registry = await this.getRegistry();
 
     return this.collectPluginSkills()
-      .filter((item) => !registry.disabled.includes(item.id))
+      .filter((item) => isPluginSkillEnabled(item, registry))
       .filter((item) => pluginSkillAppliesToAgent(item.applyTo, target))
   }
 
@@ -38,7 +38,7 @@ export class SkillsService {
     const registry = await this.getRegistry();
     const item = this.collectPluginSkills().find((s) => s.id === id);
     if (!item) return null;
-    return { ...item, enabled: !registry.disabled.includes(item.id) };
+    return { ...item, enabled: isPluginSkillEnabled(item, registry) };
   }
 
   async enable(id: string): Promise<SkillItem> {
@@ -70,7 +70,7 @@ export class SkillsService {
   }
 
   /** Collect all skills from enabled plugins in the registry. */
-  private collectPluginSkills(): Array<SkillItem & { applyTo: readonly string[] }> {
+  private collectPluginSkills(): Array<SkillItem & { applyTo: readonly string[]; defaultEnabled: boolean }> {
     if (!this.pluginRegistry) return [];
 
     return this.pluginRegistry.listEnabled().flatMap((plugin) => {
@@ -85,7 +85,8 @@ export class SkillsService {
         path: `[plugin:${plugin.id}]`,
         content: skill.content,
         source: 'local' as const,
-        enabled: skill.enabledByDefault ?? false,
+        enabled: false,
+        defaultEnabled: skill.enabledByDefault === true,
         applyTo: skill.applyTo ?? []
       }));
     });
@@ -154,6 +155,21 @@ function normalizeRegistryList(value: unknown): string[] {
         .filter((item) => item.trim().length > 0)
     )
   );
+}
+
+function isPluginSkillEnabled(
+  item: SkillItem & { defaultEnabled: boolean },
+  registry: SkillsRegistry
+): boolean {
+  if (registry.enabled.includes(item.id)) {
+    return true;
+  }
+
+  if (registry.disabled.includes(item.id)) {
+    return false;
+  }
+
+  return item.defaultEnabled;
 }
 
 function pluginSkillAppliesToAgent(applyTo: readonly string[], target: SkillAgentTarget): boolean {

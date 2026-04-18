@@ -107,7 +107,9 @@ import { TaskExecutionCoordinator } from './runtime/task-execution.coordinator.j
 import {
   DefaultToolExecutor,
   HEARTBEAT_ALLOWED_TOOL_NAMES,
-  filterToolDefinitionsByNames
+  filterToolDefinitionsByNames,
+  ToolManagementService,
+  registerToolManagementController
 } from './modules/tools/index.js';
 import { createAdapterRegistry } from './adapters/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
@@ -256,6 +258,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     eventBus
     // queueService wired in after construction to avoid circular dependency
   });
+  const toolsService = new ToolManagementService(settingsService, toolExecutor);
   const pluginLoader = new PluginLoaderService({
     pluginService,
     pluginRegistry,
@@ -596,6 +599,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     } catch (error) {
       app.log.error({ err: error }, 'Plugin discovery failed during startup');
     }
+
+    await toolsService.syncExecutorPolicy();
   });
 
   app.addHook('onClose', async () => {
@@ -709,10 +714,17 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         skillsService,
         auditService
       });
+      registerToolManagementController(api, {
+        toolsService,
+        auditService
+      });
       registerPluginsController(api, {
         pluginService,
         pluginLoader,
-        auditService
+        auditService,
+        onPluginsRefreshed: async () => {
+          await toolsService.syncExecutorPolicy();
+        }
       });
       registerSetupController(api, {
         agentService,

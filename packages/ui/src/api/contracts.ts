@@ -615,6 +615,26 @@ export interface SkillsListResponse {
   invalidSkills: InvalidSkillItem[];
 }
 
+export interface ToolListItem {
+  name: string;
+  description: string;
+  parameters: Array<{
+    name: string;
+    type: string;
+    required: boolean;
+    description: string;
+    items?: { type: string };
+  }>;
+  source: 'built-in' | 'plugin';
+  pluginId: string | null;
+  enabled: boolean;
+  togglable: boolean;
+}
+
+export interface ToolsListResponse {
+  items: ToolListItem[];
+}
+
 // ---------------------------------------------------------------------------
 // Plugins
 // ---------------------------------------------------------------------------
@@ -724,6 +744,10 @@ export interface FamilyCoApiContracts {
   getSkill: (skillId: string) => Promise<SkillListItem>;
   enableSkill: (skillId: string) => Promise<SkillListItem>;
   disableSkill: (skillId: string) => Promise<SkillListItem>;
+  listTools: () => Promise<ToolsListResponse>;
+  getTool: (toolName: string) => Promise<ToolListItem>;
+  enableTool: (toolName: string) => Promise<ToolListItem>;
+  disableTool: (toolName: string) => Promise<ToolListItem>;
   listPlugins: () => Promise<PluginsListResponse>;
   getPlugin: (pluginId: string) => Promise<PluginListItem>;
   discoverPlugins: () => Promise<PluginDiscoverResult>;
@@ -934,6 +958,10 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   getSkill: (skillId) => client.get<SkillListItem>(`/api/v1/skills/${skillId}`),
   enableSkill: (skillId) => client.post<SkillListItem>(`/api/v1/skills/${skillId}/enable`),
   disableSkill: (skillId) => client.post<SkillListItem>(`/api/v1/skills/${skillId}/disable`),
+  listTools: () => client.get<ToolsListResponse>('/api/v1/tools'),
+  getTool: (toolName) => client.get<ToolListItem>(`/api/v1/tools/${encodeURIComponent(toolName)}`),
+  enableTool: (toolName) => client.post<ToolListItem>(`/api/v1/tools/${encodeURIComponent(toolName)}/enable`),
+  disableTool: (toolName) => client.post<ToolListItem>(`/api/v1/tools/${encodeURIComponent(toolName)}/disable`),
   listPlugins: () => client.get<PluginsListResponse>('/api/v1/plugins'),
   getPlugin: (pluginId) => client.get<PluginListItem>(`/api/v1/plugins/${pluginId}`),
   discoverPlugins: () => client.post<PluginDiscoverResult>('/api/v1/plugins/discover'),

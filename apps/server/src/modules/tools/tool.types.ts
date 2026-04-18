@@ -48,6 +48,7 @@ export interface ToolDefinitionSummary {
   name: string;
   description: string;
   parameters: ToolParameterDefinition[];
+  enabledByDefault?: boolean;
 }
 
 export interface ServerToolContext extends DefaultToolExecutorDeps {

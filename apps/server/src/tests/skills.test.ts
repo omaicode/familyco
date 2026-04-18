@@ -31,7 +31,7 @@ test('skills module lists plugin skills and keeps per-skill toggles working', as
   description: 'Plugin for skill testing.',
   tools: [],
   skills: [
-    { name: 'alpha-skill', description: 'Alpha skill.', content: '# Alpha', applyTo: ['L0'] },
+    { name: 'alpha-skill', description: 'Alpha skill.', content: '# Alpha', applyTo: ['L0'], enabledByDefault: true },
     { name: 'beta-skill', description: 'Beta skill for all.', content: '# Beta', applyTo: [] }
   ]
 };
@@ -69,9 +69,15 @@ export default plugin;
     };
     assert.equal(listPayload.items.length, 2);
     assert.equal(listPayload.invalidSkills.length, 0);
-    assert.ok(listPayload.items.every((item) => item.enabled));
 
-    const alphaId = listPayload.items.find((item) => item.id.endsWith(':alpha-skill'))?.id;
+    const alpha = listPayload.items.find((item) => item.id.endsWith(':alpha-skill'));
+    const beta = listPayload.items.find((item) => item.id.endsWith(':beta-skill'));
+    assert.ok(alpha, 'alpha-skill should be in the list');
+    assert.ok(beta, 'beta-skill should be in the list');
+    assert.equal(alpha!.enabled, true);
+    assert.equal(beta!.enabled, false);
+
+    const alphaId = alpha?.id;
     assert.ok(alphaId, 'alpha-skill should be in the list');
 
     // Disable alpha-skill
@@ -135,9 +141,9 @@ test('SkillsService filters plugin skills by applyTo', async () => {
     description: 'Test',
     tools: [],
     skills: [
-      { name: 'all-agents', description: 'All agents skill.', content: '# All', applyTo: [] },
-      { name: 'exec-only', description: 'Exec only skill.', content: '# Exec', applyTo: ['L0'] },
-      { name: 'manager-only', description: 'Manager only skill.', content: '# Manager', applyTo: ['L1'] }
+      { name: 'all-agents', description: 'All agents skill.', content: '# All', applyTo: [], enabledByDefault: true },
+      { name: 'exec-only', description: 'Exec only skill.', content: '# Exec', applyTo: ['L0'], enabledByDefault: true },
+      { name: 'manager-only', description: 'Manager only skill.', content: '# Manager', applyTo: ['L1'], enabledByDefault: true }
     ]
   });
 

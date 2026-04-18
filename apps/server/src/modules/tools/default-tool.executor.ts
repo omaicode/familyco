@@ -1,35 +1,35 @@
 import type { QueueService, ToolExecutionInput, ToolExecutionResult, ToolExecutor } from '@familyco/core';
 
-import { agentCreateTool } from './agent-create.tool.js';
-import { agentDeleteTool } from './agent-delete.tool.js';
-import { agentListTool } from './agent-list.tool.js';
-import { agentReadTool } from './agent-read.tool.js';
-import { agentUpdateTool } from './agent-update.tool.js';
-import { approvalRequestTool } from './approval-request.tool.js';
-import { companyProfileReadTool } from './company-profile-read.tool.js';
-import { confirmRequestTool } from './confirm-request.tool.js';
-import { echoTool } from './echo.tool.js';
-import { fileDeleteTool } from './file-delete.tool.js';
-import { fileReadTool } from './file-read.tool.js';
-import { fileSearchTool } from './file-search.tool.js';
-import { fileWriteTool } from './file-write.tool.js';
-import { taskDispatchTool } from './task-dispatch.tool.js';
-import { inboxSendTool } from './inbox-send.tool.js';
-import { jsonExtractTool } from './json-extract.tool.js';
-import { projectCreateTool } from './project-create.tool.js';
-import { projectDeleteTool } from './project-delete.tool.js';
-import { projectListTool } from './project-list.tool.js';
-import { projectReadTool } from './project-read.tool.js';
-import { projectUpdateTool } from './project-update.tool.js';
-import { skillReadTool } from './skill-read.tool.js';
-import { taskCommentAddTool } from './task-comment-add.tool.js';
-import { taskCreateTool } from './task-create.tool.js';
-import { taskDeleteTool } from './task-delete.tool.js';
-import { taskListTool } from './task-list.tool.js';
-import { taskLogTool } from './task-log.tool.js';
-import { taskReadTool } from './task-read.tool.js';
-import { taskUpdateStatusTool } from './task-update-status.tool.js';
-import { taskUpdateTool } from './task-update.tool.js';
+import { agentCreateTool } from '../../tools/agent-create.tool.js';
+import { agentDeleteTool } from '../../tools/agent-delete.tool.js';
+import { agentListTool } from '../../tools/agent-list.tool.js';
+import { agentReadTool } from '../../tools/agent-read.tool.js';
+import { agentUpdateTool } from '../../tools/agent-update.tool.js';
+import { approvalRequestTool } from '../../tools/approval-request.tool.js';
+import { companyProfileReadTool } from '../../tools/company-profile-read.tool.js';
+import { confirmRequestTool } from '../../tools/confirm-request.tool.js';
+import { echoTool } from '../../tools/echo.tool.js';
+import { fileDeleteTool } from '../../tools/file-delete.tool.js';
+import { fileReadTool } from '../../tools/file-read.tool.js';
+import { fileSearchTool } from '../../tools/file-search.tool.js';
+import { fileWriteTool } from '../../tools/file-write.tool.js';
+import { taskDispatchTool } from '../../tools/task-dispatch.tool.js';
+import { inboxSendTool } from '../../tools/inbox-send.tool.js';
+import { jsonExtractTool } from '../../tools/json-extract.tool.js';
+import { projectCreateTool } from '../../tools/project-create.tool.js';
+import { projectDeleteTool } from '../../tools/project-delete.tool.js';
+import { projectListTool } from '../../tools/project-list.tool.js';
+import { projectReadTool } from '../../tools/project-read.tool.js';
+import { projectUpdateTool } from '../../tools/project-update.tool.js';
+import { skillReadTool } from '../../tools/skill-read.tool.js';
+import { taskCommentAddTool } from '../../tools/task-comment-add.tool.js';
+import { taskCreateTool } from '../../tools/task-create.tool.js';
+import { taskDeleteTool } from '../../tools/task-delete.tool.js';
+import { taskListTool } from '../../tools/task-list.tool.js';
+import { taskLogTool } from '../../tools/task-log.tool.js';
+import { taskReadTool } from '../../tools/task-read.tool.js';
+import { taskUpdateStatusTool } from '../../tools/task-update-status.tool.js';
+import { taskUpdateTool } from '../../tools/task-update.tool.js';
 import { toToolSummary } from './tool.helpers.js';
 import type { DefaultToolExecutorDeps, ServerToolDefinition, ToolDefinitionSummary } from './tool.types.js';
 
@@ -50,6 +50,7 @@ export function filterToolDefinitionsByNames(
 export class DefaultToolExecutor implements ToolExecutor {
   private readonly tools = new Map<string, ServerToolDefinition>();
   private readonly pluginTools = new Map<string, ServerToolDefinition>();
+  private readonly disabledPluginToolNames = new Set<string>();
 
   constructor(private readonly deps: DefaultToolExecutorDeps = {}) {
     const definitions: ServerToolDefinition[] = [
@@ -102,6 +103,17 @@ export class DefaultToolExecutor implements ToolExecutor {
       };
     }
 
+    if (this.isPluginToolDisabled(input.toolName)) {
+      return {
+        ok: false,
+        toolName: input.toolName,
+        error: {
+          code: 'TOOL_DISABLED',
+          message: `${input.toolName} is disabled`
+        }
+      };
+    }
+
     const tool = this.tools.get(input.toolName) ?? this.pluginTools.get(input.toolName);
     if (!tool) {
       return {
@@ -125,10 +137,23 @@ export class DefaultToolExecutor implements ToolExecutor {
     }
   }
 
-  listToolDefinitions(): ToolDefinitionSummary[] {
+  listToolDefinitions(options?: { includeDisabledPluginTools?: boolean }): ToolDefinitionSummary[] {
+    const includeDisabledPluginTools = options?.includeDisabledPluginTools ?? false;
+
     return [...this.tools.values(), ...this.pluginTools.values()]
       .filter((tool) => this.isToolAllowed(tool.name))
+      .filter((tool) => includeDisabledPluginTools || !this.isPluginToolDisabled(tool.name))
       .map((tool) => toToolSummary(tool));
+  }
+
+  /** Set disabled plugin tool names from persisted registry policy. */
+  setDisabledPluginTools(toolNames: readonly string[]): void {
+    this.disabledPluginToolNames.clear();
+    for (const toolName of toolNames) {
+      if (isPluginToolName(toolName)) {
+        this.disabledPluginToolNames.add(toolName);
+      }
+    }
   }
 
   /** Register tools provided by an enabled plugin. Replaces any previous tools for those names. */
@@ -153,6 +178,7 @@ export class DefaultToolExecutor implements ToolExecutor {
     for (const [, tool] of this.pluginTools) {
       forked.pluginTools.set(tool.name, tool);
     }
+    forked.setDisabledPluginTools(Array.from(this.disabledPluginToolNames));
     return forked;
   }
 
@@ -169,6 +195,14 @@ export class DefaultToolExecutor implements ToolExecutor {
   private isToolAllowed(toolName: string): boolean {
     return this.deps.allowedToolNames?.has(toolName) ?? true;
   }
+
+  private isPluginToolDisabled(toolName: string): boolean {
+    return this.disabledPluginToolNames.has(toolName);
+  }
+}
+
+function isPluginToolName(toolName: string): boolean {
+  return toolName.startsWith('plugin.');
 }
 
 function toToolExecutionError(toolName: string, error: unknown): ToolExecutionResult {

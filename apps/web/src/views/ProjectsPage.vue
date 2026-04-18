@@ -660,6 +660,7 @@ useAutoReload(reload);
             :projects="paginatedProjects"
             :selected-project-id="selectedProject?.id ?? null"
             :current-page="currentPage"
+            :page-size="PROJECTS_PER_PAGE"
             :total-pages="totalPages"
             :total-items="paginationRange.total"
             :range-start="paginationRange.start"

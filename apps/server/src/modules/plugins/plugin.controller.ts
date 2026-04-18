@@ -9,6 +9,7 @@ export interface PluginsModuleDeps {
   pluginService: PluginService;
   pluginLoader: PluginLoaderService;
   auditService: AuditService;
+  onPluginsRefreshed?: () => Promise<void>;
 }
 
 export function registerPluginsController(app: FastifyInstance, deps: PluginsModuleDeps): void {
@@ -34,6 +35,7 @@ export function registerPluginsController(app: FastifyInstance, deps: PluginsMod
   app.post('/plugins/discover', async (request) => {
     requireMinimumLevel(request, 'L0');
     const result = await deps.pluginLoader.discover();
+    await deps.onPluginsRefreshed?.();
 
     await deps.auditService.write({
       actorId: request.authContext?.subject ?? 'system',
@@ -50,6 +52,7 @@ export function registerPluginsController(app: FastifyInstance, deps: PluginsMod
     const { id } = pluginParamsSchema.parse(request.params);
     const plugin = await deps.pluginService.enable(id);
     await deps.pluginLoader.refreshRegistry();
+    await deps.onPluginsRefreshed?.();
 
     await deps.auditService.write({
       actorId: request.authContext?.subject ?? 'system',
@@ -75,6 +78,7 @@ export function registerPluginsController(app: FastifyInstance, deps: PluginsMod
 
     const plugin = await deps.pluginService.disable(id);
     await deps.pluginLoader.refreshRegistry();
+    await deps.onPluginsRefreshed?.();
 
     await deps.auditService.write({
       actorId: request.authContext?.subject ?? 'system',

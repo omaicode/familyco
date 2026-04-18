@@ -148,7 +148,8 @@ export function toToolSummary(tool: ServerToolDefinition): ToolDefinitionSummary
   return {
     name: tool.name,
     description: tool.description,
-    parameters: [...tool.parameters]
+    parameters: [...tool.parameters],
+    enabledByDefault: tool.enabledByDefault
   };
 }
 
