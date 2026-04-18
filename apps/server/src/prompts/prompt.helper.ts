@@ -36,9 +36,8 @@ export function renderHistoryLines(history: ChatSystemPromptInput['conversationH
 
   for (const entry of history) {
     const speaker = entry.senderId === 'founder' ? 'Founder' : 'Executive agent';
-    const title = entry.title ? `${entry.title}: ` : '';
     const body = compactText(entry.body, 240);
-    lines.push(`- ${speaker}: ${title}${body}`);
+    lines.push(`- ${speaker}: ${body}`);
 
     if (!Array.isArray(entry.toolCalls) || entry.toolCalls.length === 0) {
       continue;
