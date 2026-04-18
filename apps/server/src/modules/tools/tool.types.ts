@@ -71,6 +71,7 @@ export interface ServerToolDefinition {
   readonly description: string;
   readonly parameters: readonly ToolParameterDefinition[];
   readonly slashSpec?: SlashCommandSpec;
+  readonly enabledByDefault?: boolean;
   readonly customFields?: Readonly<Record<string, PluginToolCustomFieldDefinition>>;
   execute(argumentsMap: Record<string, unknown>, context: ServerToolContext): Promise<ToolExecutionResult>;
 }

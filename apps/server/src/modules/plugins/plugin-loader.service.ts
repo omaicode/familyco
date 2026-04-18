@@ -308,6 +308,8 @@ function buildServerToolFromPluginTool(
     name: toolName,
     description,
     parameters: toolDef.parameters as ServerToolDefinition['parameters'],
+    enabledByDefault: toolDef.enabledByDefault,
+    customFields: toolDef.customFields,
     async execute(argumentsMap, _context): Promise<ToolExecutionResult> {
       const current = pluginRegistry.get(plugin.id);
       if (!current || current.state !== 'enabled') {
