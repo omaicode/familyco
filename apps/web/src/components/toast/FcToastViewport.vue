@@ -55,7 +55,7 @@ const classMap: Record<ToastItem['type'], string> = {
   position: fixed;
   top: calc(var(--fc-topbar-height, 0px) + 12px);
   right: clamp(12px, 2vw, 24px);
-  z-index: 24;
+  z-index: 220;
   display: flex;
   width: min(360px, calc(100vw - 24px));
   flex-direction: column;

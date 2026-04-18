@@ -35,6 +35,7 @@ import TaskFiltersModal from '../components/tasks/TaskFiltersModal.vue';
 import TaskKanbanColumn from '../components/tasks/TaskKanbanColumn.vue';
 import TaskListTable from '../components/tasks/TaskListTable.vue';
 import { useI18n } from '../composables/useI18n';
+import { useToast } from '../plugins/toast.plugin';
 import { parseApiError } from '../utils/api-error';
 
 type TaskStatus = TaskListItem['status'];
@@ -52,6 +53,7 @@ interface FilterState {
 }
 
 const { t } = useI18n();
+const toast = useToast();
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
   urgent: 0,
@@ -695,9 +697,9 @@ const addTaskComment = async (payload: CreateTaskCommentPayload): Promise<void> 
   try {
     const comment = await uiRuntime.stores.tasks.createTaskComment(payload);
     taskComments.value = [...taskComments.value, comment];
-    setFeedback('success', t('Comment posted.'));
+    toast.success(t('Comment posted.'));
   } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : t('Failed to post comment'));
+    toast.error(error instanceof Error ? error.message : t('Failed to post comment'));
   } finally {
     commentSubmitting.value = false;
   }
