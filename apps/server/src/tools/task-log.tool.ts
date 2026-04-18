@@ -1,6 +1,6 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, asTextString } from '../modules/tools/tool.helpers.js';
+import { asTextString } from '../modules/tools/tool.helpers.js';
 import type { ServerToolDefinition } from '../modules/tools/tool.types.js';
 
 export const taskLogTool: ServerToolDefinition = {
