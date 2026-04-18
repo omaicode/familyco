@@ -1120,36 +1120,31 @@ useAutoReload(reload);
   gap: 32px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding: 4px 6px 12px;  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--fc-primary) 28%, var(--fc-border-subtle))
-    color-mix(in srgb, var(--fc-surface-muted) 72%, transparent);
+  padding: 4px 6px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fc-scrollbar-thumb) var(--fc-scrollbar-track);
 }
 
 .kanban-board::-webkit-scrollbar {
-  height: 12px;
+  height: calc(var(--fc-scrollbar-size) + 2px);
 }
 
 .kanban-board::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--fc-surface-muted) 82%, var(--fc-surface));
+  background: var(--fc-scrollbar-track);
   border-radius: 999px;
 }
 
 .kanban-board::-webkit-scrollbar-thumb {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--fc-primary) 52%, var(--fc-surface-muted)),
-    color-mix(in srgb, var(--fc-info) 36%, var(--fc-primary))
-  );
+  background: var(--fc-scrollbar-thumb);
   border-radius: 999px;
-  border: 2px solid color-mix(in srgb, var(--fc-surface) 90%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .kanban-board::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--fc-primary) 66%, var(--fc-surface-muted)),
-    color-mix(in srgb, var(--fc-info) 48%, var(--fc-primary))
-  );}
+  background: var(--fc-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
 
 @media (max-width: 900px) {
   .task-toolbar {

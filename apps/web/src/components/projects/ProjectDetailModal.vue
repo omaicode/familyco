@@ -5,6 +5,7 @@ import { Clock3, Eye, FileText, PencilLine, Trash2, Users, Workflow, X } from 'l
 
 import FcButton from '../FcButton.vue';
 import FcInput from '../FcInput.vue';
+import FcModalShell from '../FcModalShell.vue';
 import FcSelect from '../FcSelect.vue';
 import MarkdownEditor from '../MarkdownEditor.vue';
 import MarkdownPreview from '../MarkdownPreview.vue';
@@ -116,9 +117,14 @@ const confirmDelete = (): void => {
 </script>
 
 <template>
-  <Transition name="fc-page">
-    <div v-if="open && project" class="project-modal-wrap" @click.self="emit('close')">
-      <div class="project-modal">
+  <FcModalShell
+    :open="open && project !== null"
+    :ariaLabel="'Project details'"
+    panel-class="project-modal"
+    :z-index="70"
+    @close="emit('close')"
+  >
+      <div v-if="project">
         <div class="project-modal-header">
           <div>
             <h4>{{ mode === 'view' ? 'Project details' : mode === 'edit' ? 'Edit project' : 'Delete project' }}</h4>
@@ -293,32 +299,12 @@ const confirmDelete = (): void => {
           </div>
         </template>
       </div>
-    </div>
-  </Transition>
+  </FcModalShell>
 </template>
 
 <style scoped>
-.project-modal-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.38);
-  backdrop-filter: blur(4px);
-}
-
 .project-modal {
   width: min(920px, 100%);
-  max-height: calc(100dvh - 40px);
-  overflow: auto;
-  background: var(--fc-surface);
-  border: 1px solid var(--fc-border-subtle);
-  border-radius: var(--fc-card-radius);
-  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.2);
-  padding: 16px;
 }
 
 .project-modal-header {

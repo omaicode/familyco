@@ -260,7 +260,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run--active {
-  background: color-mix(in srgb, var(--fc-info, #fff) 14%, var(--fc-activity-bg) 86%);
+  background: color-mix(in srgb, var(--fc-info, #fff) 86%, var(--fc-activity-bg) 14%);
   border-color: color-mix(in srgb, var(--fc-info, #fff) 32%, var(--fc-activity-bg) 68%);
 }
 
@@ -291,7 +291,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run--active .fc-activity-run__icon {
-  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 86%, white 14%);
+  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 14%, white 86%);
   animation: fc-activity-pulse 1.6s ease infinite;
 }
 

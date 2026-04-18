@@ -12,6 +12,7 @@ import {
 } from 'lucide-vue-next';
 
 import MarkdownPreview from '../MarkdownPreview.vue';
+import FcModalShell from '../FcModalShell.vue';
 import { useI18n } from '../../composables/useI18n';
 
 const props = defineProps<{
@@ -231,8 +232,15 @@ function closeArtifactModal(): void {
       </li>
     </ol>
 
-    <div v-if="selectedArtifact" class="activity-file-modal-overlay" @click.self="closeArtifactModal">
-      <div class="activity-file-modal" role="dialog" aria-modal="true">
+    <FcModalShell
+      :open="selectedArtifact !== null"
+      :ariaLabel="t('File snapshot')"
+      panel-class="activity-file-modal"
+      overlay-class="activity-file-modal-overlay"
+      :z-index="120"
+      @close="closeArtifactModal"
+    >
+      <div v-if="selectedArtifact">
         <div class="activity-file-modal-header">
           <div>
             <div class="activity-file-modal-title">{{ t('File snapshot') }}</div>
@@ -249,7 +257,7 @@ function closeArtifactModal(): void {
           </div>
         </div>
       </div>
-    </div>
+    </FcModalShell>
   </div>
 </template>
 
@@ -407,14 +415,8 @@ function closeArtifactModal(): void {
 }
 
 .activity-file-modal-overlay {
-  position: fixed;
-  inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 18px;
-  z-index: 120;
 }
 
 .activity-file-modal {

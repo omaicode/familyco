@@ -4,6 +4,7 @@ import { Activity, Clock3, Database, X } from 'lucide-vue-next';
 import { AGENT_STATUS_META } from '../../composables/agents-page.config';
 import { useI18n } from '../../composables/useI18n';
 import FcBadge from '../FcBadge.vue';
+import FcModalShell from '../FcModalShell.vue';
 
 defineProps<{
   open: boolean;
@@ -49,9 +50,14 @@ const statusEntries = (Object.keys(AGENT_STATUS_META) as Array<keyof typeof AGEN
 </script>
 
 <template>
-  <Transition name="fc-page">
-    <div v-if="open" class="ag-modal-wrap" @click.self="emit('close')">
-      <div class="ag-modal" role="dialog" aria-modal="true" :aria-label="t('Heartbeat execution model')">
+  <FcModalShell
+    :open="open"
+    :ariaLabel="t('Heartbeat execution model')"
+    panel-class="ag-modal"
+    :z-index="60"
+    @close="emit('close')"
+  >
+      <div>
         <div class="ag-section-head">
           <div>
             <h4>{{ t('Heartbeat execution model') }}</h4>
@@ -99,23 +105,10 @@ const statusEntries = (Object.keys(AGENT_STATUS_META) as Array<keyof typeof AGEN
           <small>{{ t('Run outputs, usage, and debugging details should be captured in the audit trail for every heartbeat.') }}</small>
         </div>
       </div>
-    </div>
-  </Transition>
+  </FcModalShell>
 </template>
 
 <style scoped>
-.ag-modal-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.36);
-  backdrop-filter: blur(3px);
-}
-
 .ag-modal {
   width: min(860px, 100%);
   max-height: min(90vh, 820px);
@@ -158,6 +151,7 @@ const statusEntries = (Object.keys(AGENT_STATUS_META) as Array<keyof typeof AGEN
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 12px;
 }
 
 .ag-pill {
@@ -176,6 +170,7 @@ const statusEntries = (Object.keys(AGENT_STATUS_META) as Array<keyof typeof AGEN
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 12px;
+  margin-bottom: 12px;
 }
 
 .ag-step-list {
