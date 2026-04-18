@@ -61,7 +61,9 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
   assert.equal(prompt.includes('Constitution'), true);
 
   assert.equal(prompt.includes('When talking to the Founder (human):'), true);
-  assert.equal(prompt.includes('Start with a short executive summary.'), true);
+  assert.equal(prompt.includes('mirror their tone (friendly, natural, and conversational when appropriate).'), true);
+  assert.equal(prompt.includes('If the Founder sends a greeting, small talk, thanks, or casual check-in, respond naturally in 1-4 short sentences without formal sections.'), true);
+  assert.equal(prompt.includes('Use executive structure (decisions, reasoning, risks, next actions) only for planning, trade-off, or execution-critical requests.'), true);
   assert.equal(prompt.includes('When interacting with child agents:'), true);
   assert.equal(prompt.includes('Escalation:'), true);
 
