@@ -1,7 +1,7 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, invalidArguments, unavailableTool } from './tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import { asNonEmptyString, invalidArguments, unavailableTool } from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const taskReadSlashSpec: SlashCommandSpec = {
   command: '/task-info',

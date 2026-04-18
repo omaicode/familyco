@@ -130,7 +130,7 @@ export const templateCards = (Object.entries(TEMPLATE_PRESETS) as Array<[
   id,
   title: template.title,
   description: template.description
-}));
+})).filter((template) => template.id !== 'executive');
 
 export const AUTONOMY_GUIDE: Record<
   AgentLevel,

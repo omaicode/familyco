@@ -1,7 +1,7 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, asTextString } from './tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import { asNonEmptyString, asTextString } from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const inboxSendSlashSpec: SlashCommandSpec = {
   command: '/inbox-send',

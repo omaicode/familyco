@@ -24,6 +24,7 @@ import ProjectDetailModal from '../components/projects/ProjectDetailModal.vue';
 import ProjectPortfolioTable from '../components/projects/ProjectPortfolioTable.vue';
 import { markdownToPlainText } from '../utils/markdown';
 import { useI18n } from '../composables/useI18n';
+import { parseApiError } from '../utils/api-error';
 
 type PortfolioFilter = 'all' | 'attention' | 'healthy' | 'roots';
 type RiskLevel = 'healthy' | 'watch' | 'critical';
@@ -71,6 +72,10 @@ const draft = reactive({
 });
 
 const projectState = computed(() => uiRuntime.stores.projects.state);
+const defaultProjectId = computed(() => {
+  const defaultProjectSetting = uiRuntime.stores.settings.state.data.find((setting) => setting.key === 'defaults.projectId');
+  return typeof defaultProjectSetting?.value === 'string' ? defaultProjectSetting.value.trim() : '';
+});
 
 const setFeedback = (type: 'success' | 'error', text: string): void => {
   feedback.value = { type, text };
@@ -291,6 +296,18 @@ const selectedTasks = computed(() => {
   return [...selectedProject.value.tasks].sort((a, b) => order[a.status] - order[b.status]);
 });
 
+const deleteDisabledReason = computed(() => {
+  if (!selectedProject.value) {
+    return null;
+  }
+
+  if (selectedProject.value.id === defaultProjectId.value) {
+    return t('Default project cannot be deleted.');
+  }
+
+  return null;
+});
+
 const portfolioMetrics = computed(() => {
   const attentionCount = projects.value.filter((project) => project.risk !== 'healthy').length;
   const ownersInvolved = new Set(projects.value.map((project) => project.ownerAgentId)).size;
@@ -413,6 +430,11 @@ const saveProjectChanges = async (payload: UpdateProjectPayload): Promise<void> 
 };
 
 const deleteProject = async (projectId: string): Promise<void> => {
+  if (projectId === defaultProjectId.value) {
+    setFeedback('error', t('Default project cannot be deleted.'));
+    return;
+  }
+
   isProjectMutating.value = true;
 
   try {
@@ -431,7 +453,12 @@ const deleteProject = async (projectId: string): Promise<void> => {
     closeProjectModal();
     setFeedback('success', 'Project deleted successfully.');
   } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : 'Failed to delete project');
+    const parsed = parseApiError(error);
+    if (parsed.code === 'PROJECT_DELETE_DEFAULT_FORBIDDEN') {
+      setFeedback('error', t('Default project cannot be deleted.'));
+    } else {
+      setFeedback('error', parsed.message || t('Failed to delete project'));
+    }
   } finally {
     isProjectMutating.value = false;
   }
@@ -633,6 +660,7 @@ useAutoReload(reload);
             :projects="paginatedProjects"
             :selected-project-id="selectedProject?.id ?? null"
             :current-page="currentPage"
+            :page-size="PROJECTS_PER_PAGE"
             :total-pages="totalPages"
             :total-items="paginationRange.total"
             :range-start="paginationRange.start"
@@ -662,6 +690,7 @@ useAutoReload(reload);
         :get-agent-label="getAgentLabel"
         :risk-label="riskLabel"
         :risk-tone="riskTone"
+        :delete-disabled-reason="deleteDisabledReason"
         @close="closeProjectModal"
         @change-mode="projectModalMode = $event"
         @save="saveProjectChanges"

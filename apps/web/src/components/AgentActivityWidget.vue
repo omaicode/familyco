@@ -260,8 +260,8 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run--active {
-  background: color-mix(in srgb, var(--fc-info, #6bb7ff) 14%, var(--fc-activity-bg) 86%);
-  border-color: color-mix(in srgb, var(--fc-info, #6bb7ff) 32%, var(--fc-activity-bg) 68%);
+  background: color-mix(in srgb, var(--fc-info, #fff) 86%, var(--fc-activity-bg) 14%);
+  border-color: color-mix(in srgb, var(--fc-info, #fff) 32%, var(--fc-activity-bg) 68%);
 }
 
 .fc-activity-run--completed {
@@ -291,7 +291,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run--active .fc-activity-run__icon {
-  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 86%, white 14%);
+  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 14%, white 86%);
   animation: fc-activity-pulse 1.6s ease infinite;
 }
 
@@ -337,7 +337,7 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run__tool {
-  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 88%, white 12%);
+  color: color-mix(in srgb, var(--fc-info, #6bb7ff) 14%, white 86%);
   margin: 3px 0 0;
   font-size: 0.75rem;
   opacity: 0.95;

@@ -1,7 +1,7 @@
 import type { TaskStatus, ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, invalidArguments, unavailableTool } from './tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import { asNonEmptyString, invalidArguments, unavailableTool } from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const taskUpdateStatusSlashSpec: SlashCommandSpec = {
   command: '/update-task-status',
@@ -41,7 +41,10 @@ export const taskUpdateStatusTool: ServerToolDefinition = {
       return invalidArguments('task.update-status', 'taskId and valid status are required');
     }
 
-    const task = await context.taskService.updateTaskStatus(taskId, status);
+    const task = await context.taskService.updateTaskStatus(taskId, status, {
+      source: 'agent',
+      actorId: context.agentId
+    });
     return {
       ok: true,
       toolName: 'task.update-status',

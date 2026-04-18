@@ -397,7 +397,7 @@ test('DELETE /api/v1/agents/:id reassigns current work to the executive root', a
   await app.close();
 });
 
-test('DELETE /api/v1/agents/:id blocks deleting the default L0 executive', async () => {
+test('POST /api/v1/agents prevents creating a second active L0 and DELETE still blocks removing default L0', async () => {
   const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
 
   const defaultExecutiveResponse = await app.inject({
@@ -429,7 +429,8 @@ test('DELETE /api/v1/agents/:id blocks deleting the default L0 executive', async
       department: 'Executive'
     }
   });
-  assert.equal(secondaryExecutiveResponse.statusCode, 201);
+  assert.equal(secondaryExecutiveResponse.statusCode, 400);
+  assert.equal((secondaryExecutiveResponse.json() as { code: string }).code, 'AGENT_L0_ALREADY_EXISTS');
 
   const deleteResponse = await app.inject({
     method: 'DELETE',
@@ -513,16 +514,22 @@ test('PATCH /api/v1/tasks, task comments, and DELETE /api/v1/tasks/:id support t
       title: 'Review executive onboarding queue',
       description: 'Summarize blockers, owners, and next actions for the founder sync',
       projectId: project.id,
-      assigneeAgentId: agent.id,
+      assigneeAgentId: null,
       createdBy: agent.id,
       priority: 'high'
     }
   });
 
   assert.equal(updateTaskResponse.statusCode, 200);
-  const updatedTask = updateTaskResponse.json() as { title: string; priority: string; description: string };
+  const updatedTask = updateTaskResponse.json() as {
+    title: string;
+    priority: string;
+    description: string;
+    assigneeAgentId: string | null;
+  };
   assert.equal(updatedTask.title, 'Review executive onboarding queue');
   assert.equal(updatedTask.priority, 'high');
+  assert.equal(updatedTask.assigneeAgentId, agent.id);
   assert.match(updatedTask.description, /founder sync/);
 
   const humanCommentResponse = await app.inject({
@@ -707,6 +714,39 @@ test('PATCH /api/v1/projects and DELETE /api/v1/projects/:id update briefs and p
   assert.equal(deleteProjectResponse.statusCode, 200);
   const deletePayload = deleteProjectResponse.json() as { id: string };
   assert.equal(deletePayload.id, emptyProject.id);
+
+  await app.close();
+});
+
+test('DELETE /api/v1/projects/:id blocks deleting the default project', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const setupResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/setup/initialize',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      companyName: 'FamilyCo Test',
+      companyDescription: 'Protect default project from deletion'
+    }
+  });
+
+  assert.equal(setupResponse.statusCode, 201);
+  const setupPayload = setupResponse.json() as { defaultProject: { id: string } };
+
+  const deleteDefaultResponse = await app.inject({
+    method: 'DELETE',
+    url: `/api/v1/projects/${setupPayload.defaultProject.id}`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    }
+  });
+
+  assert.equal(deleteDefaultResponse.statusCode, 400);
+  const deleteDefaultBody = deleteDefaultResponse.json() as { code: string };
+  assert.equal(deleteDefaultBody.code, 'PROJECT_DELETE_DEFAULT_FORBIDDEN');
 
   await app.close();
 });

@@ -1,7 +1,7 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { invalidArguments, isRecord, resolveDotPath } from './tool.helpers.js';
-import type { ServerToolDefinition } from './tool.types.js';
+import { invalidArguments, isRecord, resolveDotPath } from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition } from '../modules/tools/tool.types.js';
 
 export const jsonExtractTool: ServerToolDefinition = {
   name: 'json.extract',

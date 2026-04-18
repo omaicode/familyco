@@ -2,9 +2,9 @@ import { stat } from 'node:fs/promises';
 
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, invalidArguments } from './tool.helpers.js';
+import { asNonEmptyString, invalidArguments } from '../modules/tools/tool.helpers.js';
 import { resolveWorkspacePath, searchWorkspaceFiles } from './file-tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const fileSearchSlashSpec: SlashCommandSpec = {
   command: '/search-file',

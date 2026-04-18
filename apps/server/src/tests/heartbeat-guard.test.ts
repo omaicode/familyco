@@ -8,7 +8,7 @@ import { createApp } from '../app.js';
 import {
   DefaultToolExecutor,
   HEARTBEAT_ALLOWED_TOOL_NAMES
-} from '../tools/index.js';
+} from '../modules/tools/index.js';
 import { TEST_API_KEY } from './test-helpers.js';
 
 class FakeHeartbeatAdapter implements AiAdapter {

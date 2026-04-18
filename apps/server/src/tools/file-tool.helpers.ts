@@ -2,7 +2,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ToolExecutionResult } from '@familyco/core';
-import { invalidArguments } from './tool.helpers.js';
+import { invalidArguments } from '../modules/tools/tool.helpers.js';
 
 const MAX_READ_BYTES = 256 * 1024;
 const MAX_SEARCH_BYTES = 128 * 1024;

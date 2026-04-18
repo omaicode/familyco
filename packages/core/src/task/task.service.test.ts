@@ -30,6 +30,7 @@ test('TaskService validates transitions and emits task events', async () => {
     title: 'Write report',
     description: 'Prepare status report',
     projectId: 'project-1',
+    assigneeAgentId: 'agent-1',
     createdBy: 'agent-1'
   });
 
@@ -113,6 +114,7 @@ test('TaskService updates priority and supports bulk status changes', async () =
     title: 'Prioritize roadmap',
     description: 'Focus the next sprint',
     projectId: 'project-1',
+    assigneeAgentId: 'agent-1',
     createdBy: 'agent-1'
   });
 
@@ -120,6 +122,7 @@ test('TaskService updates priority and supports bulk status changes', async () =
     title: 'Prepare founder review',
     description: 'Collect the changes for sign-off',
     projectId: 'project-1',
+    assigneeAgentId: 'agent-1',
     createdBy: 'agent-1'
   });
 
@@ -190,6 +193,7 @@ test('TaskService exposes readiness evaluation and readiness-enriched task views
     title: 'Prepare dependency',
     description: 'Finish setup first',
     projectId: 'project-1',
+    assigneeAgentId: 'agent-1',
     createdBy: 'agent-1'
   });
 
@@ -197,6 +201,7 @@ test('TaskService exposes readiness evaluation and readiness-enriched task views
     title: 'Run dependent work',
     description: 'Can only start after prerequisite is done',
     projectId: 'project-1',
+    assigneeAgentId: 'agent-1',
     createdBy: 'agent-1',
     dependsOnTaskIds: [prerequisite.id],
     readinessRules: [
@@ -232,6 +237,7 @@ test('TaskService rejects self dependency and self-referential readiness rules',
     title: 'Review architecture',
     description: 'Inspect current architecture constraints',
     projectId: 'project-1',
+    assigneeAgentId: 'agent-1',
     createdBy: 'agent-1'
   });
 

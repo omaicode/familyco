@@ -1,7 +1,7 @@
 import type { AgentLevel, ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import { asNonEmptyString, summarizeSlashDescription, unavailableTool } from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const agentCreateSlashSpec: SlashCommandSpec = {
   command: '/create-agent',
@@ -101,7 +101,7 @@ function isAgentLevel(value: string | undefined): value is AgentLevel {
 
 async function resolveParentAgentId(input: {
   candidate?: string;
-  agentService: NonNullable<import('./tool.types.js').ServerToolContext['agentService']>;
+  agentService: NonNullable<import('../modules/tools/tool.types.js').ServerToolContext['agentService']>;
 }): Promise<string | undefined> {
   if (!input.candidate) {
     return undefined;

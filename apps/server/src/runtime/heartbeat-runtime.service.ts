@@ -9,7 +9,7 @@ import type {
 import { AuditService } from '@familyco/core';
 import { renderHeartbeatRunPrompt } from '../prompts/index.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
-import { ToolDefinitionSummary } from '../tools/tool.types.js';
+import { ToolDefinitionSummary } from '../modules/tools/tool.types.js';
 
 const DEFAULT_HEARTBEAT_MINUTES = 60;
 const DEFAULT_POLL_MS = 60_000;

@@ -21,6 +21,19 @@ export class AgentService {
   ) {}
 
   async createAgent(input: CreateAgentInput): Promise<AgentProfile> {
+    if (input.level === 'L0') {
+      const existingAgents = await this.repository.list();
+      const hasActiveExecutive = existingAgents.some((agent) =>
+        agent.level === 'L0' &&
+        agent.status !== 'terminated' &&
+        agent.status !== 'archived'
+      );
+
+      if (hasActiveExecutive) {
+        throw new Error('AGENT_L0_ALREADY_EXISTS');
+      }
+    }
+
     const agent = await this.repository.create(input);
     this.eventBus?.emit('agent.created', { agentId: agent.id });
     return agent;
@@ -32,6 +45,15 @@ export class AgentService {
 
   listAgents(): Promise<AgentProfile[]> {
     return this.repository.list();
+  }
+
+  async countAgents(): Promise<number> {
+    if (hasCountRepository(this.repository)) {
+      return this.repository.count();
+    }
+
+    const agents = await this.repository.list();
+    return agents.length;
   }
 
   async findExecutiveAgent(): Promise<AgentProfile | null> {
@@ -140,6 +162,14 @@ export class AgentService {
       reassignedChildAgentCount: reassignedChildren.length
     };
   }
+}
+
+interface CountCapableAgentRepository extends AgentRepository {
+  count(): Promise<number>;
+}
+
+function hasCountRepository(repository: AgentRepository): repository is CountCapableAgentRepository {
+  return typeof (repository as { count?: unknown }).count === 'function';
 }
 
 function resolveFallbackExecutive(agents: AgentProfile[], target: AgentProfile): AgentProfile | null {

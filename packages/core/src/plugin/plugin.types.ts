@@ -124,11 +124,26 @@ export interface PluginToolResult {
   };
 }
 
+export interface PluginToolCustomFieldDefinition {
+  readonly name: string;
+  readonly type: "text" | "number" | "boolean" | "select";
+  readonly required: boolean;
+  readonly description?: string;
+  readonly options?: readonly string[]; // For "select" type, the list of options to choose from
+}
+
 export interface PluginToolDefinition {
   /** Short tool name — loader will namespace it as plugin.{pluginId}.{name} */
   readonly name: string;
   readonly description: string;
   readonly parameters: readonly PluginToolParameter[];
+  readonly enabledByDefault?: boolean;
+
+  /** Custom fields using for defining additional plugin tool properties likes: API_KEY, TIMEOUT, etc. */
+  /** The application will read these fields and show it in the UI as a form for user input and store it to the Setting table */
+  readonly customFields?: Readonly<Record<string, PluginToolCustomFieldDefinition>>;
+
+  /** Execute the tool with the given arguments and context */
   execute(args: Record<string, unknown>, ctx: PluginToolContext): Promise<PluginToolResult>;
 }
 
@@ -140,6 +155,8 @@ export interface PluginSkillDefinition {
   readonly content: string;
   /** Optional agent level filter (e.g. ['L0', 'L1']). Omit to apply to all levels. */
   readonly applyTo?: readonly string[];
+  /** Whether the skill is enabled by default */
+  readonly enabledByDefault?: boolean;
 }
 
 // ---------------------------------------------------------------------------

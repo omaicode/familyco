@@ -15,6 +15,51 @@
 
 * { box-sizing: border-box; }
 
+/* ─── Global Scrollbar ─────────────────────────────────── */
+:root {
+  --fc-scrollbar-size: 10px;
+  --fc-scrollbar-track: color-mix(in srgb, var(--fc-surface-muted) 62%, var(--fc-surface));
+  --fc-scrollbar-thumb: color-mix(in srgb, var(--fc-primary) 26%, var(--fc-border-subtle));
+  --fc-scrollbar-thumb-hover: color-mix(in srgb, var(--fc-primary) 40%, var(--fc-border-subtle));
+  --fc-scrollbar-thumb-active: color-mix(in srgb, var(--fc-primary) 52%, var(--fc-border-subtle));
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--fc-scrollbar-thumb) var(--fc-scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--fc-scrollbar-size);
+  height: var(--fc-scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--fc-scrollbar-track);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--fc-scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--fc-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--fc-scrollbar-thumb-active);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--fc-scrollbar-track);
+}
+
 body {
   margin: 0;
   min-height: 100vh;

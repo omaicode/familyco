@@ -107,4 +107,8 @@ export class PrismaProjectRepository implements ProjectRepository {
       orderBy: { createdAt: 'asc' }
     });
   }
+
+  count(): Promise<number> {
+    return this.prisma.project.count();
+  }
 }

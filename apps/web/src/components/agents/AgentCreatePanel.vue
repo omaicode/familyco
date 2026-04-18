@@ -85,7 +85,6 @@ const { t } = useI18n();
       <div class="fc-form-group">
         <label class="fc-label">{{ t('Level') }}</label>
         <FcSelect v-model="draft.level">
-          <option value="L0">{{ t('L0 — Executive') }}</option>
           <option value="L1">{{ t('L1 — Department lead') }}</option>
           <option value="L2">{{ t('L2 — Specialist') }}</option>
         </FcSelect>
@@ -93,9 +92,9 @@ const { t } = useI18n();
 
       <div class="fc-form-group ag-span-2">
         <label class="fc-label">{{ t('Reports to') }}</label>
-        <FcSelect v-model="draft.parentAgentId" :disabled="draft.level === 'L0' || draftManagerOptions.length === 0">
+        <FcSelect v-model="draft.parentAgentId" :disabled="draftManagerOptions.length === 0">
           <option value="">
-            {{ draft.level === 'L0' ? t('Executive agents stay at the root') : t('No manager assigned yet') }}
+            {{ t('No manager assigned yet') }}
           </option>
           <option v-for="manager in draftManagerOptions" :key="manager.id" :value="manager.id">
             {{ manager.name }} — {{ manager.role }}

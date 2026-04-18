@@ -1,7 +1,7 @@
 import type { AgentLevel, AgentStatus, ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, parseKeyValueArgs, unavailableTool } from './tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import { asNonEmptyString, parseKeyValueArgs, unavailableTool } from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const agentListSlashSpec: SlashCommandSpec = {
   command: '/agents',

@@ -2,6 +2,7 @@
 import type { AgentListItem, ProjectListItem } from '@familyco/ui';
 
 import FcButton from '../FcButton.vue';
+import FcPagination from '../FcPagination.vue';
 
 type RiskLevel = 'healthy' | 'watch' | 'critical';
 
@@ -27,6 +28,7 @@ const props = defineProps<{
   projects: ProjectPortfolioItem[];
   selectedProjectId: string | null;
   currentPage: number;
+  pageSize: number;
   totalPages: number;
   totalItems: number;
   rangeStart: number;
@@ -64,15 +66,13 @@ const goToPage = (page: number): void => {
       </template>
     </p>
 
-    <div v-if="totalItems > 0" class="project-pagination">
-      <FcButton variant="secondary" size="sm" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
-        Previous
-      </FcButton>
-      <span class="project-pagination-label">Page {{ currentPage }} / {{ totalPages }}</span>
-      <FcButton variant="secondary" size="sm" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">
-        Next
-      </FcButton>
-    </div>
+    <FcPagination
+      :current-page="currentPage"
+      :page-size="pageSize"
+      :total-items="totalItems"
+      :hide-page-size="true"
+      @update:current-page="goToPage"
+    />
   </div>
 
   <div class="project-table-wrap">
@@ -160,18 +160,6 @@ const goToPage = (page: number): void => {
 
 .project-table-summary strong {
   color: var(--fc-text-main);
-}
-
-.project-pagination {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.project-pagination-label {
-  font-size: 0.78rem;
-  color: var(--fc-text-muted);
 }
 
 .project-table-wrap {

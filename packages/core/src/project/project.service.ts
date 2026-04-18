@@ -36,4 +36,21 @@ export class ProjectService {
   listProjects(): Promise<Project[]> {
     return this.repository.list();
   }
+
+  async countProjects(): Promise<number> {
+    if (hasCountRepository(this.repository)) {
+      return this.repository.count();
+    }
+
+    const projects = await this.repository.list();
+    return projects.length;
+  }
+}
+
+interface CountCapableProjectRepository extends ProjectRepository {
+  count(): Promise<number>;
+}
+
+function hasCountRepository(repository: ProjectRepository): repository is CountCapableProjectRepository {
+  return typeof (repository as { count?: unknown }).count === 'function';
 }

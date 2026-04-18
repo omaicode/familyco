@@ -95,3 +95,8 @@ export interface BulkUpdateTasksInput {
   status?: TaskStatus;
   priority?: TaskPriority;
 }
+
+export interface TaskStatusUpdateContext {
+  source?: 'agent' | 'human' | 'system';
+  actorId?: string;
+}

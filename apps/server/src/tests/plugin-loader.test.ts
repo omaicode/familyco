@@ -16,7 +16,7 @@ import {
   PluginRunService,
   PluginService
 } from '@familyco/core';
-import type { ServerToolContext, ServerToolDefinition } from '../tools/tool.types.js';
+import type { ServerToolContext, ServerToolDefinition } from '../modules/tools/tool.types.js';
 import {
   InMemoryAuditRepository,
   InMemoryPluginRepository,

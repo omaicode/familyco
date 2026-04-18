@@ -4,7 +4,7 @@ import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Building2, FolderOpen, Key, Users, CheckCircle2, ChevronRight, ChevronLeft,
-  AlertTriangle, ArrowRight, Sparkles, Zap, Loader2
+  AlertTriangle, ArrowRight, Sparkles, Zap
 } from 'lucide-vue-next';
 import FamilyCoIcon from '../assets/familyco-icon.svg';
 import FcButton from '../components/FcButton.vue';
@@ -30,10 +30,6 @@ const previousStepHeight = ref<number | null>(null);
 let stepHeightCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
 const createdResult = ref<{ executiveName: string; description: string } | null>(null);
-
-// ── Adapter test state ───────────────────────────────────
-const isTesting = ref(false);
-const testResult = ref<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
 
 // ── Folder picker state ──────────────────────────────────
 const isBrowsing = ref(false);
@@ -64,7 +60,7 @@ const canNext = computed(() => {
   }
 
   if (currentStep.value === 3) return form.workspacePath.trim().length > 0;
-  if (currentStep.value === 4) return testResult.value?.ok === true;
+  if (currentStep.value === 4) return form.apiKey.trim().length > 0;
   return true;
 });
 
@@ -88,25 +84,6 @@ const selectAdapter = (id: AdapterId) => {
   form.provider = id;
   form.defaultModel = getDefaultAdapterModel(id);
   form.apiKey = '';
-  testResult.value = null;
-};
-
-const testConnection = async () => {
-  if (!form.apiKey.trim()) return;
-  isTesting.value = true;
-  testResult.value = null;
-  try {
-    const result = await uiRuntime.api.testProviderAdapter({
-      adapterId: form.provider,
-      apiKey: form.apiKey.trim(),
-      model: form.defaultModel,
-    });
-    testResult.value = { ok: result.ok, latencyMs: result.latencyMs, error: result.error };
-  } catch (err) {
-    testResult.value = { ok: false, error: err instanceof Error ? err.message : 'Connection test failed' };
-  } finally {
-    isTesting.value = false;
-  }
 };
 
 const next = () => { if (currentStep.value < TOTAL_STEPS) currentStep.value++; };
@@ -120,8 +97,23 @@ const initialize = async () => {
   isSubmitting.value = true;
   errorMessage.value = null;
   try {
+    const apiKey = form.apiKey.trim();
+    if (!apiKey) {
+      throw new Error(t('Connection failed'));
+    }
+
+    const connection = await uiRuntime.api.testProviderAdapter({
+      adapterId: form.provider,
+      apiKey,
+      model: form.defaultModel,
+    });
+
+    if (!connection.ok) {
+      throw new Error(connection.error ?? t('Connection failed'));
+    }
+
     await upsertSetting('provider.name', form.provider);
-    await upsertSetting('provider.apiKey', form.apiKey);
+    await upsertSetting('provider.apiKey', apiKey);
     await upsertSetting('provider.defaultModel', form.defaultModel);
     if (form.workspacePath.trim()) {
       await upsertSetting('workspace.path', form.workspacePath.trim());
@@ -422,7 +414,6 @@ const handleStepAfterEnter = (): void => {
               <FcPasswordInput
                 v-model="form.apiKey"
                 :placeholder="selectedAdapter.keyHint"
-                @update:modelValue="testResult = null"
               />
               <p class="ob-hint">{{ t('Stored locally in your database — never sent anywhere else.') }}</p>
             </div>
@@ -433,28 +424,6 @@ const handleStepAfterEnter = (): void => {
               <FcSelect v-model="form.defaultModel" class="ob-input ob-select">
                 <option v-for="m in selectedAdapter.models" :key="m" :value="m">{{ m }}</option>
               </FcSelect>
-            </div>
-
-            <!-- Test connection -->
-            <div class="ob-form-group">
-              <FcButton
-                class="ob-btn-test"
-                variant="secondary"
-                :disabled="!form.apiKey.trim() || isTesting"
-                @click="testConnection"
-              >
-                <Loader2 v-if="isTesting" :size="14" class="ob-spin" />
-                <span>{{ isTesting ? t('Testing…') : t('Test connection') }}</span>
-              </FcButton>
-              <div v-if="testResult" class="ob-test-result" :class="testResult.ok ? 'ob-test-ok' : 'ob-test-fail'">
-                <CheckCircle2 v-if="testResult.ok" :size="14" />
-                <AlertTriangle v-else :size="14" />
-                <span v-if="testResult.ok">
-                  {{ t('API key is valid and connection is live.') }}
-                  <span v-if="testResult.latencyMs" class="ob-test-latency">{{ testResult.latencyMs }}{{ t('ms') }}</span>
-                </span>
-                <span v-else>{{ testResult.error ?? t('Connection failed') }}</span>
-              </div>
             </div>
 
             <div class="ob-actions">
@@ -989,39 +958,6 @@ const handleStepAfterEnter = (): void => {
 
 .ob-btn-ghost:hover { color: var(--fc-text); border-color: var(--fc-border); }
 .ob-btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
-
-/* ── Test connection button ───────────────────────────── */
-.ob-btn-test {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--fc-border-subtle);
-  background: var(--fc-surface);
-  color: var(--fc-text-muted);
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-}
-.ob-btn-test:not(:disabled):hover { border-color: var(--fc-accent); color: var(--fc-text); }
-.ob-btn-test:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.ob-test-result {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-.ob-test-ok { background: color-mix(in srgb, var(--fc-success, #22c55e) 12%, transparent); color: #16a34a; }
-.ob-test-fail { background: color-mix(in srgb, #ef4444 12%, transparent); color: #dc2626; }
-.ob-test-latency { margin-left: 6px; opacity: 0.65; font-size: 11px; }
-
-@keyframes ob-spin { to { transform: rotate(360deg); } }
-.ob-spin { animation: ob-spin 0.8s linear infinite; }
 
 /* ── Transitions ──────────────────────────────────────── */
 .ob-fade-enter-active { transition: opacity 0.3s ease; }

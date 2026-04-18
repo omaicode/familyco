@@ -23,7 +23,7 @@ import { taskListTool } from '../../tools/task-list.tool.js';
 import { taskReadTool } from '../../tools/task-read.tool.js';
 import { taskUpdateStatusTool } from '../../tools/task-update-status.tool.js';
 import { taskUpdateTool } from '../../tools/task-update.tool.js';
-import type { SlashCommandSpec } from '../../tools/tool.types.js';
+import type { SlashCommandSpec } from '../tools/tool.types.js';
 
 export interface BuiltinSlashResult {
   auditAction: string;

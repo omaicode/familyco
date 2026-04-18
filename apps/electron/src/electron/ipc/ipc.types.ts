@@ -4,6 +4,7 @@ export type DesktopInvokeChannel =
   | 'desktop:agents:list'
   | 'desktop:update:check'
   | 'desktop:update:install'
+  | 'desktop:notification:show'
   | 'desktop:dialog:open-directory'
   | 'desktop:window:minimize'
   | 'desktop:window:toggle-maximize'
@@ -36,6 +37,12 @@ export type DesktopSystemEventPayload =
       isMaximized: boolean;
       isFullScreen: boolean;
       isMinimized: boolean;
+      isVisible: boolean;
+    }
+  | {
+      type: 'notification-click';
+      route: string;
+      notificationId?: string;
     };
 
 export interface DesktopInvokeRequestMap {
@@ -48,6 +55,12 @@ export interface DesktopInvokeRequestMap {
   'desktop:agents:list': Record<string, never>;
   'desktop:update:check': Record<string, never>;
   'desktop:update:install': Record<string, never>;
+  'desktop:notification:show': {
+    title: string;
+    body: string;
+    route?: string;
+    notificationId?: string;
+  };
   'desktop:dialog:open-directory': Record<string, never>;
   'desktop:window:minimize': Record<string, never>;
   'desktop:window:toggle-maximize': Record<string, never>;
@@ -64,6 +77,9 @@ export interface DesktopInvokeResponseMap {
     accepted: boolean;
   };
   'desktop:update:install': {
+    accepted: boolean;
+  };
+  'desktop:notification:show': {
     accepted: boolean;
   };
   'desktop:dialog:open-directory': {
@@ -84,5 +100,6 @@ export interface DesktopInvokeResponseMap {
     isMaximized: boolean;
     isFullScreen: boolean;
     isMinimized: boolean;
+    isVisible: boolean;
   };
 }

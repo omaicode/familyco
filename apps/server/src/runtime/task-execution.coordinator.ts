@@ -17,7 +17,7 @@ import type { ChatEngineService } from '../modules/agent/chat-engine.service.js'
 import { renderTaskSystemPrompt } from '../prompts/task/task-system.template.js';
 import { renderTaskUserPrompt } from '../prompts/task/task-user.template.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
-import type { DefaultToolExecutor } from '../tools/default-tool.executor.js';
+import type { DefaultToolExecutor } from '../modules/tools/default-tool.executor.js';
 import type { TaskSessionRepository, TaskSessionCheckpoint, TaskSessionStatus, TaskSessionToolResult } from './task-session.store.js';
 
 const PRIORITY_ORDER: Record<string, number> = {
@@ -57,6 +57,15 @@ export interface TaskExecutionCoordinatorOptions {
   eventBus?: EventBus;
   companyName?: string;
 }
+
+interface TaskWorkspaceArtifact {
+  path: string;
+  action: 'created' | 'updated';
+  contentPreview?: string;
+  contentTruncated?: boolean;
+}
+
+const MAX_ARTIFACT_CONTENT_PREVIEW = 12_000;
 
 export class TaskExecutionCoordinator {
   constructor(private readonly options: TaskExecutionCoordinatorOptions) {}
@@ -244,8 +253,8 @@ export class TaskExecutionCoordinator {
 
     // Create a per-task executor scoped to the project's workspace directory
     const taskExecutor = projectWorkspaceDir
-      ? this.options.toolExecutor.fork(projectWorkspaceDir)
-      : this.options.toolExecutor;
+      ? this.options.toolExecutor.fork(projectWorkspaceDir, agent.id)
+      : this.options.toolExecutor.fork(undefined, agent.id);
 
     const systemPrompt = renderTaskSystemPrompt({
       agentName: agent.name,
@@ -281,6 +290,7 @@ export class TaskExecutionCoordinator {
     });
 
     const toolsUsed: string[] = [];
+    const workspaceArtifacts: TaskWorkspaceArtifact[] = [];
     let stepCount = 0;
 
     const loopResult = await runAgentLoop({
@@ -306,6 +316,7 @@ export class TaskExecutionCoordinator {
           toolName: toolInput.toolName,
           arguments: toolInput.arguments
         });
+        captureWorkspaceArtifactFromToolCall(workspaceArtifacts, toolInput, result);
         toolsUsed.push(toolInput.toolName);
         return { ok: result.ok, output: result.output, error: result.error };
       }
@@ -354,7 +365,8 @@ export class TaskExecutionCoordinator {
         checkpointIndex: updatedSession.checkpointIndex,
         status: updatedSession.status,
         toolsUsed,
-        summary: updatedSession.summary
+        summary: updatedSession.summary,
+        ...(workspaceArtifacts.length > 0 ? { workspaceArtifacts } : {})
       }
     });
 
@@ -373,7 +385,12 @@ export class TaskExecutionCoordinator {
       // Never override an explicit 'review', 'blocked', 'done', or other final status the agent set.
       const freshTask = await this.options.taskService.getTask(task.id).catch(() => null);
       if (freshTask?.status === 'in_progress') {
-        await this.options.taskService.updateTaskStatus(task.id, 'done').catch(() => undefined);
+        await this.options.taskService
+          .updateTaskStatus(task.id, 'done', {
+            source: 'agent',
+            actorId: agent.id
+          })
+          .catch(() => undefined);
       }
     } else if (sessionStatus === 'waiting_for_input') {
       await this.handleInfoEscalation(agent, task, loopResult.finalReply);
@@ -486,4 +503,52 @@ function serializeOutput(output: unknown): string {
   } catch {
     return String(output).slice(0, 800);
   }
+}
+
+function captureWorkspaceArtifactFromToolCall(
+  workspaceArtifacts: TaskWorkspaceArtifact[],
+  toolInput: { toolName: string; arguments: Record<string, unknown> },
+  result: { ok: boolean; output?: unknown }
+): void {
+  if (toolInput.toolName !== 'file.write' || !result.ok) {
+    return;
+  }
+
+  const output = isRecord(result.output) ? result.output : null;
+  const path = typeof output?.path === 'string' && output.path.trim().length > 0
+    ? output.path.trim()
+    : typeof toolInput.arguments.path === 'string' && toolInput.arguments.path.trim().length > 0
+      ? toolInput.arguments.path.trim()
+      : '';
+
+  if (!path) {
+    return;
+  }
+
+  const overwritten = output?.overwritten === true;
+  const rawContent = typeof toolInput.arguments.content === 'string' ? toolInput.arguments.content : '';
+  const normalizedContent = rawContent.trim();
+  const contentTruncated = normalizedContent.length > MAX_ARTIFACT_CONTENT_PREVIEW;
+  const contentPreview = normalizedContent.length > 0
+    ? normalizedContent.slice(0, MAX_ARTIFACT_CONTENT_PREVIEW)
+    : undefined;
+
+  const artifact: TaskWorkspaceArtifact = {
+    path,
+    action: overwritten ? 'updated' : 'created',
+    ...(contentPreview ? { contentPreview } : {}),
+    ...(contentTruncated ? { contentTruncated: true } : {})
+  };
+
+  const existingIndex = workspaceArtifacts.findIndex((item) => item.path === artifact.path);
+  if (existingIndex < 0) {
+    workspaceArtifacts.push(artifact);
+    return;
+  }
+
+  workspaceArtifacts[existingIndex] = artifact;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

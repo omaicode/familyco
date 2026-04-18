@@ -122,7 +122,7 @@ onMounted(() => {
         <p>
           {{
             t(
-              "Create a folder in plugins path with a PLUGIN.md file to register a new plugin.",
+              "Create a folder in plugins path to register a new plugin.",
               { path: localPluginsPath }
             )
           }}

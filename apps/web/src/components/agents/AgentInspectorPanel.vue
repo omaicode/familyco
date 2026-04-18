@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import FcButton from '../FcButton.vue';
+import FcModalShell from '../FcModalShell.vue';
 import AgentActivityTimelineSection from './AgentActivityTimelineSection.vue';
 import AgentAiConfigSection from './AgentAiConfigSection.vue';
 import AgentCurrentTasksPanel from './AgentCurrentTasksPanel.vue';
@@ -102,9 +103,16 @@ const warningMessage = computed(() => {
 </script>
 
 <template>
-  <Transition name="fc-page">
-    <div v-if="open && selectedAgent" class="ag-modal-wrap" @click.self="emit('close')">
-      <div class="ag-modal" role="dialog" aria-modal="true" :aria-label="selectedAgent.name">
+  <FcModalShell
+    :open="open && selectedAgent !== null"
+    :ariaLabel="selectedAgent?.name ?? t('Details')"
+    panel-class="ag-modal"
+    overlay-class="ag-modal-overlay"
+    :z-index="70"
+    align="top"
+    @close="emit('close')"
+  >
+      <div v-if="selectedAgent">
         <div class="ag-modal-header">
           <div>
             <p class="ag-modal-eyebrow">{{ t('Details') }}</p>
@@ -211,21 +219,13 @@ const warningMessage = computed(() => {
           </div>
         </div>
       </div>
-    </div>
-  </Transition>
+  </FcModalShell>
 </template>
 
 <style scoped>
-.ag-modal-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 20px 12px;
+.ag-modal-overlay {
   background: rgba(15, 23, 42, 0.52);
-  backdrop-filter: blur(3px);
+  padding: 20px 12px;
 }
 
 .ag-modal {
@@ -305,7 +305,7 @@ const warningMessage = computed(() => {
 }
 
 @media (max-width: 720px) {
-  .ag-modal-wrap {
+  .ag-modal-overlay {
     padding: 12px 8px;
   }
 

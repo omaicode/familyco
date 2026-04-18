@@ -41,6 +41,12 @@ export class PrismaApprovalRepository implements ApprovalRepository {
     return requests.map(toApprovalRequest);
   }
 
+  countByStatus(status: ApprovalStatus): Promise<number> {
+    return this.prisma.approvalRequest.count({
+      where: { status }
+    });
+  }
+
   async reassignActor(previousAgentId: string, nextAgentId: string): Promise<ApprovalRequest[]> {
     const affectedRequests = await this.prisma.approvalRequest.findMany({
       where: { actorId: previousAgentId },

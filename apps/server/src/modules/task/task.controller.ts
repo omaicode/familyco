@@ -4,6 +4,7 @@ import {
   type ApprovalService,
   type AuditRecord,
   type AuditService,
+  type EventBus,
   type ProjectService,
   type QueueService,
   type SettingsService,
@@ -36,6 +37,7 @@ export interface TaskModuleDeps {
   auditService: AuditService;
   approvalGuard: ApprovalGuard;
   queueService: QueueService;
+  eventBus?: EventBus;
 }
 
 export function registerTaskController(app: FastifyInstance, deps: TaskModuleDeps): void {
@@ -81,6 +83,17 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       dependsOnTaskIds: body.dependsOnTaskIds,
       readinessRules: body.readinessRules
     };
+
+    try {
+      await deps.projectService.getProjectById(normalizedInput.projectId);
+    } catch {
+      reply.code(404);
+      return {
+        statusCode: 404,
+        code: 'PROJECT_NOT_FOUND',
+        message: 'Project not found.'
+      };
+    }
 
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
@@ -139,6 +152,25 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     requireMinimumLevel(request, 'L1');
     const { id } = taskIdParamsSchema.parse(request.params);
     const body = updateTaskBodySchema.parse(request.body);
+    const executiveAgentId = await resolveExecutiveAgentId({
+      agentService: deps.agentService,
+      settingsService: deps.settingsService
+    });
+    const normalizedInput = {
+      ...body,
+      assigneeAgentId: body.assigneeAgentId ?? executiveAgentId
+    };
+
+    try {
+      await deps.projectService.getProjectById(normalizedInput.projectId);
+    } catch {
+      reply.code(404);
+      return {
+        statusCode: 404,
+        code: 'PROJECT_NOT_FOUND',
+        message: 'Project not found.'
+      };
+    }
 
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
@@ -146,7 +178,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       authContext: request.authContext,
       action: 'task.update',
       targetId: id,
-      payload: body
+      payload: normalizedInput
     });
 
     if (!approval.allowed) {
@@ -158,9 +190,9 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       };
     }
 
-    const updatedTask = await deps.taskService.updateTask(id, body);
+    const updatedTask = await deps.taskService.updateTask(id, normalizedInput);
     await deps.auditService.write({
-      actorId: request.authContext?.subject ?? body.createdBy,
+      actorId: request.authContext?.subject ?? normalizedInput.createdBy,
       action: 'task.update',
       targetId: updatedTask.id,
       payload: {
@@ -209,6 +241,15 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
         authorType: body.authorType,
         authorLabel: body.authorLabel ?? body.authorId
       }
+    });
+
+    deps.eventBus?.emit('task.comment.added', {
+      taskId: id,
+      authorId: body.authorId,
+      authorType: body.authorType,
+      authorLabel: body.authorLabel ?? body.authorId,
+      body: body.body,
+      commentId: comment.id
     });
 
     reply.code(201);
@@ -342,7 +383,10 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       };
     }
 
-    const updatedTask = await deps.taskService.updateTaskStatus(id, status);
+    const updatedTask = await deps.taskService.updateTaskStatus(id, status, {
+      source: 'human',
+      actorId: request.authContext?.subject ?? 'founder'
+    });
     await deps.auditService.write({
       actorId: request.authContext?.subject ?? 'system',
       action: 'task.status.update',
@@ -465,12 +509,14 @@ function toTaskActivity(record: AuditRecord) {
       const toolsUsed = Array.isArray(payload.toolsUsed)
         ? payload.toolsUsed.filter((item): item is string => typeof item === 'string' && item.length > 0)
         : [];
+      const workspaceArtifacts = parseTaskWorkspaceArtifacts(payload.workspaceArtifacts);
       kind = 'session.checkpoint';
       summary = sess.length > 0 ? sess : `Checkpoint #${index} — ${status}`;
       extra = {
         checkpointIndex: index,
         sessionStatus: status,
-        toolsUsed
+        toolsUsed,
+        ...(workspaceArtifacts.length > 0 ? { workspaceArtifacts } : {})
       };
       break;
     }
@@ -554,4 +600,39 @@ function toTaskActivity(record: AuditRecord) {
     createdAt: record.createdAt.toISOString(),
     ...extra
   };
+}
+
+function parseTaskWorkspaceArtifacts(input: unknown): Array<{
+  path: string;
+  action: 'created' | 'updated';
+  contentPreview?: string;
+  contentTruncated?: boolean;
+}> {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  return input.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) {
+      return [];
+    }
+
+    const path = typeof entry.path === 'string' ? entry.path.trim() : '';
+    const action = entry.action === 'updated' ? 'updated' : entry.action === 'created' ? 'created' : null;
+    if (!path || action === null) {
+      return [];
+    }
+
+    const contentPreview = typeof entry.contentPreview === 'string' && entry.contentPreview.length > 0
+      ? entry.contentPreview
+      : undefined;
+    const contentTruncated = entry.contentTruncated === true ? true : undefined;
+
+    return [{
+      path,
+      action,
+      ...(contentPreview ? { contentPreview } : {}),
+      ...(contentTruncated ? { contentTruncated } : {})
+    }];
+  });
 }

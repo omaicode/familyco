@@ -43,6 +43,10 @@ export class InMemoryAgentRepository implements AgentRepository {
     return Array.from(this.agents.values());
   }
 
+  async count(): Promise<number> {
+    return this.agents.size;
+  }
+
   async pause(id: string): Promise<AgentProfile> {
     return this.setStatus(id, 'paused');
   }

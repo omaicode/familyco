@@ -90,4 +90,8 @@ export class InMemoryProjectRepository implements ProjectRepository {
   async list(): Promise<Project[]> {
     return Array.from(this.projects.values());
   }
+
+  async count(): Promise<number> {
+    return this.projects.size;
+  }
 }

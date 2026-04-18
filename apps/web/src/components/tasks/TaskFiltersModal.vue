@@ -3,6 +3,7 @@ import { reactive, watch } from 'vue';
 import { SlidersHorizontal, X } from 'lucide-vue-next';
 
 import FcButton from '../FcButton.vue';
+import FcModalShell from '../FcModalShell.vue';
 import FcSelect from '../FcSelect.vue';
 
 interface FilterState {
@@ -48,9 +49,14 @@ const apply = (): void => {
 </script>
 
 <template>
-  <Transition name="fc-page">
-    <div v-if="open" class="task-filter-modal-wrap" @click.self="emit('close')">
-      <div class="task-filter-modal">
+  <FcModalShell
+    :open="open"
+    :ariaLabel="'Task filters'"
+    panel-class="task-filter-modal"
+    :z-index="60"
+    @close="emit('close')"
+  >
+      <div>
         <div class="task-filter-header">
           <div>
             <h4><SlidersHorizontal :size="16" /> Filters</h4>
@@ -113,30 +119,12 @@ const apply = (): void => {
           <FcButton variant="ghost" @click="emit('close')">Close</FcButton>
         </div>
       </div>
-    </div>
-  </Transition>
+  </FcModalShell>
 </template>
 
 <style scoped>
-.task-filter-modal-wrap {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.36);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 60;
-  backdrop-filter: blur(3px);
-}
-
 .task-filter-modal {
   width: min(680px, 100%);
-  background: var(--fc-surface);
-  border: 1px solid var(--fc-border-subtle);
-  border-radius: var(--fc-card-radius);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
-  padding: 16px;
 }
 
 .task-filter-header {

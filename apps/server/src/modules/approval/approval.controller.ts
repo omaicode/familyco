@@ -361,6 +361,13 @@ async function executeApprovedAction(
         return null;
       }
 
+      const storedDefaultProjectId = await deps.settingsService.get('defaults.projectId').catch(() => null);
+      if (storedDefaultProjectId?.value === approvalRequest.targetId) {
+        return {
+          message: 'The default project cannot be deleted.'
+        };
+      }
+
       const deletedProject = await deps.projectService.deleteProject(approvalRequest.targetId);
       return {
         resourceId: deletedProject.id,

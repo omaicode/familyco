@@ -1,6 +1,6 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import type { ServerToolDefinition } from './tool.types.js';
+import type { ServerToolDefinition } from '../modules/tools/tool.types.js';
 
 export const echoTool: ServerToolDefinition = {
   name: 'echo',

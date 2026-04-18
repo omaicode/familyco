@@ -10,8 +10,8 @@ import {
   invalidArguments,
   summarizeSlashDescription,
   unavailableTool
-} from './tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+} from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const taskCreateSlashSpec: SlashCommandSpec = {
   command: '/create-task',

@@ -60,6 +60,7 @@ import { registerSkillsController } from './modules/skills/index.js';
 import { registerSettingsController } from './modules/settings/index.js';
 import { registerSetupController } from './modules/setup/index.js';
 import { registerTaskController } from './modules/task/index.js';
+import { NotificationService } from './modules/notification/index.js';
 import { ApiKeyService } from './modules/auth/api-key.service.js';
 import {
   authenticateApiRequest,
@@ -106,8 +107,10 @@ import { TaskExecutionCoordinator } from './runtime/task-execution.coordinator.j
 import {
   DefaultToolExecutor,
   HEARTBEAT_ALLOWED_TOOL_NAMES,
-  filterToolDefinitionsByNames
-} from './tools/index.js';
+  filterToolDefinitionsByNames,
+  ToolManagementService,
+  registerToolManagementController
+} from './modules/tools/index.js';
 import { createAdapterRegistry } from './adapters/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
 import { SkillsService } from './modules/skills/skills.service.js';
@@ -217,6 +220,13 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const agentRunService = new AgentRunService(agentRunRepository);
   const settingsService = new SettingsService(settingsRepository);
   const taskService = new TaskService(taskRepository, eventBus);
+  const notificationService = new NotificationService({
+    eventBus,
+    inboxService,
+    settingsService,
+    taskService
+  });
+  notificationService.register();
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
   const pluginRegistry = new PluginRegistry();
@@ -229,7 +239,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const adapterRegistry = options.adapterRegistry ?? createAdapterRegistry({
     logger: app.log,
     auditService,
-    budgetUsageService
+    budgetUsageService,
+    settingsService,
+    onBudgetNearLimit: async (input) => {
+      await notificationService.notifyBudgetNearLimit(input);
+    }
   });
   const toolExecutor = new DefaultToolExecutor({
     agentService,
@@ -240,9 +254,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     adapterRegistry,
     auditService,
     inboxService,
-    approvalService
+    approvalService,
+    eventBus
     // queueService wired in after construction to avoid circular dependency
   });
+  const toolsService = new ToolManagementService(settingsService, toolExecutor);
   const pluginLoader = new PluginLoaderService({
     pluginService,
     pluginRegistry,
@@ -583,6 +599,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     } catch (error) {
       app.log.error({ err: error }, 'Plugin discovery failed during startup');
     }
+
+    await toolsService.syncExecutorPolicy();
   });
 
   app.addHook('onClose', async () => {
@@ -696,10 +714,17 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         skillsService,
         auditService
       });
+      registerToolManagementController(api, {
+        toolsService,
+        auditService
+      });
       registerPluginsController(api, {
         pluginService,
         pluginLoader,
-        auditService
+        auditService,
+        onPluginsRefreshed: async () => {
+          await toolsService.syncExecutorPolicy();
+        }
       });
       registerSetupController(api, {
         agentService,
@@ -716,7 +741,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         approvalService,
         auditService,
         approvalGuard,
-        queueService
+        queueService,
+        eventBus
       });
       registerEventGateway(api, { eventBus });
     },

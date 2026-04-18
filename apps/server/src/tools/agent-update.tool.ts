@@ -1,7 +1,7 @@
 import type { AgentStatus, ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString, invalidArguments, summarizeSlashDescription, unavailableTool } from './tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import { asNonEmptyString, invalidArguments, summarizeSlashDescription, unavailableTool } from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const agentUpdateSlashSpec: SlashCommandSpec = {
   command: '/update-agent',

@@ -19,7 +19,7 @@ import type {
   CreatePluginInput,
   ToolExecutionResult
 } from '@familyco/core';
-import type { ServerToolDefinition } from '../../tools/tool.types.js';
+import type { ServerToolDefinition } from '../tools/tool.types.js';
 
 /** Shape of the `familyco` field inside a plugin's package.json */
 interface FamilyCoPluginManifest {
@@ -308,6 +308,8 @@ function buildServerToolFromPluginTool(
     name: toolName,
     description,
     parameters: toolDef.parameters as ServerToolDefinition['parameters'],
+    enabledByDefault: toolDef.enabledByDefault,
+    customFields: toolDef.customFields,
     async execute(argumentsMap, _context): Promise<ToolExecutionResult> {
       const current = pluginRegistry.get(plugin.id);
       if (!current || current.state !== 'enabled') {

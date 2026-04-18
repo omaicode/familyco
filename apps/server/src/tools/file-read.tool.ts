@@ -1,7 +1,7 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
 import { readTextFile, resolveWorkspacePath } from './file-tool.helpers.js';
-import type { ServerToolDefinition, SlashCommandSpec } from './tool.types.js';
+import type { ServerToolDefinition, SlashCommandSpec } from '../modules/tools/tool.types.js';
 
 export const fileReadSlashSpec: SlashCommandSpec = {
   command: '/read-file',

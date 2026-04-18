@@ -59,6 +59,10 @@ export class PrismaAgentRepository implements AgentRepository {
     return agents.map(toAgentProfile);
   }
 
+  count(): Promise<number> {
+    return this.prisma.agent.count();
+  }
+
   async pause(id: string): Promise<AgentProfile> {
     return this.setStatus(id, 'paused');
   }

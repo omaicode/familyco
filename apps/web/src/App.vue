@@ -4,7 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard, MessagesSquare, Bot, FolderKanban, ListChecks,
   Inbox, ShieldCheck, Settings, Wallet, Puzzle,
-  Wifi, WifiOff, RefreshCw, AlertTriangle, BookOpen
+  Wifi, WifiOff, RefreshCw, AlertTriangle, BookOpen, Wrench
 } from 'lucide-vue-next';
 
 import { uiRuntime, applyRuntimeTheme } from './runtime';
@@ -14,6 +14,7 @@ import AppTopbar from './components/AppTopbar.vue';
 import FcToastViewport from './components/toast/FcToastViewport.vue';
 import AgentActivityWidget from './components/AgentActivityWidget.vue';
 import { useI18n } from './composables/useI18n';
+import { useFounderNotifications } from './composables/useFounderNotifications';
 
 type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -27,6 +28,7 @@ interface SidebarCounts {
 const route = useRoute();
 const router = useRouter();
 const { t, coerceSupportedLocale } = useI18n();
+useFounderNotifications();
 
 // ── Connection state ──────────────────────────────────────
 const serverReachable = ref(uiRuntime.stores.app.state.connection.isServerReachable);
@@ -56,6 +58,7 @@ const navIcons: Record<string, typeof LayoutDashboard> = {
   '/audit':     ShieldCheck,
   '/budget':    Wallet,
   '/skills':    BookOpen,
+  '/tools':     Wrench,
   '/plugins':   Puzzle,
   '/settings':  Settings,
 };
@@ -75,7 +78,7 @@ const navGroups = [
   },
   {
     label: 'System',
-    items: uiRuntime.navigation.filter(n => ['/skills', '/plugins', '/settings'].includes(n.path)),
+    items: uiRuntime.navigation.filter(n => ['/skills', '/tools', '/plugins', '/settings'].includes(n.path)),
   },
 ];
 

@@ -4,15 +4,17 @@ import type {
   AiAdapterRegistry,
   ApprovalService,
   AuditService,
+  EventBus,
   InboxService,
   ProjectService,
   QueueService,
   SettingsService,
   TaskService,
   ToolExecutionInput,
-  ToolExecutionResult
+  ToolExecutionResult,
+  PluginToolCustomFieldDefinition
 } from '@familyco/core';
-import type { SkillsService } from '../modules/skills/skills.service.js';
+import type { SkillsService } from '../skills/skills.service.js';
 
 export interface DefaultToolExecutorDeps {
   agentService?: AgentService;
@@ -25,6 +27,7 @@ export interface DefaultToolExecutorDeps {
   inboxService?: InboxService;
   approvalService?: ApprovalService;
   queueService?: QueueService;
+  eventBus?: EventBus;
   /** Executing agent's ID — set during heartbeat runs to scope dispatch. */
   agentId?: string;
   /** Optional tool allowlist for specialized execution contexts such as heartbeat runs. */
@@ -45,6 +48,8 @@ export interface ToolDefinitionSummary {
   name: string;
   description: string;
   parameters: ToolParameterDefinition[];
+  enabledByDefault?: boolean;
+  customFields?: Readonly<Record<string, PluginToolCustomFieldDefinition>>;
 }
 
 export interface ServerToolContext extends DefaultToolExecutorDeps {
@@ -68,5 +73,7 @@ export interface ServerToolDefinition {
   readonly description: string;
   readonly parameters: readonly ToolParameterDefinition[];
   readonly slashSpec?: SlashCommandSpec;
+  readonly enabledByDefault?: boolean;
+  readonly customFields?: Readonly<Record<string, PluginToolCustomFieldDefinition>>;
   execute(argumentsMap: Record<string, unknown>, context: ServerToolContext): Promise<ToolExecutionResult>;
 }

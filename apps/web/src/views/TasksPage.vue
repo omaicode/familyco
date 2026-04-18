@@ -35,6 +35,8 @@ import TaskFiltersModal from '../components/tasks/TaskFiltersModal.vue';
 import TaskKanbanColumn from '../components/tasks/TaskKanbanColumn.vue';
 import TaskListTable from '../components/tasks/TaskListTable.vue';
 import { useI18n } from '../composables/useI18n';
+import { useToast } from '../plugins/toast.plugin';
+import { parseApiError } from '../utils/api-error';
 
 type TaskStatus = TaskListItem['status'];
 type TaskPriority = TaskListItem['priority'];
@@ -51,6 +53,7 @@ interface FilterState {
 }
 
 const { t } = useI18n();
+const toast = useToast();
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
   urgent: 0,
@@ -131,9 +134,34 @@ const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim
 
 const projectOptions = computed(() => taskState.value.data.projects);
 const assigneeOptions = computed(() => taskState.value.data.agents.filter((agent) => agent.status !== 'terminated'));
+const defaultExecutiveAssigneeId = computed(() => {
+  const executives = assigneeOptions.value
+    .filter((agent) => agent.level === 'L0')
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+
+  return executives[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
+});
 const creatorOptions = computed(() =>
   taskState.value.data.agents.filter((agent) => agent.status !== 'terminated' && agent.level !== 'L2')
 );
+
+const resolveTaskMutationErrorMessage = (error: unknown): string => {
+  const parsed = parseApiError(error);
+
+  if (parsed.code === 'TASK_PROJECT_REQUIRED') {
+    return t('Each task must belong to a project.');
+  }
+
+  if (parsed.code === 'TASK_ASSIGNEE_REQUIRED') {
+    return t('Each task must have an assignee agent.');
+  }
+
+  if (parsed.code === 'PROJECT_NOT_FOUND') {
+    return t('Selected project was not found. Please refresh and try again.');
+  }
+
+  return parsed.message;
+};
 
 const commentAuthorOptions = computed(() => [
   { id: 'founder', label: t('Founder (Human)'), type: 'human' as const },
@@ -209,7 +237,7 @@ const resetDraft = (): void => {
   draft.title = '';
   draft.description = '';
   draft.projectId = projectOptions.value[0]?.id ?? '';
-  draft.assigneeAgentId = '';
+  draft.assigneeAgentId = defaultExecutiveAssigneeId.value;
   draft.createdBy = creatorOptions.value[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
   draft.priority = 'medium';
 };
@@ -244,6 +272,10 @@ const reload = async (): Promise<void> => {
 
     if (!draft.createdBy || !assigneeOptions.value.some((agent) => agent.id === draft.createdBy)) {
       draft.createdBy = creatorOptions.value[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
+    }
+
+    if (!draft.assigneeAgentId || !assigneeOptions.value.some((agent) => agent.id === draft.assigneeAgentId)) {
+      draft.assigneeAgentId = defaultExecutiveAssigneeId.value;
     }
   } finally {
     isRefreshing.value = false;
@@ -387,14 +419,25 @@ const createTask = async (): Promise<void> => {
     return;
   }
 
+  if (!draft.projectId) {
+    setFeedback('error', t('Select a project before creating the task.'));
+    return;
+  }
+
+  const assigneeAgentId = draft.assigneeAgentId || defaultExecutiveAssigneeId.value;
+  if (!assigneeAgentId) {
+    setFeedback('error', t('Select an assignee agent before creating the task.'));
+    return;
+  }
+
   isCreating.value = true;
 
   try {
     const result = await uiRuntime.stores.tasks.createTask({
       title: normalizeText(draft.title),
       description: draft.description.trim(),
-      projectId: draft.projectId || undefined,
-      assigneeAgentId: draft.assigneeAgentId || null,
+      projectId: draft.projectId,
+      assigneeAgentId,
       createdBy: draft.createdBy || undefined,
       priority: draft.priority
     });
@@ -408,7 +451,7 @@ const createTask = async (): Promise<void> => {
     resetDraft();
     showCreateForm.value = false;
   } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : 'Failed to create task');
+    setFeedback('error', resolveTaskMutationErrorMessage(error) || t('Failed to create task'));
   } finally {
     isCreating.value = false;
   }
@@ -584,10 +627,26 @@ const closeTaskModal = (): void => {
 };
 
 const saveTaskChanges = async (payload: UpdateTaskPayload): Promise<void> => {
+  const normalizedProjectId = payload.projectId.trim();
+  if (!normalizedProjectId) {
+    setFeedback('error', t('Select a project before saving task changes.'));
+    return;
+  }
+
+  const normalizedAssigneeAgentId = payload.assigneeAgentId?.trim() || defaultExecutiveAssigneeId.value;
+  if (!normalizedAssigneeAgentId) {
+    setFeedback('error', t('Select an assignee agent before saving task changes.'));
+    return;
+  }
+
   isTaskMutating.value = true;
 
   try {
-    const result = await uiRuntime.stores.tasks.updateTask(payload);
+    const result = await uiRuntime.stores.tasks.updateTask({
+      ...payload,
+      projectId: normalizedProjectId,
+      assigneeAgentId: normalizedAssigneeAgentId
+    });
 
     if ('approvalRequired' in result) {
       setFeedback('info', `${t('Task update queued for approval')}${result.reason ? ` — ${result.reason}` : ''}.`);
@@ -600,7 +659,7 @@ const saveTaskChanges = async (payload: UpdateTaskPayload): Promise<void> => {
     setFeedback('success', t('Task updated successfully.'));
     await Promise.all([loadTaskComments(result.id), loadTaskActivity(result.id)]);
   } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : t('Failed to update task'));
+    setFeedback('error', resolveTaskMutationErrorMessage(error) || t('Failed to update task'));
   } finally {
     isTaskMutating.value = false;
   }
@@ -638,15 +697,15 @@ const addTaskComment = async (payload: CreateTaskCommentPayload): Promise<void> 
   try {
     const comment = await uiRuntime.stores.tasks.createTaskComment(payload);
     taskComments.value = [...taskComments.value, comment];
-    setFeedback('success', t('Comment posted.'));
+    toast.success(t('Comment posted.'));
   } catch (error) {
-    setFeedback('error', error instanceof Error ? error.message : t('Failed to post comment'));
+    toast.error(error instanceof Error ? error.message : t('Failed to post comment'));
   } finally {
     commentSubmitting.value = false;
   }
 };
 
-useAutoReload(reload);
+useAutoReload(reload, { intervalMs: 10_000 });
 </script>
 
 <template>
@@ -727,6 +786,7 @@ useAutoReload(reload);
       :comments-loading="commentsLoading"
       :comment-submitting="commentSubmitting"
       :activity-loading="activityLoading"
+      :default-assignee-id="defaultExecutiveAssigneeId"
       :format-relative="formatRelative"
       :get-project-name="getProjectName"
       :get-agent-name="getAgentName"
@@ -791,7 +851,7 @@ useAutoReload(reload);
               <FcInput v-model="draft.title" placeholder="e.g. Review onboarding checklist" />
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">{{ t('Project') }} <span class="fc-label-optional">{{ t('optional') }}</span></label>
+              <label class="fc-label">{{ t('Project') }}</label>
               <FcSelect v-model="draft.projectId">
                 <option v-for="project in projectOptions" :key="project.id" :value="project.id">
                   {{ project.name }}
@@ -799,9 +859,8 @@ useAutoReload(reload);
               </FcSelect>
             </div>
             <div class="fc-form-group">
-              <label class="fc-label">{{ t('Assignee') }} <span class="fc-label-optional">{{ t('defaults to L0') }}</span></label>
+              <label class="fc-label">{{ t('Assignee') }}</label>
               <FcSelect v-model="draft.assigneeAgentId">
-                <option value="">{{ t('Executive agent') }}</option>
                 <option v-for="agent in assigneeOptions" :key="agent.id" :value="agent.id">
                   {{ agent.name }} · {{ agent.role }}
                 </option>
@@ -841,7 +900,7 @@ useAutoReload(reload);
           <div class="fc-toolbar">
             <FcButton
               variant="primary"
-              :disabled="isCreating || !draft.title || !draft.description"
+              :disabled="isCreating || !draft.title || !draft.description || !draft.projectId || !draft.assigneeAgentId"
               @click="createTask"
             >
               <Plus :size="14" />
@@ -1061,36 +1120,31 @@ useAutoReload(reload);
   gap: 32px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding: 4px 6px 12px;  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--fc-primary) 28%, var(--fc-border-subtle))
-    color-mix(in srgb, var(--fc-surface-muted) 72%, transparent);
+  padding: 4px 6px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fc-scrollbar-thumb) var(--fc-scrollbar-track);
 }
 
 .kanban-board::-webkit-scrollbar {
-  height: 12px;
+  height: calc(var(--fc-scrollbar-size) + 2px);
 }
 
 .kanban-board::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--fc-surface-muted) 82%, var(--fc-surface));
+  background: var(--fc-scrollbar-track);
   border-radius: 999px;
 }
 
 .kanban-board::-webkit-scrollbar-thumb {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--fc-primary) 52%, var(--fc-surface-muted)),
-    color-mix(in srgb, var(--fc-info) 36%, var(--fc-primary))
-  );
+  background: var(--fc-scrollbar-thumb);
   border-radius: 999px;
-  border: 2px solid color-mix(in srgb, var(--fc-surface) 90%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .kanban-board::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--fc-primary) 66%, var(--fc-surface-muted)),
-    color-mix(in srgb, var(--fc-info) 48%, var(--fc-primary))
-  );}
+  background: var(--fc-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
 
 @media (max-width: 900px) {
   .task-toolbar {

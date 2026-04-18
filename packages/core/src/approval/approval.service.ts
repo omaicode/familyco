@@ -1,5 +1,6 @@
 import type {
   ApprovalRequest,
+  ApprovalStatus,
   CreateApprovalRequestInput,
   DecideApprovalInput
 } from './approval.entity.js';
@@ -25,6 +26,15 @@ export class ApprovalService {
     return this.repository.list();
   }
 
+  async countApprovalRequests(status?: ApprovalStatus): Promise<number> {
+    if (status && hasCountByStatusRepository(this.repository)) {
+      return this.repository.countByStatus(status);
+    }
+
+    const approvals = await this.repository.list();
+    return status ? approvals.filter((approval) => approval.status === status).length : approvals.length;
+  }
+
   async decideApproval(input: DecideApprovalInput): Promise<ApprovalRequest> {
     const existingRequest = await this.repository.findById(input.id);
     if (!existingRequest) {
@@ -43,4 +53,12 @@ export class ApprovalService {
 
     return updatedRequest;
   }
+}
+
+interface CountByStatusApprovalRepository extends ApprovalRepository {
+  countByStatus(status: ApprovalStatus): Promise<number>;
+}
+
+function hasCountByStatusRepository(repository: ApprovalRepository): repository is CountByStatusApprovalRepository {
+  return typeof (repository as { countByStatus?: unknown }).countByStatus === 'function';
 }

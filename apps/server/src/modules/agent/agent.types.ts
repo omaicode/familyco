@@ -11,7 +11,7 @@ import type {
 import type { ChatEngineService } from './chat-engine.service.js';
 import type { ChatStreamRegistry } from './chat-stream-registry.js';
 import type { ChatAttachmentStore } from './chat-attachment-store.js';
-import type { ToolDefinitionSummary } from '../../tools/tool.types.js';
+import type { ToolDefinitionSummary } from '../tools/tool.types.js';
 import type { ChatConversationService } from './chat-conversation.service.js';
 import type { ChatMessage, ChatSession } from './chat-conversation.types.js';
 

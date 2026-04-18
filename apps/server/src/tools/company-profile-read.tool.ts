@@ -1,7 +1,7 @@
 import type { ToolExecutionResult } from '@familyco/core';
 
-import { asNonEmptyString } from './tool.helpers.js';
-import type { ServerToolDefinition } from './tool.types.js';
+import { asNonEmptyString } from '../modules/tools/tool.helpers.js';
+import type { ServerToolDefinition } from '../modules/tools/tool.types.js';
 
 export interface CompanyProfile {
   companyName: string;
