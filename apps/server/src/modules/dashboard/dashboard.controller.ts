@@ -23,18 +23,18 @@ export function registerDashboardController(app: FastifyInstance, deps: Dashboar
   app.get('/dashboard/sidebar-counts', async (request) => {
     requireMinimumLevel(request, 'L1');
 
-    const [agents, projects, tasks, approvals] = await Promise.all([
-      deps.agentService.listAgents(),
-      deps.projectService.listProjects(),
-      deps.taskService.listTasks(),
-      deps.approvalService.listApprovalRequests()
+    const [agents, projects, tasks, pendingApprovals] = await Promise.all([
+      deps.agentService.countAgents(),
+      deps.projectService.countProjects(),
+      deps.taskService.countTasks({ excludeStatuses: ['done', 'cancelled'] }),
+      deps.approvalService.countApprovalRequests('pending')
     ]);
 
     return dashboardSidebarCountsSchema.parse({
-      agents: agents.length,
-      projects: projects.length,
-      tasks: tasks.length,
-      pendingApprovals: approvals.filter((approval) => approval.status === 'pending').length
+      agents,
+      projects,
+      tasks,
+      pendingApprovals
     });
   });
 

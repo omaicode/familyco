@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { BrowserWindow, Notification, dialog, ipcMain } from 'electron';
 
 import type {
   DesktopInvokeRequestMap,
@@ -79,6 +79,52 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
     return { accepted } satisfies DesktopInvokeResponseMap['desktop:update:install'];
   });
 
+  ipcMain.handle('desktop:notification:show', async (event, payload: DesktopInvokeRequestMap['desktop:notification:show']) => {
+    if (!Notification.isSupported()) {
+      return { accepted: false } satisfies DesktopInvokeResponseMap['desktop:notification:show'];
+    }
+
+    const ownerWindow = BrowserWindow.fromWebContents(event.sender);
+    const route = typeof payload.route === 'string' && payload.route.trim().startsWith('/')
+      ? payload.route.trim()
+      : '/inbox';
+
+    const notification = new Notification({
+      title: payload.title,
+      body: payload.body,
+      urgency: 'normal'
+    });
+
+    notification.on('click', () => {
+      const win = ownerWindow && !ownerWindow.isDestroyed()
+        ? ownerWindow
+        : BrowserWindow.getAllWindows()[0];
+
+      if (win && !win.isDestroyed()) {
+        if (!win.isVisible()) {
+          win.show();
+        }
+
+        if (win.isMinimized()) {
+          win.restore();
+        }
+
+        win.focus();
+      }
+
+      broadcastDesktopSystemEvent({
+        type: 'notification-click',
+        route,
+        ...(typeof payload.notificationId === 'string' && payload.notificationId.length > 0
+          ? { notificationId: payload.notificationId }
+          : {})
+      });
+    });
+
+    notification.show();
+    return { accepted: true } satisfies DesktopInvokeResponseMap['desktop:notification:show'];
+  });
+
   ipcMain.handle('desktop:dialog:open-directory', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
     const result = await dialog.showOpenDialog(win!, {
@@ -138,14 +184,16 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
       return {
         isMaximized: false,
         isFullScreen: false,
-        isMinimized: false
+        isMinimized: false,
+        isVisible: false
       } satisfies DesktopInvokeResponseMap['desktop:window:state'];
     }
 
     return {
       isMaximized: win.isMaximized(),
       isFullScreen: win.isFullScreen(),
-      isMinimized: win.isMinimized()
+      isMinimized: win.isMinimized(),
+      isVisible: win.isVisible()
     } satisfies DesktopInvokeResponseMap['desktop:window:state'];
   });
 };

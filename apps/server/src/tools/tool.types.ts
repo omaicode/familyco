@@ -4,6 +4,7 @@ import type {
   AiAdapterRegistry,
   ApprovalService,
   AuditService,
+  EventBus,
   InboxService,
   ProjectService,
   QueueService,
@@ -25,6 +26,7 @@ export interface DefaultToolExecutorDeps {
   inboxService?: InboxService;
   approvalService?: ApprovalService;
   queueService?: QueueService;
+  eventBus?: EventBus;
   /** Executing agent's ID — set during heartbeat runs to scope dispatch. */
   agentId?: string;
   /** Optional tool allowlist for specialized execution contexts such as heartbeat runs. */

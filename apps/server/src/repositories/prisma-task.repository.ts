@@ -75,6 +75,38 @@ export class PrismaTaskRepository implements TaskRepository {
     return tasks.map((task) => toTask(task as unknown as Parameters<typeof toTask>[0]));
   }
 
+  async count(filters: ListTasksInput & { excludeStatuses?: TaskStatus[] } = {}): Promise<number> {
+    const query = filters.query?.trim();
+
+    if (filters.status && filters.excludeStatuses?.includes(filters.status)) {
+      return 0;
+    }
+
+    return this.prisma.task.count({
+      where: {
+        ...(filters.projectId ? { projectId: filters.projectId } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(!filters.status && filters.excludeStatuses?.length
+          ? {
+              status: {
+                notIn: filters.excludeStatuses
+              }
+            }
+          : {}),
+        ...(filters.priority ? { priority: filters.priority } : {}),
+        ...(filters.assigneeAgentId ? { assigneeAgentId: filters.assigneeAgentId } : {}),
+        ...(query
+          ? {
+              OR: [
+                { title: { contains: query } },
+                { description: { contains: query } }
+              ]
+            }
+          : {})
+      } as never
+    });
+  }
+
   async listByProject(projectId: string): Promise<Task[]> {
     return this.list({ projectId });
   }

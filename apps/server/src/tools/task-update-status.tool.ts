@@ -41,7 +41,10 @@ export const taskUpdateStatusTool: ServerToolDefinition = {
       return invalidArguments('task.update-status', 'taskId and valid status are required');
     }
 
-    const task = await context.taskService.updateTaskStatus(taskId, status);
+    const task = await context.taskService.updateTaskStatus(taskId, status, {
+      source: 'agent',
+      actorId: context.agentId
+    });
     return {
       ok: true,
       toolName: 'task.update-status',

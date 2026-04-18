@@ -34,6 +34,15 @@ export class AgentService {
     return this.repository.list();
   }
 
+  async countAgents(): Promise<number> {
+    if (hasCountRepository(this.repository)) {
+      return this.repository.count();
+    }
+
+    const agents = await this.repository.list();
+    return agents.length;
+  }
+
   async findExecutiveAgent(): Promise<AgentProfile | null> {
     const agents = await this.repository.list();
     return agents.find((agent) =>
@@ -140,6 +149,14 @@ export class AgentService {
       reassignedChildAgentCount: reassignedChildren.length
     };
   }
+}
+
+interface CountCapableAgentRepository extends AgentRepository {
+  count(): Promise<number>;
+}
+
+function hasCountRepository(repository: AgentRepository): repository is CountCapableAgentRepository {
+  return typeof (repository as { count?: unknown }).count === 'function';
 }
 
 function resolveFallbackExecutive(agents: AgentProfile[], target: AgentProfile): AgentProfile | null {

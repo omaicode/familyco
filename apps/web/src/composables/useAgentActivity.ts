@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, ref } from 'vue';
 
-import { uiRuntime } from '../runtime';
+import { subscribeEventsStream } from './useEventsSocket';
 
 export type AgentRunStatus =
   | 'active'
@@ -34,25 +34,9 @@ const MAX_COMPLETED_RETAIN_MS = 30_000;
 const MAX_RUNS = 20;
 
 const runs = ref<ActiveAgentRun[]>([]);
-let socket: WebSocket | null = null;
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let purgeTimer: ReturnType<typeof setInterval> | null = null;
 let refCount = 0;
-
-function buildEventsUrl(): string {
-  const baseURL = uiRuntime.stores.app.state.connection.baseURL;
-  const url = new URL('/api/v1/events', baseURL);
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-
-  const apiKey =
-    (typeof window !== 'undefined' && window.familycoDesktopConfig?.apiKey?.trim()) ||
-    import.meta.env.VITE_API_KEY?.trim();
-  if (apiKey) {
-    url.searchParams.set('apiKey', apiKey);
-  }
-
-  return url.toString();
-}
+let unsubscribeEvents: (() => void) | null = null;
 
 function upsertRun(patch: Partial<ActiveAgentRun> & { sessionId: string }): void {
   const idx = runs.value.findIndex((r) => r.sessionId === patch.sessionId);
@@ -79,15 +63,12 @@ function upsertRun(patch: Partial<ActiveAgentRun> & { sessionId: string }): void
   runs.value = runs.value.map((r, i) => (i === idx ? { ...r, ...patch } : r));
 }
 
-function handleMessage(event: MessageEvent): void {
-  let data: { type?: string; payload?: Record<string, unknown> };
-  try {
-    data = JSON.parse(String(event.data)) as typeof data;
-  } catch {
+function handleEventMessage(data: { type?: string; payload?: unknown }): void {
+  if (!data.payload || typeof data.payload !== 'object') {
     return;
   }
 
-  const p = data.payload ?? {};
+  const p = data.payload as Record<string, unknown>;
 
   if (data.type === 'agent.run.started') {
     upsertRun({
@@ -156,39 +137,6 @@ function handleMessage(event: MessageEvent): void {
   }
 }
 
-function connect(): void {
-  if (socket && socket.readyState < WebSocket.CLOSING) {
-    return;
-  }
-
-  try {
-    const url = buildEventsUrl();
-    socket = new WebSocket(url);
-
-    socket.addEventListener('message', handleMessage);
-    socket.addEventListener('close', () => {
-      socket = null;
-      if (refCount > 0) {
-        reconnectTimer = setTimeout(connect, 5_000);
-      }
-    });
-    socket.addEventListener('error', () => {
-      socket?.close();
-    });
-  } catch {
-    reconnectTimer = setTimeout(connect, 5_000);
-  }
-}
-
-function disconnect(): void {
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  }
-  socket?.close();
-  socket = null;
-}
-
 function startPurge(): void {
   if (purgeTimer) {
     return;
@@ -214,7 +162,7 @@ function stopPurge(): void {
 export function useAgentActivity() {
   refCount += 1;
   if (refCount === 1) {
-    connect();
+    unsubscribeEvents = subscribeEventsStream(handleEventMessage);
     startPurge();
   }
 
@@ -222,7 +170,8 @@ export function useAgentActivity() {
     refCount -= 1;
     if (refCount <= 0) {
       refCount = 0;
-      disconnect();
+      unsubscribeEvents?.();
+      unsubscribeEvents = null;
       stopPurge();
     }
   });

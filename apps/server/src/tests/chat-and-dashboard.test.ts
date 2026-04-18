@@ -366,7 +366,7 @@ test('P2 routes: dashboard summary exposes KPI metrics', async () => {
   assert.equal(projectResponse.statusCode, 201);
   const project = projectResponse.json() as { id: string };
 
-  const taskResponse = await app.inject({
+  const pendingTaskResponse = await app.inject({
     method: 'POST',
     url: '/api/v1/tasks',
     headers: {
@@ -380,7 +380,93 @@ test('P2 routes: dashboard summary exposes KPI metrics', async () => {
     }
   });
 
-  assert.equal(taskResponse.statusCode, 201);
+  assert.equal(pendingTaskResponse.statusCode, 201);
+
+  const doneTaskResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Done KPI Task',
+      description: 'Done task should not be counted in sidebar',
+      projectId: project.id,
+      createdBy: agent.id
+    }
+  });
+
+  assert.equal(doneTaskResponse.statusCode, 201);
+  const doneTask = doneTaskResponse.json() as { id: string };
+
+  const moveDoneToInProgress = await app.inject({
+    method: 'POST',
+    url: `/api/v1/tasks/${doneTask.id}/status`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      status: 'in_progress'
+    }
+  });
+
+  assert.equal(moveDoneToInProgress.statusCode, 200);
+
+  const moveDoneToReview = await app.inject({
+    method: 'POST',
+    url: `/api/v1/tasks/${doneTask.id}/status`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      status: 'review'
+    }
+  });
+
+  assert.equal(moveDoneToReview.statusCode, 200);
+
+  const moveDoneToDone = await app.inject({
+    method: 'POST',
+    url: `/api/v1/tasks/${doneTask.id}/status`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      status: 'done'
+    }
+  });
+
+  assert.equal(moveDoneToDone.statusCode, 200);
+
+  const cancelledTaskResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/tasks',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      title: 'Cancelled KPI Task',
+      description: 'Cancelled task should not be counted in sidebar',
+      projectId: project.id,
+      createdBy: agent.id
+    }
+  });
+
+  assert.equal(cancelledTaskResponse.statusCode, 201);
+  const cancelledTask = cancelledTaskResponse.json() as { id: string };
+
+  const moveToCancelled = await app.inject({
+    method: 'POST',
+    url: `/api/v1/tasks/${cancelledTask.id}/status`,
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      status: 'cancelled'
+    }
+  });
+
+  assert.equal(moveToCancelled.statusCode, 200);
 
   const summaryResponse = await app.inject({
     method: 'GET',
@@ -428,7 +514,7 @@ test('P2 routes: dashboard summary exposes KPI metrics', async () => {
 
   assert.equal(sidebarCounts.agents >= 1, true);
   assert.equal(sidebarCounts.projects >= 1, true);
-  assert.equal(sidebarCounts.tasks >= 1, true);
+  assert.equal(sidebarCounts.tasks, 1);
   assert.equal(typeof sidebarCounts.pendingApprovals, 'number');
 
   await app.close();

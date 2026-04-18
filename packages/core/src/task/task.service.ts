@@ -5,6 +5,7 @@ import type {
   Task,
   TaskPriority,
   TaskReadinessEvaluation,
+  TaskStatusUpdateContext,
   TaskStatus,
   TaskWithReadiness,
   UpdateTaskInput
@@ -67,6 +68,22 @@ export class TaskService {
 
   listProjectTasks(projectId: string): Promise<Task[]> {
     return this.listTasks({ projectId });
+  }
+
+  async countTasks(filters: CountTasksInput = {}): Promise<number> {
+    if (hasCountRepository(this.repository)) {
+      return this.repository.count(filters);
+    }
+
+    const { excludeStatuses = [], ...listFilters } = filters;
+    const tasks = await this.repository.list(listFilters);
+
+    if (excludeStatuses.length === 0) {
+      return tasks.length;
+    }
+
+    const excluded = new Set<TaskStatus>(excludeStatuses);
+    return tasks.filter((task) => !excluded.has(task.status)).length;
   }
 
   async listTasksWithReadiness(filters: ListTasksInput = {}): Promise<TaskWithReadiness[]> {
@@ -157,7 +174,11 @@ export class TaskService {
     return updatedTask;
   }
 
-  async updateTaskStatus(taskId: string, status: TaskStatus): Promise<Task> {
+  async updateTaskStatus(
+    taskId: string,
+    status: TaskStatus,
+    context?: TaskStatusUpdateContext
+  ): Promise<Task> {
     const currentTask = await this.getTask(taskId);
 
     // Idempotent: already in the requested status — return as-is without error.
@@ -173,7 +194,9 @@ export class TaskService {
     const updatedTask = await this.repository.updateStatus(taskId, status);
     this.eventBus?.emit('task.status.updated', {
       taskId: updatedTask.id,
-      status: updatedTask.status
+      status: updatedTask.status,
+      ...(context?.source ? { source: context.source } : {}),
+      ...(context?.actorId ? { actorId: context.actorId } : {})
     });
 
     return updatedTask;
@@ -223,4 +246,16 @@ export class TaskService {
 
     return Promise.all(taskIds.map(async (taskId) => this.updateTaskPriority(taskId, input.priority!)));
   }
+}
+
+export interface CountTasksInput extends ListTasksInput {
+  excludeStatuses?: TaskStatus[];
+}
+
+interface CountCapableTaskRepository extends TaskRepository {
+  count(filters?: CountTasksInput): Promise<number>;
+}
+
+function hasCountRepository(repository: TaskRepository): repository is CountCapableTaskRepository {
+  return typeof (repository as { count?: unknown }).count === 'function';
 }

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
-  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin, FolderOpen, CheckCircle2,
+  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin, FolderOpen, CheckCircle2, Bell,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -19,7 +19,7 @@ import { useToast } from '../plugins/toast.plugin';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
-type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'workspace' | 'system';
+type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'notifications' | 'workspace' | 'system';
 
 // ── State ─────────────────────────────────────────────────
 const router = useRouter();
@@ -62,6 +62,18 @@ const isDesktop = typeof window !== 'undefined' && typeof (window as unknown as 
 const themePreference = ref<ThemePreference>('system');
 const themeSaving = ref(false);
 
+// ── Notifications ──────────────────────────────────────────
+const notificationEnabled = ref(true);
+const notificationChannelInApp = ref(true);
+const notificationChannelBrowser = ref(true);
+const notificationChannelElectronNative = ref(true);
+const notificationTriggerTaskStatusFromAgent = ref(true);
+const notificationTriggerTaskCommentFromAgent = ref(true);
+const notificationTriggerInboxApprovalRequired = ref(true);
+const notificationTriggerBudgetNearLimit = ref(true);
+const notificationsSaving = ref(false);
+const browserNotificationPermission = ref<'default' | 'granted' | 'denied' | 'unsupported'>('default');
+
 // ── System ────────────────────────────────────────────────
 const systemBusy = ref(false);
 const systemInfo = reactive({
@@ -77,12 +89,45 @@ const systemInfo = reactive({
 const parseThemePreference = (v: unknown): ThemePreference | null =>
   (v === 'system' || v === 'light' || v === 'dark') ? v : null;
 
+const parseBooleanSetting = (value: unknown, fallback: boolean): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+
+  return fallback;
+};
+
 const getSetting = (key: string): unknown =>
   uiRuntime.stores.settings.state.data.find(s => s.key === key)?.value;
 
 const setFeedback = (type: 'success' | 'error', text: string) => {
   feedback.value = null;
   toast.show({ type, message: text });
+};
+
+const updateBrowserNotificationPermission = () => {
+  if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+    browserNotificationPermission.value = 'unsupported';
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    browserNotificationPermission.value = 'granted';
+    return;
+  }
+
+  if (Notification.permission === 'denied') {
+    browserNotificationPermission.value = 'denied';
+    return;
+  }
+
+  browserNotificationPermission.value = 'default';
 };
 
 const formatDateTime = (iso: string): string => {
@@ -122,6 +167,18 @@ const reload = async () => {
   const rawMode2 = getSetting('agent.defaultApprovalMode');
   agentDefaultApprovalMode.value = (rawMode2 === 'auto' || rawMode2 === 'review') ? rawMode2 : 'suggest';
 
+  // Notifications
+  notificationEnabled.value = parseBooleanSetting(getSetting('notification.enabled'), true);
+  notificationChannelInApp.value = parseBooleanSetting(getSetting('notification.channel.inApp'), true);
+  notificationChannelBrowser.value = parseBooleanSetting(getSetting('notification.channel.browser'), true);
+  notificationChannelElectronNative.value = parseBooleanSetting(getSetting('notification.channel.electronNative'), true);
+  notificationTriggerTaskStatusFromAgent.value = parseBooleanSetting(getSetting('notification.trigger.taskStatusFromAgent'), true);
+  notificationTriggerTaskCommentFromAgent.value = parseBooleanSetting(getSetting('notification.trigger.taskCommentFromAgent'), true);
+  notificationTriggerInboxApprovalRequired.value = parseBooleanSetting(getSetting('notification.trigger.inboxApprovalRequested'), true);
+  notificationTriggerBudgetNearLimit.value = parseBooleanSetting(getSetting('notification.trigger.budgetNearLimit'), true);
+
+  updateBrowserNotificationPermission();
+
   // Workspace
   workspacePath.value = typeof getSetting('workspace.path') === 'string' ? getSetting('workspace.path') as string : '';
 
@@ -156,6 +213,53 @@ const saveTheme = async () => {
     setFeedback('error', err instanceof Error ? err.message : 'Failed to save appearance');
   } finally {
     themeSaving.value = false;
+  }
+};
+
+// ── Save: notifications ───────────────────────────────────
+const saveNotifications = async () => {
+  notificationsSaving.value = true;
+  feedback.value = null;
+  try {
+    await uiRuntime.api.upsertSetting({ key: 'notification.enabled', value: notificationEnabled.value });
+    await uiRuntime.api.upsertSetting({ key: 'notification.channel.inApp', value: notificationChannelInApp.value });
+    await uiRuntime.api.upsertSetting({ key: 'notification.channel.browser', value: notificationChannelBrowser.value });
+    await uiRuntime.api.upsertSetting({ key: 'notification.channel.electronNative', value: notificationChannelElectronNative.value });
+    await uiRuntime.api.upsertSetting({ key: 'notification.trigger.taskStatusFromAgent', value: notificationTriggerTaskStatusFromAgent.value });
+    await uiRuntime.api.upsertSetting({ key: 'notification.trigger.taskCommentFromAgent', value: notificationTriggerTaskCommentFromAgent.value });
+    await uiRuntime.api.upsertSetting({ key: 'notification.trigger.inboxApprovalRequested', value: notificationTriggerInboxApprovalRequired.value });
+    await uiRuntime.api.upsertSetting({ key: 'notification.trigger.budgetNearLimit', value: notificationTriggerBudgetNearLimit.value });
+
+    await uiRuntime.stores.settings.load();
+    setFeedback('success', t('notification.settings.saveSuccess'));
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : t('notification.settings.saveFailed'));
+  } finally {
+    notificationsSaving.value = false;
+  }
+};
+
+const requestBrowserNotificationPermission = async () => {
+  if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+    return;
+  }
+
+  try {
+    const result = await Notification.requestPermission();
+    browserNotificationPermission.value = result;
+    if (result === 'granted') {
+      setFeedback('success', t('notification.settings.browserPermissionGranted'));
+      return;
+    }
+
+    if (result === 'denied') {
+      setFeedback('error', t('notification.settings.browserPermissionDenied'));
+      return;
+    }
+
+    setFeedback('success', t('notification.settings.browserPermissionDefault'));
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : t('notification.settings.browserPermissionRequestFailed'));
   }
 };
 
@@ -341,7 +445,7 @@ useAutoReload(reload);
       </div>
       <button
         class="fc-btn-secondary"
-        :disabled="themeSaving || companySaving || budgetSaving || agentsSaving || systemBusy"
+        :disabled="themeSaving || companySaving || budgetSaving || agentsSaving || notificationsSaving || systemBusy"
         @click="reload"
       >
         <RefreshCw :size="14" />
@@ -397,6 +501,15 @@ useAutoReload(reload);
         >
           <Palette :size="15" class="st-nav-icon" />
           <span>Appearance</span>
+          <ChevronRight :size="13" class="st-nav-chevron" />
+        </button>
+        <button
+          class="st-nav-item"
+          :class="{ 'st-nav-item-active': activeSection === 'notifications' }"
+          @click="activeSection = 'notifications'"
+        >
+          <Bell :size="15" class="st-nav-icon" />
+          <span>{{ t('notification.settings.nav') }}</span>
           <ChevronRight :size="13" class="st-nav-chevron" />
         </button>
         <button
@@ -668,6 +781,90 @@ useAutoReload(reload);
                 <Save :size="13" />
                 {{ themeSaving ? 'Saving…' : 'Save appearance' }}
               </button>
+            </div>
+          </div>
+
+          <!-- ── Notifications ──────────────────────── -->
+          <div v-else-if="activeSection === 'notifications'" key="notifications">
+            <div class="st-pane-header">
+              <Bell :size="16" class="st-pane-icon" />
+              <div>
+                <h4>{{ t('notification.settings.title') }}</h4>
+                <p>{{ t('notification.settings.subtitle') }}</p>
+              </div>
+            </div>
+
+            <section class="st-system-card" style="margin-bottom: 14px;">
+              <div class="st-system-card-head">
+                <h5>{{ t('notification.settings.masterTitle') }}</h5>
+                <p>{{ t('notification.settings.masterHint') }}</p>
+              </div>
+              <label class="st-notify-option">
+                <input v-model="notificationEnabled" type="checkbox" />
+                <span>{{ t('notification.settings.enableAll') }}</span>
+              </label>
+            </section>
+
+            <section class="st-system-card" style="margin-bottom: 14px;">
+              <div class="st-system-card-head">
+                <h5>{{ t('notification.settings.channelsTitle') }}</h5>
+                <p>{{ t('notification.settings.channelsHint') }}</p>
+              </div>
+              <div class="st-notify-grid">
+                <label class="st-notify-option">
+                  <input v-model="notificationChannelInApp" type="checkbox" :disabled="!notificationEnabled" />
+                  <span>{{ t('notification.settings.channelInApp') }}</span>
+                </label>
+                <label class="st-notify-option">
+                  <input v-model="notificationChannelBrowser" type="checkbox" :disabled="!notificationEnabled" />
+                  <span>{{ t('notification.settings.channelBrowser') }}</span>
+                </label>
+                <label class="st-notify-option">
+                  <input v-model="notificationChannelElectronNative" type="checkbox" :disabled="!notificationEnabled" />
+                  <span>{{ t('notification.settings.channelElectronNative') }}</span>
+                </label>
+              </div>
+
+              <div v-if="!isDesktop" class="st-actions" style="margin-top: 10px;">
+                <FcButton variant="secondary" size="sm" @click="requestBrowserNotificationPermission">
+                  {{ t('notification.settings.requestBrowserPermission') }}
+                </FcButton>
+                <span class="st-hint" style="align-self:center;">
+                  {{ t(`notification.settings.browserPermission.${browserNotificationPermission}`) }}
+                </span>
+              </div>
+            </section>
+
+            <section class="st-system-card" style="margin-bottom: 14px;">
+              <div class="st-system-card-head">
+                <h5>{{ t('notification.settings.triggersTitle') }}</h5>
+                <p>{{ t('notification.settings.triggersHint') }}</p>
+              </div>
+              <div class="st-notify-grid">
+                <label class="st-notify-option">
+                  <input v-model="notificationTriggerTaskStatusFromAgent" type="checkbox" :disabled="!notificationEnabled" />
+                  <span>{{ t('notification.settings.triggerTaskStatusFromAgent') }}</span>
+                </label>
+                <label class="st-notify-option">
+                  <input v-model="notificationTriggerTaskCommentFromAgent" type="checkbox" :disabled="!notificationEnabled" />
+                  <span>{{ t('notification.settings.triggerTaskCommentFromAgent') }}</span>
+                </label>
+                <label class="st-notify-option">
+                  <input v-model="notificationTriggerInboxApprovalRequired" type="checkbox" :disabled="!notificationEnabled" />
+                  <span>{{ t('notification.settings.triggerInboxApprovalRequired') }}</span>
+                </label>
+                <label class="st-notify-option">
+                  <input v-model="notificationTriggerBudgetNearLimit" type="checkbox" :disabled="!notificationEnabled" />
+                  <span>{{ t('notification.settings.triggerBudgetNearLimit') }}</span>
+                </label>
+              </div>
+            </section>
+
+            <div class="st-actions">
+              <FcButton variant="primary" size="sm" :disabled="notificationsSaving" @click="saveNotifications">
+                <Save :size="13" />
+                {{ notificationsSaving ? t('notification.settings.saving') : t('notification.settings.save') }}
+              </FcButton>
             </div>
           </div>
 
@@ -1230,6 +1427,28 @@ useAutoReload(reload);
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+.st-notify-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.st-notify-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--fc-border-subtle);
+  background: color-mix(in srgb, var(--fc-surface) 95%, transparent);
+  font-size: 0.875rem;
+  color: var(--fc-text-main);
+}
+
+.st-notify-option input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
 }
 
 .st-system-card-danger {

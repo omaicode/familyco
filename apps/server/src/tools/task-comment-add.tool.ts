@@ -83,6 +83,15 @@ export const taskCommentAddTool: ServerToolDefinition = {
       }
     });
 
+    context.eventBus?.emit('task.comment.added', {
+      taskId,
+      authorId,
+      authorType: 'agent',
+      authorLabel: authorLabel ?? authorId,
+      body,
+      commentId: record.id
+    });
+
     return {
       ok: true,
       toolName: 'task.comment.add',

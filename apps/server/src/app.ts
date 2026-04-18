@@ -60,6 +60,7 @@ import { registerSkillsController } from './modules/skills/index.js';
 import { registerSettingsController } from './modules/settings/index.js';
 import { registerSetupController } from './modules/setup/index.js';
 import { registerTaskController } from './modules/task/index.js';
+import { NotificationService } from './modules/notification/index.js';
 import { ApiKeyService } from './modules/auth/api-key.service.js';
 import {
   authenticateApiRequest,
@@ -217,6 +218,13 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const agentRunService = new AgentRunService(agentRunRepository);
   const settingsService = new SettingsService(settingsRepository);
   const taskService = new TaskService(taskRepository, eventBus);
+  const notificationService = new NotificationService({
+    eventBus,
+    inboxService,
+    settingsService,
+    taskService
+  });
+  notificationService.register();
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
   const pluginRegistry = new PluginRegistry();
@@ -229,7 +237,11 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const adapterRegistry = options.adapterRegistry ?? createAdapterRegistry({
     logger: app.log,
     auditService,
-    budgetUsageService
+    budgetUsageService,
+    settingsService,
+    onBudgetNearLimit: async (input) => {
+      await notificationService.notifyBudgetNearLimit(input);
+    }
   });
   const toolExecutor = new DefaultToolExecutor({
     agentService,
@@ -240,7 +252,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     adapterRegistry,
     auditService,
     inboxService,
-    approvalService
+    approvalService,
+    eventBus
     // queueService wired in after construction to avoid circular dependency
   });
   const pluginLoader = new PluginLoaderService({
@@ -716,7 +729,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         approvalService,
         auditService,
         approvalGuard,
-        queueService
+        queueService,
+        eventBus
       });
       registerEventGateway(api, { eventBus });
     },

@@ -1,6 +1,11 @@
 import type { Logger } from 'pino';
 
-import { AiAdapterRegistry, type AuditService, type BudgetUsageService } from '@familyco/core';
+import {
+  AiAdapterRegistry,
+  type AuditService,
+  type BudgetUsageService,
+  type SettingsService
+} from '@familyco/core';
 
 import { ClaudeAdapter } from './claude.adapter.js';
 import type { AdapterLogger } from './hooks/logging.hook.js';
@@ -12,6 +17,13 @@ export interface AdapterRegistryDeps {
   logger: Logger | AdapterLogger;
   auditService: AuditService;
   budgetUsageService: BudgetUsageService;
+  settingsService: SettingsService;
+  onBudgetNearLimit?: (input: {
+    usedPercent: number;
+    monthlyLimitUSD: number;
+    alertThresholdPercent: number;
+    totalCostUSD: number;
+  }) => Promise<void>;
 }
 
 export function createAdapterRegistry(deps?: AdapterRegistryDeps): AiAdapterRegistry {
@@ -21,7 +33,14 @@ export function createAdapterRegistry(deps?: AdapterRegistryDeps): AiAdapterRegi
 
   if (deps) {
     registry.registerHook(new LoggingHook(deps.logger));
-    registry.registerHook(new TokenUsageHook(deps.auditService, deps.budgetUsageService));
+    registry.registerHook(
+      new TokenUsageHook(
+        deps.auditService,
+        deps.budgetUsageService,
+        deps.settingsService,
+        deps.onBudgetNearLimit
+      )
+    );
   }
 
   return registry;

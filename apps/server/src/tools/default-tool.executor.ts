@@ -146,8 +146,12 @@ export class DefaultToolExecutor implements ToolExecutor {
   }
 
   /** Create a copy of this executor scoped to a specific workspace directory. */
-  fork(workspaceRoot: string): DefaultToolExecutor {
-    const forked = new DefaultToolExecutor({ ...this.deps, workspaceRoot });
+  fork(workspaceRoot?: string, agentId?: string): DefaultToolExecutor {
+    const forked = new DefaultToolExecutor({
+      ...this.deps,
+      ...(workspaceRoot ? { workspaceRoot } : {}),
+      agentId: agentId ?? this.deps.agentId
+    });
     for (const [, tool] of this.pluginTools) {
       forked.pluginTools.set(tool.name, tool);
     }

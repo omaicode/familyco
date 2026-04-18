@@ -70,6 +70,18 @@ export class InMemoryTaskRepository implements TaskRepository {
       .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
   }
 
+  async count(filters: ListTasksInput & { excludeStatuses?: TaskStatus[] } = {}): Promise<number> {
+    const { excludeStatuses = [], ...listFilters } = filters;
+    const tasks = await this.list(listFilters);
+
+    if (excludeStatuses.length === 0) {
+      return tasks.length;
+    }
+
+    const excluded = new Set<TaskStatus>(excludeStatuses);
+    return tasks.filter((task) => !excluded.has(task.status)).length;
+  }
+
   async listByProject(projectId: string): Promise<Task[]> {
     return this.list({ projectId });
   }

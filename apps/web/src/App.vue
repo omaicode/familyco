@@ -14,6 +14,7 @@ import AppTopbar from './components/AppTopbar.vue';
 import FcToastViewport from './components/toast/FcToastViewport.vue';
 import AgentActivityWidget from './components/AgentActivityWidget.vue';
 import { useI18n } from './composables/useI18n';
+import { useFounderNotifications } from './composables/useFounderNotifications';
 
 type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -27,6 +28,7 @@ interface SidebarCounts {
 const route = useRoute();
 const router = useRouter();
 const { t, coerceSupportedLocale } = useI18n();
+useFounderNotifications();
 
 // ── Connection state ──────────────────────────────────────
 const serverReachable = ref(uiRuntime.stores.app.state.connection.isServerReachable);

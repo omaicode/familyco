@@ -86,6 +86,10 @@ function shouldIncludeInFounderInbox(message: InboxMessage): boolean {
     return true;
   }
 
+  if (message.type === 'alert') {
+    return true;
+  }
+
   if (message.senderId === 'founder') {
     return false;
   }

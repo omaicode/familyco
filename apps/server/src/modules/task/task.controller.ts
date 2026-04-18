@@ -4,6 +4,7 @@ import {
   type ApprovalService,
   type AuditRecord,
   type AuditService,
+  type EventBus,
   type ProjectService,
   type QueueService,
   type SettingsService,
@@ -36,6 +37,7 @@ export interface TaskModuleDeps {
   auditService: AuditService;
   approvalGuard: ApprovalGuard;
   queueService: QueueService;
+  eventBus?: EventBus;
 }
 
 export function registerTaskController(app: FastifyInstance, deps: TaskModuleDeps): void {
@@ -211,6 +213,15 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       }
     });
 
+    deps.eventBus?.emit('task.comment.added', {
+      taskId: id,
+      authorId: body.authorId,
+      authorType: body.authorType,
+      authorLabel: body.authorLabel ?? body.authorId,
+      body: body.body,
+      commentId: comment.id
+    });
+
     reply.code(201);
     return toTaskComment(comment);
   });
@@ -342,7 +353,10 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
       };
     }
 
-    const updatedTask = await deps.taskService.updateTaskStatus(id, status);
+    const updatedTask = await deps.taskService.updateTaskStatus(id, status, {
+      source: 'human',
+      actorId: request.authContext?.subject ?? 'founder'
+    });
     await deps.auditService.write({
       actorId: request.authContext?.subject ?? 'system',
       action: 'task.status.update',

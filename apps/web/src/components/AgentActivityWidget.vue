@@ -260,8 +260,8 @@ function elapsedSeconds(run: ActiveAgentRun): string {
 }
 
 .fc-activity-run--active {
-  background: color-mix(in srgb, var(--fc-info, #6bb7ff) 14%, var(--fc-activity-bg) 86%);
-  border-color: color-mix(in srgb, var(--fc-info, #6bb7ff) 32%, var(--fc-activity-bg) 68%);
+  background: color-mix(in srgb, var(--fc-info, #fff) 14%, var(--fc-activity-bg) 86%);
+  border-color: color-mix(in srgb, var(--fc-info, #fff) 32%, var(--fc-activity-bg) 68%);
 }
 
 .fc-activity-run--completed {

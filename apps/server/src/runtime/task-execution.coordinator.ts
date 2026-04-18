@@ -244,8 +244,8 @@ export class TaskExecutionCoordinator {
 
     // Create a per-task executor scoped to the project's workspace directory
     const taskExecutor = projectWorkspaceDir
-      ? this.options.toolExecutor.fork(projectWorkspaceDir)
-      : this.options.toolExecutor;
+      ? this.options.toolExecutor.fork(projectWorkspaceDir, agent.id)
+      : this.options.toolExecutor.fork(undefined, agent.id);
 
     const systemPrompt = renderTaskSystemPrompt({
       agentName: agent.name,
@@ -373,7 +373,12 @@ export class TaskExecutionCoordinator {
       // Never override an explicit 'review', 'blocked', 'done', or other final status the agent set.
       const freshTask = await this.options.taskService.getTask(task.id).catch(() => null);
       if (freshTask?.status === 'in_progress') {
-        await this.options.taskService.updateTaskStatus(task.id, 'done').catch(() => undefined);
+        await this.options.taskService
+          .updateTaskStatus(task.id, 'done', {
+            source: 'agent',
+            actorId: agent.id
+          })
+          .catch(() => undefined);
       }
     } else if (sessionStatus === 'waiting_for_input') {
       await this.handleInfoEscalation(agent, task, loopResult.finalReply);

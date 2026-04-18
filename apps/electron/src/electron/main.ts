@@ -126,7 +126,8 @@ const emitDesktopWindowState = (): void => {
     type: 'window-state',
     isMaximized: mainWindow.isMaximized(),
     isFullScreen: mainWindow.isFullScreen(),
-    isMinimized: mainWindow.isMinimized()
+    isMinimized: mainWindow.isMinimized(),
+    isVisible: mainWindow.isVisible()
   });
 };
 
@@ -144,6 +145,7 @@ const showMainWindow = (): void => {
   }
 
   mainWindow.focus();
+  emitDesktopWindowState();
 };
 
 const resolveTrayIcon = async (): Promise<Electron.NativeImage> => {
@@ -240,6 +242,8 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
   mainWindow.on('leave-full-screen', emitDesktopWindowState);
   mainWindow.on('restore', emitDesktopWindowState);
   mainWindow.on('minimize', emitDesktopWindowState);
+  mainWindow.on('show', emitDesktopWindowState);
+  mainWindow.on('hide', emitDesktopWindowState);
 
   mainWindow.on('close', (event) => {
     if (isQuitRequested) {
@@ -266,6 +270,7 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
     }
 
     mainWindow?.hide();
+    emitDesktopWindowState();
     void ensureTray();
   });
 };
