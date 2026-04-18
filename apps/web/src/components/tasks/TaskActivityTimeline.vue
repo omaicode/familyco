@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TaskActivityItem } from '@familyco/ui';
+import type { TaskActivityItem, TaskWorkspaceArtifact } from '@familyco/ui';
 import { computed, ref, watch } from 'vue';
 import {
   CheckCircle2,
@@ -22,6 +22,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const expandedIds = ref<Record<string, boolean>>({});
+const selectedArtifact = ref<TaskWorkspaceArtifact | null>(null);
 
 watch(
   () => props.activity,
@@ -121,6 +122,14 @@ function previewText(item: TaskActivityItem): string {
 function isExpanded(itemId: string): boolean {
   return expandedIds.value[itemId] === true;
 }
+
+function openArtifactModal(artifact: TaskWorkspaceArtifact): void {
+  selectedArtifact.value = artifact;
+}
+
+function closeArtifactModal(): void {
+  selectedArtifact.value = null;
+}
 </script>
 
 <template>
@@ -177,6 +186,22 @@ function isExpanded(itemId: string): boolean {
                 </span>
                 <span class="activity-detail-value" v-else>{{ t('No tools recorded') }}</span>
               </div>
+              <div class="activity-detail-row activity-detail-row--artifact-list">
+                <span class="activity-detail-label">{{ t('Files created') }}:</span>
+                <span class="activity-detail-value" v-if="item.workspaceArtifacts && item.workspaceArtifacts.length > 0">
+                  <button
+                    v-for="artifact in item.workspaceArtifacts"
+                    :key="`${item.id}-${artifact.path}`"
+                    type="button"
+                    class="fc-btn-ghost fc-btn-sm activity-artifact-btn"
+                    @click="openArtifactModal(artifact)"
+                  >
+                    <span>{{ artifact.path }}</span>
+                    <span class="activity-artifact-action">{{ artifact.action === 'created' ? t('Created') : t('Updated') }}</span>
+                  </button>
+                </span>
+                <span class="activity-detail-value" v-else>{{ t('No files recorded') }}</span>
+              </div>
             </div>
 
             <div v-else-if="item.kind === 'approval.created'" class="activity-detail-list">
@@ -205,6 +230,26 @@ function isExpanded(itemId: string): boolean {
         </div>
       </li>
     </ol>
+
+    <div v-if="selectedArtifact" class="activity-file-modal-overlay" @click.self="closeArtifactModal">
+      <div class="activity-file-modal" role="dialog" aria-modal="true">
+        <div class="activity-file-modal-header">
+          <div>
+            <div class="activity-file-modal-title">{{ t('File snapshot') }}</div>
+            <div class="activity-file-modal-path">{{ selectedArtifact.path }}</div>
+          </div>
+          <button type="button" class="fc-btn-ghost fc-btn-sm" @click="closeArtifactModal">{{ t('Close') }}</button>
+        </div>
+
+        <div class="activity-file-modal-body">
+          <pre v-if="selectedArtifact.contentPreview && selectedArtifact.contentPreview.length > 0" class="activity-file-content">{{ selectedArtifact.contentPreview }}</pre>
+          <div v-else class="activity-file-empty">{{ t('No file content captured.') }}</div>
+          <div v-if="selectedArtifact.contentTruncated" class="activity-file-truncated-note">
+            {{ t('Snapshot is truncated. Open the file in workspace for full content.') }}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -335,6 +380,10 @@ function isExpanded(itemId: string): boolean {
   font-size: 12px;
 }
 
+.activity-detail-row--artifact-list {
+  align-items: flex-start;
+}
+
 .activity-detail-label {
   color: var(--fc-text-muted, #8b8b8b);
   font-weight: 600;
@@ -343,6 +392,90 @@ function isExpanded(itemId: string): boolean {
 .activity-detail-value {
   color: var(--fc-text-secondary, #aaa);
   word-break: break-word;
+}
+
+.activity-artifact-btn {
+  margin: 0 6px 6px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.activity-artifact-action {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.activity-file-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 120;
+}
+
+.activity-file-modal {
+  width: min(900px, 100%);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--fc-surface, #101214);
+  border: 1px solid var(--fc-border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+}
+
+.activity-file-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--fc-border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.activity-file-modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fc-text-primary, #e8e8e8);
+}
+
+.activity-file-modal-path {
+  font-size: 12px;
+  color: var(--fc-text-secondary, #aaa);
+  word-break: break-word;
+}
+
+.activity-file-modal-body {
+  padding: 14px;
+  overflow: auto;
+}
+
+.activity-file-content {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fc-text-secondary, #ccc);
+  background: var(--fc-surface-muted, rgba(255, 255, 255, 0.04));
+  border-radius: 10px;
+  border: 1px solid var(--fc-border-subtle, rgba(255, 255, 255, 0.08));
+  padding: 12px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.activity-file-empty {
+  font-size: 12px;
+  color: var(--fc-text-muted, #8b8b8b);
+}
+
+.activity-file-truncated-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--fc-text-muted, #8b8b8b);
 }
 
 .task-comments-empty {

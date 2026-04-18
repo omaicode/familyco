@@ -58,6 +58,17 @@ export interface TaskExecutionCoordinatorOptions {
   companyName?: string;
 }
 
+interface TaskWorkspaceArtifact {
+  path: string;
+  action: 'created' | 'updated';
+  contentPreview?: string;
+  contentTruncated?: boolean;
+}
+
+const MAX_ARTIFACT_CONTENT_PREVIEW = 12_000;
+const MAX_ARTIFACT_COMMENT_PREVIEW = 2_000;
+const MAX_ARTIFACTS_IN_COMMENT = 8;
+
 export class TaskExecutionCoordinator {
   constructor(private readonly options: TaskExecutionCoordinatorOptions) {}
 
@@ -281,6 +292,7 @@ export class TaskExecutionCoordinator {
     });
 
     const toolsUsed: string[] = [];
+    const workspaceArtifacts: TaskWorkspaceArtifact[] = [];
     let stepCount = 0;
 
     const loopResult = await runAgentLoop({
@@ -306,6 +318,7 @@ export class TaskExecutionCoordinator {
           toolName: toolInput.toolName,
           arguments: toolInput.arguments
         });
+        captureWorkspaceArtifactFromToolCall(workspaceArtifacts, toolInput, result);
         toolsUsed.push(toolInput.toolName);
         return { ok: result.ok, output: result.output, error: result.error };
       }
@@ -354,9 +367,12 @@ export class TaskExecutionCoordinator {
         checkpointIndex: updatedSession.checkpointIndex,
         status: updatedSession.status,
         toolsUsed,
-        summary: updatedSession.summary
+        summary: updatedSession.summary,
+        ...(workspaceArtifacts.length > 0 ? { workspaceArtifacts } : {})
       }
     });
+
+    await this.writeWorkspaceArtifactsComment(agent, task, workspaceArtifacts);
 
     this.options.eventBus?.emit('agent.run.completed', {
       agentId: agent.id,
@@ -464,6 +480,38 @@ export class TaskExecutionCoordinator {
 
     return skills?.map((s) => ({ id: s.id, name: s.name, description: s.description, path: s.path })) ?? [];
   }
+
+  private async writeWorkspaceArtifactsComment(
+    agent: AgentProfile,
+    task: Task,
+    workspaceArtifacts: TaskWorkspaceArtifact[]
+  ): Promise<void> {
+    if (workspaceArtifacts.length === 0) {
+      return;
+    }
+
+    const commentBody = buildWorkspaceArtifactsCommentBody(workspaceArtifacts);
+    const comment = await this.options.auditService.write({
+      actorId: agent.id,
+      action: 'task.comment.added',
+      targetId: task.id,
+      payload: {
+        body: commentBody,
+        authorType: 'agent',
+        authorLabel: agent.name,
+        source: 'task.session.artifact-summary'
+      }
+    });
+
+    this.options.eventBus?.emit('task.comment.added', {
+      taskId: task.id,
+      authorId: agent.id,
+      authorType: 'agent',
+      authorLabel: agent.name,
+      body: commentBody,
+      commentId: comment.id
+    });
+  }
 }
 
 function resolveSessionStatus(toolsUsed: string[]): TaskSessionStatus {
@@ -491,4 +539,111 @@ function serializeOutput(output: unknown): string {
   } catch {
     return String(output).slice(0, 800);
   }
+}
+
+function captureWorkspaceArtifactFromToolCall(
+  workspaceArtifacts: TaskWorkspaceArtifact[],
+  toolInput: { toolName: string; arguments: Record<string, unknown> },
+  result: { ok: boolean; output?: unknown }
+): void {
+  if (toolInput.toolName !== 'file.write' || !result.ok) {
+    return;
+  }
+
+  const output = isRecord(result.output) ? result.output : null;
+  const path = typeof output?.path === 'string' && output.path.trim().length > 0
+    ? output.path.trim()
+    : typeof toolInput.arguments.path === 'string' && toolInput.arguments.path.trim().length > 0
+      ? toolInput.arguments.path.trim()
+      : '';
+
+  if (!path) {
+    return;
+  }
+
+  const overwritten = output?.overwritten === true;
+  const rawContent = typeof toolInput.arguments.content === 'string' ? toolInput.arguments.content : '';
+  const normalizedContent = rawContent.trim();
+  const contentTruncated = normalizedContent.length > MAX_ARTIFACT_CONTENT_PREVIEW;
+  const contentPreview = normalizedContent.length > 0
+    ? normalizedContent.slice(0, MAX_ARTIFACT_CONTENT_PREVIEW)
+    : undefined;
+
+  const artifact: TaskWorkspaceArtifact = {
+    path,
+    action: overwritten ? 'updated' : 'created',
+    ...(contentPreview ? { contentPreview } : {}),
+    ...(contentTruncated ? { contentTruncated: true } : {})
+  };
+
+  const existingIndex = workspaceArtifacts.findIndex((item) => item.path === artifact.path);
+  if (existingIndex < 0) {
+    workspaceArtifacts.push(artifact);
+    return;
+  }
+
+  workspaceArtifacts[existingIndex] = artifact;
+}
+
+function buildWorkspaceArtifactsCommentBody(workspaceArtifacts: TaskWorkspaceArtifact[]): string {
+  const created = workspaceArtifacts.filter((artifact) => artifact.action === 'created');
+  const updated = workspaceArtifacts.filter((artifact) => artifact.action === 'updated');
+
+  const lines: string[] = [
+    '## Summary',
+    'Updated workspace artifacts in this execution session.',
+    '',
+    '## Files Created'
+  ];
+
+  if (created.length === 0) {
+    lines.push('- None');
+  } else {
+    for (const artifact of created) {
+      lines.push(`- ${artifact.path}`);
+    }
+  }
+
+  lines.push('', '## Files Updated');
+  if (updated.length === 0) {
+    lines.push('- None');
+  } else {
+    for (const artifact of updated) {
+      lines.push(`- ${artifact.path}`);
+    }
+  }
+
+  lines.push('', '## File Content Snapshots');
+  const artifactsWithContent = workspaceArtifacts
+    .filter((artifact) => typeof artifact.contentPreview === 'string' && artifact.contentPreview.trim().length > 0)
+    .slice(0, MAX_ARTIFACTS_IN_COMMENT);
+
+  if (artifactsWithContent.length === 0) {
+    lines.push('- No snapshot captured.');
+  } else {
+    for (const artifact of artifactsWithContent) {
+      const preview = sanitizeMarkdownCodeFence(
+        artifact.contentPreview!.slice(0, MAX_ARTIFACT_COMMENT_PREVIEW).trim()
+      );
+      lines.push(`### ${artifact.path}`);
+      lines.push('```markdown');
+      lines.push(preview.length > 0 ? preview : '(empty file content)');
+      lines.push('```');
+      if (artifact.contentTruncated || artifact.contentPreview!.length > MAX_ARTIFACT_COMMENT_PREVIEW) {
+        lines.push('_Snapshot truncated in comment. Open Task Activity to view full captured content._');
+      }
+      lines.push('');
+    }
+  }
+
+  lines.push('## Blockers', '- None');
+  return lines.join('\n');
+}
+
+function sanitizeMarkdownCodeFence(value: string): string {
+  return value.replace(/```/g, '``\\`');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

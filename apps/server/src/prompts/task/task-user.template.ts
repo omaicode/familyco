@@ -134,7 +134,7 @@ export function renderTaskUserPrompt(input: TaskUserPromptInput): string {
     '**Step 3 — Do the work:** Use available tools to make real progress on the task. Read relevant files, update records, or produce required outputs.',
     '  - Before making irreversible progress, respect the dependency and readiness context above.',
     '',
-    `**Step 4 — Add a progress comment:** Call \`task.comment.add\` with taskId=\`${input.taskId}\` and authorId=\`${input.assigneeAgentId ?? 'agent'}\`. The comment body MUST use structured Markdown: a \`## Summary\` section, a \`## Actions Taken\` bullet list, a \`## Decisions Made\` bullet list, and a \`## Blockers\` section. Use blank lines between sections. Do not write a single wall of text.`,
+    `**Step 4 — Add a progress comment:** Call \`task.comment.add\` with taskId=\`${input.taskId}\` and authorId=\`${input.assigneeAgentId ?? 'agent'}\`. The comment body MUST use structured Markdown: a \`## Summary\` section, a \`## Actions Taken\` bullet list, a \`## Decisions Made\` bullet list, a \`## Files Created\` bullet list (required when any file operation happened), and a \`## Blockers\` section. Use blank lines between sections. Do not write a single wall of text.`,
     '',
     `**Step 5 — Set final status:** Call \`task.update-status\` with taskId=\`${input.taskId}\` and status set to one of:`,
     '  - `review` if the task is fully complete',

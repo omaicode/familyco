@@ -509,12 +509,14 @@ function toTaskActivity(record: AuditRecord) {
       const toolsUsed = Array.isArray(payload.toolsUsed)
         ? payload.toolsUsed.filter((item): item is string => typeof item === 'string' && item.length > 0)
         : [];
+      const workspaceArtifacts = parseTaskWorkspaceArtifacts(payload.workspaceArtifacts);
       kind = 'session.checkpoint';
       summary = sess.length > 0 ? sess : `Checkpoint #${index} — ${status}`;
       extra = {
         checkpointIndex: index,
         sessionStatus: status,
-        toolsUsed
+        toolsUsed,
+        ...(workspaceArtifacts.length > 0 ? { workspaceArtifacts } : {})
       };
       break;
     }
@@ -598,4 +600,39 @@ function toTaskActivity(record: AuditRecord) {
     createdAt: record.createdAt.toISOString(),
     ...extra
   };
+}
+
+function parseTaskWorkspaceArtifacts(input: unknown): Array<{
+  path: string;
+  action: 'created' | 'updated';
+  contentPreview?: string;
+  contentTruncated?: boolean;
+}> {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  return input.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) {
+      return [];
+    }
+
+    const path = typeof entry.path === 'string' ? entry.path.trim() : '';
+    const action = entry.action === 'updated' ? 'updated' : entry.action === 'created' ? 'created' : null;
+    if (!path || action === null) {
+      return [];
+    }
+
+    const contentPreview = typeof entry.contentPreview === 'string' && entry.contentPreview.length > 0
+      ? entry.contentPreview
+      : undefined;
+    const contentTruncated = entry.contentTruncated === true ? true : undefined;
+
+    return [{
+      path,
+      action,
+      ...(contentPreview ? { contentPreview } : {}),
+      ...(contentTruncated ? { contentTruncated } : {})
+    }];
+  });
 }
