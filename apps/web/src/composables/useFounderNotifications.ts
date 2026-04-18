@@ -80,21 +80,6 @@ export function useFounderNotifications(): void {
     return getSettingBoolean(settingKeyByTrigger[trigger], true);
   };
 
-  const buildEventsUrl = (): string => {
-    const baseURL = uiRuntime.stores.app.state.connection.baseURL;
-    const url = new URL('/api/v1/events', baseURL);
-    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-
-    const apiKey =
-      (typeof window !== 'undefined' && window.familycoDesktopConfig?.apiKey?.trim()) ||
-      import.meta.env.VITE_API_KEY?.trim();
-    if (apiKey) {
-      url.searchParams.set('apiKey', apiKey);
-    }
-
-    return url.toString();
-  };
-
   const parseDesktopSystemEvent = (payload: unknown): DesktopSystemEvent | null => {
     if (!payload || typeof payload !== 'object') {
       return null;
