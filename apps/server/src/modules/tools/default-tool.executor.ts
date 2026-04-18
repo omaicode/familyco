@@ -51,6 +51,7 @@ export class DefaultToolExecutor implements ToolExecutor {
   private readonly tools = new Map<string, ServerToolDefinition>();
   private readonly pluginTools = new Map<string, ServerToolDefinition>();
   private readonly disabledPluginToolNames = new Set<string>();
+  private readonly pluginToolCustomFieldValues = new Map<string, Record<string, unknown>>();
 
   constructor(private readonly deps: DefaultToolExecutorDeps = {}) {
     const definitions: ServerToolDefinition[] = [
@@ -127,7 +128,7 @@ export class DefaultToolExecutor implements ToolExecutor {
     }
 
     try {
-      return await tool.execute(input.arguments, {
+      return await tool.execute(this.withPluginCustomFieldValues(input.toolName, input.arguments), {
         ...this.deps,
         executeTool: async (nestedInput) => this.execute(nestedInput),
         listTools: () => this.listToolDefinitions()
@@ -156,6 +157,19 @@ export class DefaultToolExecutor implements ToolExecutor {
     }
   }
 
+  /** Set persisted custom field values for plugin tools. */
+  setPluginToolCustomFieldValues(toolCustomFieldValuesByToolName: Readonly<Record<string, Record<string, unknown>>>): void {
+    this.pluginToolCustomFieldValues.clear();
+
+    for (const [toolName, values] of Object.entries(toolCustomFieldValuesByToolName)) {
+      if (!isPluginToolName(toolName) || !isRecord(values)) {
+        continue;
+      }
+
+      this.pluginToolCustomFieldValues.set(toolName, { ...values });
+    }
+  }
+
   /** Register tools provided by an enabled plugin. Replaces any previous tools for those names. */
   registerPluginTools(tools: readonly ServerToolDefinition[]): void {
     for (const tool of tools) {
@@ -166,6 +180,7 @@ export class DefaultToolExecutor implements ToolExecutor {
   /** Remove all plugin-registered tools (called before re-sync). */
   clearPluginTools(): void {
     this.pluginTools.clear();
+    this.pluginToolCustomFieldValues.clear();
   }
 
   /** Create a copy of this executor scoped to a specific workspace directory. */
@@ -179,6 +194,7 @@ export class DefaultToolExecutor implements ToolExecutor {
       forked.pluginTools.set(tool.name, tool);
     }
     forked.setDisabledPluginTools(Array.from(this.disabledPluginToolNames));
+    forked.setPluginToolCustomFieldValues(Object.fromEntries(this.pluginToolCustomFieldValues.entries()));
     return forked;
   }
 
@@ -199,10 +215,35 @@ export class DefaultToolExecutor implements ToolExecutor {
   private isPluginToolDisabled(toolName: string): boolean {
     return this.disabledPluginToolNames.has(toolName);
   }
+
+  private withPluginCustomFieldValues(toolName: string, args: Record<string, unknown>): Record<string, unknown> {
+    if (!this.pluginTools.has(toolName)) {
+      return args;
+    }
+
+    const configuredCustomFields = this.pluginToolCustomFieldValues.get(toolName);
+    if (!configuredCustomFields || Object.keys(configuredCustomFields).length === 0) {
+      return args;
+    }
+
+    const existingCustomFields = isRecord(args.customFields) ? args.customFields : {};
+
+    return {
+      ...args,
+      customFields: {
+        ...existingCustomFields,
+        ...configuredCustomFields
+      }
+    };
+  }
 }
 
 function isPluginToolName(toolName: string): boolean {
   return toolName.startsWith('plugin.');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function toToolExecutionError(toolName: string, error: unknown): ToolExecutionResult {

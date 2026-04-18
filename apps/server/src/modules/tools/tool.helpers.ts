@@ -145,11 +145,24 @@ export function extractEntityLabel(value: unknown): string | undefined {
 }
 
 export function toToolSummary(tool: ServerToolDefinition): ToolDefinitionSummary {
+  const customFields = tool.customFields
+    ? Object.fromEntries(
+      Object.entries(tool.customFields).map(([key, definition]) => [
+        key,
+        {
+          ...definition,
+          ...(definition.options ? { options: [...definition.options] } : {})
+        }
+      ])
+    )
+    : undefined;
+
   return {
     name: tool.name,
     description: tool.description,
     parameters: [...tool.parameters],
-    enabledByDefault: tool.enabledByDefault
+    enabledByDefault: tool.enabledByDefault,
+    ...(customFields ? { customFields } : {})
   };
 }
 

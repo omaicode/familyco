@@ -10,9 +10,21 @@ function missingApiKey() {
     ok: false,
     error: {
       code: 'MISSING_TAVILY_API_KEY',
-      message: 'TAVILY_API_KEY is missing. Add it to server environment before using Tavily tools.'
+      message: 'TAVILY_API_KEY is missing. Configure it in Tools page custom fields or server environment before using Tavily tools.'
     }
   };
+}
+
+function resolveTavilyApiKey(args) {
+  const configured = typeof args?.customFields?.tavilyApiKey === 'string'
+    ? args.customFields.tavilyApiKey.trim()
+    : '';
+
+  if (configured) {
+    return configured;
+  }
+
+  return process.env.TAVILY_API_KEY?.trim() ?? '';
 }
 
 function normalizeQuery(value) {
@@ -44,12 +56,7 @@ function normalizeFocusPoints(value) {
     .filter((item) => item.length > 0);
 }
 
-async function tavilySearch(payload) {
-  const apiKey = process.env.TAVILY_API_KEY?.trim() ?? '';
-  if (!apiKey) {
-    throw new Error('MISSING_TAVILY_API_KEY');
-  }
-
+async function tavilySearch(payload, apiKey) {
   const timeout = new AbortController();
   const timer = setTimeout(() => timeout.abort(), REQUEST_TIMEOUT_MS);
 
@@ -76,6 +83,15 @@ async function tavilySearch(payload) {
     clearTimeout(timer);
   }
 }
+
+const tavilyCustomFields = {
+  tavilyApiKey: {
+    name: 'TAVILY_API_KEY',
+    type: 'text',
+    required: true,
+    description: 'API key for authenticating with Tavily API. Get it from your Tavily account dashboard.'
+  }
+};
 
 function safeParseJson(raw) {
   try {
@@ -141,21 +157,15 @@ export const tavilyTools = [
       { name: 'includeAnswer', type: 'boolean', required: false, description: 'Include Tavily direct answer when available. Defaults to true.' },
       { name: 'includeRawContent', type: 'boolean', required: false, description: 'Include raw content from results when available. Defaults to false.' }
     ],
-    customFields: {
-        tavilyApiKey: {
-            name: 'TAVILY_API_KEY',
-            type: 'text',
-            required: true,
-            description: 'API key for authenticating with Tavily API. Get it from your Tavily account dashboard.'
-        }
-    },
+    customFields: tavilyCustomFields,
     async execute(args) {
       const query = normalizeQuery(args.query);
       if (!query) {
         return invalidArguments('query is required.');
       }
 
-      if (!process.env.TAVILY_API_KEY?.trim()) {
+      const apiKey = resolveTavilyApiKey(args);
+      if (!apiKey) {
         return missingApiKey();
       }
 
@@ -171,7 +181,7 @@ export const tavilyTools = [
           max_results: maxResults,
           include_answer: includeAnswer,
           include_raw_content: includeRawContent
-        });
+        }, apiKey);
 
         return {
           ok: true,
@@ -202,13 +212,15 @@ export const tavilyTools = [
       { name: 'focusPoints', type: 'string', required: false, description: 'Comma-separated focus points to emphasize in research.' },
       { name: 'maxResults', type: 'number', required: false, description: 'Number of results from 1 to 10. Defaults to 7.' }
     ],
+    customFields: tavilyCustomFields,
     async execute(args) {
       const topic = normalizeQuery(args.topic);
       if (!topic) {
         return invalidArguments('topic is required.');
       }
 
-      if (!process.env.TAVILY_API_KEY?.trim()) {
+      const apiKey = resolveTavilyApiKey(args);
+      if (!apiKey) {
         return missingApiKey();
       }
 
@@ -223,7 +235,7 @@ export const tavilyTools = [
           max_results: maxResults,
           include_answer: true,
           include_raw_content: true
-        });
+        }, apiKey);
 
         const results = normalizeResults(data?.results);
         const findings = results

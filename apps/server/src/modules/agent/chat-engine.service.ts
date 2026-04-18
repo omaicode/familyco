@@ -109,7 +109,7 @@ export class ChatEngineService {
       conversationHistory: input.conversationHistory,
       conversationSummary: input.conversationSummary
     });
-
+    console.debug('Rendered system prompt:', systemPrompt);
     const userPrompt = renderChatUserPrompt({
       message: input.message,
       conversationHistory: input.conversationHistory
@@ -395,5 +395,11 @@ export function filterToolsForAgent(tools: ToolDefinitionSummary[], level: Agent
       .map((entry) => entry.toolName)
   );
 
-  return tools.filter((tool) => allowedToolNames.has(tool.name) || INTERNAL_TOOLS_ALWAYS_ALLOWED.has(tool.name));
+  return tools.filter(
+    (tool) => isPluginToolName(tool.name) || allowedToolNames.has(tool.name) || INTERNAL_TOOLS_ALWAYS_ALLOWED.has(tool.name)
+  );
+}
+
+function isPluginToolName(toolName: string): boolean {
+  return toolName.startsWith('plugin.');
 }

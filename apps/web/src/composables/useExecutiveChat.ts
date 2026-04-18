@@ -15,6 +15,12 @@ import { useExecutiveChatStream } from './useExecutiveChatStream';
 const INITIAL_CHAT_PAGE_SIZE = 20;
 const OLDER_CHAT_PAGE_SIZE = 20;
 const SESSION_LIST_PAGE_SIZE = 50;
+const LAST_CHAT_SESSION_STORAGE_KEY = 'familyco.chat.last-session-selection';
+
+interface PersistedChatSessionSelection {
+  agentId: string;
+  sessionId: string;
+}
 
 export function useExecutiveChat() {
   const thread = ref<ThreadMessage[]>([]);
@@ -230,7 +236,11 @@ export function useExecutiveChat() {
       }
 
       if (!selectedAgentId.value || !nextAgents.some((agent) => agent.id === selectedAgentId.value)) {
-        selectedAgentId.value = nextAgents[0].id;
+        const persistedSelection = readPersistedChatSessionSelection();
+        const preferredAgent = persistedSelection
+          ? nextAgents.find((agent) => agent.id === persistedSelection.agentId)
+          : undefined;
+        selectedAgentId.value = preferredAgent?.id ?? nextAgents[0].id;
       }
     },
     { immediate: true }
@@ -246,7 +256,12 @@ export function useExecutiveChat() {
     if (!isLoading.value) {
       void (async () => {
         try {
-          await refreshSessions();
+          const persistedSelection = readPersistedChatSessionSelection();
+          const preferredSessionId = persistedSelection?.agentId === selectedAgentId.value
+            ? persistedSelection.sessionId
+            : undefined;
+
+          await refreshSessions(preferredSessionId);
           await refreshThread();
         } catch (error) {
           setFeedback('error', error instanceof Error ? error.message : t('chat.session.loadFailed'));
@@ -258,6 +273,13 @@ export function useExecutiveChat() {
 
   watch(selectedSessionId, () => {
     hasMoreHistory.value = true;
+    if (selectedAgentId.value && selectedSessionId.value) {
+      persistChatSessionSelection({
+        agentId: selectedAgentId.value,
+        sessionId: selectedSessionId.value
+      });
+    }
+
     if (!isLoading.value) {
       void refreshThread();
     }
@@ -466,4 +488,41 @@ function readDraftAttachmentsFromMessage(message: ThreadMessage): ChatAttachment
     && typeof attachment.storageKey === 'string'
     && typeof attachment.createdAt === 'string'
   );
+}
+
+function readPersistedChatSessionSelection(): PersistedChatSessionSelection | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const rawValue = window.localStorage.getItem(LAST_CHAT_SESSION_STORAGE_KEY);
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PersistedChatSessionSelection>;
+    if (typeof parsed.agentId !== 'string' || typeof parsed.sessionId !== 'string') {
+      return null;
+    }
+
+    if (!parsed.agentId.trim() || !parsed.sessionId.trim()) {
+      return null;
+    }
+
+    return {
+      agentId: parsed.agentId,
+      sessionId: parsed.sessionId
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistChatSessionSelection(selection: PersistedChatSessionSelection): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(LAST_CHAT_SESSION_STORAGE_KEY, JSON.stringify(selection));
 }

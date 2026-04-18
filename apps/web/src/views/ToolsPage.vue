@@ -3,15 +3,23 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RefreshCw, Wrench, Lock } from 'lucide-vue-next';
 
 import { uiRuntime } from '../runtime';
+import FcBanner from '../components/FcBanner.vue';
 import FcPagination from '../components/FcPagination.vue';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useI18n } from '../composables/useI18n';
 import type { ToolListItem } from '@familyco/ui';
+import { parseApiError } from '../utils/api-error';
+import { useToast } from '../plugins/toast.plugin';
 
 const { t } = useI18n();
+const toast = useToast();
 const isRefreshing = ref(false);
 const pendingToolName = ref<string | null>(null);
 const selectedTool = ref<ToolListItem | null>(null);
+const isSavingCustomFields = ref(false);
+const customFieldDraft = ref<Record<string, string | number | boolean>>({});
+const customFieldError = ref<string | null>(null);
+const feedback = ref<{ type: 'success' | 'error'; text: string } | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
 
@@ -69,6 +77,58 @@ const paginatedTools = computed(() => {
   const offset = (currentPage.value - 1) * pageSize.value;
   return filteredTools.value.slice(offset, offset + pageSize.value);
 });
+const selectedToolCustomFieldEntries = computed(() => Object.entries(selectedTool.value?.customFields ?? {}));
+
+const setFeedback = (type: 'success' | 'error', text: string): void => {
+  feedback.value = { type, text };
+  setTimeout(() => {
+    if (feedback.value?.text === text) {
+      feedback.value = null;
+    }
+  }, 4000);
+};
+
+const formatMissingRequiredFields = (tool: ToolListItem): string => {
+  return tool.missingRequiredCustomFields
+    .map((fieldKey) => tool.customFields[fieldKey]?.name ?? fieldKey)
+    .join(', ');
+};
+
+const getMissingConfigMessage = (tool: ToolListItem): string => {
+  return t('Missing config: {{fields}}', { fields: formatMissingRequiredFields(tool) });
+};
+
+const getMissingRequiredFieldsMessage = (tool: ToolListItem): string => {
+  return t('Missing required fields: {{fields}}', { fields: formatMissingRequiredFields(tool) });
+};
+
+const initializeCustomFieldDraft = (tool: ToolListItem): void => {
+  const nextDraft: Record<string, string | number | boolean> = {};
+
+  for (const [fieldKey, definition] of Object.entries(tool.customFields)) {
+    const currentValue = tool.customFieldValues[fieldKey];
+
+    if (typeof currentValue === 'undefined') {
+      nextDraft[fieldKey] = definition.type === 'boolean' ? false : '';
+      continue;
+    }
+
+    if (definition.type === 'boolean') {
+      nextDraft[fieldKey] = currentValue === true;
+      continue;
+    }
+
+    if (definition.type === 'number') {
+      nextDraft[fieldKey] = typeof currentValue === 'number' ? currentValue : String(currentValue);
+      continue;
+    }
+
+    nextDraft[fieldKey] = String(currentValue);
+  }
+
+  customFieldDraft.value = nextDraft;
+  customFieldError.value = null;
+};
 
 const refresh = async (): Promise<void> => {
   isRefreshing.value = true;
@@ -84,11 +144,22 @@ const toggleTool = async (tool: ToolListItem): Promise<void> => {
 
   pendingToolName.value = tool.name;
   try {
+    let updated: ToolListItem;
     if (tool.enabled) {
-      await uiRuntime.stores.tools.disable(tool.name);
+      updated = await uiRuntime.stores.tools.disable(tool.name);
+      toast.success(t('Tool "{{name}}" has been disabled.', { name: tool.name }));
     } else {
-      await uiRuntime.stores.tools.enable(tool.name);
+      updated = await uiRuntime.stores.tools.enable(tool.name);
+      toast.success(t('Tool "{{name}}" has been enabled.', { name: tool.name }));
     }
+
+    if (selectedTool.value?.name === updated.name) {
+      selectedTool.value = updated;
+      initializeCustomFieldDraft(updated);
+    }
+  } catch (error) {
+    const parsed = parseApiError(error);
+    toast.error(parsed.message || t('Failed to update tool status.'));
   } finally {
     pendingToolName.value = null;
   }
@@ -96,10 +167,79 @@ const toggleTool = async (tool: ToolListItem): Promise<void> => {
 
 const viewTool = (tool: ToolListItem): void => {
   selectedTool.value = tool;
+  initializeCustomFieldDraft(tool);
 };
 
 const closeToolModal = (): void => {
   selectedTool.value = null;
+  customFieldError.value = null;
+};
+
+const setDraftField = (fieldKey: string, value: string): void => {
+  customFieldDraft.value = {
+    ...customFieldDraft.value,
+    [fieldKey]: value
+  };
+};
+
+const setDraftBoolean = (fieldKey: string, value: boolean): void => {
+  customFieldDraft.value = {
+    ...customFieldDraft.value,
+    [fieldKey]: value
+  };
+};
+
+const saveCustomFields = async (): Promise<void> => {
+  if (!selectedTool.value) {
+    return;
+  }
+
+  const payload: Record<string, string | number | boolean | null> = {};
+  for (const [fieldKey, definition] of Object.entries(selectedTool.value.customFields)) {
+    const draftValue = customFieldDraft.value[fieldKey];
+
+    if (definition.type === 'boolean') {
+      payload[fieldKey] = draftValue === true;
+      continue;
+    }
+
+    if (definition.type === 'number') {
+      if (typeof draftValue === 'number' && Number.isFinite(draftValue)) {
+        payload[fieldKey] = draftValue;
+        continue;
+      }
+
+      const normalized = typeof draftValue === 'string' ? draftValue.trim() : '';
+      if (!normalized) {
+        payload[fieldKey] = null;
+        continue;
+      }
+
+      const parsed = Number(normalized);
+      payload[fieldKey] = Number.isFinite(parsed) ? parsed : null;
+      continue;
+    }
+
+    const normalized = typeof draftValue === 'string' ? draftValue.trim() : '';
+    payload[fieldKey] = normalized.length > 0 ? normalized : null;
+  }
+
+  isSavingCustomFields.value = true;
+  customFieldError.value = null;
+
+  try {
+    const updated = await uiRuntime.stores.tools.updateCustomFields(selectedTool.value.name, payload);
+    selectedTool.value = updated;
+    initializeCustomFieldDraft(updated);
+    setFeedback('success', t('Tool configuration saved.'));
+  } catch (error) {
+    const parsed = parseApiError(error);
+    const message = parsed.message || t('Failed to save tool configuration.');
+    customFieldError.value = message;
+    setFeedback('error', message);
+  } finally {
+    isSavingCustomFields.value = false;
+  }
 };
 
 const resetFilters = (): void => {
@@ -132,6 +272,18 @@ onMounted(() => {
 
 <template>
   <section>
+    <Transition name="fc-banner">
+      <FcBanner
+        v-if="feedback"
+        :type="feedback.type"
+        closable
+        style="margin-bottom:14px;"
+        @close="feedback = null"
+      >
+        {{ feedback.text }}
+      </FcBanner>
+    </Transition>
+
     <div class="fc-page-header">
       <div>
         <h3>{{ t('Tools') }}</h3>
@@ -212,6 +364,9 @@ onMounted(() => {
               </td>
               <td>
                 {{ tool.enabled ? t('Enabled') : t('Disabled') }}
+                <p v-if="tool.missingRequiredCustomFields.length > 0" class="fc-list-meta" style="margin:4px 0 0;">
+                  {{ getMissingConfigMessage(tool) }}
+                </p>
               </td>
               <td>
                 <div class="fc-inline-actions">
@@ -220,8 +375,14 @@ onMounted(() => {
                   </button>
                   <button
                     class="fc-btn-secondary"
-                    :disabled="pendingToolName === tool.name || !tool.togglable"
-                    :title="!tool.togglable ? t('Built-in tools are always enabled.') : undefined"
+                    :disabled="pendingToolName === tool.name || !tool.togglable || (!tool.enabled && tool.missingRequiredCustomFields.length > 0)"
+                    :title="
+                      !tool.togglable
+                        ? t('Built-in tools are always enabled.')
+                        : (!tool.enabled && tool.missingRequiredCustomFields.length > 0)
+                          ? t('Configure required fields before enabling this tool.')
+                          : undefined
+                    "
                     @click="toggleTool(tool)"
                   >
                     <template v-if="pendingToolName === tool.name">
@@ -274,6 +435,77 @@ onMounted(() => {
           </dl>
 
           <div style="margin-top: 12px;">
+            <strong class="fc-list-meta">{{ t('Configuration') }}</strong>
+            <p class="fc-list-meta" style="margin:6px 0 10px;">
+              {{ t('Provide values for custom fields before enabling this tool.') }}
+            </p>
+
+            <p v-if="selectedToolCustomFieldEntries.length === 0" class="fc-list-meta" style="margin:0;">
+              {{ t('No custom fields required for this tool.') }}
+            </p>
+
+            <div v-else class="tool-custom-fields-grid">
+              <div
+                v-for="[fieldKey, field] in selectedToolCustomFieldEntries"
+                :key="fieldKey"
+                class="tool-custom-field-item"
+              >
+                <label class="fc-label" :for="`tool-custom-field-${fieldKey}`" style="margin-bottom:4px; display:block;">
+                  {{ field.name }}
+                  <span v-if="field.required" style="color:var(--fc-error);">*</span>
+                </label>
+                <p v-if="field.description" class="fc-list-meta" style="margin:0 0 6px;">{{ field.description }}</p>
+
+                <template v-if="field.type === 'boolean'">
+                  <label class="fc-list-meta" style="display:flex; align-items:center; gap:8px; margin:0;">
+                    <input
+                      :id="`tool-custom-field-${fieldKey}`"
+                      type="checkbox"
+                      :checked="customFieldDraft[fieldKey] === true"
+                      @change="setDraftBoolean(fieldKey, ($event.target as HTMLInputElement).checked)"
+                    />
+                    {{ t('Enabled') }}
+                  </label>
+                </template>
+
+                <template v-else-if="field.type === 'select'">
+                  <select
+                    :id="`tool-custom-field-${fieldKey}`"
+                    class="fc-input"
+                    :value="typeof customFieldDraft[fieldKey] === 'string' ? customFieldDraft[fieldKey] : ''"
+                    @change="setDraftField(fieldKey, ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="">{{ t('Select an option') }}</option>
+                    <option v-for="option in field.options ?? []" :key="option" :value="option">{{ option }}</option>
+                  </select>
+                </template>
+
+                <template v-else>
+                  <input
+                    :id="`tool-custom-field-${fieldKey}`"
+                    class="fc-input"
+                    :type="field.type === 'number' ? 'number' : 'text'"
+                    :value="String(customFieldDraft[fieldKey] ?? '')"
+                    :placeholder="field.required ? t('Required') : t('Optional')"
+                    @input="setDraftField(fieldKey, ($event.target as HTMLInputElement).value)"
+                  />
+                </template>
+              </div>
+
+              <div class="fc-toolbar" style="margin-top: 4px;">
+                <button class="fc-btn-primary" :disabled="isSavingCustomFields" @click="saveCustomFields">
+                  {{ isSavingCustomFields ? t('Saving…') : t('Save configuration') }}
+                </button>
+              </div>
+
+              <p v-if="selectedTool.missingRequiredCustomFields.length > 0" class="fc-list-meta" style="margin:0; color:var(--fc-warning);">
+                {{ getMissingRequiredFieldsMessage(selectedTool) }}
+              </p>
+              <p v-if="customFieldError" class="fc-list-meta" style="margin:0; color:var(--fc-error);">{{ customFieldError }}</p>
+            </div>
+          </div>
+
+          <div style="margin-top: 12px;">
             <strong class="fc-list-meta">{{ t('Parameters') }}</strong>
             <ul>
               <li class="text-sm" v-for="param in selectedTool.parameters" :key="param.name">
@@ -302,6 +534,17 @@ onMounted(() => {
   max-width: 620px;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.tool-custom-fields-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.tool-custom-field-item {
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 8px;
+  padding: 10px;
 }
 
 @media (max-width: 980px) {

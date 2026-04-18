@@ -39,6 +39,15 @@ export class ToolsStore {
     return updated;
   }
 
+  async updateCustomFields(
+    toolName: string,
+    customFieldValues: Record<string, string | number | boolean | null>
+  ): Promise<ToolListItem> {
+    const updated = await this.api.updateToolCustomFields({ toolName, customFieldValues });
+    this.applyUpdate(updated);
+    return updated;
+  }
+
   private applyUpdate(tool: ToolListItem): void {
     const exists = this.state.data.items.some((item) => item.name === tool.name);
     const nextItems = exists

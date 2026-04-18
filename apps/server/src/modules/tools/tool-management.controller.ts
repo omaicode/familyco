@@ -2,7 +2,7 @@ import type { AuditService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
-import { toolNameParamsSchema } from './tool-management.schema.js';
+import { toolCustomFieldsUpdateSchema, toolNameParamsSchema } from './tool-management.schema.js';
 import type { ToolManagementService } from './tool-management.service.js';
 
 export interface ToolManagementModuleDeps {
@@ -59,6 +59,27 @@ export function registerToolManagementController(app: FastifyInstance, deps: Too
         name: tool.name,
         source: tool.source,
         pluginId: tool.pluginId
+      }
+    });
+
+    return tool;
+  });
+
+  app.patch('/tools/:name/custom-fields', async (request) => {
+    requireMinimumLevel(request, 'L0');
+    const { name } = toolNameParamsSchema.parse(request.params);
+    const body = toolCustomFieldsUpdateSchema.parse(request.body);
+    const tool = await deps.toolsService.updateCustomFields(name, body.customFieldValues);
+
+    await deps.auditService.write({
+      actorId: request.authContext?.subject ?? 'system',
+      action: 'tools.custom_fields.update',
+      targetId: tool.name,
+      payload: {
+        name: tool.name,
+        source: tool.source,
+        pluginId: tool.pluginId,
+        fields: Object.keys(body.customFieldValues)
       }
     });
 

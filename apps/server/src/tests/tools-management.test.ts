@@ -35,6 +35,14 @@ test('tools module lists built-in and plugin tools and allows toggling plugin to
       description: 'Return pong.',
       parameters: [],
       enabledByDefault: true,
+      customFields: {
+        apiKey: {
+          name: 'API_KEY',
+          type: 'text',
+          required: true,
+          description: 'API key required to run ping tool.'
+        }
+      },
       async execute() {
         return { ok: true, output: { pong: true } };
       }
@@ -83,6 +91,9 @@ export default plugin;
         source: 'built-in' | 'plugin';
         enabled: boolean;
         togglable: boolean;
+        customFields: Record<string, unknown>;
+        customFieldValues: Record<string, unknown>;
+        missingRequiredCustomFields: string[];
       }>;
     };
 
@@ -96,8 +107,10 @@ export default plugin;
     const pluginEnabledByDefaultTool = listPayload.items.find((item) => item.name === pluginEnabledByDefaultToolName);
     assert.ok(pluginEnabledByDefaultTool, 'enabledByDefault plugin tool should be listed');
     assert.equal(pluginEnabledByDefaultTool!.source, 'plugin');
-    assert.equal(pluginEnabledByDefaultTool!.enabled, true);
+    assert.equal(pluginEnabledByDefaultTool!.enabled, false);
     assert.equal(pluginEnabledByDefaultTool!.togglable, true);
+    assert.deepEqual(pluginEnabledByDefaultTool!.missingRequiredCustomFields, ['apiKey']);
+    assert.ok('apiKey' in pluginEnabledByDefaultTool!.customFields);
 
     const pluginDefaultDisabledToolName = 'plugin.test-tools-plugin.quiet';
     const pluginDefaultDisabledTool = listPayload.items.find((item) => item.name === pluginDefaultDisabledToolName);
@@ -138,6 +151,33 @@ export default plugin;
     assert.equal(detailAfterDisableResponse.statusCode, 200);
     const detailAfterDisablePayload = detailAfterDisableResponse.json() as { enabled: boolean };
     assert.equal(detailAfterDisablePayload.enabled, false);
+
+    const enableWithoutConfigResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tools/${encodeURIComponent(pluginEnabledByDefaultToolName)}/enable`,
+      headers: { 'x-api-key': TEST_API_KEY }
+    });
+    assert.equal(enableWithoutConfigResponse.statusCode, 400);
+    const enableWithoutConfigPayload = enableWithoutConfigResponse.json() as { code: string };
+    assert.equal(enableWithoutConfigPayload.code, 'TOOL_CONFIG_REQUIRED');
+
+    const updateCustomFieldsResponse = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/tools/${encodeURIComponent(pluginEnabledByDefaultToolName)}/custom-fields`,
+      headers: { 'x-api-key': TEST_API_KEY },
+      payload: {
+        customFieldValues: {
+          apiKey: 'demo-key'
+        }
+      }
+    });
+    assert.equal(updateCustomFieldsResponse.statusCode, 200);
+    const updateCustomFieldsPayload = updateCustomFieldsResponse.json() as {
+      customFieldValues: Record<string, unknown>;
+      missingRequiredCustomFields: string[];
+    };
+    assert.equal(updateCustomFieldsPayload.customFieldValues.apiKey, 'demo-key');
+    assert.deepEqual(updateCustomFieldsPayload.missingRequiredCustomFields, []);
 
     const enablePluginToolResponse = await app.inject({
       method: 'POST',

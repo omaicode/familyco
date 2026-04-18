@@ -7,8 +7,11 @@ import FcPagination from '../components/FcPagination.vue';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useI18n } from '../composables/useI18n';
 import type { SkillListItem } from '@familyco/ui';
+import { useToast } from '../plugins/toast.plugin';
+import { parseApiError } from '../utils/api-error';
 
 const { t } = useI18n();
+const toast = useToast();
 const isRefreshing = ref(false);
 const pendingSkillId = ref<string | null>(null);
 const selectedSkill = ref<SkillListItem | null>(null);
@@ -81,9 +84,14 @@ const toggleSkill = async (skill: SkillListItem): Promise<void> => {
   try {
     if (skill.enabled) {
       await uiRuntime.stores.skills.disable(skill.id);
+      toast.success(t('Skill "{{name}}" has been disabled.', { name: skill.name }));
     } else {
       await uiRuntime.stores.skills.enable(skill.id);
+      toast.success(t('Skill "{{name}}" has been enabled.', { name: skill.name }));
     }
+  } catch (error) {
+    const parsed = parseApiError(error);
+    toast.error(parsed.message || t('Failed to update skill status.'));
   } finally {
     pendingSkillId.value = null;
   }

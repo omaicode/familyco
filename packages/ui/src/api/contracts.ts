@@ -616,6 +616,15 @@ export interface SkillsListResponse {
 }
 
 export interface ToolListItem {
+  customFields: Record<string, {
+    name: string;
+    type: 'text' | 'number' | 'boolean' | 'select';
+    required: boolean;
+    description?: string;
+    options?: string[];
+  }>;
+  customFieldValues: Record<string, string | number | boolean>;
+  missingRequiredCustomFields: string[];
   name: string;
   description: string;
   parameters: Array<{
@@ -633,6 +642,11 @@ export interface ToolListItem {
 
 export interface ToolsListResponse {
   items: ToolListItem[];
+}
+
+export interface UpdateToolCustomFieldsPayload {
+  toolName: string;
+  customFieldValues: Record<string, string | number | boolean | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -748,6 +762,7 @@ export interface FamilyCoApiContracts {
   getTool: (toolName: string) => Promise<ToolListItem>;
   enableTool: (toolName: string) => Promise<ToolListItem>;
   disableTool: (toolName: string) => Promise<ToolListItem>;
+  updateToolCustomFields: (payload: UpdateToolCustomFieldsPayload) => Promise<ToolListItem>;
   listPlugins: () => Promise<PluginsListResponse>;
   getPlugin: (pluginId: string) => Promise<PluginListItem>;
   discoverPlugins: () => Promise<PluginDiscoverResult>;
@@ -962,6 +977,11 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   getTool: (toolName) => client.get<ToolListItem>(`/api/v1/tools/${encodeURIComponent(toolName)}`),
   enableTool: (toolName) => client.post<ToolListItem>(`/api/v1/tools/${encodeURIComponent(toolName)}/enable`),
   disableTool: (toolName) => client.post<ToolListItem>(`/api/v1/tools/${encodeURIComponent(toolName)}/disable`),
+  updateToolCustomFields: (payload) =>
+    client.patch<ToolListItem, { customFieldValues: Record<string, string | number | boolean | null> }>(
+      `/api/v1/tools/${encodeURIComponent(payload.toolName)}/custom-fields`,
+      { customFieldValues: payload.customFieldValues }
+    ),
   listPlugins: () => client.get<PluginsListResponse>('/api/v1/plugins'),
   getPlugin: (pluginId) => client.get<PluginListItem>(`/api/v1/plugins/${pluginId}`),
   discoverPlugins: () => client.post<PluginDiscoverResult>('/api/v1/plugins/discover'),

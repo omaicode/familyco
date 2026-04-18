@@ -49,6 +49,7 @@ export interface ToolDefinitionSummary {
   description: string;
   parameters: ToolParameterDefinition[];
   enabledByDefault?: boolean;
+  customFields?: Readonly<Record<string, PluginToolCustomFieldDefinition>>;
 }
 
 export interface ServerToolContext extends DefaultToolExecutorDeps {
