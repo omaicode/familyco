@@ -1,8 +1,45 @@
-# FamilyCo
+# FamilyCo - Your own “AI family business”
 
-FamilyCo is an AI-native operating system for founders.
 
-It lets a founder run a small AI organization through role-based agents, with clear approvals, auditable execution, and budget visibility.
+<p align="center">
+    <picture>
+        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/omaicode/familyco/refs/heads/master/thumbnail.png">
+        <img src="https://raw.githubusercontent.com/omaicode/familyco/refs/heads/master/thumbnail.png" alt="FamilyCo" width="500">
+    </picture>
+</p>
+
+<p align="center">
+  <a href="https://github.com/omaicode/familyco/actions/workflows/ci.yml?branch=master"><img src="https://img.shields.io/github/actions/workflow/status/omaicode/familyco/ci.yml?branch=master&style=for-the-badge" alt="CI status"></a>
+  <a href="https://github.com/omaicode/familyco/releases"><img src="https://img.shields.io/github/v/release/omaicode/familyco?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
+</p>
+
+FamilyCo is an operating system for your own “AI family business” — each agent works like a member of the company, collaborating, sharing the workload, and handling day-to-day operations so you can stay focused on the bigger decisions.
+
+## Start Here (Non-Technical Users)
+
+If you just want to use FamilyCo, install a release build.
+
+- You do not need Node.js, pnpm, or terminal commands.
+- Download from: https://github.com/omaicode/familyco/releases
+
+### 1. Pick your installer
+
+- Windows: download the `.exe` file.
+- macOS: download the `.dmg` file.
+- Linux: download the `.AppImage` file.
+
+### 2. Install and open
+
+- Windows: run the installer and follow the setup wizard.
+- macOS: open `.dmg`, drag FamilyCo to Applications, then open it.
+- Linux: make the `.AppImage` executable, then run it.
+
+### 3. First launch tips
+
+- If your OS shows a security warning, choose the option to continue/open anyway.
+- Keep the app connected to the internet for AI provider features.
+- You can update later by downloading a newer release from the same page.
 
 ## What You Get
 
@@ -36,7 +73,9 @@ plugins/                Plugins, each plugin included tools & skills
 - Database access should go through repository abstractions.
 - Prisma schema is the persistence contract.
 
-## Quickstart (5 Minutes)
+## Developer Quickstart (5 Minutes)
+
+If you are not developing the codebase, use the release install steps above instead.
 
 ### 1. Prerequisites
 
