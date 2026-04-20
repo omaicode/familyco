@@ -29,6 +29,7 @@ familyco/
 - Vue 3 SPA.
 - Lightweight operational client.
 - Read-heavy workflows with approvals and monitoring.
+- Chat session selection persistence in browser state for fast session restore.
 
 ### apps/server
 - API layer.
@@ -37,6 +38,9 @@ familyco/
 - Budget metering.
 - Audit log writer.
 - Skill discovery and activation service.
+- Plugin discovery/enablement and plugin capability registration.
+- Tool policy service (enable/disable + custom fields) synchronized to tool executor.
+- Chat session and message orchestration for multi-session agent chat.
 
 ### packages/ui
 - Shared design tokens.
@@ -72,6 +76,15 @@ familyco/
 6. If approval is needed, InboxItem is created and run pauses.
 7. When approved, execution continues.
 8. BudgetUsage and AuditLog are written throughout.
+
+## Tool policy flow
+1. Runtime tool definitions are collected from built-in tools and enabled plugins.
+2. Tool policy state is persisted in settings keys:
+   - `tools.registry` for enabled/disabled plugin tools.
+   - `tools.customFields` for per-tool custom field values.
+3. Required custom fields are validated before enabling plugin tools.
+4. Chat engine receives filtered tool list by level, while enabled plugin tools remain available in prompt/tool context.
+5. Executor injects persisted custom field values into plugin tool execution arguments.
 
 ## Design constraints
 - Business rules should live in `packages/core` or `packages/agent-runtime`, not duplicated in UI.

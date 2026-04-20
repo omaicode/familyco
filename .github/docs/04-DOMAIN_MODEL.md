@@ -45,6 +45,26 @@
 - createdAt
 - updatedAt
 
+### ChatSession
+- id
+- recipientId (agentId)
+- title
+- summary nullable
+- createdAt
+- updatedAt
+
+### ChatMessage
+- id
+- sessionId
+- recipientId (agentId)
+- senderId
+- type enum: info, alert, report
+- title nullable
+- body
+- payloadJson nullable
+- createdAt
+- updatedAt
+
 ### Skill
 - id
 - companyId
@@ -160,8 +180,20 @@
 - metadataJson nullable
 - createdAt
 
+### Setting
+- key
+- value (JSON)
+- createdAt
+- updatedAt
+
+Common keys used by tools/chat UX:
+- `tools.registry`: plugin tool enable/disable policy.
+- `tools.customFields`: per-plugin-tool custom field values.
+
 ## Key relationships
 - One Company has many Agents, Projects, Tasks, Skills, InboxItems, Runs, BudgetUsage rows, and AuditLogs.
+- One Agent has many ChatSessions.
+- One ChatSession has many ChatMessages.
 - One Agent may manage many Agents.
 - One Project has many Tasks.
 - One Run may produce many BudgetUsage rows and many AuditLogs.
@@ -171,6 +203,7 @@
 - There is exactly one active Executive Agent per company.
 - Archived agents cannot receive new tasks.
 - Disabled skills cannot be selected for new runs.
+- A plugin tool with missing required custom fields cannot be enabled.
 - Any run in `waiting_approval` must have at least one open InboxItem.
 - `totalTokens = promptTokens + completionTokens`.
 - A task in `done` must have non-empty completion summary.
