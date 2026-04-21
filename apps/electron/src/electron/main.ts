@@ -304,12 +304,12 @@ const startDesktop = async (): Promise<void> => {
     if (embeddedServer) {
       await createMainWindow({
         apiBaseUrl: embeddedServer.baseUrl,
-        apiKey: process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key'
+        apiKey: process.env.FAMILYCO_API_KEY ?? 'replace-with-a-random-secret'
       });
     }
   });
 
-  const apiKey = process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key';
+  const apiKey = process.env.FAMILYCO_API_KEY ?? 'replace-with-a-random-secret';
 
   // Store SQLite database in the OS user-data folder for this app.
   // Mac:     ~/Library/Application Support/FamilyCo/familyco.db
@@ -407,7 +407,7 @@ app.on('activate', async () => {
   if (BrowserWindow.getAllWindows().length === 0 && embeddedServer) {
     await createMainWindow({
       apiBaseUrl: embeddedServer.baseUrl,
-      apiKey: process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key'
+      apiKey: process.env.FAMILYCO_API_KEY ?? 'replace-with-a-random-secret'
     });
   }
 });

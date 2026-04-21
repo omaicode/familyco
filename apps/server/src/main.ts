@@ -4,7 +4,7 @@ import { createApp, type RepositoryDriver } from './app.js';
 
 const DEFAULT_JWT_SECRET = 'local-dev-secret';
 const DEFAULT_API_KEY_SALT = 'local-dev-salt';
-const DEFAULT_API_KEY = 'local-dev-api-key';
+const DEFAULT_API_KEY = 'replace-with-a-random-secret';
 
 const isBlank = (value: string | undefined): boolean => !value || value.trim().length === 0;
 
