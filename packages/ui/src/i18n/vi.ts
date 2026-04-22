@@ -575,6 +575,8 @@ export default {
   'GitHub Copilot — code-aware reasoning powered by GitHub models': 'GitHub Copilot — suy luận nhận biết code từ GitHub models',
   'OpenAI gpt-5-mini — best for general-purpose agents': 'OpenAI gpt-5-mini — tốt nhất cho agent đa năng',
   'Anthropic Claude — great for reasoning and long-context tasks': 'Anthropic Claude — xuất sắc cho suy luận và tác vụ ngữ cảnh dài',
+  'Vercel AI Gateway — unified access to multiple model providers': 'Vercel AI Gateway — truy cập hợp nhất tới nhiều nhà cung cấp model',
+  'DeepSeek — efficient reasoning models for coding and analysis': 'DeepSeek — model suy luận hiệu quả cho lập trình và phân tích',
   'Latency': 'Độ trễ',
   'ms': 'ms',
   'AI configuration': 'Cấu hình AI',

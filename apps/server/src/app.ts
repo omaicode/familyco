@@ -274,7 +274,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
   const chatEngineService = new ChatEngineService(settingsService, adapterRegistry, skillsService);
   const chatStreamRegistry = new ChatStreamRegistry();
-  const chatAttachmentStore = new ChatAttachmentStore();
+  const chatAttachmentStore = new ChatAttachmentStore(settingsService);
 
   const taskCoordinator = new TaskExecutionCoordinator({
     chatEngineService,

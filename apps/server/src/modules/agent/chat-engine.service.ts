@@ -43,7 +43,7 @@ export interface ChatEngineResult {
   confirmRequest?: { question: string; options: string[] };
 }
 
-type AdapterId = 'openai' | 'claude';
+type AdapterId = 'openai' | 'claude' | 'vercel' | 'deepseek';
 
 interface AdapterConfig {
   adapterId: AdapterId;
@@ -357,7 +357,7 @@ export class ChatEngineService {
 }
 
 function toAdapterId(value: unknown): AdapterId | undefined {
-  if (value === 'openai' || value === 'claude') {
+  if (value === 'openai' || value === 'claude' || value === 'vercel' || value === 'deepseek') {
     return value;
   }
 

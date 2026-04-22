@@ -8,10 +8,12 @@ import {
 } from '@familyco/core';
 
 import { ClaudeAdapter } from './claude.adapter.js';
+import { DeepSeekAdapter } from './deepseek.adapter.js';
 import type { AdapterLogger } from './hooks/logging.hook.js';
 import { LoggingHook } from './hooks/logging.hook.js';
 import { TokenUsageHook } from './hooks/token-usage.hook.js';
 import { OpenAiAdapter } from './openai.adapter.js';
+import { VercelAdapter } from './vercel.adapter.js';
 
 export interface AdapterRegistryDeps {
   logger: Logger | AdapterLogger;
@@ -30,6 +32,8 @@ export function createAdapterRegistry(deps?: AdapterRegistryDeps): AiAdapterRegi
   const registry = new AiAdapterRegistry();
   registry.register(new OpenAiAdapter());
   registry.register(new ClaudeAdapter());
+  registry.register(new VercelAdapter());
+  registry.register(new DeepSeekAdapter());
 
   if (deps) {
     registry.registerHook(new LoggingHook(deps.logger));

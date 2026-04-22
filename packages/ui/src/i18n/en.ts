@@ -576,6 +576,8 @@ export default {
   'GitHub Copilot — code-aware reasoning powered by GitHub models': 'GitHub Copilot — code-aware reasoning powered by GitHub models',
   'OpenAI gpt-5-mini — best for general-purpose agents': 'OpenAI gpt-5-mini — best for general-purpose agents',
   'Anthropic Claude — great for reasoning and long-context tasks': 'Anthropic Claude — great for reasoning and long-context tasks',
+  'Vercel AI Gateway — unified access to multiple model providers': 'Vercel AI Gateway — unified access to multiple model providers',
+  'DeepSeek — efficient reasoning models for coding and analysis': 'DeepSeek — efficient reasoning models for coding and analysis',
   'Latency': 'Latency',
   'ms': 'ms',
   'AI configuration': 'AI configuration',

@@ -16,11 +16,13 @@
     "server"
   ],
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.71",
+    "@ai-sdk/deepseek": "^2.0.29",
+    "@ai-sdk/openai": "^3.0.52",
+    "@ai-sdk/vercel": "^2.0.43",
     "@familyco/agent-runtime": "workspace:*",
     "@familyco/core": "workspace:*",
-    "@familyco/db": "workspace:*",    
-    "@ai-sdk/anthropic": "^3.0.71",
-    "@ai-sdk/openai": "^3.0.52",
+    "@familyco/db": "workspace:*",
     "@fastify/cors": "^11.1.0",
     "@fastify/jwt": "^10.0.0",
     "@fastify/multipart": "^10.0.0",
@@ -33,7 +35,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13"  
+    "@types/better-sqlite3": "^7.6.13"
   },
   "author": "",
   "license": "UNLICENSED",

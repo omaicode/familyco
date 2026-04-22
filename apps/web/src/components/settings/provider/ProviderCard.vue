@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ProviderListItem } from '@familyco/ui';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { CheckCircle2, CircleOff, Settings2 } from 'lucide-vue-next';
 
 import { useI18n } from '../../../composables/useI18n';
@@ -16,6 +16,15 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const logoLoadFailed = ref(false);
+
+watch(
+  () => props.provider.logoId,
+  () => {
+    logoLoadFailed.value = false;
+  },
+  { immediate: true }
+);
 
 const initials = computed(() =>
   props.provider.name
@@ -46,7 +55,13 @@ const authTypesToText = (authTypes: string[]): string => {
   <article class="pcard" :class="{ 'pcard--primary': provider.isPrimary, 'pcard--connected': provider.connected }">
     <div class="pcard-header">
       <div class="pcard-logo" :data-provider="provider.logoId">
-        <img :src="`assets/logo/` + provider.logoId + `.png`" :alt="provider.name" v-if="provider.logoId" />
+        <img
+          v-if="provider.logoId && !logoLoadFailed"
+          :src="`assets/logo/` + provider.logoId + `.png`"
+          :alt="provider.name"
+          @error="logoLoadFailed = true"
+        />
+        <span v-else>{{ initials }}</span>
       </div>
       <div class="pcard-copy">
         <div class="pcard-title-row">
