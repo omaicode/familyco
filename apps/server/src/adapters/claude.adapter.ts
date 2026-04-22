@@ -10,9 +10,13 @@ export class ClaudeAdapter implements AiAdapter {
   readonly id = 'claude';
   readonly name = 'Claude';
   readonly description = 'Anthropic Claude — great for reasoning and long-context tasks';
+  readonly logoId = 'claude';
   readonly keyHint = 'sk-ant-…';
+  readonly authType = 'apikey' as const;
+  readonly supportedAuthTypes = ['apikey'] as const;
+  readonly defaultAuthType = 'apikey' as const;
   readonly defaultModel = 'claude-sonnet-4-5';
-  readonly availableModels = ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'] as const;
+  readonly availableModels = ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5'] as const;
 
   async chat(input: AdapterChatInput): Promise<AdapterChatResult> {
     const anthropic = createAnthropic({ apiKey: input.apiKey });

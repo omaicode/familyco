@@ -42,6 +42,10 @@ const resolveRendererTarget = (): { mode: 'url'; value: string } | { mode: 'file
   return { mode: 'file', value: defaultDist };
 };
 
+const isDesktopDevRuntime = (): boolean => {
+  return !app.isPackaged || process.env.NODE_ENV === 'development' || Boolean(process.env.RENDERER_DEV_URL);
+};
+
 const resolveWindowIconPath = (): string | undefined => {
   const candidates = [
     // Typical dev run from repo root
@@ -230,6 +234,10 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
     await mainWindow.loadURL(rendererTarget.value);
   } else {
     await mainWindow.loadFile(rendererTarget.value);
+  }
+
+  if (isDesktopDevRuntime()) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
 
   mainWindow.webContents.on('did-finish-load', () => {

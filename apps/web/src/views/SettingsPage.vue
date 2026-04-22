@@ -190,7 +190,7 @@ const reload = async () => {
   systemInfo.serverReachable = uiRuntime.stores.app.state.connection.isServerReachable;
   systemInfo.lastHealthCheckAt = uiRuntime.stores.app.state.connection.lastHealthCheckAt ?? '';
   systemInfo.onboardingComplete = getSetting('onboarding.complete') === true;
-  systemInfo.settingsCount = uiRuntime.stores.settings.state.data.filter(s => s.key !== 'provider.apiKey').length;
+  systemInfo.settingsCount = uiRuntime.stores.settings.state.data.filter((setting) => !isSensitiveProviderSetting(setting.key)).length;
 };
 
 // ── Apply theme ───────────────────────────────────────────
@@ -387,10 +387,17 @@ const clearProviderKey = async () => {
   systemBusy.value = true;
   feedback.value = null;
   try {
-    await uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: '' });
-    await uiRuntime.api.upsertSetting({ key: 'provider.copilot.apiKey', value: '' });
-    await uiRuntime.api.upsertSetting({ key: 'provider.openai.apiKey', value: '' });
-    await uiRuntime.api.upsertSetting({ key: 'provider.claude.apiKey', value: '' });
+    await Promise.all([
+      uiRuntime.api.upsertSetting({ key: 'provider.apiKey', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.copilot.apiKey', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.openai.apiKey', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.openai.oauth.accessToken', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.openai.authType', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.claude.apiKey', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.claude.authType', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.name', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.defaultModel', value: '' })
+    ]);
     await reload();
     setFeedback('success', 'All stored API keys cleared');
   } catch (err) {
@@ -426,6 +433,13 @@ const triggerHeartbeat = async () => {
     systemBusy.value = false;
   }
 };
+
+const isSensitiveProviderSetting = (key: string): boolean => (
+  key === 'provider.apiKey' ||
+  /\.apiKey$/u.test(key) ||
+  /\.oauth\.accessToken$/u.test(key) ||
+  /\.oauth\.refreshToken$/u.test(key)
+);
 
 // ── Visible settings (hide secrets) ───────────────────────
 const visibleSettings = computed(() =>

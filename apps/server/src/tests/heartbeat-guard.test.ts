@@ -15,7 +15,11 @@ class FakeHeartbeatAdapter implements AiAdapter {
   readonly id = 'openai';
   readonly name = 'Fake Heartbeat Adapter';
   readonly description = 'Deterministic adapter for heartbeat regression tests';
+  readonly logoId = 'openai';
   readonly keyHint = 'test';
+  readonly authType = 'apikey' as const;
+  readonly supportedAuthTypes = ['apikey'] as const;
+  readonly defaultAuthType = 'apikey' as const;
   readonly defaultModel = 'fake-heartbeat-model';
   readonly availableModels = ['fake-heartbeat-model'];
 
@@ -109,7 +113,7 @@ test('heartbeat AI does not create a task when an L0 agent has no actionable wor
   for (const payload of [
     { key: 'provider.name', value: 'openai' },
     { key: 'provider.defaultModel', value: 'fake-heartbeat-model' },
-    { key: 'provider.apiKey', value: 'test-api-key' }
+    { key: 'provider.openai.apiKey', value: 'test-api-key' }
   ]) {
     const response = await app.inject({
       method: 'POST',

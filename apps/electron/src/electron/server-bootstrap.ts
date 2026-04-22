@@ -31,7 +31,8 @@ export const startEmbeddedServer = async (
     repositoryDriver: 'prisma',
     queueDriver: 'memory',
     authApiKey: options.authApiKey,
-    pluginsRootDir: options.pluginsRootDir
+    pluginsRootDir: options.pluginsRootDir,
+    runtimeMode: 'desktop'
   });
 
   await app.listen({ host, port });

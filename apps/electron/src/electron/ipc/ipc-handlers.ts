@@ -6,6 +6,7 @@ import type {
   DesktopSystemEventPayload,
   DesktopUpdateEventPayload
 } from './ipc.types.js';
+import { captureProviderOAuthTokens } from '../provider-oauth.js';
 
 export interface IpcHandlerOptions {
   apiBaseUrl: string;
@@ -123,6 +124,29 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
 
     notification.show();
     return { accepted: true } satisfies DesktopInvokeResponseMap['desktop:notification:show'];
+  });
+
+  ipcMain.handle('desktop:provider:oauth:start', async (event, payload) => {
+    console.info('[oauth-ipc] start', {
+      providerId: payload.providerId,
+      senderId: event.sender.id
+    });
+
+    const ownerWindow = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+    const result = await captureProviderOAuthTokens(payload.providerId, ownerWindow);
+
+    console.info('[oauth-ipc] success', {
+      providerId: result.providerId,
+      candidateTokenCount: result.candidateTokens.length,
+      cookieCount: result.cookieCount
+    });
+
+    return {
+      ok: true,
+      providerId: result.providerId,
+      candidateTokens: result.candidateTokens,
+      cookieCount: result.cookieCount
+    } satisfies DesktopInvokeResponseMap['desktop:provider:oauth:start'];
   });
 
   ipcMain.handle('desktop:dialog:open-directory', async (event) => {

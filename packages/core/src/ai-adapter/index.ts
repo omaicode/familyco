@@ -1,5 +1,6 @@
 export type {
   AiAdapter,
+  AdapterAuthType,
   AdapterChatInput,
   AdapterChatAttachment,
   AdapterAudioTranscriptionInput,

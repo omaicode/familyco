@@ -482,6 +482,39 @@ export interface TestAdapterPayload {
   model?: string;
 }
 
+export type ProviderAuthType = 'apikey' | 'oauth';
+
+export interface ProviderListItem {
+  id: string;
+  name: string;
+  description: string;
+  logoId: string;
+  keyHint: string;
+  supportedAuthTypes: ProviderAuthType[];
+  connectedAuthTypes: ProviderAuthType[];
+  activeAuthType: ProviderAuthType | null;
+  connected: boolean;
+  isPrimary: boolean;
+  availableModels: string[];
+  defaultModel: string;
+  currentModel: string;
+  oauthAvailable: boolean;
+}
+
+export interface ConnectProviderPayload {
+  apiKey: string;
+  model: string;
+}
+
+export interface ConnectProviderOAuthPayload {
+  candidateTokens: string[];
+  model: string;
+}
+
+export interface SelectProviderPayload {
+  model: string;
+}
+
 export interface AdapterTestResult {
   ok: boolean;
   latencyMs: number;
@@ -743,6 +776,11 @@ export interface FamilyCoApiContracts {
   listSettings: () => Promise<SettingItem[]>;
   upsertSetting: (payload: UpsertSettingPayload) => Promise<SettingItem>;
   triggerHeartbeat: () => Promise<{ triggered: boolean; message: string }>;
+  listProviders: () => Promise<ProviderListItem[]>;
+  connectProvider: (providerId: string, payload: ConnectProviderPayload) => Promise<{ ok: boolean }>;
+  connectProviderOAuth: (providerId: string, payload: ConnectProviderOAuthPayload) => Promise<{ ok: boolean }>;
+  disconnectProvider: (providerId: string) => Promise<{ ok: boolean }>;
+  selectProvider: (providerId: string, payload: SelectProviderPayload) => Promise<{ ok: boolean }>;
   testProviderAdapter: (payload: TestAdapterPayload) => Promise<AdapterTestResult>;
   initializeSetup: (payload: InitializeSetupPayload) => Promise<{
     companyName: string;
@@ -928,6 +966,15 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
   listSettings: () => client.get<SettingItem[]>('/api/v1/settings'),
   upsertSetting: (payload) => client.post<SettingItem, UpsertSettingPayload>('/api/v1/settings', payload),
   triggerHeartbeat: () => client.post<{ triggered: boolean; message: string }>('/api/v1/engine/heartbeat/trigger'),
+  listProviders: () => client.get<ProviderListItem[]>('/api/v1/provider/list'),
+  connectProvider: (providerId, payload) =>
+    client.post<{ ok: boolean }, ConnectProviderPayload>(`/api/v1/provider/${encodeURIComponent(providerId)}/connect`, payload),
+  connectProviderOAuth: (providerId, payload) =>
+    client.post<{ ok: boolean }, ConnectProviderOAuthPayload>(`/api/v1/provider/${encodeURIComponent(providerId)}/oauth/connect`, payload),
+  disconnectProvider: (providerId) =>
+    client.post<{ ok: boolean }>(`/api/v1/provider/${encodeURIComponent(providerId)}/disconnect`),
+  selectProvider: (providerId, payload) =>
+    client.post<{ ok: boolean }, SelectProviderPayload>(`/api/v1/provider/${encodeURIComponent(providerId)}/select`, payload),
   testProviderAdapter: (payload) =>
     client.post<AdapterTestResult, TestAdapterPayload>('/api/v1/provider/test', payload),
   initializeSetup: (payload) =>

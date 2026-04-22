@@ -19,7 +19,11 @@ export class OpenAiAdapter implements AiAdapter {
   readonly id = 'openai';
   readonly name = 'OpenAI';
   readonly description = 'OpenAI gpt-5-mini — best for general-purpose agents';
+  readonly logoId = 'openai';
   readonly keyHint = 'sk-…';
+  readonly authType = 'apikey' as const;
+  readonly supportedAuthTypes = ['apikey'] as const;
+  readonly defaultAuthType = 'apikey' as const;
   readonly defaultModel = 'gpt-5-mini';
   readonly availableModels = OPENAI_MODELS;
 

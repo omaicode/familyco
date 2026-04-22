@@ -6,8 +6,9 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
  * Encrypted values are stored as JSON objects with the shape:
  *   { "$enc": "<iv_hex>:<authTag_hex>:<ciphertext_hex>" }
  *
- * Keys considered sensitive: any key ending in `.apiKey`
- * (e.g. `provider.apiKey`, `provider.openai.apiKey`).
+ * Keys considered sensitive: any key ending in `.apiKey`, `.oauth.accessToken`,
+ * or `.oauth.refreshToken` (e.g. `provider.openai.apiKey`,
+ * `provider.openai.oauth.accessToken`).
  *
  * Decryption transparently handles legacy plaintext values and will
  * auto-upgrade them to encrypted form on the next write.
@@ -20,7 +21,9 @@ const MARKER = '$enc';
 
 const SENSITIVE_PATTERNS: RegExp[] = [
   /\.apiKey$/u,
-  /^provider\.apiKey$/u
+  /^provider\.apiKey$/u,
+  /\.oauth\.accessToken$/u,
+  /\.oauth\.refreshToken$/u
 ];
 
 export interface EncryptedSettingValue {

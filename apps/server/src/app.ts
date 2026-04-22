@@ -137,6 +137,7 @@ export interface CreateAppOptions {
   defaultHeartbeatMinutes?: number;
   pluginsRootDir?: string;
   adapterRegistry?: ReturnType<typeof createAdapterRegistry>;
+  runtimeMode?: 'server' | 'desktop';
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
@@ -732,7 +733,12 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         settingsService,
         auditService
       });
-      registerProviderController(api, { adapterRegistry });
+      registerProviderController(api, {
+        adapterRegistry,
+        settingsService,
+        auditService,
+        runtimeMode: options.runtimeMode ?? 'server'
+      });
       registerTaskController(api, {
         taskService,
         agentService,

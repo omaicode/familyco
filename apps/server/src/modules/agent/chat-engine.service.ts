@@ -293,9 +293,8 @@ export class ChatEngineService {
   ): Promise<AdapterConfig | null> {
     const overrideAdapterId = agentAdapterId ? toAdapterId(agentAdapterId) : undefined;
 
-    const [providerSetting, globalApiKeySetting, modelSetting] = await Promise.all([
+    const [providerSetting, globalModelSetting] = await Promise.all([
       this.settingsService.get('provider.name'),
-      this.settingsService.get('provider.apiKey'),
       this.settingsService.get('provider.defaultModel')
     ]);
 
@@ -304,21 +303,33 @@ export class ChatEngineService {
       return null;
     }
 
-    const model = agentModel ?? asNonEmptyString(modelSetting?.value);
+    const [perAdapterModelSetting, perAdapterApiKeySetting, oauthTokenSetting, authTypeSetting] = await Promise.all([
+      this.settingsService.get(`provider.${adapterId}.defaultModel`),
+      this.settingsService.get(`provider.${adapterId}.apiKey`),
+      this.settingsService.get(`provider.${adapterId}.oauth.accessToken`),
+      this.settingsService.get(`provider.${adapterId}.authType`)
+    ]);
+
+    const model =
+      agentModel ??
+      asNonEmptyString(perAdapterModelSetting?.value) ??
+      asNonEmptyString(globalModelSetting?.value);
     if (!model) {
       return null;
     }
 
-    const perAdapterKeySetting = await this.settingsService.get(`provider.${adapterId}.apiKey`);
-    const apiKey =
-      asNonEmptyString(perAdapterKeySetting?.value) ??
-      asNonEmptyString(globalApiKeySetting?.value);
+    const apiKey = asNonEmptyString(perAdapterApiKeySetting?.value);
+    const oauthToken = asNonEmptyString(oauthTokenSetting?.value);
+    const authType = toAdapterAuthType(authTypeSetting?.value);
+    const credential = authType === 'oauth'
+      ? oauthToken ?? apiKey
+      : apiKey ?? oauthToken;
 
-    if (!apiKey) {
+    if (!credential) {
       return null;
     }
 
-    return { adapterId, apiKey, model };
+    return { adapterId, apiKey: credential, model };
   }
 
   async resolveEnabledSkills(agentLevel: AgentLevel): Promise<Array<{ id: string; name: string; description: string; path: string }>> {
@@ -352,6 +363,14 @@ function toAdapterId(value: unknown): AdapterId | undefined {
 
   if (value === 'anthropic') {
     return 'claude';
+  }
+
+  return undefined;
+}
+
+function toAdapterAuthType(value: unknown): 'apikey' | 'oauth' | undefined {
+  if (value === 'apikey' || value === 'oauth') {
+    return value;
   }
 
   return undefined;
