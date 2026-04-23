@@ -1,6 +1,6 @@
 {
   "name": "@familyco/ui",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "FamilyCo UI contracts and design system package",
   "type": "module",
   "main": "dist/index.js",
