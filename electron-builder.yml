@@ -56,6 +56,10 @@ extraResources:
     to: prisma/migrations
     filter:
       - "**/*"
+  - from: ../../plugins
+    to: plugins
+    filter:
+      - "**/*"
 mac:
   icon: ./icons/mac/icon.icns
   category: public.app-category.business

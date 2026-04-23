@@ -327,7 +327,7 @@ const startDesktop = async (): Promise<void> => {
 
   // Set DATABASE_URL before importing @familyco/server so the Prisma singleton
   // is initialised with the correct path.
-  process.env.DATABASE_URL = `file://${dbPath}`;
+  process.env.DATABASE_URL = `file:${dbPath}`;
 
   // Load or generate the AES-256 encryption key for sensitive settings (provider API keys).
   // The key is persisted in <userData>/settings.key so it survives app restarts.
@@ -350,12 +350,13 @@ const startDesktop = async (): Promise<void> => {
   process.env.FAMILYCO_QUEUE_DRIVER = 'memory';
   process.env.ENABLE_QUEUE_WORKERS = '0';
 
-  // Plugins are loaded from a user-writable directory outside the app bundle so
-  // they survive updates and can be managed by the user at any time.
-  // Mac:     ~/Library/Application Support/FamilyCo/plugins/
-  // Windows: C:\Users\<user>\AppData\Roaming\FamilyCo\plugins\
-  // Linux:   ~/.config/FamilyCo/plugins/
-  const pluginsRootDir = path.join(app.getPath('userData'), 'plugins');
+  // Plugins are loaded from the resource path by default
+  // In development, plugins are loaded from the monorepo root to allow live reloading without needing to copy files
+  let pluginsRootDir = path.join(process.resourcesPath, 'plugins');
+  if(isDesktopDevRuntime()) {
+    pluginsRootDir = path.resolve(process.cwd(), '../../plugins');
+  }
+  console.debug('Plugins root directory:', pluginsRootDir);
   mkdirSync(pluginsRootDir, { recursive: true });
 
   embeddedServer = await startEmbeddedServer({
