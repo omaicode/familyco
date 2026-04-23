@@ -253,7 +253,7 @@ async function resolveMigrationsPath(): Promise<string> {
 function resolveDatabasePath(): string {
   const raw = process.env.DATABASE_URL ?? 'file:../../prisma/dev.db';
 
-  if (raw.startsWith('file://')) {
+  if (raw.startsWith('file:')) {
     const urlPath = decodeURIComponent(new URL(raw).pathname);
     if (process.platform === 'win32' && /^\/[A-Za-z]:/.test(urlPath)) {
       return urlPath.slice(1);
