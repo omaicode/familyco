@@ -32,6 +32,8 @@ describe('SettingsEncryption', () => {
     assert.equal(enc.isSensitiveKey('provider.apiKey'), true);
     assert.equal(enc.isSensitiveKey('provider.openai.apiKey'), true);
     assert.equal(enc.isSensitiveKey('provider.claude.apiKey'), true);
+    assert.equal(enc.isSensitiveKey('provider.openai.oauth.accessToken'), true);
+    assert.equal(enc.isSensitiveKey('provider.openai.oauth.refreshToken'), true);
     assert.equal(enc.isSensitiveKey('provider.name'), false);
     assert.equal(enc.isSensitiveKey('provider.defaultModel'), false);
     assert.equal(enc.isSensitiveKey('company.name'), false);

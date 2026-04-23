@@ -43,6 +43,10 @@ const resolveRendererTarget = (): { mode: 'url'; value: string } | { mode: 'file
   return { mode: 'file', value: defaultDist };
 };
 
+const isDesktopDevRuntime = (): boolean => {
+  return !app.isPackaged || process.env.NODE_ENV === 'development' || Boolean(process.env.RENDERER_DEV_URL);
+};
+
 const resolveWindowIconPath = (): string | undefined => {
   const candidates = [
     // Typical dev run from repo root
@@ -233,6 +237,10 @@ const createMainWindow = async (runtimeConfig: DesktopRuntimeConfig): Promise<vo
     await mainWindow.loadFile(rendererTarget.value);
   }
 
+  if (isDesktopDevRuntime()) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  }
+
   mainWindow.webContents.on('did-finish-load', () => {
     emitDesktopWindowState();
   });
@@ -305,12 +313,12 @@ const startDesktop = async (): Promise<void> => {
     if (embeddedServer) {
       await createMainWindow({
         apiBaseUrl: embeddedServer.baseUrl,
-        apiKey: process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key'
+        apiKey: process.env.FAMILYCO_API_KEY ?? 'replace-with-a-random-secret'
       });
     }
   });
 
-  const apiKey = process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key';
+  const apiKey = process.env.FAMILYCO_API_KEY ?? 'replace-with-a-random-secret';
 
   // Store SQLite database in the OS user-data folder for this app.
   // Mac:     ~/Library/Application Support/FamilyCo/familyco.db
@@ -345,11 +353,13 @@ const startDesktop = async (): Promise<void> => {
   process.env.FAMILYCO_QUEUE_DRIVER = 'memory';
   process.env.ENABLE_QUEUE_WORKERS = '0';
 
-  // Plugins are loaded from app data directory
-  // Mac:     ~/Library/Application Support/FamilyCo/resources/plugins/
-  // Windows: C:\Users\<user>\AppData\Local\Programs\FamilyCo\resources\plugins\
-  // Linux:   ~/.config/FamilyCo/resources/plugins/
-  const pluginsRootDir = path.join(app.getPath('appData'), 'resources', 'plugins');
+  // Plugins are loaded from the resource path by default
+  // In development, plugins are loaded from the monorepo root to allow live reloading without needing to copy files
+  let pluginsRootDir = path.join(process.resourcesPath, 'plugins');
+  if(isDesktopDevRuntime()) {
+    pluginsRootDir = path.resolve(process.cwd(), '../../plugins');
+  }
+  console.debug('Plugins root directory:', pluginsRootDir);
   mkdirSync(pluginsRootDir, { recursive: true });
 
   embeddedServer = await startEmbeddedServer({
@@ -409,7 +419,7 @@ app.on('activate', async () => {
   if (BrowserWindow.getAllWindows().length === 0 && embeddedServer) {
     await createMainWindow({
       apiBaseUrl: embeddedServer.baseUrl,
-      apiKey: process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key'
+      apiKey: process.env.FAMILYCO_API_KEY ?? 'replace-with-a-random-secret'
     });
   }
 });

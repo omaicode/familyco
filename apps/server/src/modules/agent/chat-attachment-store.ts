@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { SettingsService } from '@familyco/core';
 
 export type ChatAttachmentKind = 'file' | 'audio';
 
@@ -21,7 +21,10 @@ export interface ChatAttachmentData extends ChatAttachmentRecord {
 }
 
 export class ChatAttachmentStore {
-  constructor(private readonly rootDir = resolveChatAttachmentsDir()) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    private rootDir = null as string | null
+  ) {}
 
   async save(input: {
     name: string;
@@ -29,7 +32,11 @@ export class ChatAttachmentStore {
     data: Uint8Array;
     kind?: ChatAttachmentKind;
   }): Promise<ChatAttachmentRecord> {
+    const workspacePathSetting = await this.settingsService.get('workspace.path');
+    const workspacePath = typeof workspacePathSetting?.value == 'string' ? workspacePathSetting.value : process.cwd();
+    this.rootDir = path.join(workspacePath, 'chat-attachments');
     await fs.mkdir(this.rootDir, { recursive: true });
+
     const id = randomUUID();
     const storageKey = id;
     const record: ChatAttachmentRecord = {
@@ -100,17 +107,18 @@ export class ChatAttachmentStore {
   }
 
   private getBinaryPath(storageKey: string): string {
+    if (!this.rootDir) {
+      throw new Error('ChatAttachmentStore rootDir is not initialized');
+    }
     return path.join(this.rootDir, `${storageKey}.bin`);
   }
 
   private getMetadataPath(storageKey: string): string {
+    if (!this.rootDir) {
+      throw new Error('ChatAttachmentStore rootDir is not initialized');
+    }
     return path.join(this.rootDir, `${storageKey}.json`);
   }
-}
-
-function resolveChatAttachmentsDir(): string {
-  const uploadPath = path.resolve(process.cwd(), 'uploads');
-  return path.join(uploadPath, 'chat-attachments');
 }
 
 function inferAttachmentKind(mediaType: string): ChatAttachmentKind {

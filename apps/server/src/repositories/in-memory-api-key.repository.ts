@@ -42,6 +42,41 @@ export class InMemoryApiKeyRepository implements ApiKeyRepository {
     return created;
   }
 
+  async migrateHash(input: { fromHash: string; toHash: string }): Promise<ApiKeyRecord | null> {
+    const existing = this.keys.get(input.fromHash);
+    if (!existing || !existing.active) {
+      return null;
+    }
+
+    const now = new Date();
+    const target = this.keys.get(input.toHash);
+    if (target) {
+      const activeTarget: ApiKeyRecord = {
+        ...target,
+        active: true,
+        updatedAt: now
+      };
+      this.keys.set(input.toHash, activeTarget);
+
+      this.keys.set(input.fromHash, {
+        ...existing,
+        active: false,
+        updatedAt: now
+      });
+
+      return activeTarget;
+    }
+
+    this.keys.delete(input.fromHash);
+    const migrated: ApiKeyRecord = {
+      ...existing,
+      keyHash: input.toHash,
+      updatedAt: now
+    };
+    this.keys.set(input.toHash, migrated);
+    return migrated;
+  }
+
   async revokeByHash(keyHash: string): Promise<ApiKeyRecord | null> {
     const existing = this.keys.get(keyHash);
     if (!existing) {

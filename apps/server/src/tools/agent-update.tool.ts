@@ -30,7 +30,7 @@ export const agentUpdateTool: ServerToolDefinition = {
     { name: 'role', type: 'string', required: false, description: 'Updated role.' },
     { name: 'department', type: 'string', required: false, description: 'Updated department.' },
     { name: 'status', type: 'active | idle | running | error | paused | terminated', required: false, description: 'Agent status.' },
-    { name: 'aiAdapterId', type: 'openai | claude | null', required: false, description: 'Agent adapter override.' },
+    { name: 'aiAdapterId', type: 'openai | claude | vercel | deepseek | null', required: false, description: 'Agent adapter override.' },
     { name: 'aiModel', type: 'string | null', required: false, description: 'Agent model override.' }
   ],
   async execute(argumentsMap, context): Promise<ToolExecutionResult> {
@@ -90,12 +90,12 @@ function asAgentStatus(value: unknown): AgentStatus | undefined {
   return undefined;
 }
 
-function asAdapter(value: unknown): 'openai' | 'claude' | null | undefined {
+function asAdapter(value: unknown): 'openai' | 'claude' | 'vercel' | 'deepseek' | null | undefined {
   if (value === null) {
     return null;
   }
 
-  if (value === 'openai' || value === 'claude') {
+  if (value === 'openai' || value === 'claude' || value === 'vercel' || value === 'deepseek') {
     return value;
   }
 

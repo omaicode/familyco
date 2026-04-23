@@ -47,7 +47,7 @@ const resolveApiBaseUrl = (): string => {
 
 const baseURL = resolveApiBaseUrl();
 const apiKey =
-  (isDesktopRuntime() ? window.familycoDesktopConfig?.apiKey || 'local-dev-api-key' : undefined) ||
+  (isDesktopRuntime() ? window.familycoDesktopConfig?.apiKey || 'replace-with-a-random-secret' : undefined) ||
   import.meta.env.VITE_API_KEY;
 const token = import.meta.env.VITE_BEARER_TOKEN;
 const systemPrefersDark =

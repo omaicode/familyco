@@ -17,7 +17,7 @@ export interface EmbeddedServerBootstrapOptions {
  * Starts the embedded Fastify server for Electron Desktop.
  *
  * IMPORTANT: Before calling this function, `process.env.DATABASE_URL` MUST be
- * set to the SQLite file path (e.g. `file:///abs/path/familyco.db`).
+ * set to the SQLite file path (e.g. `file:/abs/path/familyco.db`).
  * This is handled by `main.ts` via a dynamic import to guarantee ordering.
  */
 export const startEmbeddedServer = async (
@@ -31,7 +31,8 @@ export const startEmbeddedServer = async (
     repositoryDriver: 'prisma',
     queueDriver: 'memory',
     authApiKey: options.authApiKey,
-    pluginsRootDir: options.pluginsRootDir
+    pluginsRootDir: options.pluginsRootDir,
+    runtimeMode: 'desktop'
   });
 
   await app.listen({ host, port });

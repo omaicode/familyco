@@ -83,8 +83,8 @@ test('renderChatSystemPrompt includes Role Goal Constraints and JSON contract', 
 
   // Conversation history
   assert.equal(prompt.includes('Recent Conversation History'), true);
-  assert.equal(prompt.includes('- Founder: Last topic: Need a weekly execution plan with clear priorities.'), true);
-  assert.equal(prompt.includes('- Executive agent: Reply from Chief of Staff: Plan drafted and tasks created.'), true);
+  assert.equal(prompt.includes('- Founder: Need a weekly execution plan with clear priorities.'), true);
+  assert.equal(prompt.includes('- Executive agent: Plan drafted and tasks created.'), true);
   assert.equal(
     prompt.includes('Tool task.create (ok): Created task TASK-123 for the weekly review. Output JSON: {"id":"task-123","title":"Weekly review"}'),
     true

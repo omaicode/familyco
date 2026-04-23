@@ -1,6 +1,6 @@
 import { startEmbeddedServer } from './server-bootstrap.js';
 
-const SMOKE_API_KEY = process.env.DESKTOP_SMOKE_API_KEY ?? 'local-dev-api-key';
+const SMOKE_API_KEY = process.env.DESKTOP_SMOKE_API_KEY ?? 'replace-with-a-random-secret';
 
 const requestJson = async <TPayload>(url: string): Promise<TPayload> => {
   const response = await fetch(url, {

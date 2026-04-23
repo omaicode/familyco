@@ -49,7 +49,7 @@ const handleFileChange = (event: Event): void => {
           <Paperclip :size="14" />
           {{ t('chat.attachment.add') }}
         </FcButton>
-        <ExecutiveChatRecorderButton :disabled="props.disabled" @recorded="emit('pick', [$event])" />
+        <!-- <ExecutiveChatRecorderButton :disabled="props.disabled" @recorded="emit('pick', [$event])" /> -->
       </div>
       <span v-if="hasPendingUploads" class="chat-attachment-uploading">{{ t('chat.attachment.uploading') }}</span>
     </div>

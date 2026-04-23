@@ -1,6 +1,14 @@
 import type { AdapterHook } from './adapter-hook.interface.js';
 import { AdapterHookRunner } from './adapter-hook-runner.js';
-import type { AiAdapter, AdapterChatInput, AdapterChatResult, AdapterTestResult, AdapterAudioTranscriptionInput, AdapterAudioTranscriptionResult } from './ai-adapter.interface.js';
+import type {
+  AiAdapter,
+  AdapterAuthType,
+  AdapterAudioTranscriptionInput,
+  AdapterAudioTranscriptionResult,
+  AdapterChatInput,
+  AdapterChatResult,
+  AdapterTestResult
+} from './ai-adapter.interface.js';
 
 class HookedAdapter implements AiAdapter {
   constructor(
@@ -11,7 +19,11 @@ class HookedAdapter implements AiAdapter {
   get id(): string { return this.inner.id; }
   get name(): string { return this.inner.name; }
   get description(): string { return this.inner.description; }
+  get logoId(): string { return this.inner.logoId; }
   get keyHint(): string { return this.inner.keyHint; }
+  get authType(): AdapterAuthType { return this.inner.authType; }
+  get supportedAuthTypes(): readonly AdapterAuthType[] { return this.inner.supportedAuthTypes; }
+  get defaultAuthType(): AdapterAuthType { return this.inner.defaultAuthType; }
   get defaultModel(): string { return this.inner.defaultModel; }
   get availableModels(): readonly string[] { return this.inner.availableModels; }
 

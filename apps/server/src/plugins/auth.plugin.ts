@@ -15,7 +15,7 @@ export function registerAuthPlugin(app: FastifyInstance): void {
 }
 
 export function getAuthApiKey(): string {
-  return process.env.FAMILYCO_API_KEY ?? 'local-dev-api-key';
+  return process.env.FAMILYCO_API_KEY ?? 'replace-with-a-random-secret';
 }
 
 export function getAuthApiKeySalt(): string {

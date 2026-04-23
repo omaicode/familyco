@@ -5,6 +5,7 @@ export type DesktopInvokeChannel =
   | 'desktop:update:check'
   | 'desktop:update:install'
   | 'desktop:notification:show'
+  | 'desktop:provider:oauth:start'
   | 'desktop:dialog:open-directory'
   | 'desktop:window:minimize'
   | 'desktop:window:toggle-maximize'
@@ -61,6 +62,9 @@ export interface DesktopInvokeRequestMap {
     route?: string;
     notificationId?: string;
   };
+  'desktop:provider:oauth:start': {
+    providerId: string;
+  };
   'desktop:dialog:open-directory': Record<string, never>;
   'desktop:window:minimize': Record<string, never>;
   'desktop:window:toggle-maximize': Record<string, never>;
@@ -81,6 +85,12 @@ export interface DesktopInvokeResponseMap {
   };
   'desktop:notification:show': {
     accepted: boolean;
+  };
+  'desktop:provider:oauth:start': {
+    ok: boolean;
+    providerId: string;
+    candidateTokens: string[];
+    cookieCount: number;
   };
   'desktop:dialog:open-directory': {
     canceled: boolean;

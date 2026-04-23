@@ -9,13 +9,11 @@ import {
 import FamilyCoIcon from '../assets/familyco-icon.svg';
 import FcButton from '../components/FcButton.vue';
 import FcInput from '../components/FcInput.vue';
-import FcPasswordInput from '../components/FcPasswordInput.vue';
-import FcSelect from '../components/FcSelect.vue';
 import FcTextarea from '../components/FcTextarea.vue';
+import OnboardingProviderStep from '../components/onboarding/OnboardingProviderStep.vue';
 
 import { uiRuntime } from '../runtime';
 import { useI18n } from '../composables/useI18n';
-import { ADAPTER_OPTIONS, getDefaultAdapterModel, type AdapterId } from '../constants/adapter-options';
 
 const router = useRouter();
 const { locale, setLocale, supportedLocales, t } = useI18n();
@@ -38,21 +36,15 @@ const isDesktop = typeof window !== 'undefined' && typeof (window as unknown as 
 const form = reactive({
   companyName: '',
   companyDescription: '',
-  workspacePath: '',
-  provider: 'openai' as AdapterId,
-  apiKey: '',
-  defaultModel: 'gpt-5-mini',
+  workspacePath: ''
 });
 
-const adapterOptions = computed(() => ADAPTER_OPTIONS.map((option) => ({
-  ...option,
-  description: option.value === 'openai'
-    ? t('OpenAI gpt-5-mini — best for general-purpose agents')
-    : t('Anthropic Claude — great for reasoning and long-context tasks'),
-  defaultModel: getDefaultAdapterModel(option.value),
-})));
-
-const selectedAdapter = computed(() => adapterOptions.value.find(p => p.value === form.provider)!);
+const providerSetup = reactive({
+  ready: false,
+  primaryProviderId: '',
+  primaryProviderName: '',
+  primaryModel: ''
+});
 
 const canNext = computed(() => {
   if (currentStep.value === 2) {
@@ -60,7 +52,7 @@ const canNext = computed(() => {
   }
 
   if (currentStep.value === 3) return form.workspacePath.trim().length > 0;
-  if (currentStep.value === 4) return form.apiKey.trim().length > 0;
+  if (currentStep.value === 4) return providerSetup.ready;
   return true;
 });
 
@@ -80,12 +72,6 @@ const browseWorkspace = async () => {
   }
 };
 
-const selectAdapter = (id: AdapterId) => {
-  form.provider = id;
-  form.defaultModel = getDefaultAdapterModel(id);
-  form.apiKey = '';
-};
-
 const next = () => { if (currentStep.value < TOTAL_STEPS) currentStep.value++; };
 const prev = () => { if (currentStep.value > 1) currentStep.value--; };
 
@@ -97,24 +83,10 @@ const initialize = async () => {
   isSubmitting.value = true;
   errorMessage.value = null;
   try {
-    const apiKey = form.apiKey.trim();
-    if (!apiKey) {
-      throw new Error(t('Connection failed'));
+    if (!providerSetup.ready || !providerSetup.primaryProviderId || !providerSetup.primaryModel) {
+      throw new Error(t('onboarding.provider.required'));
     }
 
-    const connection = await uiRuntime.api.testProviderAdapter({
-      adapterId: form.provider,
-      apiKey,
-      model: form.defaultModel,
-    });
-
-    if (!connection.ok) {
-      throw new Error(connection.error ?? t('Connection failed'));
-    }
-
-    await upsertSetting('provider.name', form.provider);
-    await upsertSetting('provider.apiKey', apiKey);
-    await upsertSetting('provider.defaultModel', form.defaultModel);
     if (form.workspacePath.trim()) {
       await upsertSetting('workspace.path', form.workspacePath.trim());
     }
@@ -140,6 +112,18 @@ const goToDashboard = () => router.replace('/dashboard');
 const handleLocaleChange = (event: Event): void => {
   const nextLocale = (event.target as HTMLSelectElement).value as SupportedLocale;
   void setLocale(nextLocale);
+};
+
+const handleProviderStateChange = (state: {
+  ready: boolean;
+  primaryProviderId: string | null;
+  primaryProviderName: string | null;
+  primaryModel: string | null;
+}): void => {
+  providerSetup.ready = state.ready;
+  providerSetup.primaryProviderId = state.primaryProviderId ?? '';
+  providerSetup.primaryProviderName = state.primaryProviderName ?? '';
+  providerSetup.primaryModel = state.primaryModel ?? '';
 };
 
 const cleanupStepStageHeight = (): void => {
@@ -392,39 +376,12 @@ const handleStepAfterEnter = (): void => {
               <Key :size="28" />
             </div>
             <h2 class="ob-title">{{ t('Connect AI adapter') }}</h2>
-            <p class="ob-subtitle">{{ t('Choose your AI provider and paste your API key. This is used by your agents to reason and act.') }}</p>
+            <p class="ob-subtitle">{{ t('onboarding.provider.subtitle') }}</p>
 
-            <!-- Adapter selector -->
-            <div class="ob-provider-grid">
-              <button
-                v-for="opt in adapterOptions"
-                :key="opt.value"
-                class="ob-provider-card"
-                :class="{ 'ob-provider-selected': form.provider === opt.value }"
-                @click="selectAdapter(opt.value)"
-              >
-                <span class="ob-provider-name">{{ opt.label }}</span>
-                <span class="ob-provider-desc">{{ opt.description }}</span>
-              </button>
-            </div>
-
-            <!-- API Key -->
-            <div class="ob-form-group">
-              <label class="ob-label">{{ t('API Key') }} <span class="ob-required">*</span></label>
-              <FcPasswordInput
-                v-model="form.apiKey"
-                :placeholder="selectedAdapter.keyHint"
-              />
-              <p class="ob-hint">{{ t('Stored locally in your database — never sent anywhere else.') }}</p>
-            </div>
-
-            <!-- Default model -->
-            <div class="ob-form-group">
-              <label class="ob-label">{{ t('Default model') }}</label>
-              <FcSelect v-model="form.defaultModel" class="ob-input ob-select">
-                <option v-for="m in selectedAdapter.models" :key="m" :value="m">{{ m }}</option>
-              </FcSelect>
-            </div>
+            <OnboardingProviderStep
+              :is-desktop-runtime="isDesktop"
+              @state-change="handleProviderStateChange"
+            />
 
             <div class="ob-actions">
               <FcButton class="ob-btn-ghost" variant="ghost" @click="prev">
@@ -460,11 +417,11 @@ const handleStepAfterEnter = (): void => {
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">{{ t('AI provider') }}</span>
-                <span class="ob-summary-value">{{ selectedAdapter.label }}</span>
+                <span class="ob-summary-value">{{ providerSetup.primaryProviderName || t('Not provided yet') }}</span>
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">{{ t('Default model') }}</span>
-                <span class="ob-summary-value">{{ form.defaultModel }}</span>
+                <span class="ob-summary-value">{{ providerSetup.primaryModel || t('Not provided yet') }}</span>
               </div>
               <div class="ob-summary-row">
                 <span class="ob-summary-label">{{ t('Agents created') }}</span>
@@ -799,50 +756,6 @@ const handleStepAfterEnter = (): void => {
 }
 
 /* ── Provider grid ────────────────────────────────────── */
-.ob-provider-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.ob-provider-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  padding: 12px 14px;
-  border: 1px solid var(--fc-border-subtle);
-  border-radius: 10px;
-  background: var(--fc-bg);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  width: 100%;
-}
-
-.ob-provider-card:hover {
-  border-color: var(--fc-primary);
-  background: color-mix(in srgb, var(--fc-primary) 4%, var(--fc-bg));
-}
-
-.ob-provider-selected {
-  border-color: var(--fc-primary) !important;
-  background: color-mix(in srgb, var(--fc-primary) 8%, var(--fc-bg)) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fc-primary) 12%, transparent);
-}
-
-.ob-provider-name {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--fc-text);
-  margin-bottom: 2px;
-}
-
-.ob-provider-desc {
-  font-size: 0.8125rem;
-  color: var(--fc-text-muted);
-}
-
 /* ── Summary ──────────────────────────────────────────── */
 .ob-summary {
   display: flex;

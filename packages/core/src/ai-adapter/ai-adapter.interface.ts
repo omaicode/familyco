@@ -1,3 +1,5 @@
+export type AdapterAuthType = 'apikey' | 'oauth';
+
 export interface AdapterTestResult {
   ok: boolean;
   latencyMs: number;
@@ -101,7 +103,11 @@ export interface AiAdapter {
   readonly id: string;
   readonly name: string;
   readonly description: string;
+  readonly logoId: string;
   readonly keyHint: string;
+  readonly authType: AdapterAuthType;
+  readonly supportedAuthTypes: readonly AdapterAuthType[];
+  readonly defaultAuthType: AdapterAuthType;
   readonly defaultModel: string;
   readonly availableModels: readonly string[];
 

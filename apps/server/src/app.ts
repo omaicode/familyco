@@ -137,6 +137,7 @@ export interface CreateAppOptions {
   defaultHeartbeatMinutes?: number;
   pluginsRootDir?: string;
   adapterRegistry?: ReturnType<typeof createAdapterRegistry>;
+  runtimeMode?: 'server' | 'desktop';
 }
 
 export function createApp(options: CreateAppOptions = {}): FastifyInstance {
@@ -273,7 +274,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
   const chatEngineService = new ChatEngineService(settingsService, adapterRegistry, skillsService);
   const chatStreamRegistry = new ChatStreamRegistry();
-  const chatAttachmentStore = new ChatAttachmentStore();
+  const chatAttachmentStore = new ChatAttachmentStore(settingsService);
 
   const taskCoordinator = new TaskExecutionCoordinator({
     chatEngineService,
@@ -732,7 +733,12 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         settingsService,
         auditService
       });
-      registerProviderController(api, { adapterRegistry });
+      registerProviderController(api, {
+        adapterRegistry,
+        settingsService,
+        auditService,
+        runtimeMode: options.runtimeMode ?? 'server'
+      });
       registerTaskController(api, {
         taskService,
         agentService,
