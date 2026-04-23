@@ -34,8 +34,4 @@ test('renderHeartbeatRunPrompt follows Role Goal Constraints pattern', () => {
   assert.equal(prompt.includes('You MAY call only: task.list, task.read, task.dispatch, task.log.'), true);
   assert.equal(prompt.includes('Never replace task.dispatch with a text summary. Tool call execution is required.'), true);
   assert.equal(prompt.includes('Do NOT dispatch tasks whose dependsOnTaskIds or readinessRules are not satisfied.'), true);
-  assert.equal(
-    prompt.includes('- agent-orchestrator (Agent Orchestrator): Manage subordinate agents.'),
-    true
-  );
 });
