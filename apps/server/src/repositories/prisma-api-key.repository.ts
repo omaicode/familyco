@@ -32,6 +32,39 @@ export class PrismaApiKeyRepository implements ApiKeyRepository {
     });
   }
 
+  async migrateHash(input: { fromHash: string; toHash: string }): Promise<ApiKeyRecord | null> {
+    const existing = await this.prisma.apiKey.findUnique({
+      where: { keyHash: input.fromHash }
+    });
+
+    if (!existing || !existing.active) {
+      return null;
+    }
+
+    const target = await this.prisma.apiKey.findUnique({
+      where: { keyHash: input.toHash }
+    });
+
+    if (target) {
+      const [activeTarget] = await this.prisma.$transaction([
+        this.prisma.apiKey.update({
+          where: { keyHash: input.toHash },
+          data: { active: true }
+        }),
+        this.prisma.apiKey.update({
+          where: { keyHash: input.fromHash },
+          data: { active: false }
+        })
+      ]);
+      return activeTarget;
+    }
+
+    return this.prisma.apiKey.update({
+      where: { keyHash: input.fromHash },
+      data: { keyHash: input.toHash }
+    });
+  }
+
   async revokeByHash(keyHash: string): Promise<ApiKeyRecord | null> {
     const existing = await this.prisma.apiKey.findUnique({
       where: { keyHash }

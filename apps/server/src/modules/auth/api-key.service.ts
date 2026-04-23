@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, scryptSync } from 'node:crypto';
 
 export interface ApiKeyRecord {
   id: string;
@@ -12,21 +12,40 @@ export interface ApiKeyRecord {
 export interface ApiKeyRepository {
   findActiveByHash(keyHash: string): Promise<ApiKeyRecord | null>;
   ensureActive(input: { name: string; keyHash: string }): Promise<ApiKeyRecord>;
+  migrateHash(input: { fromHash: string; toHash: string }): Promise<ApiKeyRecord | null>;
   revokeByHash(keyHash: string): Promise<ApiKeyRecord | null>;
 }
 
 export class ApiKeyService {
+  private static readonly SCRYPT_KEY_LENGTH = 64;
+
   constructor(
     private readonly repository: ApiKeyRepository,
     private readonly salt: string
   ) {}
 
   hash(rawApiKey: string): string {
-    return createHash('sha256').update(`${this.salt}:${rawApiKey}`).digest('hex');
+    const derivedKey = scryptSync(rawApiKey, this.salt, ApiKeyService.SCRYPT_KEY_LENGTH);
+    return `scrypt$${derivedKey.toString('hex')}`;
   }
 
   async verify(rawApiKey: string): Promise<ApiKeyRecord | null> {
-    return this.repository.findActiveByHash(this.hash(rawApiKey));
+    const currentHash = this.hash(rawApiKey);
+    const currentRecord = await this.repository.findActiveByHash(currentHash);
+    if (currentRecord) {
+      return currentRecord;
+    }
+
+    const legacyHash = this.hashLegacy(rawApiKey);
+    const legacyRecord = await this.repository.findActiveByHash(legacyHash);
+    if (!legacyRecord) {
+      return null;
+    }
+
+    return this.repository.migrateHash({
+      fromHash: legacyHash,
+      toHash: currentHash
+    });
   }
 
   async ensureBootstrapKey(name: string, rawApiKey: string): Promise<ApiKeyRecord> {
@@ -44,7 +63,13 @@ export class ApiKeyService {
   }
 
   async revoke(rawApiKey: string): Promise<ApiKeyRecord | null> {
-    return this.repository.revokeByHash(this.hash(rawApiKey));
+    const currentHash = this.hash(rawApiKey);
+    const revokedCurrent = await this.repository.revokeByHash(currentHash);
+    if (revokedCurrent) {
+      return revokedCurrent;
+    }
+
+    return this.repository.revokeByHash(this.hashLegacy(rawApiKey));
   }
 
   async rotate(input: {
@@ -62,5 +87,9 @@ export class ApiKeyService {
       revoked,
       created
     };
+  }
+
+  private hashLegacy(rawApiKey: string): string {
+    return createHash('sha256').update(`${this.salt}:${rawApiKey}`).digest('hex');
   }
 }
