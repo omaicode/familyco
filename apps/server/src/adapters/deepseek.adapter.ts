@@ -6,7 +6,7 @@ import { streamText } from 'ai';
 import { toAdapterErrorMessage } from './adapter.helpers.js';
 import { buildCoreMessages, buildVercelTools } from './vercel-adapter.helpers.js';
 
-const DEEPSEEK_MODELS = ['deepseek-chat', 'deepseek-reasoner'] as const;
+const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro'] as const;
 
 export class DeepSeekAdapter implements AiAdapter {
   readonly id = 'deepseek';
