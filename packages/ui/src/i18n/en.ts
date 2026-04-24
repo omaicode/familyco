@@ -575,6 +575,7 @@ export default {
   'Adapter not found': 'Adapter not found',
   'GitHub Copilot — code-aware reasoning powered by GitHub models': 'GitHub Copilot — code-aware reasoning powered by GitHub models',
   'OpenAI gpt-5-mini — best for general-purpose agents': 'OpenAI gpt-5-mini — best for general-purpose agents',
+  'OpenRouter — unified model routing with one API key': 'OpenRouter — unified model routing with one API key',
   'Anthropic Claude — great for reasoning and long-context tasks': 'Anthropic Claude — great for reasoning and long-context tasks',
   'Vercel AI Gateway — unified access to multiple model providers': 'Vercel AI Gateway — unified access to multiple model providers',
   'DeepSeek — efficient reasoning models for coding and analysis': 'DeepSeek — efficient reasoning models for coding and analysis',

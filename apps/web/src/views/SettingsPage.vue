@@ -393,6 +393,8 @@ const clearProviderKey = async () => {
       uiRuntime.api.upsertSetting({ key: 'provider.openai.apiKey', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.openai.oauth.accessToken', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.openai.authType', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.openrouter.apiKey', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.openrouter.authType', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.claude.apiKey', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.claude.authType', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.name', value: '' }),

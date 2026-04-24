@@ -13,6 +13,7 @@ import type { AdapterLogger } from './hooks/logging.hook.js';
 import { LoggingHook } from './hooks/logging.hook.js';
 import { TokenUsageHook } from './hooks/token-usage.hook.js';
 import { OpenAiAdapter } from './openai.adapter.js';
+import { OpenRouterAdapter } from './openrouter.adapter.js';
 import { VercelAdapter } from './vercel.adapter.js';
 
 export interface AdapterRegistryDeps {
@@ -31,6 +32,7 @@ export interface AdapterRegistryDeps {
 export function createAdapterRegistry(deps?: AdapterRegistryDeps): AiAdapterRegistry {
   const registry = new AiAdapterRegistry();
   registry.register(new OpenAiAdapter());
+  registry.register(new OpenRouterAdapter());
   registry.register(new ClaudeAdapter());
   registry.register(new VercelAdapter());
   registry.register(new DeepSeekAdapter());

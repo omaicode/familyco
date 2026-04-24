@@ -1,4 +1,5 @@
 export { OpenAiAdapter } from './openai.adapter.js';
+export { OpenRouterAdapter } from './openrouter.adapter.js';
 export { ClaudeAdapter } from './claude.adapter.js';
 export { VercelAdapter } from './vercel.adapter.js';
 export { DeepSeekAdapter } from './deepseek.adapter.js';

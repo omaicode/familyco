@@ -1,4 +1,4 @@
-export type AdapterId = 'openai' | 'claude' | 'vercel' | 'deepseek';
+export type AdapterId = 'openai' | 'openrouter' | 'claude' | 'vercel' | 'deepseek';
 
 export interface AdapterOption {
   value: AdapterId;
@@ -13,6 +13,12 @@ export const ADAPTER_OPTIONS: AdapterOption[] = [
     label: 'OpenAI',
     models: ['gpt-5', 'gpt-5-mini', 'gpt-5.4', 'gpt-5.4-mini'],
     keyHint: 'sk-…'
+  },
+  {
+    value: 'openrouter',
+    label: 'OpenRouter',
+    models: ['openai/gpt-5-mini', 'anthropic/claude-sonnet-4.5', 'google/gemini-2.5-flash'],
+    keyHint: 'sk-or-…'
   },
   {
     value: 'claude',
