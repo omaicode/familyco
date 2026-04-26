@@ -1,7 +1,11 @@
 import { type SettingsService } from '@familyco/core';
 import type { PluginRegistry } from '@familyco/core';
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
 
+import { parseSkillMarkdown } from './skills.parser.js';
 import type {
+  InvalidSkillItem,
   SkillAgentTarget,
   SkillItem,
   SkillsListResponse,
@@ -10,35 +14,45 @@ import type {
 
 const SKILLS_REGISTRY_KEY = 'skills.registry';
 
+type SkillCandidate = SkillItem & { applyTo: readonly string[]; defaultEnabled: boolean };
+
+interface SkillCollectionResult {
+  items: SkillCandidate[];
+  invalidSkills: InvalidSkillItem[];
+}
+
 export class SkillsService {
   constructor(
     private readonly settingsService: SettingsService,
-    private readonly pluginRegistry?: PluginRegistry
+    private readonly pluginRegistry?: PluginRegistry,
+    private readonly skillsRootDir?: string
   ) {}
 
   async list(): Promise<SkillsListResponse> {
     const registry = await this.getRegistry();
-    const items = this.collectPluginSkills();
+    const discovered = await this.collectAllSkills();
 
     return {
-      items: items.map((item) => ({ ...item, enabled: isPluginSkillEnabled(item, registry) })),
-      invalidSkills: []
+      items: discovered.items.map((item) => ({ ...item, enabled: isSkillEnabled(item, registry) })),
+      invalidSkills: discovered.invalidSkills
     };
   }
 
   async listForAgent(target: SkillAgentTarget): Promise<SkillItem[]> {
     const registry = await this.getRegistry();
+    const discovered = await this.collectAllSkills();
 
-    return this.collectPluginSkills()
-      .filter((item) => isPluginSkillEnabled(item, registry))
-      .filter((item) => pluginSkillAppliesToAgent(item.applyTo, target))
+    return discovered.items
+      .filter((item) => isSkillEnabled(item, registry))
+      .filter((item) => skillAppliesToAgent(item.applyTo, target))
   }
 
   async getById(id: string): Promise<SkillItem | null> {
     const registry = await this.getRegistry();
-    const item = this.collectPluginSkills().find((s) => s.id === id);
+    const discovered = await this.collectAllSkills();
+    const item = discovered.items.find((s) => s.id === id);
     if (!item) return null;
-    return { ...item, enabled: isPluginSkillEnabled(item, registry) };
+    return { ...item, enabled: isSkillEnabled(item, registry) };
   }
 
   async enable(id: string): Promise<SkillItem> {
@@ -69,8 +83,79 @@ export class SkillsService {
     return { ...existing, enabled: false };
   }
 
+  private async collectAllSkills(): Promise<SkillCollectionResult> {
+    const workspaceSkills = await this.collectWorkspaceSkills();
+    const pluginSkills = this.collectPluginSkills();
+
+    return {
+      items: [...workspaceSkills.items, ...pluginSkills],
+      invalidSkills: workspaceSkills.invalidSkills
+    };
+  }
+
+  private async collectWorkspaceSkills(): Promise<SkillCollectionResult> {
+    if (!this.skillsRootDir) {
+      return { items: [], invalidSkills: [] };
+    }
+
+    let entries: string[];
+    try {
+      entries = await readdir(this.skillsRootDir, { encoding: 'utf8' });
+    } catch (error) {
+      if (isNotFoundError(error)) {
+        return { items: [], invalidSkills: [] };
+      }
+
+      throw error;
+    }
+
+    const items: SkillCandidate[] = [];
+    const invalidSkills: InvalidSkillItem[] = [];
+
+    for (const entryName of entries) {
+      const skillPath = path.join(this.skillsRootDir, entryName, 'SKILL.md');
+
+      try {
+        const content = await readFile(skillPath, 'utf8');
+        const parsed = parseSkillMarkdown({
+          content,
+          defaultId: entryName
+        });
+
+        items.push({
+          id: parsed.id,
+          name: parsed.name,
+          description: parsed.description,
+          version: parsed.version,
+          tags: parsed.tags,
+          path: skillPath,
+          content,
+          source: 'local',
+          enabled: false,
+          defaultEnabled: parsed.defaultEnabled,
+          applyTo: parsed.applyTo
+        });
+      } catch (error) {
+        if (isMissingSkillFileError(error)) {
+          continue;
+        }
+
+        invalidSkills.push({
+          id: entryName,
+          path: skillPath,
+          reason: asErrorMessage(error)
+        });
+      }
+    }
+
+    return {
+      items,
+      invalidSkills
+    };
+  }
+
   /** Collect all skills from enabled plugins in the registry. */
-  private collectPluginSkills(): Array<SkillItem & { applyTo: readonly string[]; defaultEnabled: boolean }> {
+  private collectPluginSkills(): SkillCandidate[] {
     if (!this.pluginRegistry) return [];
 
     return this.pluginRegistry.listEnabled().flatMap((plugin) => {
@@ -157,7 +242,7 @@ function normalizeRegistryList(value: unknown): string[] {
   );
 }
 
-function isPluginSkillEnabled(
+function isSkillEnabled(
   item: SkillItem & { defaultEnabled: boolean },
   registry: SkillsRegistry
 ): boolean {
@@ -172,7 +257,7 @@ function isPluginSkillEnabled(
   return item.defaultEnabled;
 }
 
-function pluginSkillAppliesToAgent(applyTo: readonly string[], target: SkillAgentTarget): boolean {
+function skillAppliesToAgent(applyTo: readonly string[], target: SkillAgentTarget): boolean {
   if (applyTo.length === 0) {
     return true;
   }
@@ -189,4 +274,24 @@ function pluginSkillAppliesToAgent(applyTo: readonly string[], target: SkillAgen
 
   const scope = new Set(applyTo.map((entry) => entry.trim().toLowerCase()).filter((entry) => entry.length > 0));
   return candidates.some((candidate) => scope.has(candidate));
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+}
+
+function isMissingSkillFileError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return false;
+  }
+
+  return error.code === 'ENOENT' || error.code === 'ENOTDIR';
+}
+
+function asErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return 'Unknown skill parse error';
 }
