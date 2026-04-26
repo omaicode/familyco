@@ -264,7 +264,7 @@ const handleStepAfterEnter = (): void => {
               </div>
             </div>
 
-            <div class="ob-starter-list">
+            <!-- <div class="ob-starter-list">
               <div class="ob-starter-head">
                 <strong>{{ t('Try these first with your L0 executive') }}</strong>
                 <p>{{ t('Use these starter workflows so the workspace does not feel empty on day one.') }}</p>
@@ -284,7 +284,7 @@ const handleStepAfterEnter = (): void => {
                 <strong>{{ t('Check dev tasks') }}</strong>
                 <p>{{ t('Ask the executive to inspect current projects and suggest the next engineering tasks to create today.') }}</p>
               </article>
-            </div>
+            </div> -->
 
             <FcButton class="ob-btn-primary ob-btn-lg" variant="primary" style="width:100%;margin-top:8px;" @click="next">
               {{ t('Get started') }} <ChevronRight :size="16" />
