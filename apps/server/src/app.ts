@@ -694,6 +694,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         auditService,
         approvalService,
         approvalGuard,
+        settingsService,
         dailyQuotaGuard,
         agentRunService,
         heartbeatRuntime

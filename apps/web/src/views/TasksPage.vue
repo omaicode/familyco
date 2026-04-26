@@ -7,8 +7,8 @@ import type {
   TaskListItem,
   UpdateTaskPayload
 } from '@familyco/ui';
-import { computed, reactive, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { computed, reactive, ref, watch } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import {
   AlertTriangle,
   ClipboardList,
@@ -54,6 +54,8 @@ interface FilterState {
 
 const { t } = useI18n();
 const toast = useToast();
+const route = useRoute();
+const router = useRouter();
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
   urgent: 0,
@@ -241,6 +243,19 @@ const resetDraft = (): void => {
   draft.createdBy = creatorOptions.value[0]?.id ?? assigneeOptions.value[0]?.id ?? '';
   draft.priority = 'medium';
 };
+
+const maybeOpenCreateFormFromShortcut = (): void => {
+  if (route.query.create !== '1') {
+    return;
+  }
+
+  showCreateForm.value = true;
+  void router.replace({ path: route.path, query: { ...route.query, create: undefined } });
+};
+
+watch(() => route.query.create, () => {
+  maybeOpenCreateFormFromShortcut();
+}, { immediate: true });
 
 const resetFilters = (): void => {
   searchQuery.value = '';

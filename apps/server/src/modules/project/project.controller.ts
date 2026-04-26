@@ -39,6 +39,7 @@ export function registerProjectController(app: FastifyInstance, deps: ProjectMod
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'project.create',
       targetId: body.parentProjectId ?? undefined,
@@ -111,6 +112,7 @@ export function registerProjectController(app: FastifyInstance, deps: ProjectMod
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'project.update',
       targetId: id,
@@ -199,6 +201,7 @@ export function registerProjectController(app: FastifyInstance, deps: ProjectMod
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'project.delete',
       targetId: id,

@@ -10,6 +10,7 @@ import FcButton from '../components/FcButton.vue';
 import AgentCreatePanel from '../components/agents/AgentCreatePanel.vue';
 import AgentExecutionModelCard from '../components/agents/AgentExecutionModelCard.vue';
 import AgentInspectorPanel from '../components/agents/AgentInspectorPanel.vue';
+import AgentOrgChartPanel from '../components/agents/AgentOrgChartPanel.vue';
 import AgentRosterPanel from '../components/agents/AgentRosterPanel.vue';
 import AgentSummaryCards from '../components/agents/AgentSummaryCards.vue';
 import { useI18n } from '../composables/useI18n';
@@ -121,6 +122,14 @@ const openAgentDetails = (agentId: string): void => {
     </Transition>
 
     <AgentSummaryCards :metrics="summaryMetrics" :attention-summary="attentionSummary" />
+
+    <AgentOrgChartPanel
+      v-if="agents.length > 1"
+      :agents="agents"
+      :get-agent-initials="getAgentInitials"
+      :get-agent-name="getAgentName"
+      :get-direct-report-count="getDirectReportCount"
+    />
 
     <AgentExecutionModelCard :open="heartbeatInfoOpen" @close="heartbeatInfoOpen = false" />
 
