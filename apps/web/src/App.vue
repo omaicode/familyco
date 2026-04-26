@@ -15,6 +15,14 @@ import FcToastViewport from './components/toast/FcToastViewport.vue';
 import AgentActivityWidget from './components/AgentActivityWidget.vue';
 import { useI18n } from './composables/useI18n';
 import { useFounderNotifications } from './composables/useFounderNotifications';
+import {
+  SHORTCUT_SETTING_KEY,
+  displayShortcutBinding,
+  keyEventToken,
+  resolveShortcutConfig,
+  shortcutBindingTokens,
+  type ShortcutActionId
+} from './composables/keyboardShortcuts';
 
 type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -51,8 +59,8 @@ const quickSwitcherQuery = ref('');
 const quickSwitcherSelectedIndex = ref(0);
 const shortcutHelpOpen = ref(false);
 const quickSwitcherInputRef = ref<HTMLInputElement | null>(null);
-const pendingGoPrefix = ref(false);
-let goPrefixTimer: ReturnType<typeof setTimeout> | null = null;
+const shortcutTokenBuffer = ref<string[]>([]);
+let shortcutTokenTimer: ReturnType<typeof setTimeout> | null = null;
 
 interface QuickSwitcherItem {
   id: string;
@@ -142,6 +150,21 @@ const filteredQuickSwitcherItems = computed<QuickSwitcherItem[]>(() => {
   );
 });
 
+const shortcutsSettingValue = computed(() =>
+  uiRuntime.stores.settings.state.data.find((item) => item.key === SHORTCUT_SETTING_KEY)?.value
+);
+
+const shortcutConfig = computed(() => resolveShortcutConfig(shortcutsSettingValue.value));
+
+const shortcutHelpRows = computed(() => [
+  { id: 'createTask' as ShortcutActionId, label: t('Create task') },
+  { id: 'goAgents' as ShortcutActionId, label: t('Go to agents') },
+  { id: 'goProjects' as ShortcutActionId, label: t('Go to projects') },
+  { id: 'goTasks' as ShortcutActionId, label: t('Go to tasks') },
+  { id: 'openQuickSwitcher' as ShortcutActionId, label: t('Open quick switcher') },
+  { id: 'openHelp' as ShortcutActionId, label: t('Open keyboard shortcuts help') }
+]);
+
 const openQuickSwitcher = async (): Promise<void> => {
   quickSwitcherOpen.value = true;
   quickSwitcherQuery.value = '';
@@ -178,21 +201,71 @@ const selectQuickSwitcherIndex = (nextIndex: number): void => {
   quickSwitcherSelectedIndex.value = nextIndex % total;
 };
 
-const clearGoPrefix = (): void => {
-  pendingGoPrefix.value = false;
-  if (goPrefixTimer) {
-    clearTimeout(goPrefixTimer);
-    goPrefixTimer = null;
+const clearShortcutBuffer = (): void => {
+  shortcutTokenBuffer.value = [];
+  if (shortcutTokenTimer) {
+    clearTimeout(shortcutTokenTimer);
+    shortcutTokenTimer = null;
   }
 };
 
-const armGoPrefix = (): void => {
-  clearGoPrefix();
-  pendingGoPrefix.value = true;
-  goPrefixTimer = setTimeout(() => {
-    pendingGoPrefix.value = false;
-    goPrefixTimer = null;
-  }, 1000);
+const pushShortcutToken = (token: string): void => {
+  const maxLength = Math.max(
+    ...Object.values(shortcutConfig.value).map((binding) => Math.max(1, shortcutBindingTokens(binding).length))
+  );
+
+  shortcutTokenBuffer.value = [...shortcutTokenBuffer.value, token].slice(-maxLength);
+  if (shortcutTokenTimer) {
+    clearTimeout(shortcutTokenTimer);
+  }
+  shortcutTokenTimer = setTimeout(() => {
+    shortcutTokenBuffer.value = [];
+    shortcutTokenTimer = null;
+  }, 1200);
+};
+
+const doesBindingMatch = (binding: string): boolean => {
+  const tokens = shortcutBindingTokens(binding);
+  if (tokens.length === 0 || tokens.length > shortcutTokenBuffer.value.length) {
+    return false;
+  }
+
+  const tail = shortcutTokenBuffer.value.slice(-tokens.length);
+  return tokens.every((token, index) => token === tail[index]);
+};
+
+const runShortcutAction = async (actionId: ShortcutActionId): Promise<void> => {
+  if (actionId === 'createTask') {
+    await router.push({ path: '/tasks', query: { create: '1' } });
+    return;
+  }
+
+  if (actionId === 'goAgents') {
+    await router.push('/agents');
+    return;
+  }
+
+  if (actionId === 'goProjects') {
+    await router.push('/projects');
+    return;
+  }
+
+  if (actionId === 'goTasks') {
+    await router.push('/tasks');
+    return;
+  }
+
+  if (actionId === 'openQuickSwitcher') {
+    await openQuickSwitcher();
+    return;
+  }
+
+  shortcutHelpOpen.value = true;
+};
+
+const openShortcutSettings = async (): Promise<void> => {
+  shortcutHelpOpen.value = false;
+  await router.push({ path: '/settings', query: { section: 'shortcuts' } });
 };
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -246,58 +319,25 @@ const handleGlobalKeydown = (event: KeyboardEvent): void => {
     return;
   }
 
-  const isMeta = event.metaKey || event.ctrlKey;
-  if (isMeta && event.key.toLowerCase() === 'k') {
-    event.preventDefault();
-    void openQuickSwitcher();
-    return;
-  }
-
   if (isEditableTarget(event.target)) {
     return;
   }
 
-  if (pendingGoPrefix.value) {
-    const key = event.key.toLowerCase();
-    if (key === 'a') {
-      event.preventDefault();
-      clearGoPrefix();
-      void router.push('/agents');
-      return;
-    }
-
-    if (key === 'p') {
-      event.preventDefault();
-      clearGoPrefix();
-      void router.push('/projects');
-      return;
-    }
-
-    if (key === 't') {
-      event.preventDefault();
-      clearGoPrefix();
-      void router.push('/tasks');
-      return;
-    }
-
-    clearGoPrefix();
-  }
-
-  if (event.key.toLowerCase() === 'g') {
-    event.preventDefault();
-    armGoPrefix();
+  const token = keyEventToken(event);
+  if (!token) {
     return;
   }
 
-  if (event.key.toLowerCase() === 'n') {
-    event.preventDefault();
-    void router.push({ path: '/tasks', query: { create: '1' } });
-    return;
-  }
+  pushShortcutToken(token);
 
-  if (event.key === '?') {
+  const matchedAction = (Object.keys(shortcutConfig.value) as ShortcutActionId[]).find((actionId) =>
+    doesBindingMatch(shortcutConfig.value[actionId])
+  );
+
+  if (matchedAction) {
     event.preventDefault();
-    shortcutHelpOpen.value = true;
+    clearShortcutBuffer();
+    void runShortcutAction(matchedAction);
   }
 };
 
@@ -536,7 +576,7 @@ onUnmounted(() => {
   window.removeEventListener('online', handleOnline);
   window.removeEventListener('offline', handleOffline);
   window.removeEventListener('keydown', handleGlobalKeydown);
-  clearGoPrefix();
+  clearShortcutBuffer();
   if (healthCheckTimer) { clearInterval(healthCheckTimer); healthCheckTimer = null; }
   if (sidebarCountTimer) { clearInterval(sidebarCountTimer); sidebarCountTimer = null; }
   if (systemThemeMediaQuery) { systemThemeMediaQuery.removeEventListener('change', handleSystemThemeChange); systemThemeMediaQuery = null; }
@@ -666,13 +706,17 @@ onUnmounted(() => {
               <h4>{{ t('Keyboard shortcuts') }}</h4>
               <p>{{ t('Linear-style speed with click-friendly fallback.') }}</p>
               <ul>
-                <li><strong>N</strong> <span>{{ t('Create task') }}</span></li>
-                <li><strong>G then A</strong> <span>{{ t('Go to agents') }}</span></li>
-                <li><strong>G then P</strong> <span>{{ t('Go to projects') }}</span></li>
-                <li><strong>G then T</strong> <span>{{ t('Go to tasks') }}</span></li>
-                <li><strong>Ctrl/Cmd + K</strong> <span>{{ t('Open quick switcher') }}</span></li>
-                <li><strong>?</strong> <span>{{ t('Open keyboard shortcuts help') }}</span></li>
+                <li v-for="row in shortcutHelpRows" :key="row.id">
+                  <strong>{{ displayShortcutBinding(shortcutConfig[row.id]) }}</strong>
+                  <span>{{ row.label }}</span>
+                </li>
               </ul>
+              <div class="fc-shortcuts-help-actions">
+                <button class="fc-btn-primary fc-btn-sm" @click="openShortcutSettings">
+                  <Search :size="13" />
+                  {{ t('Customize shortcuts') }}
+                </button>
+              </div>
             </section>
           </div>
         </Transition>
@@ -817,5 +861,11 @@ onUnmounted(() => {
 .fc-shortcuts-help li span {
   color: var(--fc-text-muted);
   text-align: right;
+}
+
+.fc-shortcuts-help-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
