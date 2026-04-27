@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
   Key, Palette, Database, ChevronRight,
-  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin, FolderOpen, CheckCircle2, Bell,
+  Building2, Wallet, Cpu, Download, Copy, RotateCcw, ShieldAlert, MapPin, FolderOpen, CheckCircle2, Bell, Keyboard,
 } from 'lucide-vue-next';
 
 import { applyRuntimeTheme, uiRuntime } from '../runtime';
@@ -16,13 +16,25 @@ import ProviderSettingsSection from '../components/settings/ProviderSettingsSect
 import { useTutorialTour } from '../composables/useTutorialTour';
 import { useI18n } from '../composables/useI18n';
 import { useToast } from '../plugins/toast.plugin';
+import {
+  DEFAULT_SHORTCUT_CONFIG,
+  SHORTCUT_DEFINITIONS,
+  SHORTCUT_SETTING_KEY,
+  displayShortcutBinding,
+  keyEventToken,
+  normalizeShortcutBinding,
+  resolveShortcutConfig,
+  type ShortcutActionId,
+  type ShortcutConfig
+} from '../composables/keyboardShortcuts';
 
 // ── Types ─────────────────────────────────────────────────
 type ThemePreference = 'system' | 'light' | 'dark';
-type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'notifications' | 'workspace' | 'system';
+type Section = 'company' | 'budget' | 'agents' | 'provider' | 'appearance' | 'shortcuts' | 'notifications' | 'workspace' | 'system';
 
 // ── State ─────────────────────────────────────────────────
 const router = useRouter();
+const route = useRoute();
 const { t } = useI18n();
 const toast = useToast();
 const tour = useTutorialTour();
@@ -61,6 +73,11 @@ const isDesktop = typeof window !== 'undefined' && typeof (window as unknown as 
 // ── Appearance ────────────────────────────────────────────
 const themePreference = ref<ThemePreference>('system');
 const themeSaving = ref(false);
+
+// ── Keyboard shortcuts ────────────────────────────────────
+const shortcutsDraft = reactive<ShortcutConfig>({ ...DEFAULT_SHORTCUT_CONFIG });
+const shortcutsSaving = ref(false);
+const recordingShortcutId = ref<ShortcutActionId | null>(null);
 
 // ── Notifications ──────────────────────────────────────────
 const notificationEnabled = ref(true);
@@ -166,6 +183,9 @@ const reload = async () => {
   agentHeartbeatMinutes.value = String(typeof rawHb === 'number' ? rawHb : (rawHb ? Number(rawHb) : 60));
   const rawMode2 = getSetting('agent.defaultApprovalMode');
   agentDefaultApprovalMode.value = (rawMode2 === 'auto' || rawMode2 === 'review') ? rawMode2 : 'suggest';
+
+  // Keyboard shortcuts
+  Object.assign(shortcutsDraft, resolveShortcutConfig(getSetting(SHORTCUT_SETTING_KEY)));
 
   // Notifications
   notificationEnabled.value = parseBooleanSetting(getSetting('notification.enabled'), true);
@@ -346,6 +366,68 @@ const saveAgents = async () => {
   }
 };
 
+const saveShortcuts = async () => {
+  shortcutsSaving.value = true;
+  feedback.value = null;
+  try {
+    const payload = Object.fromEntries(
+      (Object.keys(shortcutsDraft) as ShortcutActionId[]).map((key) => [key, normalizeShortcutBinding(shortcutsDraft[key])])
+    );
+    await uiRuntime.api.upsertSetting({ key: SHORTCUT_SETTING_KEY, value: payload });
+    await uiRuntime.stores.settings.load();
+    Object.assign(shortcutsDraft, resolveShortcutConfig(getSetting(SHORTCUT_SETTING_KEY)));
+    setFeedback('success', t('Keyboard shortcuts saved'));
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : t('Failed to save keyboard shortcuts'));
+  } finally {
+    shortcutsSaving.value = false;
+  }
+};
+
+const resetShortcutDefaults = () => {
+  Object.assign(shortcutsDraft, DEFAULT_SHORTCUT_CONFIG);
+  recordingShortcutId.value = null;
+};
+
+const startShortcutRecording = (actionId: ShortcutActionId) => {
+  recordingShortcutId.value = actionId;
+};
+
+const stopShortcutRecording = () => {
+  recordingShortcutId.value = null;
+};
+
+const onShortcutInputBlur = (actionId: ShortcutActionId): void => {
+  shortcutsDraft[actionId] = normalizeShortcutBinding(shortcutsDraft[actionId]) || DEFAULT_SHORTCUT_CONFIG[actionId];
+};
+
+const captureShortcut = (actionId: ShortcutActionId, event: KeyboardEvent): void => {
+  event.preventDefault();
+
+  if (event.key === 'Escape') {
+    stopShortcutRecording();
+    return;
+  }
+
+  const token = keyEventToken(event);
+  if (!token) {
+    return;
+  }
+
+  shortcutsDraft[actionId] = normalizeShortcutBinding(token);
+  stopShortcutRecording();
+};
+
+watch(
+  () => route.query.section,
+  (section) => {
+    if (section === 'shortcuts') {
+      activeSection.value = 'shortcuts';
+    }
+  },
+  { immediate: true }
+);
+
 // ── System actions ────────────────────────────────────────
 const exportSettings = async () => {
   systemBusy.value = true;
@@ -393,6 +475,8 @@ const clearProviderKey = async () => {
       uiRuntime.api.upsertSetting({ key: 'provider.openai.apiKey', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.openai.oauth.accessToken', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.openai.authType', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.openrouter.apiKey', value: '' }),
+      uiRuntime.api.upsertSetting({ key: 'provider.openrouter.authType', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.claude.apiKey', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.claude.authType', value: '' }),
       uiRuntime.api.upsertSetting({ key: 'provider.name', value: '' }),
@@ -459,7 +543,7 @@ useAutoReload(reload);
       </div>
       <button
         class="fc-btn-secondary"
-        :disabled="themeSaving || companySaving || budgetSaving || agentsSaving || notificationsSaving || systemBusy"
+        :disabled="themeSaving || companySaving || budgetSaving || agentsSaving || shortcutsSaving || notificationsSaving || systemBusy"
         @click="reload"
       >
         <RefreshCw :size="14" />
@@ -515,6 +599,15 @@ useAutoReload(reload);
         >
           <Palette :size="15" class="st-nav-icon" />
           <span>Appearance</span>
+          <ChevronRight :size="13" class="st-nav-chevron" />
+        </button>
+        <button
+          class="st-nav-item"
+          :class="{ 'st-nav-item-active': activeSection === 'shortcuts' }"
+          @click="activeSection = 'shortcuts'"
+        >
+          <Keyboard :size="15" class="st-nav-icon" />
+          <span>{{ t('Keyboard shortcuts') }}</span>
           <ChevronRight :size="13" class="st-nav-chevron" />
         </button>
         <button
@@ -795,6 +888,65 @@ useAutoReload(reload);
                 <Save :size="13" />
                 {{ themeSaving ? 'Saving…' : 'Save appearance' }}
               </button>
+            </div>
+          </div>
+
+          <!-- ── Keyboard Shortcuts ─────────────────── -->
+          <div v-else-if="activeSection === 'shortcuts'" key="shortcuts">
+            <div class="st-pane-header">
+              <Keyboard :size="16" class="st-pane-icon" />
+              <div>
+                <h4>{{ t('Keyboard shortcuts') }}</h4>
+                <p>{{ t('See all shortcuts, customize bindings, and keep power flows discoverable for the whole team.') }}</p>
+              </div>
+            </div>
+
+            <section class="st-system-card" style="margin-bottom:14px;">
+              <div class="st-system-card-head">
+                <h5>{{ t('Shortcut cheat sheet') }}</h5>
+                <p>{{ t('Use Record to capture a new key, or type sequence patterns like g a directly.') }}</p>
+              </div>
+
+              <div class="st-shortcut-list">
+                <article v-for="definition in SHORTCUT_DEFINITIONS" :key="definition.id" class="st-shortcut-item">
+                  <div>
+                    <strong>{{ t(definition.actionLabel) }}</strong>
+                    <p>{{ t(definition.actionHint) }}</p>
+                  </div>
+
+                  <div class="st-shortcut-controls">
+                    <input
+                      :value="shortcutsDraft[definition.id]"
+                      class="fc-input st-shortcut-input"
+                      @input="shortcutsDraft[definition.id] = normalizeShortcutBinding(($event.target as HTMLInputElement).value)"
+                      @blur="onShortcutInputBlur(definition.id)"
+                      @keydown="recordingShortcutId === definition.id ? captureShortcut(definition.id, $event) : undefined"
+                    />
+                    <button
+                      class="fc-btn-secondary fc-btn-sm"
+                      :class="{ 'st-shortcut-recording': recordingShortcutId === definition.id }"
+                      @click="recordingShortcutId === definition.id ? stopShortcutRecording() : startShortcutRecording(definition.id)"
+                    >
+                      {{ recordingShortcutId === definition.id ? t('Press key…') : t('Record') }}
+                    </button>
+                  </div>
+
+                  <p class="st-hint" style="font-family:inherit;letter-spacing:normal;">
+                    {{ t('Preview') }}: <strong>{{ displayShortcutBinding(shortcutsDraft[definition.id]) }}</strong>
+                  </p>
+                </article>
+              </div>
+            </section>
+
+            <div class="st-actions">
+              <FcButton variant="secondary" size="sm" @click="resetShortcutDefaults">
+                <RotateCcw :size="13" />
+                {{ t('Reset defaults') }}
+              </FcButton>
+              <FcButton variant="primary" size="sm" :disabled="shortcutsSaving" @click="saveShortcuts">
+                <Save :size="13" />
+                {{ shortcutsSaving ? t('Saving…') : t('Save shortcuts') }}
+              </FcButton>
             </div>
           </div>
 
@@ -1441,6 +1593,46 @@ useAutoReload(reload);
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+.st-shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.st-shortcut-item {
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fc-surface) 96%, transparent);
+  padding: 12px;
+}
+
+.st-shortcut-item strong {
+  font-size: 0.88rem;
+}
+
+.st-shortcut-item p {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--fc-text-muted);
+}
+
+.st-shortcut-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.st-shortcut-input {
+  min-width: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.st-shortcut-recording {
+  border-color: var(--fc-primary) !important;
+  color: var(--fc-primary) !important;
 }
 
 .st-notify-grid {

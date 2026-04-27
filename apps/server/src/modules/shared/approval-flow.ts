@@ -2,7 +2,8 @@ import {
   type ApprovalMode,
   type ApprovalService,
   ApprovalGuard,
-  type ApprovalRequest
+  type ApprovalRequest,
+  type SettingsService
 } from '@familyco/core';
 
 import type { AuthContext } from '../../plugins/auth.types.js';
@@ -10,6 +11,7 @@ import type { AuthContext } from '../../plugins/auth.types.js';
 export interface EnsureApprovalInput {
   approvalGuard: ApprovalGuard;
   approvalService: ApprovalService;
+  settingsService?: SettingsService;
   authContext: AuthContext | undefined;
   action: string;
   targetId?: string;
@@ -32,7 +34,7 @@ export type ApprovalOutcome = ApprovalOutcomeAllowed | ApprovalOutcomeBlocked;
 
 export async function ensureApproval(input: EnsureApprovalInput): Promise<ApprovalOutcome> {
   const actorId = input.authContext?.subject ?? 'unknown';
-  const mode = resolveApprovalMode(input.authContext?.level);
+  const mode = await resolveApprovalMode(input.authContext?.level, input.settingsService);
 
   const decision = input.approvalGuard.check(mode, {
     actorId,
@@ -63,7 +65,16 @@ export async function ensureApproval(input: EnsureApprovalInput): Promise<Approv
   };
 }
 
-function resolveApprovalMode(level: AuthContext['level'] | undefined): ApprovalMode {
+async function resolveApprovalMode(
+  level: AuthContext['level'] | undefined,
+  settingsService?: SettingsService
+): Promise<ApprovalMode> {
+  const configured = await settingsService?.get('agent.defaultApprovalMode');
+  const override = normalizeApprovalModeSetting(configured?.value);
+  if (override) {
+    return override;
+  }
+
   if (level === 'L0') {
     return 'auto';
   }
@@ -73,4 +84,20 @@ function resolveApprovalMode(level: AuthContext['level'] | undefined): ApprovalM
   }
 
   return 'require_review';
+}
+
+function normalizeApprovalModeSetting(value: unknown): ApprovalMode | null {
+  if (value === 'auto' || value === 'suggest_only' || value === 'require_review') {
+    return value;
+  }
+
+  if (value === 'suggest') {
+    return 'suggest_only';
+  }
+
+  if (value === 'review') {
+    return 'require_review';
+  }
+
+  return null;
 }

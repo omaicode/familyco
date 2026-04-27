@@ -13,6 +13,7 @@ import { TEST_API_KEY } from './test-helpers.js';
 test('skills module lists plugin skills and keeps per-skill toggles working', async () => {
   const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'familyco-skills-'));
   const pluginsRoot = path.join(workspaceRoot, 'plugins');
+  const skillsRoot = path.join(workspaceRoot, 'skills');
 
   // Create a synthetic plugin with two skills
   const pluginDir = path.join(pluginsRoot, 'test-skills-plugin');
@@ -40,11 +41,30 @@ export default plugin;
     'utf8'
   );
 
+  const localSkillDir = path.join(skillsRoot, 'workspace-local');
+  await mkdir(localSkillDir, { recursive: true });
+  await writeFile(
+    path.join(localSkillDir, 'SKILL.md'),
+    `---
+name: workspace-local
+description: Workspace local skill.
+metadata:
+  default: true
+---
+
+# Workspace Local
+
+Use this skill for local testing.
+`,
+    'utf8'
+  );
+
   const app = createApp({
     logger: false,
     repositoryDriver: 'memory',
     authApiKey: TEST_API_KEY,
-    pluginsRootDir: pluginsRoot
+    pluginsRootDir: pluginsRoot,
+    skillsRootDir: skillsRoot
   });
 
   try {
@@ -67,15 +87,18 @@ export default plugin;
       items: Array<{ id: string; enabled: boolean }>;
       invalidSkills: Array<{ id: string }>;
     };
-    assert.equal(listPayload.items.length, 2);
+    assert.equal(listPayload.items.length, 3);
     assert.equal(listPayload.invalidSkills.length, 0);
 
     const alpha = listPayload.items.find((item) => item.id.endsWith(':alpha-skill'));
     const beta = listPayload.items.find((item) => item.id.endsWith(':beta-skill'));
+    const workspaceLocal = listPayload.items.find((item) => item.id === 'workspace-local');
     assert.ok(alpha, 'alpha-skill should be in the list');
     assert.ok(beta, 'beta-skill should be in the list');
+    assert.ok(workspaceLocal, 'workspace-local should be in the list');
     assert.equal(alpha!.enabled, true);
     assert.equal(beta!.enabled, false);
+    assert.equal(workspaceLocal!.enabled, true);
 
     const alphaId = alpha?.id;
     assert.ok(alphaId, 'alpha-skill should be in the list');
@@ -164,4 +187,54 @@ test('SkillsService filters plugin skills by applyTo', async () => {
   // All plugin skill paths start with [plugin:...]
   assert.ok(executiveSkills.every((s) => s.path.startsWith('[plugin:')));
   assert.ok(managerSkills.every((s) => s.path.startsWith('[plugin:')));
+});
+
+test('SkillsService loads workspace skills from skills/*/SKILL.md and reports invalid entries', async () => {
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'familyco-local-skills-'));
+  const skillsRoot = path.join(workspaceRoot, 'skills');
+
+  try {
+    const validSkillDir = path.join(skillsRoot, 'workflow-helper');
+    await mkdir(validSkillDir, { recursive: true });
+    await writeFile(
+      path.join(validSkillDir, 'SKILL.md'),
+      `---
+name: workflow-helper
+description: Helps with workflow tasks.
+metadata:
+  default: true
+  apply_to: [L0]
+---
+
+# Workflow Helper
+
+Guidance for workflow tasks.
+`,
+      'utf8'
+    );
+
+    const invalidSkillDir = path.join(skillsRoot, 'broken-skill');
+    await mkdir(invalidSkillDir, { recursive: true });
+    await writeFile(
+      path.join(invalidSkillDir, 'SKILL.md'),
+      `---
+name: broken-skill
+---
+
+# Broken Skill
+`,
+      'utf8'
+    );
+
+    const service = new SkillsService(new SettingsService(new InMemorySettingsRepository()), undefined, skillsRoot);
+    const listed = await service.list();
+    const agentSkills = await service.listForAgent({ level: 'L0' });
+
+    assert.deepEqual(listed.items.map((item) => item.id), ['workflow-helper']);
+    assert.equal(listed.invalidSkills.length, 1);
+    assert.equal(listed.invalidSkills[0]?.id, 'broken-skill');
+    assert.deepEqual(agentSkills.map((item) => item.id), ['workflow-helper']);
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
 });

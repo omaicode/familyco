@@ -22,3 +22,6 @@ prisma/**/*.db
 prisma/**/*.bak
 
 .gitnexus
+.venv
+# Added by code-review-graph
+.code-review-graph/

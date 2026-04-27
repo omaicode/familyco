@@ -98,6 +98,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'task.create',
       targetId: normalizedInput.projectId,
@@ -175,6 +176,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'task.update',
       targetId: id,
@@ -292,6 +294,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'task.delete',
       targetId: id,
@@ -332,6 +335,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'task.bulk.update',
       targetId: body.taskIds.join(','),
@@ -366,6 +370,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'task.status.update',
       targetId: id,
@@ -414,6 +419,7 @@ export function registerTaskController(app: FastifyInstance, deps: TaskModuleDep
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'task.priority.update',
       targetId: id,

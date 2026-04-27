@@ -4,6 +4,7 @@ import {
   type AgentRunService,
   type ApprovalService,
   type AuditService,
+  type SettingsService,
   type QueueService
 } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
@@ -24,6 +25,7 @@ export interface EngineModuleDeps {
   auditService: AuditService;
   approvalService: ApprovalService;
   approvalGuard: ApprovalGuard;
+  settingsService: SettingsService;
   dailyQuotaGuard: DailyQuotaGuard;
   agentRunService: AgentRunService;
   heartbeatRuntime?: HeartbeatRuntimeService;
@@ -80,6 +82,7 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'engine.agent.run.enqueue',
       targetId: body.agentId,
@@ -155,6 +158,7 @@ export function registerEngineController(app: FastifyInstance, deps: EngineModul
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'engine.tool.run.enqueue',
       payload: {

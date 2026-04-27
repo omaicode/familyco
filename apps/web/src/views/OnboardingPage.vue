@@ -264,6 +264,28 @@ const handleStepAfterEnter = (): void => {
               </div>
             </div>
 
+            <!-- <div class="ob-starter-list">
+              <div class="ob-starter-head">
+                <strong>{{ t('Try these first with your L0 executive') }}</strong>
+                <p>{{ t('Use these starter workflows so the workspace does not feel empty on day one.') }}</p>
+              </div>
+
+              <article class="ob-starter-card">
+                <strong>{{ t('Review this week') }}</strong>
+                <p>{{ t('Ask the executive to review this week\'s priorities, blockers, and approvals that need your decision.') }}</p>
+              </article>
+
+              <article class="ob-starter-card">
+                <strong>{{ t('Prepare content plan') }}</strong>
+                <p>{{ t('Ask for a short content plan, campaign ideas, or a publishing checklist based on your company description.') }}</p>
+              </article>
+
+              <article class="ob-starter-card">
+                <strong>{{ t('Check dev tasks') }}</strong>
+                <p>{{ t('Ask the executive to inspect current projects and suggest the next engineering tasks to create today.') }}</p>
+              </article>
+            </div> -->
+
             <FcButton class="ob-btn-primary ob-btn-lg" variant="primary" style="width:100%;margin-top:8px;" @click="next">
               {{ t('Get started') }} <ChevronRight :size="16" />
             </FcButton>
@@ -618,6 +640,36 @@ const handleStepAfterEnter = (): void => {
   gap: 10px;
   font-size: 0.875rem;
   color: var(--fc-text);
+}
+
+.ob-starter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.ob-starter-head strong {
+  font-size: 0.87rem;
+}
+
+.ob-starter-head p,
+.ob-starter-card p {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fc-text-muted);
+}
+
+.ob-starter-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--fc-border-subtle);
+  background: color-mix(in srgb, var(--fc-primary) 3%, var(--fc-surface));
+}
+
+.ob-starter-card strong {
+  font-size: 0.85rem;
 }
 
 /* ── Form ─────────────────────────────────────────────── */

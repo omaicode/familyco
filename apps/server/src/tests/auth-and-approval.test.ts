@@ -260,3 +260,61 @@ test('L1 mutation creates approval request when approval is required', async () 
 
   await app.close();
 });
+
+test('workspace default approval mode is applied to runtime mutations', async () => {
+  const app = createApp({ logger: false, repositoryDriver: 'memory', authApiKey: TEST_API_KEY });
+
+  const createAgentResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/agents',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Execution Lead',
+      role: 'Executive',
+      level: 'L0',
+      department: 'Executive'
+    }
+  });
+
+  assert.equal(createAgentResponse.statusCode, 201);
+  const executiveAgent = createAgentResponse.json() as { id: string };
+
+  const settingsResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/settings',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      key: 'agent.defaultApprovalMode',
+      value: 'review'
+    }
+  });
+
+  assert.equal(settingsResponse.statusCode, 201);
+
+  const createProjectResponse = await app.inject({
+    method: 'POST',
+    url: '/api/v1/projects',
+    headers: {
+      'x-api-key': TEST_API_KEY
+    },
+    payload: {
+      name: 'Approval Override',
+      description: 'Workspace default approval mode should gate this request.',
+      ownerAgentId: executiveAgent.id
+    }
+  });
+
+  assert.equal(createProjectResponse.statusCode, 202);
+  const approvalPayload = createProjectResponse.json() as {
+    approvalRequired: boolean;
+    approvalRequestId?: string;
+  };
+  assert.equal(approvalPayload.approvalRequired, true);
+  assert.equal(typeof approvalPayload.approvalRequestId, 'string');
+
+  await app.close();
+});

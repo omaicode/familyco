@@ -31,6 +31,7 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'agent.create',
       payload: {
@@ -86,6 +87,7 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'agent.pause',
       targetId: id,
@@ -123,6 +125,7 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'agent.resume',
       targetId: id,
@@ -156,6 +159,7 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'agent.archive',
       targetId: id,
@@ -245,6 +249,7 @@ export function registerAgentManagementRoutes(app: FastifyInstance, deps: AgentM
     const approval = await ensureApproval({
       approvalGuard: deps.approvalGuard,
       approvalService: deps.approvalService,
+      settingsService: deps.settingsService,
       authContext: request.authContext,
       action: 'agent.delete',
       targetId: id,

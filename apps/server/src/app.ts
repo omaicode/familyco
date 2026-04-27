@@ -136,6 +136,7 @@ export interface CreateAppOptions {
   heartbeatPollMs?: number;
   defaultHeartbeatMinutes?: number;
   pluginsRootDir?: string;
+  skillsRootDir?: string;
   adapterRegistry?: ReturnType<typeof createAdapterRegistry>;
   runtimeMode?: 'server' | 'desktop';
 }
@@ -235,7 +236,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const pluginRunService = new PluginRunService(pluginRunRepository);
   const skillsService = new SkillsService(
     settingsService,
-    pluginRegistry
+    pluginRegistry,
+    options.skillsRootDir ?? process.env.FAMILYCO_SKILLS_DIR ?? path.resolve(__dirname, '../../../', 'skills')
   );
   const adapterRegistry = options.adapterRegistry ?? createAdapterRegistry({
     logger: app.log,
@@ -694,6 +696,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         auditService,
         approvalService,
         approvalGuard,
+        settingsService,
         dailyQuotaGuard,
         agentRunService,
         heartbeatRuntime
