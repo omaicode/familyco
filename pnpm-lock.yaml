@@ -170,8 +170,8 @@ importers:
         specifier: ^7.7.0
         version: 7.7.0
       '@prisma/client':
-        specifier: ^7.7.0
-        version: 7.7.0(prisma@7.7.0(@types/react@19.2.14)(better-sqlite3@12.9.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3))(typescript@5.9.3)
+        specifier: ^7.8.0
+        version: 7.8.0(prisma@7.7.0(@types/react@19.2.14)(better-sqlite3@12.9.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3))(typescript@5.9.3)
     devDependencies:
       prisma:
         specifier: ^7.7.0
@@ -677,11 +677,11 @@ packages:
   '@prisma/adapter-better-sqlite3@7.7.0':
     resolution: {integrity: sha512-K6V9AHEKBBC/zo5gXb3PO5A0dYv/fSpCRMnbKY9lpB7B+02MdLSVVP6JtMpLD+NcPDQxKvKACJO7n+zZH4hA5g==}
 
-  '@prisma/client-runtime-utils@7.7.0':
-    resolution: {integrity: sha512-BLyd0UpFYOtyJFTHm7jS9vesHW7P83abibodQMiIofqjBKzDHQ1VAsQkdfvXyYDkPlONPfOTz7/rv3x/+CQqvQ==}
+  '@prisma/client-runtime-utils@7.8.0':
+    resolution: {integrity: sha512-5NQZztQ0oY/ADFkmd9gPuweH5A1/CCY8YQPorLLO0Mu6a87mY5gsnDkzmFmIHs9NFaLnZojzgddFVN4RpKYrdw==}
 
-  '@prisma/client@7.7.0':
-    resolution: {integrity: sha512-5Ar4OsZpJ54s21sy5oDNNW9gQtd4NuxCaiM7+JDTOU07D6VvlpLjYzAVCMB1+JzokN+08dAVomlx+b7bhJd3ww==}
+  '@prisma/client@7.8.0':
+    resolution: {integrity: sha512-HFp3Dawv/3sU3JtlPha90IB+48lS7zHiH4LKZPjmcE8YH5P9DOXGPvo8dqOtO7MqLDd1p2hOWMcFlRT1DMblHw==}
     engines: {node: ^20.19 || ^22.12 || >=24.0}
     peerDependencies:
       prisma: '*'
@@ -1166,6 +1166,7 @@ packages:
   '@xmldom/xmldom@0.8.12':
     resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   abbrev@4.0.0:
     resolution: {integrity: sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA==}
@@ -4151,11 +4152,11 @@ snapshots:
       '@prisma/driver-adapter-utils': 7.7.0
       better-sqlite3: 12.9.0
 
-  '@prisma/client-runtime-utils@7.7.0': {}
+  '@prisma/client-runtime-utils@7.8.0': {}
 
-  '@prisma/client@7.7.0(prisma@7.7.0(@types/react@19.2.14)(better-sqlite3@12.9.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3))(typescript@5.9.3)':
+  '@prisma/client@7.8.0(prisma@7.7.0(@types/react@19.2.14)(better-sqlite3@12.9.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
-      '@prisma/client-runtime-utils': 7.7.0
+      '@prisma/client-runtime-utils': 7.8.0
     optionalDependencies:
       prisma: 7.7.0(@types/react@19.2.14)(better-sqlite3@12.9.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)
       typescript: 5.9.3
