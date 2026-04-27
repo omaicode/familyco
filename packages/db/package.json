@@ -1,6 +1,6 @@
 {
   "name": "@familyco/db",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "FamilyCo database module",
   "type": "module",
   "main": "dist/index.js",
