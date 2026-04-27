@@ -120,7 +120,7 @@ export const displayShortcutBinding = (binding: string): string => {
 
   return normalized
     .split(' ')
-    .map((part) => part.replace(/^mod\+/u, 'Ctrl/Cmd+').replace(/\+/gu, '+').toUpperCase())
+    .map((part) => part.replace(/^mod\+/u, 'Ctrl/Cmd+').toUpperCase())
     .join(' then ');
 };
 
