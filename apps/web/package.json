@@ -14,7 +14,7 @@
     "@familyco/ui": "workspace:*",
     "@vueuse/core": "^14.2.1",
     "@vueuse/motion": "^3.0.3",
-    "dompurify": "^3.3.3",
+    "dompurify": "^3.4.1",
     "driver.js": "^1.4.0",
     "lucide-vue-next": "^1.0.0",
     "marked": "^17.0.6",
