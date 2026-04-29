@@ -15,6 +15,7 @@ import {
   ApprovalService,
   AuditService,
   BudgetUsageService,
+  CronService,
   EventBus,
   InboxService,
   PluginRegistry,
@@ -31,6 +32,7 @@ import {
   type ApprovalRepository,
   type AuditRepository,
   type BudgetUsageRepository,
+  type CronRepository,
   type InboxRepository,
   type PluginRepository as PluginRepositoryInterface,
   type PluginRunRepository as PluginRunRepositoryInterface,
@@ -54,7 +56,7 @@ import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
 import { registerBudgetController } from './modules/budget/index.js';
 import { registerDashboardController } from './modules/dashboard/index.js';
-import { registerCronController, CronService } from './modules/cron/index.js';
+import { registerCronController } from './modules/cron/index.js';
 import { registerEngineController } from './modules/engine/index.js';
 import { registerInboxController } from './modules/inbox/index.js';
 import { registerProjectController } from './modules/project/index.js';
@@ -741,7 +743,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         approvalService,
         auditService,
         projectService,
-        taskService
+        taskService,
       });
       registerCronController(api, {
         cronService,
@@ -1016,7 +1018,7 @@ function createRepositories(
   auditRepository: AuditRepository;
   budgetUsageRepository: BudgetUsageRepository;
   chatConversationRepository: import('./modules/agent/chat-conversation.service.js').ChatConversationRepository;
-  cronRepository: import('./modules/cron/cron.service.js').CronRepository;
+  cronRepository: CronRepository;
   inboxRepository: InboxRepository;
   pluginRepository: PluginRepositoryInterface;
   pluginRunRepository: PluginRunRepositoryInterface;

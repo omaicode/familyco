@@ -12,10 +12,10 @@ import type {
   TaskService,
   ToolExecutionInput,
   ToolExecutionResult,
-  PluginToolCustomFieldDefinition
+  PluginToolCustomFieldDefinition,
+  CronService
 } from '@familyco/core';
 import type { SkillsService } from '../skills/skills.service.js';
-import type { CronService } from '../cron/cron.service.js';
 
 export interface DefaultToolExecutorDeps {
   agentService?: AgentService;

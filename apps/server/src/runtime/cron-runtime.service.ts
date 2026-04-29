@@ -1,5 +1,4 @@
-import type { CronService } from '../modules/cron/cron.service.js';
-import type { CronJob } from '../modules/cron/cron.types.js';
+import type { CronJob, CronService } from '@familyco/core';
 
 export interface CronRuntimeServiceDeps {
   cronService: CronService;

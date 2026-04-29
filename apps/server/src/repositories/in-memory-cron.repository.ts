@@ -1,5 +1,4 @@
-import type { CronRepository } from '../modules/cron/cron.service.js';
-import type { CronJob, CronRunRecord } from '../modules/cron/cron.types.js';
+import type { CronJob, CronRepository, CronRunRecord } from '@familyco/core';
 
 export class InMemoryCronRepository implements CronRepository {
   private readonly jobs: CronJob[] = [];

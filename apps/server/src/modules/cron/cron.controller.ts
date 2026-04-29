@@ -1,10 +1,9 @@
-import type { AuditService } from '@familyco/core';
+import type { AuditService, CronService } from '@familyco/core';
 import type { FastifyInstance } from 'fastify';
 
 import { resolveExecutiveAgentId } from '../shared/defaults.js';
 import { requireMinimumLevel } from '../../plugins/rbac.plugin.js';
 import { createCronBodySchema, cronParamsSchema, listCronRunsQuerySchema, updateCronBodySchema } from './cron.schema.js';
-import type { CronService } from './cron.service.js';
 
 export interface CronModuleDeps {
   cronService: CronService;

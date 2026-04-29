@@ -3,6 +3,7 @@ export * from './ai-adapter/index.js';
 export * from './approval/index.js';
 export * from './audit/index.js';
 export * from './budget/index.js';
+export * from './cron/index.js';
 export * from './engine/index.js';
 export * from './events/index.js';
 export * from './inbox/index.js';

@@ -1,7 +1,6 @@
 import { Prisma, type PrismaClient } from '@familyco/db';
+import type { CronJob, CronRepository, CronRunRecord } from '@familyco/core';
 
-import type { CronRepository } from '../modules/cron/cron.service.js';
-import type { CronJob, CronRunRecord } from '../modules/cron/cron.types.js';
 
 export class PrismaCronRepository implements CronRepository {
   constructor(private readonly prisma: PrismaClient) {}

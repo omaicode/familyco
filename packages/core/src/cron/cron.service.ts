@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import type { CronJob, CronRunRecord, CreateCronJobInput, RecordCronRunInput, UpdateCronJobInput } from './cron.types.js';
+import type {
+  CronJob,
+  CronRunRecord,
+  CreateCronJobInput,
+  RecordCronRunInput,
+  UpdateCronJobInput
+} from './cron.types.js';
+import type { CronRepository } from './cron.repository.js';
 
 interface ParsedCronSchedule {
   minute: CronFieldMatcher;
@@ -20,16 +27,6 @@ class SetMatcher implements CronFieldMatcher {
   matches(value: number): boolean {
     return this.accepted.has(value);
   }
-}
-
-export interface CronRepository {
-  listJobs(): Promise<CronJob[]>;
-  findJobById(id: string): Promise<CronJob | null>;
-  createJob(input: Omit<CronJob, 'createdAt' | 'updatedAt'>): Promise<CronJob>;
-  updateJob(id: string, input: Partial<CronJob>): Promise<CronJob>;
-  deleteJob(id: string): Promise<void>;
-  listRuns(cronId: string, limit: number): Promise<CronRunRecord[]>;
-  createRun(input: Omit<CronRunRecord, 'id'>): Promise<CronRunRecord>;
 }
 
 export class CronService {
@@ -58,7 +55,7 @@ export class CronService {
   async createJob(input: CreateCronJobInput): Promise<CronJob> {
     const now = new Date();
     const parsedSchedule = parseCronSchedule(input.schedule);
-    const created = await this.repository.createJob({
+    return this.repository.createJob({
       id: randomUUID(),
       name: normalizeName(input.name),
       prompt: normalizePrompt(input.prompt),
@@ -69,7 +66,6 @@ export class CronService {
       lastRunAt: null,
       nextRunAt: nextRunAtIso(parsedSchedule, now)
     });
-    return created;
   }
 
   async updateJob(id: string, input: UpdateCronJobInput): Promise<CronJob> {
