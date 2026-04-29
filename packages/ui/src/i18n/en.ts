@@ -714,6 +714,8 @@ export default {
   'tour.step.projects.desc': 'Projects group related tasks under a common goal. Create a project and let agents break it down into smaller tasks automatically.',
   'tour.step.tasks.title': '✅ Tasks',
   'tour.step.tasks.desc': 'Tasks are the individual units of work your agents execute. You can track status, filter by owner, and review output all in one place.',
+  'tour.step.cron.title': '⏰ Cron jobs',
+  'tour.step.cron.desc': 'Cron jobs allow you to schedule recurring tasks for your agents. Set up automated workflows and ensure timely execution of repetitive tasks.',
   'tour.step.audit.title': '🔍 Audit logs',
   'tour.step.audit.desc': 'The audit trail captures every action taken by your agents. Use it to review decisions, debug issues, and keep a record of everything that happens.',
   'tour.step.budget.title': '💰 Budget analytics',

@@ -52,6 +52,15 @@ const buildSteps = (t: (key: string) => string): DriveStep[] => [
     },
   },
   {
+    element: '#tour-cron',
+    popover: {
+      title: t('tour.step.cron.title'),
+      description: t('tour.step.cron.desc'),
+      side: 'right',
+      align: 'center',
+    },
+  },
+  {
     element: '#tour-inbox',
     popover: {
       title: t('tour.step.inbox.title'),

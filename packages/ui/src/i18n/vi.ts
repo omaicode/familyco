@@ -713,6 +713,8 @@ export default {
   'tour.step.projects.desc': 'Dự án nhóm các công việc liên quan lại với nhau theo một mục tiêu chung. Tạo dự án và để agent tự động phân chia thành các task nhỏ hơn.',
   'tour.step.tasks.title': '✅ Công việc',
   'tour.step.tasks.desc': 'Task là đơn vị công việc cụ thể mà agent thực thi. Bạn có thể theo dõi trạng thái, lọc theo người phụ trách và xem kết quả tại đây.',
+  'tour.step.cron.title': '⏰ Cron jobs',
+  'tour.step.cron.desc': 'Cron jobs cho phép bạn lập lịch các công việc định kỳ cho agent của mình. Thiết lập quy trình tự động và đảm bảo thực hiện kịp thời các công việc lặp đi lặp lại.',
   'tour.step.audit.title': '🕵️ Nhật ký kiểm tra',
   'tour.step.audit.desc': 'Mỗi hành động của agent đều được ghi lại trong nhật ký kiểm tra để bạn có thể xem lại chi tiết, theo dõi tiến độ và debug khi cần.',
   'tour.step.budget.title': '💰 Phân tích ngân sách',
