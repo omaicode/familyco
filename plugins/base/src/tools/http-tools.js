@@ -101,6 +101,7 @@ export const httpTools = [
       { name: 'body', type: 'string', required: false, description: 'Request body as text. Use for POST/PUT/PATCH.' },
       { name: 'timeoutMs', type: 'number', required: false, description: 'Request timeout in milliseconds (1000-60000).' }
     ],
+    enabledByDefault: true,
     async execute(args) {
       const url = normalizeUrl(args.url);
       if (!url) {
