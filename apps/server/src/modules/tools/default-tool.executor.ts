@@ -8,6 +8,7 @@ import { agentUpdateTool } from '../../tools/agent-update.tool.js';
 import { approvalRequestTool } from '../../tools/approval-request.tool.js';
 import { companyProfileReadTool } from '../../tools/company-profile-read.tool.js';
 import { confirmRequestTool } from '../../tools/confirm-request.tool.js';
+import { cronUpsertTool } from '../../tools/cron-upsert.tool.js';
 import { echoTool } from '../../tools/echo.tool.js';
 import { fileDeleteTool } from '../../tools/file-delete.tool.js';
 import { fileReadTool } from '../../tools/file-read.tool.js';
@@ -84,7 +85,8 @@ export class DefaultToolExecutor implements ToolExecutor {
       confirmRequestTool,
       inboxSendTool,
       approvalRequestTool,
-      taskDispatchTool
+      taskDispatchTool,
+      cronUpsertTool
     ];
 
     for (const definition of definitions) {

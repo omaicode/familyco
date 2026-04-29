@@ -9,6 +9,7 @@ import ProjectsPage from './views/ProjectsPage.vue';
 import SettingsPage from './views/SettingsPage.vue';
 import TasksPage from './views/TasksPage.vue';
 import BudgetPage from './views/BudgetPage.vue';
+import CronPage from './views/CronPage.vue';
 import SkillsPage from './views/SkillsPage.vue';
 import ToolsPage from './views/ToolsPage.vue';
 import PluginsPage from './views/PluginsPage.vue';
@@ -52,6 +53,11 @@ export const router = createRouter({
       path: '/tasks',
       component: TasksPage,
       meta: { title: 'Tasks' }
+    },
+    {
+      path: '/cron',
+      component: CronPage,
+      meta: { title: 'Cron' }
     },
     {
       path: '/inbox',

@@ -15,6 +15,7 @@ import type {
   PluginToolCustomFieldDefinition
 } from '@familyco/core';
 import type { SkillsService } from '../skills/skills.service.js';
+import type { CronService } from '../cron/cron.service.js';
 
 export interface DefaultToolExecutorDeps {
   agentService?: AgentService;
@@ -28,6 +29,7 @@ export interface DefaultToolExecutorDeps {
   approvalService?: ApprovalService;
   queueService?: QueueService;
   eventBus?: EventBus;
+  cronService?: CronService;
   /** Executing agent's ID — set during heartbeat runs to scope dispatch. */
   agentId?: string;
   /** Optional tool allowlist for specialized execution contexts such as heartbeat runs. */

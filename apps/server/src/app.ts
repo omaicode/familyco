@@ -45,13 +45,16 @@ import {
   ChatAttachmentStore,
   ChatConversationService,
   ChatStreamRegistry,
-  registerAgentController
+  processAgentChat,
+  registerAgentController,
+  type AgentModuleDeps
 } from './modules/agent/index.js';
 import { registerApprovalController } from './modules/approval/index.js';
 import { registerAuthController } from './modules/auth/index.js';
 import { registerAuditController } from './modules/audit/index.js';
 import { registerBudgetController } from './modules/budget/index.js';
 import { registerDashboardController } from './modules/dashboard/index.js';
+import { registerCronController, CronService } from './modules/cron/index.js';
 import { registerEngineController } from './modules/engine/index.js';
 import { registerInboxController } from './modules/inbox/index.js';
 import { registerProjectController } from './modules/project/index.js';
@@ -76,6 +79,7 @@ import {
   InMemoryAuditRepository,
   InMemoryBudgetUsageRepository,
   InMemoryChatConversationRepository,
+  InMemoryCronRepository,
   InMemoryInboxRepository,
   InMemoryPluginRepository,
   InMemoryPluginRunRepository,
@@ -90,6 +94,7 @@ import {
   PrismaAuditRepository,
   PrismaBudgetUsageRepository,
   PrismaChatConversationRepository,
+  PrismaCronRepository,
   PrismaInboxRepository,
   PrismaPluginRepository,
   PrismaPluginRunRepository,
@@ -102,6 +107,7 @@ import {
   InMemoryQueueService
 } from './queue/index.js';
 import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
+import { CronRuntimeService } from './runtime/cron-runtime.service.js';
 import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
 import { TaskExecutionCoordinator } from './runtime/task-execution.coordinator.js';
 import {
@@ -195,6 +201,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     auditRepository,
     budgetUsageRepository,
     chatConversationRepository,
+    cronRepository,
     inboxRepository,
     pluginRepository,
     pluginRunRepository,
@@ -248,6 +255,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       await notificationService.notifyBudgetNearLimit(input);
     }
   });
+  const cronService = new CronService(cronRepository);
   const toolExecutor = new DefaultToolExecutor({
     agentService,
     projectService,
@@ -258,6 +266,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     auditService,
     inboxService,
     approvalService,
+    cronService,
     eventBus
     // queueService wired in after construction to avoid circular dependency
   });
@@ -310,6 +319,59 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     pollMs: options.heartbeatPollMs,
     defaultHeartbeatMinutes: options.defaultHeartbeatMinutes,
     tools: heartbeatToolDefinitions
+  });
+  const agentModuleDeps: AgentModuleDeps = {
+    agentService,
+    inboxService,
+    chatConversationService,
+    approvalService,
+    auditService,
+    approvalGuard,
+    agentRunner,
+    chatEngineService,
+    toolExecutor,
+    listTools: () => toolExecutor.listToolDefinitions(),
+    chatStreamRegistry,
+    chatAttachmentStore,
+    settingsService
+  };
+  const cronRuntime = new CronRuntimeService({
+    cronService,
+    executeJob: async (job, scheduledAt) => {
+      const existingSession = job.sessionId
+        ? await chatConversationService.getSessionById(job.sessionId)
+        : null;
+      const session = existingSession ?? await chatConversationService.createSession({
+        agentId: job.agentId,
+        founderId: 'founder',
+        title: `Cron: ${job.name}`
+      });
+
+      const result = await processAgentChat({
+        agentId: job.agentId,
+        body: {
+          message: job.prompt,
+          meta: {
+            sessionId: session.id,
+            trigger: 'cron',
+            cronId: job.id,
+            scheduledAt: scheduledAt.toISOString()
+          }
+        },
+        deps: agentModuleDeps,
+        actorId: 'system'
+      });
+
+      return {
+        sessionId: session.id,
+        output: {
+          reply: result.reply,
+          replyMessageId: result.replyMessage.id,
+          founderMessageId: result.founderMessage.id,
+          toolCalls: result.toolCalls
+        }
+      };
+    }
   });
   const canProcessAsyncJobs = true;
   let migrationState: MigrationRunResult | null = null;
@@ -595,6 +657,9 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     if (enableHeartbeatScheduler && canProcessAsyncJobs) {
       await heartbeatRuntime.start();
     }
+    if (canProcessAsyncJobs) {
+      await cronRuntime.start();
+    }
 
     // Discover plugins from filesystem (non-blocking — errors logged, not thrown)
     try {
@@ -607,6 +672,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   });
 
   app.addHook('onClose', async () => {
+    await cronRuntime.stop();
     await heartbeatRuntime.stop();
     await queueService.close();
   });
@@ -657,21 +723,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         await authenticateApiRequest(request, reply, apiKeyService);
       });
 
-      registerAgentController(api, {
-        agentService,
-        inboxService,
-        chatConversationService,
-        approvalService,
-        auditService,
-        approvalGuard,
-        agentRunner,
-        chatEngineService,
-        toolExecutor,
-        listTools: () => toolExecutor.listToolDefinitions(),
-        chatStreamRegistry,
-        chatAttachmentStore,
-        settingsService
-      });
+      registerAgentController(api, agentModuleDeps);
       registerApprovalController(api, {
         approvalService,
         agentService,
@@ -690,6 +742,12 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
         auditService,
         projectService,
         taskService
+      });
+      registerCronController(api, {
+        cronService,
+        auditService,
+        settingsService,
+        agentService
       });
       registerEngineController(api, {
         queueService,
@@ -958,6 +1016,7 @@ function createRepositories(
   auditRepository: AuditRepository;
   budgetUsageRepository: BudgetUsageRepository;
   chatConversationRepository: import('./modules/agent/chat-conversation.service.js').ChatConversationRepository;
+  cronRepository: import('./modules/cron/cron.service.js').CronRepository;
   inboxRepository: InboxRepository;
   pluginRepository: PluginRepositoryInterface;
   pluginRunRepository: PluginRunRepositoryInterface;
@@ -976,6 +1035,7 @@ function createRepositories(
       auditRepository: new PrismaAuditRepository(client),
       budgetUsageRepository: new PrismaBudgetUsageRepository(client),
       chatConversationRepository: new PrismaChatConversationRepository(client),
+      cronRepository: new PrismaCronRepository(client),
       inboxRepository: new PrismaInboxRepository(client),
       pluginRepository: new PrismaPluginRepository(client),
       pluginRunRepository: new PrismaPluginRunRepository(client),
@@ -994,6 +1054,7 @@ function createRepositories(
     auditRepository: new InMemoryAuditRepository(),
     budgetUsageRepository: new InMemoryBudgetUsageRepository(),
     chatConversationRepository: new InMemoryChatConversationRepository(),
+    cronRepository: new InMemoryCronRepository(),
     inboxRepository: new InMemoryInboxRepository(),
     pluginRepository: new InMemoryPluginRepository(),
     pluginRunRepository: new InMemoryPluginRunRepository(),

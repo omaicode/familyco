@@ -6,6 +6,7 @@ import { agentListTool } from '../../tools/agent-list.tool.js';
 import { agentReadTool } from '../../tools/agent-read.tool.js';
 import { agentUpdateTool } from '../../tools/agent-update.tool.js';
 import { approvalRequestTool } from '../../tools/approval-request.tool.js';
+import { cronUpsertTool } from '../../tools/cron-upsert.tool.js';
 import { fileDeleteTool } from '../../tools/file-delete.tool.js';
 import { fileReadTool } from '../../tools/file-read.tool.js';
 import { fileSearchTool } from '../../tools/file-search.tool.js';
@@ -183,6 +184,8 @@ export function buildAgentSlashRegistry(): AgentSlashRegistry {
     fileDeleteTool,
     inboxSendTool,
     approvalRequestTool
+    ,
+    cronUpsertTool
   ]
     .filter((tool): tool is typeof tool & { slashSpec: SlashCommandSpec } => tool.slashSpec !== undefined)
     .map((tool) => toolSpecToEntry(tool.name, tool.slashSpec));
