@@ -2,6 +2,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tavilyTools } from './tools/tavily-tools.js';
+import { httpTools } from './tools/http-tools.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = (f) => readFileSync(path.join(__dirname, 'skills', f), 'utf8');
@@ -15,7 +16,8 @@ const plugin = {
   tags: ['base', 'orchestration', 'project-management', 'operations', 'research', 'tavily'],
   defaultApprovalMode: 'auto',
   tools: [
-    ...tavilyTools
+    ...tavilyTools,
+    ...httpTools
   ],
   skills: [
     {
