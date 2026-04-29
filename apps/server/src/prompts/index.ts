@@ -8,6 +8,7 @@ export type {
   PromptToolParameter
 } from './prompt.types.js';
 export { renderChatSystemPrompt } from './chat/chat-system.template.js';
+export { renderCronSystemPrompt } from './chat/cron-system.template.js';
 export { renderChatUserPrompt } from './chat/chat-user.template.js';
 export { renderHeartbeatRunPrompt } from './heartbeat/heartbeat-run.template.js';
 export { renderTaskSystemPrompt } from './task/task-system.template.js';

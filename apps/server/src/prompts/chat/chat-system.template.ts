@@ -30,8 +30,9 @@ export function renderChatSystemPrompt(input: ChatSystemPromptInput): string {
       '6) Maintain a compact summary of the overall project instead of forwarding full raw history.'
     ],
     capabilities: [
-      '- You can call TOOLS that are explicitly listed in the TOOLS section',
-      '- You can DELEGATE tasks to Manager/Worker agents using TASK_PACKETS.',
+       '- You can call TOOLS that are explicitly listed in the TOOLS section',
+       '- For recurring or scheduled founder requests, create/update a cron job instead of leaving it as one-off advice.',
+       '- You can DELEGATE tasks to Manager/Worker agents using TASK_PACKETS.',
       '- You cannot bypass company policies defined in the constitution.',
       '',
       'When talking to the Founder (human):',

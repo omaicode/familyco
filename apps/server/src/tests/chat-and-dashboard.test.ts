@@ -197,6 +197,32 @@ test('P1 routes: setup, socket chat, settings, and inbox flow work with a single
   assert.equal(sessionsBeforeResetResponse.statusCode, 200);
   const sessionsBeforeReset = sessionsBeforeResetResponse.json() as Array<{ id: string }>;
   assert.equal(sessionsBeforeReset.length >= 1, true);
+  const sessionToDelete = sessionsBeforeReset[0];
+  if (sessionToDelete) {
+    const deleteSessionResponse = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/agents/${l0Id}/chat/sessions/${sessionToDelete.id}`,
+      headers: {
+        'x-api-key': TEST_API_KEY
+      }
+    });
+
+    assert.equal(deleteSessionResponse.statusCode, 200);
+    const deletePayload = deleteSessionResponse.json() as { id: string };
+    assert.equal(deletePayload.id, sessionToDelete.id);
+
+    const sessionsAfterDeleteResponse = await app.inject({
+      method: 'GET',
+      url: `/api/v1/agents/${l0Id}/chat/sessions`,
+      headers: {
+        'x-api-key': TEST_API_KEY
+      }
+    });
+
+    assert.equal(sessionsAfterDeleteResponse.statusCode, 200);
+    const sessionsAfterDelete = sessionsAfterDeleteResponse.json() as Array<{ id: string }>;
+    assert.equal(sessionsAfterDelete.some((session) => session.id === sessionToDelete.id), false);
+  }
 
   const allTasksAfterToolResponse = await app.inject({
     method: 'GET',

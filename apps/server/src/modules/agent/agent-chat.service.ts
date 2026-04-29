@@ -307,7 +307,10 @@ export async function processAgentChat(input: {
   }
 
   const companyProfile = toCompanyProfile(profileResult?.output);
-  const allTools = input.deps.listTools();
+  const isCronTriggered = input.body.meta?.trigger === 'cron';
+  const allTools = isCronTriggered
+    ? input.deps.listTools().filter((tool) => tool.name !== 'cron.upsert')
+    : input.deps.listTools();
   const shouldGenerateTitle = founderMessageCountBefore === 0 && effectiveMessage.trim().length > 0;
   const shouldGenerateSummary = conversationHistory.length >= 8;
 
@@ -363,12 +366,26 @@ export async function processAgentChat(input: {
     onEvent: input.onEvent,
     abortSignal: input.abortSignal,
     shouldStop: input.shouldStop,
-    executeTool: (toolInput) => input.deps.toolExecutor.execute(toolInput)
+    trigger: isCronTriggered ? 'cron' : 'chat',
+    executeTool: async (toolInput) => {
+      if (isCronTriggered && toolInput.toolName === 'cron.upsert') {
+        return {
+          ok: false,
+          toolName: toolInput.toolName,
+          error: {
+            code: 'TOOL_NOT_ALLOWED',
+            message: 'cron.upsert is disabled for cron-triggered runs'
+          }
+        };
+      }
+
+      return input.deps.toolExecutor.execute(toolInput);
+    }
   });
 
   session = await titleTask;
 
-  return buildProcessedChatResult({
+  const result = await buildProcessedChatResult({
     session,
     agent,
     founderMessage,
@@ -378,6 +395,15 @@ export async function processAgentChat(input: {
     actorId: input.actorId,
     auditAction: 'agent.chat'
   });
+
+  void input.deps.notificationService.notifyChatMessageFromAgent({
+    agentId: agent.id,
+    agentName: agent.name,
+    sessionId: result.session.id,
+    message: result.reply
+  }).catch(() => undefined);
+
+  return result;
 }
 
 function buildEffectiveChatMessage(message: string, attachments: Array<{ kind: string; transcript?: string }>): string {

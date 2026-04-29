@@ -4,6 +4,7 @@ export type AppRoutePath =
   | '/agents'
   | '/projects'
   | '/tasks'
+  | '/cron'
   | '/inbox'
   | '/audit'
   | '/budget'
@@ -49,6 +50,11 @@ export const appNavigationSections: AppNavigationSection[] = [
     label: 'Tasks',
     description: 'Monitor task lifecycle, blocked items, and execution queues.',
     primaryActionLabel: 'Create task'
+  },
+  {
+    path: '/cron',
+    label: 'Cron',
+    description: 'Manage recurring schedules, prompts, and execution history.'
   },
   {
     path: '/inbox',

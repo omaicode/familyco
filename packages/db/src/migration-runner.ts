@@ -25,6 +25,7 @@ const MIGRATION_TABLE = '_prisma_migrations';
 
 export async function runMigrationsWithSafety(): Promise<MigrationRunResult> {
   const dbPath = resolveDatabasePath();
+  console.log(dbPath);
   await fs.mkdir(path.dirname(dbPath), { recursive: true });
 
   const migrationFiles = await loadMigrationFiles();
@@ -254,16 +255,12 @@ function resolveDatabasePath(): string {
   const raw = process.env.DATABASE_URL ?? 'file:../../prisma/dev.db';
 
   if (raw.startsWith('file:')) {
-    const urlPath = decodeURIComponent(new URL(raw).pathname);
+    const urlPath = raw.slice('file:'.length)
     if (process.platform === 'win32' && /^\/[A-Za-z]:/.test(urlPath)) {
       return urlPath.slice(1);
     }
 
-    return urlPath;
-  }
-
-  if (raw.startsWith('file:')) {
-    return path.resolve(process.cwd(), raw.slice('file:'.length));
+    return path.resolve(process.cwd(), urlPath);
   }
 
   throw new Error(`Unsupported DATABASE_URL protocol for desktop runtime: ${raw}`);

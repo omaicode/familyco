@@ -34,6 +34,8 @@ export function useExecutiveChat() {
   const isLoading = ref(false);
   const isLoadingSessions = ref(false);
   const isCreatingSession = ref(false);
+  const pendingDeleteSessionId = ref('');
+  const deletingSessionId = ref('');
   const isRefreshing = ref(false);
   const isLoadingOlder = ref(false);
   const hasMoreHistory = ref(true);
@@ -171,6 +173,60 @@ export function useExecutiveChat() {
       setFeedback('error', error instanceof Error ? error.message : t('chat.session.createFailed'));
     } finally {
       isCreatingSession.value = false;
+    }
+  };
+
+  const requestDeleteSession = (sessionId: string): void => {
+    if (!selectedAgentId.value || deletingSessionId.value) {
+      return;
+    }
+
+    pendingDeleteSessionId.value = sessionId;
+  };
+
+  const cancelDeleteSession = (): void => {
+    if (deletingSessionId.value) {
+      return;
+    }
+
+    pendingDeleteSessionId.value = '';
+  };
+
+  const confirmDeleteSession = async (): Promise<void> => {
+    const sessionId = pendingDeleteSessionId.value;
+    if (!selectedAgentId.value || deletingSessionId.value) {
+      return;
+    }
+
+    if (!sessionId) {
+      return;
+    }
+
+    deletingSessionId.value = sessionId;
+    try {
+      await uiRuntime.api.deleteAgentChatSession({
+        agentId: selectedAgentId.value,
+        sessionId
+      });
+
+      const remainingSessions = sessions.value.filter((session) => session.id !== sessionId);
+      sessions.value = remainingSessions;
+
+      if (selectedSessionId.value === sessionId) {
+        const nextSessionId = remainingSessions[0]?.id ?? '';
+        selectedSessionId.value = nextSessionId;
+        if (!nextSessionId) {
+          thread.value = [];
+          hasMoreHistory.value = false;
+        }
+      }
+
+      setFeedback('success', t('chat.session.deleteSuccess'));
+    } catch (error) {
+      setFeedback('error', error instanceof Error ? error.message : t('chat.session.deleteFailed'));
+    } finally {
+      deletingSessionId.value = '';
+      pendingDeleteSessionId.value = '';
     }
   };
 
@@ -433,6 +489,8 @@ export function useExecutiveChat() {
     isLoading,
     isLoadingSessions,
     isCreatingSession,
+    pendingDeleteSessionId,
+    deletingSessionId,
     isRefreshing,
     isLoadingOlder,
     hasMoreHistory,
@@ -447,6 +505,9 @@ export function useExecutiveChat() {
     selectedAgent,
     reload,
     createNewSession,
+    requestDeleteSession,
+    cancelDeleteSession,
+    confirmDeleteSession,
     toggleSessionSidebar,
     selectSession,
     loadOlderMessages,

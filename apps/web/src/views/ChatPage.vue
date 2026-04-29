@@ -7,6 +7,7 @@ import ExecutiveChatThread from '../components/agents/ExecutiveChatThread.vue';
 import FcBanner from '../components/FcBanner.vue';
 import FcButton from '../components/FcButton.vue';
 import FcCard from '../components/FcCard.vue';
+import FcConfirmDialog from '../components/FcConfirmDialog.vue';
 import FcSelect from '../components/FcSelect.vue';
 import SkeletonList from '../components/SkeletonList.vue';
 import { useExecutiveChat } from '../composables/useExecutiveChat';
@@ -26,6 +27,8 @@ const {
   isLoading,
   isLoadingSessions,
   isCreatingSession,
+  pendingDeleteSessionId,
+  deletingSessionId,
   isRefreshing,
   isLoadingOlder,
   hasMoreHistory,
@@ -40,6 +43,9 @@ const {
   selectedAgent,
   reload,
   createNewSession,
+  requestDeleteSession,
+  cancelDeleteSession,
+  confirmDeleteSession,
   toggleSessionSidebar,
   selectSession,
   loadOlderMessages,
@@ -127,8 +133,10 @@ const {
                 :selected-session-id="selectedSessionId"
                 :is-loading="isLoadingSessions"
                 :is-creating="isCreatingSession"
+                :deleting-session-id="deletingSessionId"
                 :show-hide-action="isSessionSidebarOpen"
                 @create="createNewSession"
+                @delete="requestDeleteSession"
                 @toggle-sidebar="toggleSessionSidebar"
                 @select="selectSession"
               />
@@ -167,6 +175,18 @@ const {
         </FcCard>
       </div>
     </div>
+
+    <FcConfirmDialog
+      :open="Boolean(pendingDeleteSessionId)"
+      :title="t('chat.session.delete')"
+      :message="t('chat.session.deleteConfirm')"
+      :cancel-label="t('Cancel')"
+      :confirm-label="t('Delete')"
+      confirm-variant="danger"
+      :busy="Boolean(deletingSessionId)"
+      @cancel="cancelDeleteSession"
+      @confirm="confirmDeleteSession"
+    />
   </section>
 </template>
 

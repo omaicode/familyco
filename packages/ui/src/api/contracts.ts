@@ -527,6 +527,52 @@ export interface UpsertSettingPayload {
   value: unknown;
 }
 
+export interface CronJobItem {
+  id: string;
+  name: string;
+  prompt: string;
+  schedule: string;
+  agentId: string;
+  enabled: boolean;
+  sessionId: string | null;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CronRunRecord {
+  id: string;
+  cronId: string;
+  status: 'success' | 'failed';
+  scheduledAt: string;
+  startedAt: string;
+  finishedAt: string;
+  input: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  error?: {
+    message: string;
+  };
+}
+
+export interface CreateCronJobPayload {
+  name: string;
+  prompt: string;
+  schedule: string;
+  agentId?: string;
+  enabled?: boolean;
+}
+
+export interface UpdateCronJobPayload {
+  cronId: string;
+  name?: string;
+  prompt?: string;
+  schedule?: string;
+  agentId?: string;
+  enabled?: boolean;
+  sessionId?: string | null;
+}
+
 export interface SlashCommandItem {
   command: string;
   label: string;
@@ -548,6 +594,11 @@ export interface ListAgentChatSessionsQuery {
 export interface CreateAgentChatSessionPayload {
   agentId: string;
   title?: string;
+}
+
+export interface DeleteAgentChatSessionPayload {
+  agentId: string;
+  sessionId: string;
 }
 
 export interface BudgetReportTotals {
@@ -741,6 +792,7 @@ export interface FamilyCoApiContracts {
   getAgentPath: (agentId: string) => Promise<AgentListItem[]>;
   listAgentChatSessions: (agentId: string, query?: ListAgentChatSessionsQuery) => Promise<AgentChatSession[]>;
   createAgentChatSession: (payload: CreateAgentChatSessionPayload) => Promise<AgentChatSession>;
+  deleteAgentChatSession: (payload: DeleteAgentChatSessionPayload) => Promise<{ id: string }>;
   getAgentChat: (agentId: string, query?: GetAgentChatQuery) => Promise<AgentChatMessage[]>;
   getAgentSlashCommands: (agentId: string) => Promise<SlashCommandItem[]>;
   sendAgentChat: (payload: SendAgentChatPayload) => Promise<SendAgentChatResult>;
@@ -775,6 +827,11 @@ export interface FamilyCoApiContracts {
   answerInboxClarification: (payload: RespondInboxMessagePayload) => Promise<InboxMessageItem>;
   listSettings: () => Promise<SettingItem[]>;
   upsertSetting: (payload: UpsertSettingPayload) => Promise<SettingItem>;
+  listCronJobs: () => Promise<CronJobItem[]>;
+  createCronJob: (payload: CreateCronJobPayload) => Promise<CronJobItem>;
+  updateCronJob: (payload: UpdateCronJobPayload) => Promise<CronJobItem>;
+  deleteCronJob: (cronId: string) => Promise<{ id: string }>;
+  listCronRuns: (cronId: string, query?: { limit?: number }) => Promise<CronRunRecord[]>;
   triggerHeartbeat: () => Promise<{ triggered: boolean; message: string }>;
   listProviders: () => Promise<ProviderListItem[]>;
   connectProvider: (providerId: string, payload: ConnectProviderPayload) => Promise<{ ok: boolean }>;
@@ -826,6 +883,8 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     client.post<AgentChatSession, { title?: string }>(`/api/v1/agents/${payload.agentId}/chat/sessions`, {
       ...(payload.title ? { title: payload.title } : {})
     }),
+  deleteAgentChatSession: (payload) =>
+    client.delete<{ id: string }>(`/api/v1/agents/${payload.agentId}/chat/sessions/${payload.sessionId}`),
   getAgentChat: (agentId, query = {}) => {
     const params = new URLSearchParams();
     if (query.sessionId) {
@@ -965,6 +1024,26 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     }),
   listSettings: () => client.get<SettingItem[]>('/api/v1/settings'),
   upsertSetting: (payload) => client.post<SettingItem, UpsertSettingPayload>('/api/v1/settings', payload),
+  listCronJobs: () => client.get<CronJobItem[]>('/api/v1/cron'),
+  createCronJob: (payload) => client.post<CronJobItem, CreateCronJobPayload>('/api/v1/cron', payload),
+  updateCronJob: (payload) =>
+    client.patch<CronJobItem, Omit<UpdateCronJobPayload, 'cronId'>>(`/api/v1/cron/${payload.cronId}`, {
+      ...(payload.name !== undefined ? { name: payload.name } : {}),
+      ...(payload.prompt !== undefined ? { prompt: payload.prompt } : {}),
+      ...(payload.schedule !== undefined ? { schedule: payload.schedule } : {}),
+      ...(payload.agentId !== undefined ? { agentId: payload.agentId } : {}),
+      ...(payload.enabled !== undefined ? { enabled: payload.enabled } : {}),
+      ...(payload.sessionId !== undefined ? { sessionId: payload.sessionId } : {})
+    }),
+  deleteCronJob: (cronId) => client.delete<{ id: string }>(`/api/v1/cron/${cronId}`),
+  listCronRuns: (cronId, query = {}) => {
+    const params = new URLSearchParams();
+    if (typeof query.limit === 'number') {
+      params.set('limit', String(query.limit));
+    }
+    const queryString = params.toString();
+    return client.get<CronRunRecord[]>(`/api/v1/cron/${cronId}/history${queryString ? `?${queryString}` : ''}`);
+  },
   triggerHeartbeat: () => client.post<{ triggered: boolean; message: string }>('/api/v1/engine/heartbeat/trigger'),
   listProviders: () => client.get<ProviderListItem[]>('/api/v1/provider/list'),
   connectProvider: (providerId, payload) =>

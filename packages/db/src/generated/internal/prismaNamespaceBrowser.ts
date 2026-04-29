@@ -61,6 +61,8 @@ export const ModelName = {
   InboxMessage: 'InboxMessage',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
+  CronJob: 'CronJob',
+  CronRun: 'CronRun',
   Settings: 'Settings',
   ApiKey: 'ApiKey',
   TaskSessionCheckpoint: 'TaskSessionCheckpoint',
@@ -241,6 +243,39 @@ export const ChatMessageScalarFieldEnum = {
 } as const
 
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
+
+
+export const CronJobScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  prompt: 'prompt',
+  schedule: 'schedule',
+  agentId: 'agentId',
+  enabled: 'enabled',
+  sessionId: 'sessionId',
+  lastRunAt: 'lastRunAt',
+  nextRunAt: 'nextRunAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CronJobScalarFieldEnum = (typeof CronJobScalarFieldEnum)[keyof typeof CronJobScalarFieldEnum]
+
+
+export const CronRunScalarFieldEnum = {
+  id: 'id',
+  cronId: 'cronId',
+  status: 'status',
+  scheduledAt: 'scheduledAt',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  input: 'input',
+  output: 'output',
+  error: 'error',
+  createdAt: 'createdAt'
+} as const
+
+export type CronRunScalarFieldEnum = (typeof CronRunScalarFieldEnum)[keyof typeof CronRunScalarFieldEnum]
 
 
 export const SettingsScalarFieldEnum = {

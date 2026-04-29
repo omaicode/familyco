@@ -394,6 +394,8 @@ export const ModelName = {
   InboxMessage: 'InboxMessage',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
+  CronJob: 'CronJob',
+  CronRun: 'CronRun',
   Settings: 'Settings',
   ApiKey: 'ApiKey',
   TaskSessionCheckpoint: 'TaskSessionCheckpoint',
@@ -414,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "agentRun" | "budgetUsage" | "inboxMessage" | "chatSession" | "chatMessage" | "settings" | "apiKey" | "taskSessionCheckpoint" | "plugin" | "pluginRun"
+    modelProps: "agent" | "project" | "task" | "approvalRequest" | "auditLog" | "agentRun" | "budgetUsage" | "inboxMessage" | "chatSession" | "chatMessage" | "cronJob" | "cronRun" | "settings" | "apiKey" | "taskSessionCheckpoint" | "plugin" | "pluginRun"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1158,6 +1160,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    CronJob: {
+      payload: Prisma.$CronJobPayload<ExtArgs>
+      fields: Prisma.CronJobFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CronJobFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CronJobFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>
+        }
+        findFirst: {
+          args: Prisma.CronJobFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CronJobFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>
+        }
+        findMany: {
+          args: Prisma.CronJobFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>[]
+        }
+        create: {
+          args: Prisma.CronJobCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>
+        }
+        createMany: {
+          args: Prisma.CronJobCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CronJobCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>[]
+        }
+        delete: {
+          args: Prisma.CronJobDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>
+        }
+        update: {
+          args: Prisma.CronJobUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>
+        }
+        deleteMany: {
+          args: Prisma.CronJobDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CronJobUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CronJobUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>[]
+        }
+        upsert: {
+          args: Prisma.CronJobUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronJobPayload>
+        }
+        aggregate: {
+          args: Prisma.CronJobAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCronJob>
+        }
+        groupBy: {
+          args: Prisma.CronJobGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CronJobGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CronJobCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CronJobCountAggregateOutputType> | number
+        }
+      }
+    }
+    CronRun: {
+      payload: Prisma.$CronRunPayload<ExtArgs>
+      fields: Prisma.CronRunFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CronRunFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CronRunFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>
+        }
+        findFirst: {
+          args: Prisma.CronRunFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CronRunFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>
+        }
+        findMany: {
+          args: Prisma.CronRunFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>[]
+        }
+        create: {
+          args: Prisma.CronRunCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>
+        }
+        createMany: {
+          args: Prisma.CronRunCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CronRunCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>[]
+        }
+        delete: {
+          args: Prisma.CronRunDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>
+        }
+        update: {
+          args: Prisma.CronRunUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>
+        }
+        deleteMany: {
+          args: Prisma.CronRunDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CronRunUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CronRunUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>[]
+        }
+        upsert: {
+          args: Prisma.CronRunUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CronRunPayload>
+        }
+        aggregate: {
+          args: Prisma.CronRunAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCronRun>
+        }
+        groupBy: {
+          args: Prisma.CronRunGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CronRunGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CronRunCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CronRunCountAggregateOutputType> | number
+        }
+      }
+    }
     Settings: {
       payload: Prisma.$SettingsPayload<ExtArgs>
       fields: Prisma.SettingsFieldRefs
@@ -1726,6 +1876,39 @@ export const ChatMessageScalarFieldEnum = {
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
 
 
+export const CronJobScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  prompt: 'prompt',
+  schedule: 'schedule',
+  agentId: 'agentId',
+  enabled: 'enabled',
+  sessionId: 'sessionId',
+  lastRunAt: 'lastRunAt',
+  nextRunAt: 'nextRunAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CronJobScalarFieldEnum = (typeof CronJobScalarFieldEnum)[keyof typeof CronJobScalarFieldEnum]
+
+
+export const CronRunScalarFieldEnum = {
+  id: 'id',
+  cronId: 'cronId',
+  status: 'status',
+  scheduledAt: 'scheduledAt',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  input: 'input',
+  output: 'output',
+  error: 'error',
+  createdAt: 'createdAt'
+} as const
+
+export type CronRunScalarFieldEnum = (typeof CronRunScalarFieldEnum)[keyof typeof CronRunScalarFieldEnum]
+
+
 export const SettingsScalarFieldEnum = {
   id: 'id',
   key: 'key',
@@ -2011,6 +2194,8 @@ export type GlobalOmitConfig = {
   inboxMessage?: Prisma.InboxMessageOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit
+  cronJob?: Prisma.CronJobOmit
+  cronRun?: Prisma.CronRunOmit
   settings?: Prisma.SettingsOmit
   apiKey?: Prisma.ApiKeyOmit
   taskSessionCheckpoint?: Prisma.TaskSessionCheckpointOmit

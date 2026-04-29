@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { PanelLeftClose } from 'lucide-vue-next';
+import { PanelLeftClose, Trash2 } from 'lucide-vue-next';
 
 import { type AgentChatSession } from '@familyco/ui';
 
@@ -12,12 +12,14 @@ const props = defineProps<{
   selectedSessionId: string;
   isLoading: boolean;
   isCreating: boolean;
+  deletingSessionId: string;
   showHideAction?: boolean;
 }>();
 
 const emit = defineEmits<{
   (event: 'select', sessionId: string): void;
   (event: 'create'): void;
+  (event: 'delete', sessionId: string): void;
   (event: 'toggle-sidebar'): void;
 }>();
 
@@ -73,7 +75,7 @@ const readSessionTitle = (session: AgentChatSession): string => {
     </div>
 
     <ul v-else class="chat-sessions-list">
-      <li v-for="session in visibleSessions" :key="session.id">
+      <li v-for="session in visibleSessions" :key="session.id" class="chat-session-entry">
         <button
           class="chat-session-item"
           type="button"
@@ -82,6 +84,15 @@ const readSessionTitle = (session: AgentChatSession): string => {
         >
           <strong>{{ readSessionTitle(session) }}</strong>
           <span>{{ formatTimestamp(session.lastMessageAt) }}</span>
+        </button>
+        <button
+          class="chat-session-delete"
+          type="button"
+          :disabled="deletingSessionId === session.id"
+          :title="t('chat.session.delete')"
+          @click.stop="emit('delete', session.id)"
+        >
+          <Trash2 :size="12" />
         </button>
       </li>
     </ul>
@@ -148,7 +159,7 @@ const readSessionTitle = (session: AgentChatSession): string => {
   border: 1px solid var(--fc-border-subtle);
   background: color-mix(in srgb, var(--fc-surface) 82%, transparent);
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 8px 34px 8px 10px;
   color: var(--fc-text);
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
@@ -171,6 +182,42 @@ const readSessionTitle = (session: AgentChatSession): string => {
 .chat-session-item.is-active {
   border-color: color-mix(in srgb, var(--fc-info) 55%, var(--fc-border-subtle));
   background: color-mix(in srgb, var(--fc-info) 12%, var(--fc-surface));
+}
+
+.chat-session-entry {
+  position: relative;
+}
+
+.chat-session-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--fc-border-subtle) 80%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fc-surface) 90%, transparent);
+  color: var(--fc-text-muted);
+  opacity: 0.75;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.chat-session-entry:hover .chat-session-delete {
+  opacity: 1;
+}
+
+.chat-session-delete:hover:not(:disabled) {
+  color: var(--fc-danger);
+  border-color: color-mix(in srgb, var(--fc-danger) 40%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-danger) 10%, var(--fc-surface));
+}
+
+.chat-session-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .chat-sessions-empty {

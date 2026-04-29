@@ -30,7 +30,7 @@ export interface FamilyCoEvents {
   'notification.created': {
     notificationId: string;
     recipientId: string;
-    trigger: 'task.status.agent' | 'task.comment.agent' | 'inbox.approval.required' | 'budget.near.limit';
+    trigger: 'task.status.agent' | 'task.comment.agent' | 'inbox.approval.required' | 'budget.near.limit' | 'chat.message.agent';
     severity: 'info' | 'warning' | 'alert';
     title: string;
     body: string;

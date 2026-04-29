@@ -53,8 +53,8 @@ export interface PluginLoaderDeps {
 }
 
 /**
- * Discovers PLUGIN.md files from the plugins/ directory, syncs state with DB,
- * and populates the in-memory PluginRegistry.
+ * Discovers package.json-based plugins from the plugins/ directory, syncs state
+ * with DB, and populates the in-memory PluginRegistry.
  */
 export class PluginLoaderService {
   /** IDs of plugins that are always active and cannot be disabled. */
@@ -194,8 +194,8 @@ export class PluginLoaderService {
   /**
    * Reload the in-memory registry from persisted plugin data.
    * For each enabled plugin, dynamically imports its entry module to get real
-   * tool handlers and skill content. Falls back to PLUGIN.md capability stubs
-   * when the module cannot be loaded.
+   * tool handlers and skill content. Falls back to capability descriptors from
+   * the persisted plugin metadata when the module cannot be loaded.
    * Call after enable/disable operations.
    */
   async refreshRegistry(): Promise<void> {
@@ -228,7 +228,7 @@ export class PluginLoaderService {
           ...buildToolStubsFromModule(plugin, module, this.deps.pluginRegistry, this.deps.pluginRunService)
         );
       } else {
-        // Fallback: generate stubs from PLUGIN.md capability descriptors
+        // Fallback: generate stubs from persisted capability descriptors
         stubs.push(
           ...buildToolStubsFromCapabilities(plugin, this.deps.pluginRegistry, this.deps.pluginRunService)
         );
@@ -374,7 +374,7 @@ function buildServerToolFromPluginTool(
 }
 
 // ---------------------------------------------------------------------------
-// Fallback stub builder — from PLUGIN.md capability descriptors
+// Fallback stub builder — from persisted capability descriptors
 // ---------------------------------------------------------------------------
 
 function buildToolStubsFromCapabilities(

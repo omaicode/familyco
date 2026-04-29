@@ -12,7 +12,9 @@ export interface IpcHandlerOptions {
   apiBaseUrl: string;
   apiKey?: string;
   checkForUpdates?: () => Promise<boolean>;
+  downloadUpdate?: () => Promise<boolean>;
   installDownloadedUpdate?: () => Promise<boolean>;
+  getUpdateState?: () => DesktopUpdateEventPayload;
 }
 
 const withHeaders = (apiKey?: string): HeadersInit => {
@@ -71,6 +73,15 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
     return { accepted } satisfies DesktopInvokeResponseMap['desktop:update:check'];
   });
 
+  ipcMain.handle('desktop:update:download', async () => {
+    if (!options.downloadUpdate) {
+      return { accepted: false } satisfies DesktopInvokeResponseMap['desktop:update:download'];
+    }
+
+    const accepted = await options.downloadUpdate();
+    return { accepted } satisfies DesktopInvokeResponseMap['desktop:update:download'];
+  });
+
   ipcMain.handle('desktop:update:install', async () => {
     if (!options.installDownloadedUpdate) {
       return { accepted: false } satisfies DesktopInvokeResponseMap['desktop:update:install'];
@@ -78,6 +89,14 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
 
     const accepted = await options.installDownloadedUpdate();
     return { accepted } satisfies DesktopInvokeResponseMap['desktop:update:install'];
+  });
+
+  ipcMain.handle('desktop:update:state', async () => {
+    if (!options.getUpdateState) {
+      return { status: 'idle' } satisfies DesktopInvokeResponseMap['desktop:update:state'];
+    }
+
+    return options.getUpdateState();
   });
 
   ipcMain.handle('desktop:notification:show', async (event, payload: DesktopInvokeRequestMap['desktop:notification:show']) => {

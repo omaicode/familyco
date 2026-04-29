@@ -196,6 +196,41 @@ model ChatMessage {
 	@@index([sessionId, senderId])
 }
 
+model CronJob {
+	id        String   @id
+	name      String
+	prompt    String
+	schedule  String
+	agentId   String
+	enabled   Boolean  @default(true)
+	sessionId String?
+	lastRunAt DateTime?
+	nextRunAt DateTime?
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+
+	runs CronRun[]
+
+	@@index([enabled, nextRunAt])
+}
+
+model CronRun {
+	id          String   @id @default(cuid())
+	cronId      String
+	status      String
+	scheduledAt DateTime
+	startedAt   DateTime
+	finishedAt  DateTime
+	input       Json
+	output      Json?
+	error       Json?
+	createdAt   DateTime @default(now())
+
+	job CronJob @relation(fields: [cronId], references: [id], onDelete: Cascade)
+
+	@@index([cronId, startedAt])
+}
+
 model Settings {
 	id        String   @id @default(cuid())
 	key       String   @unique

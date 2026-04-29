@@ -29,3 +29,4 @@ export * from './file-write.tool.js';
 export * from './file-delete.tool.js';
 export * from './skill-read.tool.js';
 export * from './task-dispatch.tool.js';
+export * from './cron-upsert.tool.js';

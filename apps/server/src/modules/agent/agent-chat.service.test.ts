@@ -118,6 +118,9 @@ test('processAgentChat transcribes audio before sending transcript into chat eng
 
           return null;
         }
+      } as never,
+      notificationService: {
+        notifyChatMessageFromAgent: async () => undefined
       } as never
     }
   });

@@ -72,6 +72,11 @@ export const agentChatSessionQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(50)
 });
 
+export const agentChatSessionParamsSchema = z.object({
+  id: z.string().min(1),
+  sessionId: z.string().min(1)
+});
+
 export const createChatSessionBodySchema = z.object({
   title: z.string().min(1).max(96).optional()
 });

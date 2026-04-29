@@ -1,6 +1,6 @@
 {
   "name": "@familyco/web",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "FamilyCo Vue renderer app",
   "private": true,
   "type": "module",

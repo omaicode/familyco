@@ -92,6 +92,16 @@ export type ChatSession = Prisma.ChatSessionModel
  */
 export type ChatMessage = Prisma.ChatMessageModel
 /**
+ * Model CronJob
+ * 
+ */
+export type CronJob = Prisma.CronJobModel
+/**
+ * Model CronRun
+ * 
+ */
+export type CronRun = Prisma.CronRunModel
+/**
  * Model Settings
  * 
  */

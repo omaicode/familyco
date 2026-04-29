@@ -5,6 +5,7 @@ import {
   agentChatAttachmentParamsSchema,
   agentChatBodySchema,
   agentChatQuerySchema,
+  agentChatSessionParamsSchema,
   agentChatSessionQuerySchema,
   createChatSessionBodySchema,
   pauseAgentParamsSchema
@@ -37,6 +38,42 @@ export function registerAgentChatRoutes(app: FastifyInstance, deps: AgentModuleD
 
     reply.code(201);
     return session;
+  });
+
+  app.delete('/agents/:id/chat/sessions/:sessionId', async (request, reply) => {
+    requireMinimumLevel(request, 'L0');
+    const { id, sessionId } = agentChatSessionParamsSchema.parse(request.params);
+    await deps.agentService.getAgentById(id);
+
+    try {
+      await deps.chatConversationService.deleteSession({
+        agentId: id,
+        founderId: 'founder',
+        sessionId
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('CHAT_SESSION_NOT_FOUND:')) {
+        reply.code(404).send({
+          statusCode: 404,
+          code: 'CHAT_SESSION_NOT_FOUND',
+          message: 'Chat session not found'
+        });
+        return;
+      }
+
+      if (error instanceof Error && error.message.startsWith('CHAT_SESSION_INVALID:')) {
+        reply.code(400).send({
+          statusCode: 400,
+          code: 'CHAT_SESSION_INVALID',
+          message: 'Chat session is not valid for this agent'
+        });
+        return;
+      }
+
+      throw error;
+    }
+
+    return { id: sessionId };
   });
 
   app.get('/agents/:id/chat', async (request) => {
