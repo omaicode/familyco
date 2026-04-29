@@ -280,7 +280,7 @@ onMounted(async () => {
           <tbody>
             <tr v-for="job in jobs" :key="job.id">
               <td>
-                <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; flex-direction: column; gap: 4px; max-width: 400px;">
                   <strong>{{ job.name }}</strong>
                   <span class="fc-list-meta">{{ job.prompt }}</span>
                 </div>
