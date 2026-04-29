@@ -75,27 +75,25 @@ const readSessionTitle = (session: AgentChatSession): string => {
     </div>
 
     <ul v-else class="chat-sessions-list">
-      <li v-for="session in visibleSessions" :key="session.id">
-        <div class="chat-session-row">
-          <button
-            class="chat-session-item"
-            type="button"
-            :class="{ 'is-active': session.id === selectedSessionId }"
-            @click="emit('select', session.id)"
-          >
-            <strong>{{ readSessionTitle(session) }}</strong>
-            <span>{{ formatTimestamp(session.lastMessageAt) }}</span>
-          </button>
-          <button
-            class="chat-session-delete"
-            type="button"
-            :disabled="deletingSessionId.length > 0"
-            :title="t('chat.session.delete')"
-            @click.stop="emit('delete', session.id)"
-          >
-            <Trash2 :size="14" />
-          </button>
-        </div>
+      <li v-for="session in visibleSessions" :key="session.id" class="chat-session-entry">
+        <button
+          class="chat-session-item"
+          type="button"
+          :class="{ 'is-active': session.id === selectedSessionId }"
+          @click="emit('select', session.id)"
+        >
+          <strong>{{ readSessionTitle(session) }}</strong>
+          <span>{{ formatTimestamp(session.lastMessageAt) }}</span>
+        </button>
+        <button
+          class="chat-session-delete"
+          type="button"
+          :disabled="deletingSessionId === session.id"
+          :title="t('chat.session.delete')"
+          @click.stop="emit('delete', session.id)"
+        >
+          <Trash2 :size="12" />
+        </button>
       </li>
     </ul>
   </aside>
@@ -161,7 +159,7 @@ const readSessionTitle = (session: AgentChatSession): string => {
   border: 1px solid var(--fc-border-subtle);
   background: color-mix(in srgb, var(--fc-surface) 82%, transparent);
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 8px 34px 8px 10px;
   color: var(--fc-text);
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
@@ -186,27 +184,35 @@ const readSessionTitle = (session: AgentChatSession): string => {
   background: color-mix(in srgb, var(--fc-info) 12%, var(--fc-surface));
 }
 
-.chat-session-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: stretch;
+.chat-session-entry {
+  position: relative;
 }
 
 .chat-session-delete {
-  display: inline-flex;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  border: 1px solid var(--fc-border-subtle);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--fc-surface) 82%, transparent);
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--fc-border-subtle) 80%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fc-surface) 90%, transparent);
   color: var(--fc-text-muted);
+  opacity: 0.75;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.chat-session-entry:hover .chat-session-delete {
+  opacity: 1;
 }
 
 .chat-session-delete:hover:not(:disabled) {
   color: var(--fc-danger);
   border-color: color-mix(in srgb, var(--fc-danger) 40%, var(--fc-border-subtle));
+  background: color-mix(in srgb, var(--fc-danger) 10%, var(--fc-surface));
 }
 
 .chat-session-delete:disabled {
