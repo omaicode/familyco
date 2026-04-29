@@ -34,6 +34,7 @@ export function useExecutiveChat() {
   const isLoading = ref(false);
   const isLoadingSessions = ref(false);
   const isCreatingSession = ref(false);
+  const pendingDeleteSessionId = ref('');
   const deletingSessionId = ref('');
   const isRefreshing = ref(false);
   const isLoadingOlder = ref(false);
@@ -175,13 +176,29 @@ export function useExecutiveChat() {
     }
   };
 
-  const deleteSession = async (sessionId: string): Promise<void> => {
+  const requestDeleteSession = (sessionId: string): void => {
     if (!selectedAgentId.value || deletingSessionId.value) {
       return;
     }
 
-    const confirmed = typeof window === 'undefined' ? true : window.confirm(t('chat.session.deleteConfirm'));
-    if (!confirmed) {
+    pendingDeleteSessionId.value = sessionId;
+  };
+
+  const cancelDeleteSession = (): void => {
+    if (deletingSessionId.value) {
+      return;
+    }
+
+    pendingDeleteSessionId.value = '';
+  };
+
+  const confirmDeleteSession = async (): Promise<void> => {
+    const sessionId = pendingDeleteSessionId.value;
+    if (!selectedAgentId.value || deletingSessionId.value) {
+      return;
+    }
+
+    if (!sessionId) {
       return;
     }
 
@@ -209,6 +226,7 @@ export function useExecutiveChat() {
       setFeedback('error', error instanceof Error ? error.message : t('chat.session.deleteFailed'));
     } finally {
       deletingSessionId.value = '';
+      pendingDeleteSessionId.value = '';
     }
   };
 
@@ -471,6 +489,7 @@ export function useExecutiveChat() {
     isLoading,
     isLoadingSessions,
     isCreatingSession,
+    pendingDeleteSessionId,
     deletingSessionId,
     isRefreshing,
     isLoadingOlder,
@@ -486,7 +505,9 @@ export function useExecutiveChat() {
     selectedAgent,
     reload,
     createNewSession,
-    deleteSession,
+    requestDeleteSession,
+    cancelDeleteSession,
+    confirmDeleteSession,
     toggleSessionSidebar,
     selectSession,
     loadOlderMessages,
