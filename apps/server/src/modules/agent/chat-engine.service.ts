@@ -8,7 +8,7 @@ import type {
 import { runAgentLoop } from '@familyco/core';
 import type { AgentLoopEvent } from '@familyco/core';
 import type { PromptConversationEntry } from '../../prompts/prompt.types.js';
-import { renderChatSystemPrompt, renderChatUserPrompt } from '../../prompts/index.js';
+import { renderChatSystemPrompt, renderCronSystemPrompt, renderChatUserPrompt } from '../../prompts/index.js';
 import { buildAgentSlashRegistry } from './agent-chat.registry.js';
 import type { ToolSlashEntry } from './agent-chat.registry.js';
 import type { ChatToolCall } from './agent.types.js';
@@ -33,6 +33,7 @@ export interface ChatEngineRunInput {
   abortSignal?: AbortSignal;
   shouldStop?: () => boolean;
   executeTool: (input: { toolName: string; arguments: Record<string, unknown> }) => Promise<ToolExecutionResult>;
+  trigger?: 'chat' | 'cron';
 }
 
 export interface ChatEngineResult {
@@ -101,14 +102,17 @@ export class ChatEngineService {
 
     const skills = await this.resolveEnabledSkills(input.agentLevel ?? 'L0');
 
-    const systemPrompt = renderChatSystemPrompt({
+    const promptInput = {
       companyName: input.companyProfile.companyName,
       companyDescription: input.companyProfile.companyDescription,
       skills,
       tools: filteredTools,
       conversationHistory: input.conversationHistory,
       conversationSummary: input.conversationSummary
-    });
+    };
+    const systemPrompt = input.trigger === 'cron'
+      ? renderCronSystemPrompt(promptInput)
+      : renderChatSystemPrompt(promptInput);
     // console.debug('Rendered system prompt:', systemPrompt);
     const userPrompt = renderChatUserPrompt({
       message: input.message,

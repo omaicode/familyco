@@ -366,6 +366,7 @@ export async function processAgentChat(input: {
     onEvent: input.onEvent,
     abortSignal: input.abortSignal,
     shouldStop: input.shouldStop,
+    trigger: isCronTriggered ? 'cron' : 'chat',
     executeTool: async (toolInput) => {
       if (isCronTriggered && toolInput.toolName === 'cron.upsert') {
         return {
