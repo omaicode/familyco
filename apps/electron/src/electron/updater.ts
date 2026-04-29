@@ -1,12 +1,16 @@
-import { app } from 'electron';
-import pkg from 'electron-updater';
+import path from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { app, BrowserWindow, dialog, type MessageBoxOptions } from 'electron';
+import pkg, { type UpdateInfo } from 'electron-updater';
 import type { DesktopUpdateEventPayload } from './ipc/ipc.types.js';
 
 const { autoUpdater } = pkg;
 
 export interface DesktopUpdaterRuntime {
   checkForUpdates: () => Promise<boolean>;
+  downloadUpdate: () => Promise<boolean>;
   installDownloadedUpdate: () => Promise<boolean>;
+  getUpdateState: () => DesktopUpdateEventPayload;
 }
 
 export interface StartDesktopUpdaterOptions {
@@ -14,59 +18,259 @@ export interface StartDesktopUpdaterOptions {
 }
 
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const UPDATE_PREFERENCES_FILE = 'updater-preferences.json';
+
+interface UpdatePreferences {
+  skippedVersion?: string;
+}
+
+const formatReleaseNotes = (info: UpdateInfo): string | undefined => {
+  const notes = info.releaseNotes as unknown;
+  if (typeof notes === 'string') {
+    const normalized = notes.trim();
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  if (!Array.isArray(notes)) {
+    return undefined;
+  }
+
+  const normalized = notes
+    .map((entry) => {
+      if (typeof entry === 'string') {
+        return entry.trim();
+      }
+
+      if (!entry || typeof entry !== 'object') {
+        return '';
+      }
+
+      const version = typeof (entry as { version?: unknown }).version === 'string'
+        ? (entry as { version: string }).version.trim()
+        : '';
+      const note = typeof (entry as { note?: unknown }).note === 'string'
+        ? (entry as { note: string }).note.trim()
+        : '';
+
+      if (!note) {
+        return '';
+      }
+
+      return version ? `Version ${version}\n${note}` : note;
+    })
+    .filter((item) => item.length > 0)
+    .join('\n\n');
+
+  return normalized.length > 0 ? normalized : undefined;
+};
 
 export function startDesktopUpdater(options: StartDesktopUpdaterOptions): DesktopUpdaterRuntime {
+  const updateState: DesktopUpdateEventPayload = {
+    status: 'idle',
+    currentVersion: app.getVersion()
+  };
+
+  const emitState = (patch: Partial<DesktopUpdateEventPayload>): void => {
+    Object.assign(updateState, patch);
+    options.emit({ ...updateState });
+  };
+
   if (!app.isPackaged) {
-    options.emit({
+    emitState({
       status: 'idle',
       message: 'Auto-update is disabled in development mode'
     });
 
     return {
       checkForUpdates: async () => false,
-      installDownloadedUpdate: async () => false
+      downloadUpdate: async () => false,
+      installDownloadedUpdate: async () => false,
+      getUpdateState: () => ({ ...updateState })
     };
   }
 
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.allowPrerelease = false;
 
   let isCheckingForUpdates = false;
+  let isDownloadingUpdate = false;
+  let isInstallingUpdate = false;
+  let pendingUpdateInfo: UpdateInfo | null = null;
   let updateCheckTimer: NodeJS.Timeout | null = null;
+  const preferencesPath = path.join(app.getPath('userData'), UPDATE_PREFERENCES_FILE);
+
+  const readPreferences = (): UpdatePreferences => {
+    if (!existsSync(preferencesPath)) {
+      return {};
+    }
+
+    try {
+      const raw = readFileSync(preferencesPath, 'utf8');
+      const parsed = JSON.parse(raw) as UpdatePreferences;
+      if (typeof parsed.skippedVersion === 'string' && parsed.skippedVersion.trim().length > 0) {
+        return { skippedVersion: parsed.skippedVersion.trim() };
+      }
+
+      return {};
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      emitState({
+        status: 'error',
+        message: `Failed to read updater preferences: ${message}`
+      });
+      return {};
+    }
+  };
+
+  const persistSkippedVersion = (version: string | undefined): void => {
+    const next: UpdatePreferences = version ? { skippedVersion: version } : {};
+    try {
+      writeFileSync(preferencesPath, JSON.stringify(next, null, 2), 'utf8');
+      emitState({ skippedVersion: version });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      emitState({
+        status: 'error',
+        message: `Failed to save updater preferences: ${message}`
+      });
+    }
+  };
+
+  const preferences = readPreferences();
+  if (preferences.skippedVersion) {
+    updateState.skippedVersion = preferences.skippedVersion;
+  }
 
   autoUpdater.on('checking-for-update', () => {
-    options.emit({ status: 'checking' });
+    emitState({
+      status: 'checking',
+      message: undefined,
+      percent: undefined
+    });
   });
 
+  const showUpdatePrompt = async (info: UpdateInfo): Promise<void> => {
+    const releaseNotes = formatReleaseNotes(info);
+    const ownerWindow = BrowserWindow.getAllWindows().find((window) => !window.isDestroyed());
+    const dialogOptions: MessageBoxOptions = {
+      type: 'question',
+      title: 'Update available',
+      message: `FamilyCo ${info.version} is available.`,
+      detail: releaseNotes ?? 'A new version is available on GitHub.',
+      buttons: ['Update', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+      checkboxLabel: 'Skip this version',
+      checkboxChecked: false
+    };
+
+    const selection = ownerWindow
+      ? await dialog.showMessageBox(ownerWindow, dialogOptions)
+      : await dialog.showMessageBox(dialogOptions);
+
+    if (selection.checkboxChecked) {
+      persistSkippedVersion(info.version);
+    }
+
+    if (selection.response !== 0) {
+      return;
+    }
+
+    if (updateState.skippedVersion === info.version) {
+      persistSkippedVersion(undefined);
+    }
+
+    await downloadUpdate();
+  };
+
   autoUpdater.on('update-available', (info) => {
-    options.emit({ status: 'available', version: info.version });
+    pendingUpdateInfo = info;
+    const releaseNotes = formatReleaseNotes(info);
+    emitState({
+      status: 'available',
+      version: info.version,
+      releaseNotes,
+      message: undefined,
+      percent: undefined
+    });
+
+    if (updateState.skippedVersion === info.version) {
+      emitState({
+        status: 'not-available',
+        message: `Skipped version ${info.version}.`,
+        percent: undefined
+      });
+      return;
+    }
+
+    void showUpdatePrompt(info);
   });
 
   autoUpdater.on('update-not-available', () => {
-    options.emit({ status: 'not-available' });
+    pendingUpdateInfo = null;
+    emitState({
+      status: 'not-available',
+      version: undefined,
+      releaseNotes: undefined,
+      percent: undefined,
+      message: undefined
+    });
   });
 
   autoUpdater.on('download-progress', (progress) => {
-    options.emit({
+    emitState({
       status: 'downloading',
+      version: pendingUpdateInfo?.version ?? updateState.version,
       percent: Number(progress.percent.toFixed(2))
     });
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    options.emit({ status: 'downloaded', version: info.version });
+    pendingUpdateInfo = info;
+    emitState({
+      status: 'downloaded',
+      version: info.version,
+      percent: 100
+    });
+    void installDownloadedUpdate();
   });
 
   autoUpdater.on('error', (error) => {
-    options.emit({
+    emitState({
       status: 'error',
       message: error.message
     });
   });
 
+  const downloadUpdate = async (): Promise<boolean> => {
+    if (isDownloadingUpdate || isInstallingUpdate) {
+      return false;
+    }
+
+    if (!pendingUpdateInfo) {
+      return false;
+    }
+
+    isDownloadingUpdate = true;
+    try {
+      await autoUpdater.downloadUpdate();
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      emitState({
+        status: 'error',
+        message
+      });
+      return false;
+    } finally {
+      isDownloadingUpdate = false;
+    }
+  };
+
   const checkForUpdates = async (): Promise<boolean> => {
-    if (isCheckingForUpdates) {
+    if (isCheckingForUpdates || isDownloadingUpdate || isInstallingUpdate) {
       return false;
     }
 
@@ -76,7 +280,7 @@ export function startDesktopUpdater(options: StartDesktopUpdaterOptions): Deskto
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      options.emit({
+      emitState({
         status: 'error',
         message
       });
@@ -87,15 +291,21 @@ export function startDesktopUpdater(options: StartDesktopUpdaterOptions): Deskto
   };
 
   const installDownloadedUpdate = async (): Promise<boolean> => {
+    if (isInstallingUpdate) {
+      return false;
+    }
+
+    isInstallingUpdate = true;
     try {
       autoUpdater.quitAndInstall(false, true);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      options.emit({
+      emitState({
         status: 'error',
         message
       });
+      isInstallingUpdate = false;
       return false;
     }
   };
@@ -114,6 +324,8 @@ export function startDesktopUpdater(options: StartDesktopUpdaterOptions): Deskto
 
   return {
     checkForUpdates,
+    downloadUpdate,
+    getUpdateState: () => ({ ...updateState }),
     installDownloadedUpdate
   };
 }

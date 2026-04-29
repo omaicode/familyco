@@ -380,8 +380,14 @@ const startDesktop = async (): Promise<void> => {
     checkForUpdates: async () => {
       return updaterRuntime ? updaterRuntime.checkForUpdates() : false;
     },
+    downloadUpdate: async () => {
+      return updaterRuntime ? updaterRuntime.downloadUpdate() : false;
+    },
     installDownloadedUpdate: async () => {
       return updaterRuntime ? updaterRuntime.installDownloadedUpdate() : false;
+    },
+    getUpdateState: () => {
+      return updaterRuntime ? updaterRuntime.getUpdateState() : { status: 'idle' };
     }
   });
 

@@ -3,7 +3,9 @@ export type DesktopInvokeChannel =
   | 'desktop:audit:list'
   | 'desktop:agents:list'
   | 'desktop:update:check'
+  | 'desktop:update:download'
   | 'desktop:update:install'
+  | 'desktop:update:state'
   | 'desktop:notification:show'
   | 'desktop:provider:oauth:start'
   | 'desktop:dialog:open-directory'
@@ -26,6 +28,9 @@ export interface DesktopUpdateEventPayload {
   version?: string;
   percent?: number;
   message?: string;
+  releaseNotes?: string;
+  skippedVersion?: string;
+  currentVersion?: string;
 }
 
 export type DesktopSystemEventPayload =
@@ -55,7 +60,9 @@ export interface DesktopInvokeRequestMap {
   };
   'desktop:agents:list': Record<string, never>;
   'desktop:update:check': Record<string, never>;
+  'desktop:update:download': Record<string, never>;
   'desktop:update:install': Record<string, never>;
+  'desktop:update:state': Record<string, never>;
   'desktop:notification:show': {
     title: string;
     body: string;
@@ -80,9 +87,13 @@ export interface DesktopInvokeResponseMap {
   'desktop:update:check': {
     accepted: boolean;
   };
+  'desktop:update:download': {
+    accepted: boolean;
+  };
   'desktop:update:install': {
     accepted: boolean;
   };
+  'desktop:update:state': DesktopUpdateEventPayload;
   'desktop:notification:show': {
     accepted: boolean;
   };

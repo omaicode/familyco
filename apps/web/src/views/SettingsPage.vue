@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Sun, Moon, Monitor, Save, RefreshCw,
@@ -101,6 +101,23 @@ const systemInfo = reactive({
   onboardingComplete: false,
   settingsCount: 0
 });
+
+type DesktopUpdateStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+type DesktopUpdateState = {
+  status: DesktopUpdateStatus;
+  version?: string;
+  percent?: number;
+  message?: string;
+  releaseNotes?: string;
+  skippedVersion?: string;
+  currentVersion?: string;
+};
+
+const desktopUpdate = reactive<DesktopUpdateState>({
+  status: 'idle'
+});
+const updateActionBusy = ref(false);
+let unsubscribeDesktopUpdateEvents: (() => void) | null = null;
 
 // ── Helpers ───────────────────────────────────────────────
 const parseThemePreference = (v: unknown): ThemePreference | null =>
@@ -429,6 +446,78 @@ watch(
 );
 
 // ── System actions ────────────────────────────────────────
+const applyDesktopUpdateState = (payload: DesktopUpdateState): void => {
+  desktopUpdate.status = payload.status;
+  desktopUpdate.version = payload.version;
+  desktopUpdate.percent = payload.percent;
+  desktopUpdate.message = payload.message;
+  desktopUpdate.releaseNotes = payload.releaseNotes;
+  desktopUpdate.skippedVersion = payload.skippedVersion;
+  desktopUpdate.currentVersion = payload.currentVersion;
+};
+
+const loadDesktopUpdateState = async (): Promise<void> => {
+  if (!isDesktop || typeof window.familycoDesktop?.invoke !== 'function') {
+    desktopUpdate.status = 'idle';
+    return;
+  }
+
+  try {
+    const payload = await window.familycoDesktop.invoke('desktop:update:state', {}) as DesktopUpdateState;
+    applyDesktopUpdateState(payload);
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : t('settings.updater.loadStateFailed'));
+  }
+};
+
+const checkDesktopUpdates = async (): Promise<void> => {
+  if (!isDesktop || typeof window.familycoDesktop?.invoke !== 'function') {
+    return;
+  }
+
+  updateActionBusy.value = true;
+  try {
+    const result = await window.familycoDesktop.invoke('desktop:update:check', {}) as { accepted: boolean };
+    if (!result.accepted) {
+      setFeedback('error', t('settings.updater.checkRejected'));
+    }
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : t('settings.updater.checkFailed'));
+  } finally {
+    updateActionBusy.value = false;
+  }
+};
+
+const triggerDesktopUpdate = async (): Promise<void> => {
+  if (!isDesktop || typeof window.familycoDesktop?.invoke !== 'function') {
+    return;
+  }
+
+  updateActionBusy.value = true;
+  try {
+    if (desktopUpdate.status === 'downloaded') {
+      const installResult = await window.familycoDesktop.invoke('desktop:update:install', {}) as { accepted: boolean };
+      if (!installResult.accepted) {
+        setFeedback('error', t('settings.updater.installRejected'));
+      }
+      return;
+    }
+
+    const downloadResult = await window.familycoDesktop.invoke('desktop:update:download', {}) as { accepted: boolean };
+    if (!downloadResult.accepted) {
+      setFeedback('error', t('settings.updater.downloadRejected'));
+    }
+  } catch (err) {
+    setFeedback('error', err instanceof Error ? err.message : t('settings.updater.updateFailed'));
+  } finally {
+    updateActionBusy.value = false;
+  }
+};
+
+const updateActionLabel = computed(() => (
+  desktopUpdate.status === 'downloaded' ? t('settings.updater.restartToUpdate') : t('settings.updater.updateNow')
+));
+
 const exportSettings = async () => {
   systemBusy.value = true;
   feedback.value = null;
@@ -529,6 +618,23 @@ const isSensitiveProviderSetting = (key: string): boolean => (
 const visibleSettings = computed(() =>
   uiRuntime.stores.settings.state.data.filter(s => !s.key.toLowerCase().includes('apikey'))
 );
+
+onMounted(() => {
+  if (!isDesktop || typeof window.familycoDesktop?.on !== 'function') {
+    return;
+  }
+
+  unsubscribeDesktopUpdateEvents = window.familycoDesktop.on('desktop:update:event', (payload) => {
+    applyDesktopUpdateState(payload as DesktopUpdateState);
+  });
+
+  void loadDesktopUpdateState();
+});
+
+onBeforeUnmount(() => {
+  unsubscribeDesktopUpdateEvents?.();
+  unsubscribeDesktopUpdateEvents = null;
+});
 
 useAutoReload(reload);
 </script>
@@ -1155,6 +1261,55 @@ useAutoReload(reload);
 
               <section class="st-system-card">
                 <div class="st-system-card-head">
+                  <h5>{{ t('settings.updater.title') }}</h5>
+                  <p>{{ t('settings.updater.desc') }}</p>
+                </div>
+
+                <div class="st-kv-list">
+                  <div class="st-kv-row">
+                    <code class="st-kv-key">{{ t('settings.updater.currentVersion') }}</code>
+                    <span class="st-kv-value">{{ desktopUpdate.currentVersion || t('settings.updater.unknown') }}</span>
+                  </div>
+                  <div class="st-kv-row">
+                    <code class="st-kv-key">{{ t('settings.updater.latestVersion') }}</code>
+                    <span class="st-kv-value">{{ desktopUpdate.version || t('settings.updater.notAvailable') }}</span>
+                  </div>
+                  <div class="st-kv-row">
+                    <code class="st-kv-key">{{ t('settings.updater.status') }}</code>
+                    <span class="st-kv-value">{{ t(`settings.updater.status.${desktopUpdate.status}`) }}</span>
+                  </div>
+                  <div v-if="typeof desktopUpdate.percent === 'number'" class="st-kv-row">
+                    <code class="st-kv-key">{{ t('settings.updater.downloadProgress') }}</code>
+                    <span class="st-kv-value">{{ desktopUpdate.percent.toFixed(2) }}%</span>
+                  </div>
+                  <div v-if="desktopUpdate.skippedVersion" class="st-kv-row">
+                    <code class="st-kv-key">{{ t('settings.updater.skippedVersion') }}</code>
+                    <span class="st-kv-value">{{ desktopUpdate.skippedVersion }}</span>
+                  </div>
+                </div>
+
+                <p v-if="desktopUpdate.message" class="st-hint">{{ desktopUpdate.message }}</p>
+                <pre v-if="desktopUpdate.releaseNotes" class="st-release-notes">{{ desktopUpdate.releaseNotes }}</pre>
+
+                <div class="st-actions">
+                  <FcButton variant="secondary" size="sm" :disabled="systemBusy || updateActionBusy || !isDesktop" @click="checkDesktopUpdates">
+                    <RefreshCw :size="13" />
+                    {{ t('settings.updater.checkUpdates') }}
+                  </FcButton>
+                  <FcButton
+                    variant="primary"
+                    size="sm"
+                    :disabled="systemBusy || updateActionBusy || !isDesktop || (desktopUpdate.status !== 'available' && desktopUpdate.status !== 'downloaded')"
+                    @click="triggerDesktopUpdate"
+                  >
+                    <Download :size="13" />
+                    {{ updateActionLabel }}
+                  </FcButton>
+                </div>
+              </section>
+
+              <section class="st-system-card">
+                <div class="st-system-card-head">
                   <h5>Workspace actions</h5>
                   <p>Useful maintenance actions for your current workspace.</p>
                 </div>
@@ -1593,6 +1748,20 @@ useAutoReload(reload);
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+.st-release-notes {
+  margin: 0 0 10px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--fc-border-subtle);
+  background: color-mix(in srgb, var(--fc-surface) 94%, transparent);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.8125rem;
+  color: var(--fc-text-muted);
 }
 
 .st-shortcut-list {
