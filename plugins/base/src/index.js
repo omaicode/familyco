@@ -42,6 +42,12 @@ const plugin = {
         'Run web search and compact research synthesis through Tavily before making operational decisions.',
       content: read('tavily-research.md'),
       applyTo: ['L0', 'L1']
+    },
+    {
+      name: 'weather-forecast',
+      description: 'Get current weather and forecasts for any location worldwide.',
+      content: read('weather.md'),
+      applyTo: ['L0', 'L1', 'L2']
     }
   ]
 };
