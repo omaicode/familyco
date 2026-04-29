@@ -88,6 +88,7 @@ const notificationTriggerTaskStatusFromAgent = ref(true);
 const notificationTriggerTaskCommentFromAgent = ref(true);
 const notificationTriggerInboxApprovalRequired = ref(true);
 const notificationTriggerBudgetNearLimit = ref(true);
+const notificationTriggerChatMessageFromAgent = ref(true);
 const notificationsSaving = ref(false);
 const browserNotificationPermission = ref<'default' | 'granted' | 'denied' | 'unsupported'>('default');
 
@@ -213,6 +214,7 @@ const reload = async () => {
   notificationTriggerTaskCommentFromAgent.value = parseBooleanSetting(getSetting('notification.trigger.taskCommentFromAgent'), true);
   notificationTriggerInboxApprovalRequired.value = parseBooleanSetting(getSetting('notification.trigger.inboxApprovalRequested'), true);
   notificationTriggerBudgetNearLimit.value = parseBooleanSetting(getSetting('notification.trigger.budgetNearLimit'), true);
+  notificationTriggerChatMessageFromAgent.value = parseBooleanSetting(getSetting('notification.trigger.chatMessageFromAgent'), true);
 
   updateBrowserNotificationPermission();
 
@@ -266,6 +268,7 @@ const saveNotifications = async () => {
     await uiRuntime.api.upsertSetting({ key: 'notification.trigger.taskCommentFromAgent', value: notificationTriggerTaskCommentFromAgent.value });
     await uiRuntime.api.upsertSetting({ key: 'notification.trigger.inboxApprovalRequested', value: notificationTriggerInboxApprovalRequired.value });
     await uiRuntime.api.upsertSetting({ key: 'notification.trigger.budgetNearLimit', value: notificationTriggerBudgetNearLimit.value });
+    await uiRuntime.api.upsertSetting({ key: 'notification.trigger.chatMessageFromAgent', value: notificationTriggerChatMessageFromAgent.value });
 
     await uiRuntime.stores.settings.load();
     setFeedback('success', t('notification.settings.saveSuccess'));
@@ -1128,6 +1131,10 @@ useAutoReload(reload);
                 <label class="st-notify-option">
                   <input v-model="notificationTriggerBudgetNearLimit" type="checkbox" :disabled="!notificationEnabled" />
                   <span>{{ t('notification.settings.triggerBudgetNearLimit') }}</span>
+                </label>
+                <label class="st-notify-option">
+                  <input v-model="notificationTriggerChatMessageFromAgent" type="checkbox" :disabled="!notificationEnabled" />
+                  <span>{{ t('notification.settings.triggerChatMessageFromAgent') }}</span>
                 </label>
               </div>
             </section>

@@ -9,6 +9,7 @@ import type {
 
 import type {
   BudgetNearLimitNotificationInput,
+  ChatMessageNotificationInput,
   FounderNotificationInput,
   FounderNotificationTrigger
 } from './notification.types.js';
@@ -20,7 +21,8 @@ const TRIGGER_SETTING_KEYS: Record<FounderNotificationTrigger, string> = {
   'task.status.agent': 'notification.trigger.taskStatusFromAgent',
   'task.comment.agent': 'notification.trigger.taskCommentFromAgent',
   'inbox.approval.required': 'notification.trigger.inboxApprovalRequested',
-  'budget.near.limit': 'notification.trigger.budgetNearLimit'
+  'budget.near.limit': 'notification.trigger.budgetNearLimit',
+  'chat.message.agent': 'notification.trigger.chatMessageFromAgent'
 };
 
 export interface NotificationServiceDeps {
@@ -84,6 +86,33 @@ export class NotificationService {
     });
 
     return true;
+  }
+
+  async notifyChatMessageFromAgent(input: ChatMessageNotificationInput): Promise<void> {
+    if (!(await this.isTriggerEnabled('chat.message.agent'))) {
+      return;
+    }
+
+    const preview = input.message.trim().slice(0, 280);
+    const notificationId = randomUUID();
+    const createdAt = new Date().toISOString();
+
+    this.deps.eventBus.emit('notification.created', {
+      notificationId,
+      recipientId: FOUNDER_ID,
+      trigger: 'chat.message.agent',
+      severity: 'info',
+      title: `New message from ${input.agentName}`,
+      body: preview.length > 0 ? preview : 'You have a new chat message.',
+      route: '/chat',
+      createdAt,
+      payload: {
+        agentId: input.agentId,
+        agentName: input.agentName,
+        sessionId: input.sessionId,
+        preview
+      }
+    });
   }
 
   private async handleTaskStatusUpdated(payload: {

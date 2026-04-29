@@ -335,7 +335,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     listTools: () => toolExecutor.listToolDefinitions(),
     chatStreamRegistry,
     chatAttachmentStore,
-    settingsService
+    settingsService,
+    notificationService
   };
   const cronRuntime = new CronRuntimeService({
     cronService,

@@ -2,7 +2,8 @@ export type FounderNotificationTrigger =
   | 'task.status.agent'
   | 'task.comment.agent'
   | 'inbox.approval.required'
-  | 'budget.near.limit';
+  | 'budget.near.limit'
+  | 'chat.message.agent';
 
 export type FounderNotificationSeverity = 'info' | 'warning' | 'alert';
 
@@ -21,4 +22,11 @@ export interface BudgetNearLimitNotificationInput {
   monthlyLimitUSD: number;
   alertThresholdPercent: number;
   totalCostUSD: number;
+}
+
+export interface ChatMessageNotificationInput {
+  agentId: string;
+  agentName: string;
+  sessionId: string;
+  message: string;
 }

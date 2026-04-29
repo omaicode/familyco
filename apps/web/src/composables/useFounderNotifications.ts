@@ -9,7 +9,7 @@ import { subscribeEventsStream } from './useEventsSocket';
 interface FounderNotificationEvent {
   notificationId: string;
   recipientId: string;
-  trigger: 'task.status.agent' | 'task.comment.agent' | 'inbox.approval.required' | 'budget.near.limit';
+  trigger: 'task.status.agent' | 'task.comment.agent' | 'inbox.approval.required' | 'budget.near.limit' | 'chat.message.agent';
   severity: 'info' | 'warning' | 'alert';
   title: string;
   body: string;
@@ -74,7 +74,8 @@ export function useFounderNotifications(): void {
       'task.status.agent': 'notification.trigger.taskStatusFromAgent',
       'task.comment.agent': 'notification.trigger.taskCommentFromAgent',
       'inbox.approval.required': 'notification.trigger.inboxApprovalRequested',
-      'budget.near.limit': 'notification.trigger.budgetNearLimit'
+      'budget.near.limit': 'notification.trigger.budgetNearLimit',
+      'chat.message.agent': 'notification.trigger.chatMessageFromAgent'
     };
 
     return getSettingBoolean(settingKeyByTrigger[trigger], true);
@@ -130,7 +131,8 @@ export function useFounderNotifications(): void {
       candidate.trigger !== 'task.status.agent' &&
       candidate.trigger !== 'task.comment.agent' &&
       candidate.trigger !== 'inbox.approval.required' &&
-      candidate.trigger !== 'budget.near.limit'
+      candidate.trigger !== 'budget.near.limit' &&
+      candidate.trigger !== 'chat.message.agent'
     ) {
       return null;
     }
@@ -204,6 +206,21 @@ export function useFounderNotifications(): void {
       return {
         title: t('notification.toast.budget.title'),
         body: t('notification.toast.budget.body', { percent: Number.isFinite(usedPercent) ? usedPercent.toFixed(1) : '0.0' })
+      };
+    }
+
+    if (event.trigger === 'chat.message.agent') {
+      const agentName =
+        typeof payload.agentName === 'string' && payload.agentName.trim().length > 0
+          ? payload.agentName
+          : 'Agent';
+      const preview =
+        typeof payload.preview === 'string' && payload.preview.trim().length > 0
+          ? payload.preview
+          : event.body;
+      return {
+        title: t('notification.toast.chatMessage.title', { agentName }),
+        body: t('notification.toast.chatMessage.body', { preview })
       };
     }
 
@@ -311,6 +328,10 @@ export function useFounderNotifications(): void {
     }
 
     const isVisible = isDesktopRuntime ? isDesktopWindowVisible.value : isDocumentVisible();
+    const isOnChatPage = router.currentRoute.value.path.startsWith('/chat');
+    if (event.trigger === 'chat.message.agent' && isVisible && isOnChatPage) {
+      return;
+    }
     const inAppEnabled = getSettingBoolean('notification.channel.inApp', true);
 
     if (!isVisible && !isDesktopRuntime && getSettingBoolean('notification.channel.browser', true)) {

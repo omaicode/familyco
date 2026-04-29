@@ -8,6 +8,7 @@ import type {
   ToolExecutor,
   SettingsService
 } from '@familyco/core';
+import type { NotificationService } from '../notification/notification.service.js';
 import type { ChatEngineService } from './chat-engine.service.js';
 import type { ChatStreamRegistry } from './chat-stream-registry.js';
 import type { ChatAttachmentStore } from './chat-attachment-store.js';
@@ -68,6 +69,7 @@ export interface AgentModuleDeps {
   chatStreamRegistry: ChatStreamRegistry;
   chatAttachmentStore: ChatAttachmentStore;
   settingsService: SettingsService;
+  notificationService: NotificationService;
 }
 
 export interface ChatSocketClient {

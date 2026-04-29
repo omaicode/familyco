@@ -385,7 +385,7 @@ export async function processAgentChat(input: {
 
   session = await titleTask;
 
-  return buildProcessedChatResult({
+  const result = await buildProcessedChatResult({
     session,
     agent,
     founderMessage,
@@ -395,6 +395,15 @@ export async function processAgentChat(input: {
     actorId: input.actorId,
     auditAction: 'agent.chat'
   });
+
+  void input.deps.notificationService.notifyChatMessageFromAgent({
+    agentId: agent.id,
+    agentName: agent.name,
+    sessionId: result.session.id,
+    message: result.reply
+  }).catch(() => undefined);
+
+  return result;
 }
 
 function buildEffectiveChatMessage(message: string, attachments: Array<{ kind: string; transcript?: string }>): string {
