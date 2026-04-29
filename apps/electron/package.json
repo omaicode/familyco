@@ -1,6 +1,6 @@
 {
   "name": "@familyco/electron",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "FamilyCo Electron",
   "homepage": "https://github.com/familyco/familyco",
   "type": "module",
