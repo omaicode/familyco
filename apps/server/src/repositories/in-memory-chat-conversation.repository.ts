@@ -173,6 +173,17 @@ export class InMemoryChatConversationRepository implements ChatConversationRepos
     this.touchSessionLastMessageAt(sessionId);
   }
 
+  async deleteSession(id: string): Promise<void> {
+    const sessionIndex = this.sessions.findIndex((session) => session.id === id);
+    if (sessionIndex < 0) {
+      throw new Error(`CHAT_SESSION_NOT_FOUND:${id}`);
+    }
+
+    this.sessions.splice(sessionIndex, 1);
+    const remaining = this.messages.filter((message) => message.sessionId !== id);
+    this.messages.splice(0, this.messages.length, ...remaining);
+  }
+
   private touchSessionLastMessageAt(sessionId: string): void {
     const sessionIndex = this.sessions.findIndex((session) => session.id === sessionId);
     if (sessionIndex < 0) {

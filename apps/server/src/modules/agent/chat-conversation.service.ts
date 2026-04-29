@@ -29,6 +29,7 @@ export interface ChatConversationRepository {
   countMessages(input: { sessionId: string; senderId?: string }): Promise<number>;
   deleteMessagesAfter(sessionId: string, after: Date): Promise<void>;
   clearSessionMessages(sessionId: string): Promise<void>;
+  deleteSession(id: string): Promise<void>;
 }
 
 export class ChatConversationService {
@@ -153,6 +154,20 @@ export class ChatConversationService {
 
   async clearSession(sessionId: string): Promise<void> {
     await this.repository.clearSessionMessages(sessionId);
+  }
+
+  async deleteSession(input: {
+    agentId: string;
+    founderId?: string;
+    sessionId: string;
+  }): Promise<void> {
+    const founderId = input.founderId ?? DEFAULT_FOUNDER_ID;
+    await this.resolveSessionForRead({
+      sessionId: input.sessionId,
+      agentId: input.agentId,
+      founderId
+    });
+    await this.repository.deleteSession(input.sessionId);
   }
 
   private async resolveSessionForRead(input: {

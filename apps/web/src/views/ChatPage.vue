@@ -26,6 +26,7 @@ const {
   isLoading,
   isLoadingSessions,
   isCreatingSession,
+  deletingSessionId,
   isRefreshing,
   isLoadingOlder,
   hasMoreHistory,
@@ -40,6 +41,7 @@ const {
   selectedAgent,
   reload,
   createNewSession,
+  deleteSession,
   toggleSessionSidebar,
   selectSession,
   loadOlderMessages,
@@ -127,8 +129,10 @@ const {
                 :selected-session-id="selectedSessionId"
                 :is-loading="isLoadingSessions"
                 :is-creating="isCreatingSession"
+                :deleting-session-id="deletingSessionId"
                 :show-hide-action="isSessionSidebarOpen"
                 @create="createNewSession"
+                @delete="deleteSession"
                 @toggle-sidebar="toggleSessionSidebar"
                 @select="selectSession"
               />

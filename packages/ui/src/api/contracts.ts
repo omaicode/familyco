@@ -596,6 +596,11 @@ export interface CreateAgentChatSessionPayload {
   title?: string;
 }
 
+export interface DeleteAgentChatSessionPayload {
+  agentId: string;
+  sessionId: string;
+}
+
 export interface BudgetReportTotals {
   promptTokens: number;
   completionTokens: number;
@@ -787,6 +792,7 @@ export interface FamilyCoApiContracts {
   getAgentPath: (agentId: string) => Promise<AgentListItem[]>;
   listAgentChatSessions: (agentId: string, query?: ListAgentChatSessionsQuery) => Promise<AgentChatSession[]>;
   createAgentChatSession: (payload: CreateAgentChatSessionPayload) => Promise<AgentChatSession>;
+  deleteAgentChatSession: (payload: DeleteAgentChatSessionPayload) => Promise<{ id: string }>;
   getAgentChat: (agentId: string, query?: GetAgentChatQuery) => Promise<AgentChatMessage[]>;
   getAgentSlashCommands: (agentId: string) => Promise<SlashCommandItem[]>;
   sendAgentChat: (payload: SendAgentChatPayload) => Promise<SendAgentChatResult>;
@@ -877,6 +883,8 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
     client.post<AgentChatSession, { title?: string }>(`/api/v1/agents/${payload.agentId}/chat/sessions`, {
       ...(payload.title ? { title: payload.title } : {})
     }),
+  deleteAgentChatSession: (payload) =>
+    client.delete<{ id: string }>(`/api/v1/agents/${payload.agentId}/chat/sessions/${payload.sessionId}`),
   getAgentChat: (agentId, query = {}) => {
     const params = new URLSearchParams();
     if (query.sessionId) {

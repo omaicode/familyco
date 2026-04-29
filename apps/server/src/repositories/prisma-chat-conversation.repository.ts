@@ -189,6 +189,12 @@ export class PrismaChatConversationRepository implements ChatConversationReposit
       });
     });
   }
+
+  async deleteSession(id: string): Promise<void> {
+    await this.prisma.chatSession.delete({
+      where: { id }
+    });
+  }
 }
 
 function toChatSession(session: {

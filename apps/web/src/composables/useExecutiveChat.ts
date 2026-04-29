@@ -34,6 +34,7 @@ export function useExecutiveChat() {
   const isLoading = ref(false);
   const isLoadingSessions = ref(false);
   const isCreatingSession = ref(false);
+  const deletingSessionId = ref('');
   const isRefreshing = ref(false);
   const isLoadingOlder = ref(false);
   const hasMoreHistory = ref(true);
@@ -171,6 +172,43 @@ export function useExecutiveChat() {
       setFeedback('error', error instanceof Error ? error.message : t('chat.session.createFailed'));
     } finally {
       isCreatingSession.value = false;
+    }
+  };
+
+  const deleteSession = async (sessionId: string): Promise<void> => {
+    if (!selectedAgentId.value || deletingSessionId.value) {
+      return;
+    }
+
+    const confirmed = typeof window === 'undefined' ? true : window.confirm(t('chat.session.deleteConfirm'));
+    if (!confirmed) {
+      return;
+    }
+
+    deletingSessionId.value = sessionId;
+    try {
+      await uiRuntime.api.deleteAgentChatSession({
+        agentId: selectedAgentId.value,
+        sessionId
+      });
+
+      const remainingSessions = sessions.value.filter((session) => session.id !== sessionId);
+      sessions.value = remainingSessions;
+
+      if (selectedSessionId.value === sessionId) {
+        const nextSessionId = remainingSessions[0]?.id ?? '';
+        selectedSessionId.value = nextSessionId;
+        if (!nextSessionId) {
+          thread.value = [];
+          hasMoreHistory.value = false;
+        }
+      }
+
+      setFeedback('success', t('chat.session.deleteSuccess'));
+    } catch (error) {
+      setFeedback('error', error instanceof Error ? error.message : t('chat.session.deleteFailed'));
+    } finally {
+      deletingSessionId.value = '';
     }
   };
 
@@ -433,6 +471,7 @@ export function useExecutiveChat() {
     isLoading,
     isLoadingSessions,
     isCreatingSession,
+    deletingSessionId,
     isRefreshing,
     isLoadingOlder,
     hasMoreHistory,
@@ -447,6 +486,7 @@ export function useExecutiveChat() {
     selectedAgent,
     reload,
     createNewSession,
+    deleteSession,
     toggleSessionSidebar,
     selectSession,
     loadOlderMessages,
