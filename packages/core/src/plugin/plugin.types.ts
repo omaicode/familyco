@@ -56,7 +56,7 @@ export type PluginCapabilityDescriptor =
   | PluginWebSearchDescriptor;
 
 // ---------------------------------------------------------------------------
-// Plugin manifest — parsed from PLUGIN.md frontmatter
+// Plugin manifest — derived from package.json + plugin entry metadata
 // ---------------------------------------------------------------------------
 
 export interface PluginManifest {
