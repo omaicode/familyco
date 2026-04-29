@@ -26,45 +26,52 @@ Get current weather conditions and forecasts.
 
 Always include a city, region, or airport code in weather queries.
 
-## Commands
+## Tool to Use
 
-### Current Weather
+Use `plugin.base.http_request` (tool name: `http_request`) for all weather requests.
 
-```bash
-# One-line summary
-curl "wttr.in/London?format=3"
+### Current Weather (examples)
 
-# Detailed current conditions
-curl "wttr.in/London?0"
-
-# Specific city
-curl "wttr.in/New+York?format=3"
+```json
+{
+  "toolName": "plugin.base.http_request",
+  "arguments": {
+    "method": "GET",
+    "url": "https://wttr.in/London?format=3"
+  }
+}
 ```
 
-### Forecasts
-
-```bash
-# 3-day forecast
-curl "wttr.in/London"
-
-# Week forecast
-curl "wttr.in/London?format=v2"
-
-# Specific day (0=today, 1=tomorrow, 2=day after)
-curl "wttr.in/London?1"
+```json
+{
+  "toolName": "plugin.base.http_request",
+  "arguments": {
+    "method": "GET",
+    "url": "https://wttr.in/New+York?0"
+  }
+}
 ```
 
-### Format Options
+### Forecasts (examples)
 
-```bash
-# One-liner
-curl "wttr.in/London?format=%l:+%c+%t+%w"
+```json
+{
+  "toolName": "plugin.base.http_request",
+  "arguments": {
+    "method": "GET",
+    "url": "https://wttr.in/London?format=v2"
+  }
+}
+```
 
-# JSON output
-curl "wttr.in/London?format=j1"
-
-# PNG image
-curl "wttr.in/London.png"
+```json
+{
+  "toolName": "plugin.base.http_request",
+  "arguments": {
+    "method": "GET",
+    "url": "https://wttr.in/London?1"
+  }
+}
 ```
 
 ### Format Codes
@@ -81,20 +88,38 @@ curl "wttr.in/London.png"
 
 **"What's the weather?"**
 
-```bash
-curl -s "wttr.in/London?format=%l:+%c+%t+(feels+like+%f),+%w+wind,+%h+humidity"
+```json
+{
+  "toolName": "plugin.base.http_request",
+  "arguments": {
+    "method": "GET",
+    "url": "https://wttr.in/London?format=%25l:+%25c+%25t+(feels+like+%25f),+%25w+wind,+%25h+humidity"
+  }
+}
 ```
 
 **"Will it rain?"**
 
-```bash
-curl -s "wttr.in/London?format=%l:+%c+%p"
+```json
+{
+  "toolName": "plugin.base.http_request",
+  "arguments": {
+    "method": "GET",
+    "url": "https://wttr.in/London?format=%25l:+%25c+%25p"
+  }
+}
 ```
 
 **"Weekend forecast"**
 
-```bash
-curl "wttr.in/London?format=v2"
+```json
+{
+  "toolName": "plugin.base.http_request",
+  "arguments": {
+    "method": "GET",
+    "url": "https://wttr.in/London?format=v2"
+  }
+}
 ```
 
 ## Notes
@@ -102,4 +127,4 @@ curl "wttr.in/London?format=v2"
 - No API key needed (uses wttr.in)
 - Rate limited; don't spam requests
 - Works for most global cities
-- Supports airport codes: `curl wttr.in/ORD`
+- Supports airport codes, e.g. `https://wttr.in/ORD`
