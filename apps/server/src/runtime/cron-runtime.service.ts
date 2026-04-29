@@ -23,7 +23,7 @@ export class CronRuntimeService {
       return;
     }
 
-    await this.pollNow();
+    void this.pollNow();
     this.timer = setInterval(() => {
       void this.pollNow();
     }, Math.max(5_000, this.deps.pollMs ?? DEFAULT_CRON_POLL_MS));
