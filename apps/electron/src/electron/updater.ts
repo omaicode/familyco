@@ -13,6 +13,8 @@ export interface StartDesktopUpdaterOptions {
   emit: (payload: DesktopUpdateEventPayload) => void;
 }
 
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+
 export function startDesktopUpdater(options: StartDesktopUpdaterOptions): DesktopUpdaterRuntime {
   if (!app.isPackaged) {
     options.emit({
@@ -28,6 +30,10 @@ export function startDesktopUpdater(options: StartDesktopUpdaterOptions): Deskto
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = false;
+
+  let isCheckingForUpdates = false;
+  let updateCheckTimer: NodeJS.Timeout | null = null;
 
   autoUpdater.on('checking-for-update', () => {
     options.emit({ status: 'checking' });
@@ -60,6 +66,11 @@ export function startDesktopUpdater(options: StartDesktopUpdaterOptions): Deskto
   });
 
   const checkForUpdates = async (): Promise<boolean> => {
+    if (isCheckingForUpdates) {
+      return false;
+    }
+
+    isCheckingForUpdates = true;
     try {
       await autoUpdater.checkForUpdates();
       return true;
@@ -70,6 +81,8 @@ export function startDesktopUpdater(options: StartDesktopUpdaterOptions): Deskto
         message
       });
       return false;
+    } finally {
+      isCheckingForUpdates = false;
     }
   };
 
@@ -88,6 +101,16 @@ export function startDesktopUpdater(options: StartDesktopUpdaterOptions): Deskto
   };
 
   void checkForUpdates();
+  updateCheckTimer = setInterval(() => {
+    void checkForUpdates();
+  }, UPDATE_CHECK_INTERVAL_MS);
+
+  app.on('before-quit', () => {
+    if (updateCheckTimer) {
+      clearInterval(updateCheckTimer);
+      updateCheckTimer = null;
+    }
+  });
 
   return {
     checkForUpdates,
