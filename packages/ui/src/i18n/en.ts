@@ -728,6 +728,8 @@ export default {
   'tour.step.skills.desc': 'Configure the skills your agents can use to get work done. Connect tools, APIs, and databases to empower your AI team to take action.',
   'tour.step.tools.title': '🔧 Tools',
   'tour.step.tools.desc': 'Manage the tools your agents can access. Set up integrations, control permissions, and monitor tool usage across your AI team.',
+  'tour.step.plugins.title': '🔌 Plugins',
+  'tour.step.plugins.desc': 'Extend your AI team\'s capabilities with plugins. Each plugin includes tools & skills.',
   'tour.step.settings.title': '⚙️ Settings',
   'tour.step.settings.desc': 'Manage your AI provider connection, company profile, budget limits, and appearance preferences here.',
 

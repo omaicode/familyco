@@ -727,6 +727,8 @@ export default {
   'tour.step.skills.desc': 'Cấu hình các kỹ năng mà agent của bạn có thể sử dụng để hoàn thành công việc. Kết nối công cụ, API và cơ sở dữ liệu để tăng cường khả năng hành động của đội AI.',
   'tour.step.tools.title': '🔧 Công cụ',
   'tour.step.tools.desc': 'Quản lý các công cụ mà agent của bạn có thể truy cập. Thiết lập tích hợp, kiểm soát quyền hạn và theo dõi việc sử dụng công cụ trong đội AI của bạn.',
+  'tour.step.plugins.title': '🔌 Plugins',
+  'tour.step.plugins.desc': 'Mở rộng khả năng của đội AI với các plugin. Mỗi plugin bao gồm các công cụ & kỹ năng.',
   'tour.step.settings.title': '⚙️ Cài đặt',
   'tour.step.settings.desc': 'Quản lý kết nối AI provider, thông tin công ty, giới hạn ngân sách và tùy chỉnh giao diện tại đây.',
 
