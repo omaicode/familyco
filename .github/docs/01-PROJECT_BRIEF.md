@@ -33,6 +33,9 @@ The Executive Agent interprets it, creates a plan, creates or updates projects a
 - Tools
 - Plugins
 - Settings
+- Automation (Cron)
+- Runtime Engine / Queue Operations
+- Authentication & Access Control
 
 ## Product editions
 ### Desktop

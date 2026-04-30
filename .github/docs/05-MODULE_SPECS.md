@@ -172,3 +172,72 @@ Founder handles approval and clarification without reading the full audit trail.
 ### Required integration behavior
 - enabling plugin refreshes tool/skill inventories
 - disabling plugin removes plugin tools from active runtime usage
+
+## 12. Automation (Cron)
+### Required views
+- cron job list
+- cron run history per job
+- cron job create/edit form
+
+### Required actions
+- create cron job
+- update cron schedule/prompt/target agent
+- enable/disable cron job
+- delete cron job
+- inspect latest run results and errors
+
+### Required constraints
+- schedule must pass server-side validation before save
+- if agent is omitted, job defaults to executive agent resolution
+- cron executions must write audit and run-history records
+
+## 13. Provider Connections
+### Required views
+- provider inventory with connection status
+- available models and current selected model
+- auth type (apikey/oauth) and primary-provider marker
+
+### Required actions
+- test provider connection
+- connect/disconnect provider with API key
+- connect provider via OAuth (desktop runtime only)
+- select primary provider and default model
+
+### Required constraints
+- provider must be connected before becoming primary
+- OAuth endpoints are unavailable in server runtime mode
+- connection and selection actions must produce audit records
+
+## 14. Runtime Engine & Queue
+### Required views
+- pending queue jobs
+- agent run list with filters (state, trigger type, root agent)
+- agent run detail
+- heartbeat status/trigger controls
+
+### Required actions
+- enqueue agent run
+- enqueue tool execution
+- force-trigger heartbeat poll
+
+### Required constraints
+- quota guard must consume usage before enqueue
+- approval guard may return `approvalRequired` instead of immediate enqueue
+- queue lanes must support `agent.run`, `tool.execute`, and `task.execute`
+
+## 15. Auth & Access
+### Required views
+- API key management panel
+- token issuance output (JWT + level)
+- auth/audit history for key operations
+
+### Required actions
+- create API key
+- revoke API key
+- rotate API key
+- issue JWT from API key
+
+### Required constraints
+- all non-token routes require API key or JWT authentication
+- route access must enforce minimum agent level (`L0`, `L1`, `L2`)
+- API key lifecycle operations must be auditable

@@ -11,6 +11,8 @@ Build a product that lets a Founder run a company composed of AI agents through 
 - Founder can enable or disable skills.
 - Founder can enable/disable plugin tools and configure required tool fields before use.
 - Founder can configure company settings and model providers.
+- Founder can define recurring automation jobs and inspect their run history.
+- Founder can inspect runtime queue/agent-run health and force-trigger heartbeats when needed.
 
 ## Functional requirements
 
@@ -32,14 +34,15 @@ Build a product that lets a Founder run a company composed of AI agents through 
 
 ### FR-03 Project Management
 - Founder and Executive Agent can create projects.
-- A project contains objective, scope, owner, status, milestones, risk level, and budget cap.
+- A project contains name, description, owner agent, optional parent project, and optional workspace directory.
 - Projects can be linked to tasks, inbox items, and audit logs.
-- Projects support status lifecycle: draft, active, blocked, done, archived.
+- Projects support parent-child hierarchy and default project protection.
 
 ### FR-04 Task Management
 - Tasks belong to a project or exist standalone.
-- Tasks have assignee agent, reviewer, status, due date, priority, dependencies, and acceptance criteria.
-- Tasks support status lifecycle: backlog, ready, in_progress, waiting_approval, blocked, done, cancelled.
+- Tasks have assignee agent, status, priority, dependencies, readiness rules, and comments.
+- Tasks support status lifecycle: pending, in_progress, review, done, blocked, cancelled.
+- Tasks support priority lifecycle: low, medium, high, urgent.
 - Agents can update task progress.
 - Tasks can generate inbox items when clarification or approval is needed.
 
@@ -74,6 +77,7 @@ Build a product that lets a Founder run a company composed of AI agents through 
 - Founder can switch light or dark mode.
 - Founder can configure AI providers such as OpenAI and Claude using API keys.
 - Founder can define global defaults for model, temperature, cost guardrails, and approval behavior.
+- Founder can configure per-provider connection state and select one active default provider/model.
 
 ### FR-10 Tools
 - Founder can view all tools available to the runtime (built-in and plugin-provided).
@@ -88,6 +92,23 @@ Build a product that lets a Founder run a company composed of AI agents through 
 - Enabled plugins can contribute tools and skills into runtime inventories.
 - Plugin tool names are namespaced and must be available to chat execution and prompt context when enabled.
 
+### FR-12 Automation (Cron)
+- Founder can create, update, list, and delete recurring cron jobs.
+- Cron schedule is validated before persistence.
+- Cron jobs can target a specific agent or default to the executive agent.
+- Founder can inspect per-job execution history (success/failed runs).
+
+### FR-13 Runtime Engine and Queue
+- Founder can enqueue agent runs and tool runs through engine endpoints.
+- Founder can inspect queued jobs and query agent run history/details.
+- Daily quota guard and approval guard apply before enqueuing runtime execution.
+- Founder can force-trigger heartbeat polling for operational recovery/debugging.
+
+### FR-14 Authentication and Access Control
+- API supports API-key authentication and JWT authentication.
+- Founder can mint JWT from API key, create/revoke/rotate API keys, and audit these actions.
+- Route access is gated by agent level hierarchy (L0, L1, L2).
+
 ## Non-functional requirements
 - Desktop-first experience.
 - Shared business logic across web and desktop.
@@ -97,6 +118,7 @@ Build a product that lets a Founder run a company composed of AI agents through 
 - UI must feel fast and operational.
 - Core flows must work offline on desktop except provider-dependent executions.
 - Every feature must be auditable.
+- If migration safety fails on startup, server enters read-only mode for mutation routes.
 
 ## Acceptance criteria by milestone
 ### M1 Foundation

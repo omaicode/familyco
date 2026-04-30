@@ -2,9 +2,9 @@
 
 ## Hierarchy
 - Founder: gives business intent and approvals.
-- Executive Agent: top operational agent under the Founder.
-- Manager Agents: handle a domain or department.
-- Worker Agents: execute specialized tasks.
+- Executive Agent (`L0`): top operational agent under the Founder.
+- Manager Agents (`L1`): handle a domain or department.
+- Worker Agents (`L2`): execute specialized tasks.
 
 ## Executive Agent responsibilities
 - interpret founder goals,
@@ -27,6 +27,16 @@
 2. planning
 3. waiting_approval or executing
 4. completed or failed or cancelled
+
+## Async execution lanes
+- `agent.run`: primary lane for agent workflow execution and lifecycle transitions.
+- `tool.execute`: lane for standalone tool execution requests.
+- `task.execute`: lane for task batch/single-task execution coordinated by readiness.
+
+## Scheduler behavior
+- Heartbeat scheduler periodically polls agents and enqueues heartbeat runs.
+- Heartbeat skips paused/terminated agents and enforces in-flight/cooldown protections.
+- Cron scheduler polls due jobs, executes them, and records per-run success/failure history.
 
 ## Approval triggers
 - creating or deleting an agent,

@@ -7,11 +7,17 @@ familyco/
 │  ├─ electron/
 │  ├─ web/
 │  └─ server/
+│     └─ src/
+│        ├─ app.ts
+│        ├─ bootstrap/
+│        ├─ modules/
+│        ├─ runtime/
+│        └─ repositories/
 ├─ packages/
 │  ├─ ui/
 │  ├─ core/
 │  ├─ db/
-|  ├─ agent-runtime/
+│  ├─ agent-runtime/
 │  └─ shared/
 ├─ skills/
 ├─ docs/
@@ -41,6 +47,21 @@ familyco/
 - Plugin discovery/enablement and plugin capability registration.
 - Tool policy service (enable/disable + custom fields) synchronized to tool executor.
 - Chat session and message orchestration for multi-session agent chat.
+- `src/app.ts` is the composition root: it wires dependencies and delegates setup to bootstrap modules.
+- Startup migration safety can switch server into read-only mode for write operations.
+
+### apps/server bootstrap composition
+- `bootstrap/repositories.ts`: repository driver wiring (`memory` / `prisma`).
+- `bootstrap/queue-handlers.ts`: queue lane handlers for agent/tool/task execution.
+- `bootstrap/lifecycle.ts`: startup/shutdown hooks (migration safety, bootstrap API key, schedulers, plugin discovery).
+- `bootstrap/routes.ts`: `/api/v1` route/controller registration and request guards.
+- `bootstrap/http.ts`: health endpoint and global error handler.
+- `bootstrap/helpers.ts`: server bootstrap helper utilities (CORS matcher, concurrency defaults, queue stats, trace helpers).
+
+### apps/server async execution lanes
+- `agent.run`: executes agent workflows and updates run lifecycle state.
+- `tool.execute`: executes tool calls through runtime policy and audit pipeline.
+- `task.execute`: executes ready tasks (single task or agent batch) with heartbeat/audit integration.
 
 ### packages/ui
 - Shared design tokens.
@@ -73,7 +94,7 @@ familyco/
 3. Executive Agent interprets intent.
 4. Planner creates or updates Projects and Tasks.
 5. Agent Router selects enabled Skills.
-6. If approval is needed, InboxItem is created and run pauses.
+6. If approval is needed, an ApprovalRequest is created and run pauses in `waiting_approval`.
 7. When approved, execution continues.
 8. BudgetUsage and AuditLog are written throughout.
 
@@ -85,6 +106,12 @@ familyco/
 3. Required custom fields are validated before enabling plugin tools.
 4. Chat engine receives filtered tool list by level, while enabled plugin tools remain available in prompt/tool context.
 5. Executor injects persisted custom field values into plugin tool execution arguments.
+
+## Runtime safeguards
+- Migration safety runs during startup before normal mutation traffic.
+- Health endpoint reports queue stats, migration status, and read-only mode.
+- Heartbeat runtime polls due agents and enqueues heartbeat runs with cooldown/in-flight protections.
+- Cron runtime polls due jobs, records run history, and persists last/next schedule markers.
 
 ## Design constraints
 - Business rules should live in `packages/core` or `packages/agent-runtime`, not duplicated in UI.

@@ -29,6 +29,9 @@ Generate production-minded code that matches the documented product, respects th
 - All workflow side effects must create audit entries.
 - Budget tracking should happen through a single service.
 - Provider calls should be wrapped behind adapters.
+- Keep `apps/server/src/app.ts` as a thin composition root; avoid mixing queue handler internals, lifecycle internals, and route registration details directly in one file.
+- Place server bootstrapping concerns under `apps/server/src/bootstrap/*` (repositories, queue handlers, lifecycle, routes, and HTTP infrastructure).
+- When server wiring changes, preserve behavior-first refactors: keep API contracts, approval/budget/audit flow, and scheduler behavior unchanged unless explicitly required.
 
 ## Database rules
 - Prisma schema is the source of truth.

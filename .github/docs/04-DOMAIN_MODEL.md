@@ -31,8 +31,8 @@
 - name
 - title
 - description
-- level enum: executive, manager, worker
-- status enum: active, paused, archived
+- level enum: L0, L1, L2
+- status enum: active, idle, running, error, paused, terminated, archived
 - mission
 - defaultModel
 - provider
@@ -82,55 +82,47 @@
 
 ### Project
 - id
-- companyId
-- ownerAgentId nullable
+- ownerAgentId
 - name
-- objective
 - description
-- status enum: draft, active, blocked, done, archived
-- priority enum: low, medium, high, critical
-- riskLevel enum: low, medium, high
-- budgetCap nullable
-- startedAt nullable
-- dueAt nullable
-- completedAt nullable
+- parentProjectId nullable
+- dirPath nullable
 - createdAt
 - updatedAt
 
 ### Task
 - id
-- companyId
-- projectId nullable
+- projectId
 - assigneeAgentId nullable
-- reviewerUserId nullable
-- reviewerAgentId nullable
 - title
 - description
-- status enum: backlog, ready, in_progress, waiting_approval, blocked, done, cancelled
-- priority enum: low, medium, high, critical
+- status enum: pending, in_progress, review, done, blocked, cancelled
+- priority enum: low, medium, high, urgent
+- createdBy
 - dependsOnTaskIds
 - readinessRules
-- acceptanceCriteriaMd
-- dueAt nullable
 - createdAt
 - updatedAt
 
-### InboxItem
+### InboxMessage
 - id
-- companyId
-- sourceRunId nullable
-- linkedProjectId nullable
-- linkedTaskId nullable
-- linkedAgentId nullable
-- type enum: approval, clarification, warning, budget_exceeded, provider_error
+- recipientId
+- senderId
+- type enum: approval, report, alert, info
 - title
-- summary
-- requestedAction
-- status enum: open, approved, rejected, resolved, expired
-- urgency enum: low, medium, high, critical
-- responseText nullable
-- resolvedByUserId nullable
-- resolvedAt nullable
+- body
+- status enum: unread, read, archived
+- payload nullable
+- createdAt
+- updatedAt
+
+### ApprovalRequest
+- id
+- actorId
+- action
+- targetId nullable
+- status enum: pending, approved, rejected
+- payload nullable
 - createdAt
 - updatedAt
 
@@ -149,6 +141,30 @@
 - finishedAt nullable
 - createdAt
 - updatedAt
+
+### CronJob
+- id
+- name
+- prompt
+- schedule
+- agentId
+- enabled
+- sessionId nullable
+- lastRunAt nullable
+- nextRunAt nullable
+- createdAt
+- updatedAt
+
+### CronRunRecord
+- id
+- cronId
+- status enum: success, failed
+- scheduledAt
+- startedAt
+- finishedAt
+- input
+- output nullable
+- error nullable
 
 ### BudgetUsage
 - id
@@ -186,27 +202,35 @@
 - createdAt
 - updatedAt
 
+### ApiKeyRecord
+- id
+- name
+- keyHash
+- active
+- createdAt
+- updatedAt
+
 Common keys used by tools/chat UX:
 - `tools.registry`: plugin tool enable/disable policy.
 - `tools.customFields`: per-plugin-tool custom field values.
 
 ## Key relationships
-- One Company has many Agents, Projects, Tasks, Skills, InboxItems, Runs, BudgetUsage rows, and AuditLogs.
+- One Company has many Agents, Projects, Tasks, Skills, InboxMessages, ApprovalRequests, Runs, BudgetUsage rows, AuditLogs, and CronJobs.
 - One Agent has many ChatSessions.
 - One ChatSession has many ChatMessages.
 - One Agent may manage many Agents.
 - One Project has many Tasks.
 - One Run may produce many BudgetUsage rows and many AuditLogs.
-- One InboxItem may point to Agent, Project, Task, or Run.
+- One ApprovalRequest may block an AgentRun while waiting for review.
+- One CronJob produces many CronRunRecord entries.
 
 ## Invariants
 - There is exactly one active Executive Agent per company.
-- Archived agents cannot receive new tasks.
+- Terminated or archived agents cannot receive new tasks.
 - Disabled skills cannot be selected for new runs.
 - A plugin tool with missing required custom fields cannot be enabled.
-- Any run in `waiting_approval` must have at least one open InboxItem.
+- Any run in `waiting_approval` should map to at least one pending ApprovalRequest.
 - `totalTokens = promptTokens + completionTokens`.
-- A task in `done` must have non-empty completion summary.
 - A task is execution-ready only when every `dependsOnTaskIds` entry resolves to a completed task and all supported `readinessRules` are satisfied.
 
 ## Prisma notes
