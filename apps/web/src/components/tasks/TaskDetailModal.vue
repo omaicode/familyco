@@ -1041,11 +1041,11 @@ const closeCommentArtifactModal = (): void => {
 }
 
 .task-view-tab:hover {
-  color: var(--fc-text-primary);
+  color: var(--fc-text-main);
 }
 
 .task-view-tab--active {
-  color: var(--fc-text-primary);
+  color: var(--fc-text-main);
   border-bottom-color: var(--fc-accent);
 }
 
@@ -1053,7 +1053,7 @@ const closeCommentArtifactModal = (): void => {
   font-size: 11px;
   padding: 1px 5px;
   border-radius: 10px;
-  background: var(--fc-surface-2, rgba(255,255,255,0.06));
+  background: var(--fc-surface, rgba(255,255,255,0.06));
   color: var(--fc-text-muted);
   min-width: 18px;
   text-align: center;
