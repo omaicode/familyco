@@ -1,8 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import os from 'node:os';
-import * as path from 'node:path'
-import { fileURLToPath } from 'node:url'
-globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url))
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
@@ -23,112 +21,54 @@ import {
   PluginService,
   ProjectService,
   SettingsService,
-  TaskService,
-  runAgentLoop,
-  type AgentRunRequest,
-  type AgentRunResult,
-  type AgentRepository,
-  type AgentRunRepository,
-  type ApprovalRepository,
-  type AuditRepository,
-  type BudgetUsageRepository,
-  type CronRepository,
-  type InboxRepository,
-  type PluginRepository as PluginRepositoryInterface,
-  type PluginRunRepository as PluginRunRepositoryInterface,
-  type ProjectRepository,
-  type SettingsRepository,
-  type TaskRepository
+  TaskService
 } from '@familyco/core';
 
-import { prismaClient } from '@familyco/db'
-import { runMigrationsWithSafety, type MigrationRunResult } from '@familyco/db';
+import { createAdapterRegistry } from './adapters/index.js';
+import {
+  createCorsOriginMatcher,
+  normalizePositiveInteger,
+  resolveDefaultQueueConcurrency
+} from './bootstrap/helpers.js';
+import { registerHttpInfrastructure } from './bootstrap/http.js';
+import { registerLifecycleHooks, type AppLifecycleState } from './bootstrap/lifecycle.js';
+import { registerQueueHandlers } from './bootstrap/queue-handlers.js';
+import { createRepositories, type RepositoryDriver } from './bootstrap/repositories.js';
+import { registerApiRoutes } from './bootstrap/routes.js';
 import {
   ChatAttachmentStore,
   ChatConversationService,
   ChatStreamRegistry,
   processAgentChat,
-  registerAgentController,
   type AgentModuleDeps
 } from './modules/agent/index.js';
-import { registerApprovalController } from './modules/approval/index.js';
-import { registerAuthController } from './modules/auth/index.js';
-import { registerAuditController } from './modules/audit/index.js';
-import { registerBudgetController } from './modules/budget/index.js';
-import { registerDashboardController } from './modules/dashboard/index.js';
-import { registerCronController } from './modules/cron/index.js';
-import { registerEngineController } from './modules/engine/index.js';
-import { registerInboxController } from './modules/inbox/index.js';
-import { registerProjectController } from './modules/project/index.js';
-import { registerProviderController } from './modules/provider/index.js';
-import { registerSkillsController } from './modules/skills/index.js';
-import { registerSettingsController } from './modules/settings/index.js';
-import { registerSetupController } from './modules/setup/index.js';
-import { registerTaskController } from './modules/task/index.js';
-import { NotificationService } from './modules/notification/index.js';
+import { ChatEngineService } from './modules/agent/chat-engine.service.js';
 import { ApiKeyService } from './modules/auth/api-key.service.js';
+import { NotificationService } from './modules/notification/index.js';
+import { PluginLoaderService } from './modules/plugins/plugin-loader.service.js';
+import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
+import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
+import { SkillsService } from './modules/skills/skills.service.js';
 import {
-  authenticateApiRequest,
+  DefaultToolExecutor,
+  HEARTBEAT_ALLOWED_TOOL_NAMES,
+  ToolManagementService,
+  filterToolDefinitionsByNames
+} from './modules/tools/index.js';
+import {
   getAuthApiKey,
   getAuthApiKeySalt,
   registerAuthPlugin
 } from './plugins/auth.plugin.js';
-import {
-  InMemoryAgentRepository,
-  InMemoryAgentRunRepository,
-  InMemoryApiKeyRepository,
-  InMemoryApprovalRepository,
-  InMemoryAuditRepository,
-  InMemoryBudgetUsageRepository,
-  InMemoryChatConversationRepository,
-  InMemoryCronRepository,
-  InMemoryInboxRepository,
-  InMemoryPluginRepository,
-  InMemoryPluginRunRepository,
-  InMemoryProjectRepository,
-  InMemorySettingsRepository,
-  InMemoryTaskRepository,
-  InMemoryTaskSessionRepository,
-  PrismaAgentRepository,
-  PrismaAgentRunRepository,
-  PrismaApiKeyRepository,
-  PrismaApprovalRepository,
-  PrismaAuditRepository,
-  PrismaBudgetUsageRepository,
-  PrismaChatConversationRepository,
-  PrismaCronRepository,
-  PrismaInboxRepository,
-  PrismaPluginRepository,
-  PrismaPluginRunRepository,
-  PrismaProjectRepository,
-  PrismaSettingsRepository,
-  PrismaTaskRepository,
-  PrismaTaskSessionRepository
-} from './repositories/index.js';
-import {
-  InMemoryQueueService
-} from './queue/index.js';
-import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
+import { InMemoryQueueService } from './queue/index.js';
 import { CronRuntimeService } from './runtime/cron-runtime.service.js';
+import { HeartbeatRuntimeService } from './runtime/heartbeat-runtime.service.js';
 import { SettingsBackedMemoryService } from './runtime/settings-memory.service.js';
 import { TaskExecutionCoordinator } from './runtime/task-execution.coordinator.js';
-import {
-  DefaultToolExecutor,
-  HEARTBEAT_ALLOWED_TOOL_NAMES,
-  filterToolDefinitionsByNames,
-  ToolManagementService,
-  registerToolManagementController
-} from './modules/tools/index.js';
-import { createAdapterRegistry } from './adapters/index.js';
-import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
-import { SkillsService } from './modules/skills/skills.service.js';
-import { PluginLoaderService } from './modules/plugins/plugin-loader.service.js';
-import { registerPluginsController } from './modules/plugins/plugin.controller.js';
-import { registerEventGateway } from './ws/ws-gateway.js';
-import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
-import { ChatEngineService } from './modules/agent/chat-engine.service.js';
 
-export type RepositoryDriver = 'memory' | 'prisma';
+globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url));
+
+export type { RepositoryDriver };
 export type QueueDriver = 'memory';
 
 export interface CreateAppOptions {
@@ -194,7 +134,6 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       : repositoryDriver === 'prisma');
 
   const settingsEncryption = createSettingsEncryption();
-
   const {
     agentRepository,
     agentRunRepository,
@@ -212,7 +151,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     taskRepository,
     taskSessionRepository
   } = createRepositories(repositoryDriver, settingsEncryption);
-  
+
   const eventBus = new EventBus();
   const agentService = new AgentService(
     agentRepository,
@@ -231,6 +170,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const agentRunService = new AgentRunService(agentRunRepository);
   const settingsService = new SettingsService(settingsRepository);
   const taskService = new TaskService(taskRepository, eventBus);
+
   const notificationService = new NotificationService({
     eventBus,
     inboxService,
@@ -238,6 +178,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     taskService
   });
   notificationService.register();
+
   const approvalGuard = new ApprovalGuard();
   const dailyQuotaGuard = new DailyQuotaGuard({ maxPerDay: dailyQuotaLimit });
   const pluginRegistry = new PluginRegistry();
@@ -248,6 +189,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     pluginRegistry,
     options.skillsRootDir ?? process.env.FAMILYCO_SKILLS_DIR ?? path.resolve(__dirname, '../../../', 'skills')
   );
+
   const adapterRegistry = options.adapterRegistry ?? createAdapterRegistry({
     logger: app.log,
     auditService,
@@ -257,6 +199,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       await notificationService.notifyBudgetNearLimit(input);
     }
   });
+
   const cronService = new CronService(cronRepository);
   const toolExecutor = new DefaultToolExecutor({
     agentService,
@@ -272,17 +215,20 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     eventBus
     // queueService wired in after construction to avoid circular dependency
   });
+
   const toolsService = new ToolManagementService(settingsService, toolExecutor);
   const pluginLoader = new PluginLoaderService({
     pluginService,
     pluginRegistry,
     pluginRepository,
     auditService,
-    pluginsRootDir: options.pluginsRootDir ?? process.env.FAMILYCO_PLUGINS_DIR ?? path.resolve(__dirname, '../../../', 'plugins'),
+    pluginsRootDir:
+      options.pluginsRootDir ?? process.env.FAMILYCO_PLUGINS_DIR ?? path.resolve(__dirname, '../../../', 'plugins'),
     toolExecutor,
     pluginRunService,
     adapterRegistry
   });
+
   const memoryService = new SettingsBackedMemoryService(settingsRepository);
   const agentRunner = new AgentRunner(approvalGuard, toolExecutor, memoryService);
   const chatEngineService = new ChatEngineService(settingsService, adapterRegistry, skillsService);
@@ -322,6 +268,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     defaultHeartbeatMinutes: options.defaultHeartbeatMinutes,
     tools: heartbeatToolDefinitions
   });
+
   const agentModuleDeps: AgentModuleDeps = {
     agentService,
     inboxService,
@@ -338,6 +285,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     settingsService,
     notificationService
   };
+
   const cronRuntime = new CronRuntimeService({
     cronService,
     executeJob: async (job, scheduledAt) => {
@@ -376,694 +324,81 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
       };
     }
   });
+
   const canProcessAsyncJobs = true;
-  let migrationState: MigrationRunResult | null = null;
-  let readOnlyMode = false;
-
-  const executeAgentRun = async (request: AgentRunRequest): Promise<AgentRunResult> => {
-    if (request.runId) {
-      await agentRunService.updateState(request.runId, { state: 'planning' });
-    }
-
-    await heartbeatRuntime.markStarted(request);
-
-    if (request.runId) {
-      await agentRunService.updateState(request.runId, { state: 'executing' });
-    }
-
-    // Heartbeat runs use AI loop so we can inspect full tool trace (not only final dispatch result).
-    if (request.action === 'heartbeat.tick') {
-      const agent = await agentService.getAgentById(request.agentId);
-      const adapterConfig = await chatEngineService.getAdapterConfig(agent.aiAdapterId, agent.aiModel);
-      const heartbeatExecutor = toolExecutor.forkForHeartbeat(queueService, request.agentId);
-      const toolCalls: Array<{
-        toolName: string;
-        ok: boolean;
-        summary: string;
-        arguments: Record<string, unknown>;
-        output?: unknown;
-        error?: { code: string; message: string };
-      }> = [];
-
-      let finalReply = '';
-      let totalTurns = 0;
-
-      if (adapterConfig) {
-        const adapter = chatEngineService.getAdapter(adapterConfig.adapterId);
-        if (!adapter) {
-          throw new Error(`HEARTBEAT_ADAPTER_NOT_FOUND:${adapterConfig.adapterId}`);
-        }
-
-        const availableTools = heartbeatExecutor.listToolDefinitions();
-        const loopResult = await runAgentLoop({
-          adapter,
-          apiKey: adapterConfig.apiKey,
-          model: adapterConfig.model,
-          systemPrompt: request.input,
-          userPrompt: 'Run the heartbeat procedure now.',
-          availableTools,
-          maxRounds: 8,
-          executeTool: async (toolInput) => {
-            const result = await heartbeatExecutor.execute({
-              toolName: toolInput.toolName,
-              arguments: toolInput.arguments
-            });
-            toolCalls.push({
-              toolName: result.toolName,
-              ok: result.ok,
-              summary: summarizeToolResult(result),
-              arguments: toolInput.arguments,
-              ...(result.output !== undefined ? { output: result.output } : {}),
-              ...(result.error ? { error: result.error } : {})
-            });
-            return { ok: result.ok, output: result.output, error: result.error };
-          }
-        });
-        finalReply = loopResult.finalReply;
-        totalTurns = loopResult.totalTurns;
-      } else {
-        finalReply = 'Heartbeat AI adapter is not configured. Falling back to deterministic dispatch.';
-      }
-
-      return {
-        status: 'completed',
-        agentId: request.agentId,
-        action: request.action,
-        toolName: request.toolName,
-        output: {
-          ok: true,
-          toolName: 'heartbeat.tick',
-          output: {
-            finalReply,
-            totalTurns,
-            toolCalls
-          }
-        }
-      };
-    }
-
-    return agentRunner.run(request);
+  const state: AppLifecycleState = {
+    migrationState: null,
+    readOnlyMode: false
   };
 
-  const handleAgentRunCompleted = async (
-    request: AgentRunRequest,
-    result: AgentRunResult | undefined
-  ): Promise<void> => {
-    if (result) {
-      await heartbeatRuntime.markCompleted(request, result);
-    }
-
-    if (request.runId) {
-      await agentRunService.updateState(request.runId, {
-        state: result?.status === 'blocked' ? 'waiting_approval' : 'completed',
-        outputSummary:
-          result?.status === 'blocked'
-            ? result.reason?.slice(0, 500) ?? null
-            : result?.output
-              ? JSON.stringify(result.output).slice(0, 500)
-              : 'Execution completed'
-      });
-    }
-
-    await auditService.write({
-      actorId: request.agentId,
-      action: 'engine.agent.run.completed',
-      targetId: request.agentId,
-      payload: {
-        status: result?.status,
-        toolName: request.toolName,
-        action: request.action,
-        reason: result?.status === 'blocked' ? (result.reason ?? null) : null,
-        output: result?.output ? JSON.stringify(result.output).slice(0, 5_000) : null,
-        heartbeatTrace: extractHeartbeatTrace(result)
-      }
-    });
-  };
-
-  const handleAgentRunFailed = async (request: AgentRunRequest, error: Error): Promise<void> => {
-    await heartbeatRuntime.markFailed(request, error);
-
-    if (request.runId) {
-      await agentRunService.updateState(request.runId, {
-        state: 'failed',
-        outputSummary: error.message.slice(0, 500)
-      });
-    }
-
-    await auditService.write({
-      actorId: request.agentId,
-      action: 'engine.agent.run.failed',
-      targetId: request.agentId,
-      payload: {
-        toolName: request.toolName,
-        action: request.action,
-        error: error.message
-      }
-    });
-  };
-
-  if (queueService instanceof InMemoryQueueService) {
-    queueService.setHandlers({
-      onAgentRun: async (job) => {
-        try {
-          const result = await executeAgentRun(job.payload.request);
-          await handleAgentRunCompleted(job.payload.request, result);
-          return result;
-        } catch (error) {
-          const normalizedError = toError(error);
-          await handleAgentRunFailed(job.payload.request, normalizedError);
-          throw normalizedError;
-        }
-      },
-      onToolExecute: async (job) => {
-        try {
-          const result = await toolExecutor.execute(job.payload.input);
-          await auditService.write({
-            actorId: 'system',
-            action: 'engine.tool.run.completed',
-            payload: {
-              toolName: job.payload.input.toolName,
-              result
-            }
-          });
-          return result;
-        } catch (error) {
-          const normalizedError = toError(error);
-          await auditService.write({
-            actorId: 'system',
-            action: 'engine.tool.run.failed',
-            payload: {
-              toolName: job.payload.input.toolName,
-              message: normalizedError.message
-            }
-          });
-          throw normalizedError;
-        }
-      },
-      onTaskExecute: async (job) => {
-        const { agentId, taskId } = job.payload;
-        const syntheticRequest = {
-          agentId,
-          approvalMode: 'auto' as const,
-          action: 'task.execute',
-          toolName: 'task.execute',
-          toolArguments: {},
-          input: taskId
-            ? `Task execution for agent ${agentId}, task ${taskId}`
-            : `Task execution for agent ${agentId}`
-        };
-
-        await heartbeatRuntime.markStarted(syntheticRequest);
-
-        try {
-          const batchResult = taskId
-            ? await taskCoordinator.executeTask(agentId, taskId)
-            : await taskCoordinator.executeForAgent(agentId);
-
-          const lastResult = batchResult.lastResult;
-
-          const syntheticAgentResult = {
-            status: (lastResult.status === 'waiting_for_approval' || lastResult.status === 'blocked')
-              ? ('blocked' as const)
-              : ('completed' as const),
-            agentId,
-            action: 'task.execute',
-            toolName: 'task.execute'
-          };
-
-          await heartbeatRuntime.markCompleted(syntheticRequest, syntheticAgentResult);
-
-          await auditService.write({
-            actorId: agentId,
-            action: 'engine.task.execute.completed',
-            targetId: agentId,
-            payload: {
-              agentId,
-              taskId: taskId ?? null,
-              tasksRun: batchResult.tasksRun,
-              results: batchResult.results.map((r) => ({
-                taskId: r.taskId,
-                status: r.status,
-                summary: r.summary
-              }))
-            }
-          });
-
-          return batchResult;
-        } catch (error) {
-          const normalizedError = toError(error);
-          await heartbeatRuntime.markFailed(syntheticRequest, normalizedError);
-          await auditService.write({
-            actorId: agentId,
-            action: 'engine.task.execute.failed',
-            payload: {
-              agentId,
-              taskId: taskId ?? null,
-              error: normalizedError.message
-            }
-          });
-          throw normalizedError;
-        }
-      }
-    });
-  }
-
-  app.addHook('onReady', async () => {
-    if (repositoryDriver === 'prisma') {
-      migrationState = await runMigrationsWithSafety();
-      readOnlyMode = migrationState.readOnlyMode;
-      
-      await auditService.write({
-        actorId: 'system',
-        action: migrationState.status === 'ok' ? 'db.migration.completed' : 'db.migration.failed',
-        payload: {
-          status: migrationState.status,
-          pendingCount: migrationState.pendingCount,
-          appliedCount: migrationState.appliedCount,
-          backupPath: migrationState.backupPath,
-          dbPath: migrationState.dbPath,
-          errorMessage: migrationState.errorMessage
-        }
-      });
-    }
-
-    const bootstrapApiKey = await apiKeyService.ensureBootstrapKey('bootstrap', authApiKey);
-    await auditService.write({
-      actorId: 'system',
-      action: 'auth.api_key.bootstrap',
-      targetId: bootstrapApiKey.id,
-      payload: {
-        name: bootstrapApiKey.name
-      }
-    });
-
-    if (enableHeartbeatScheduler && canProcessAsyncJobs) {
-      await heartbeatRuntime.start();
-    }
-    if (canProcessAsyncJobs) {
-      await cronRuntime.start();
-    }
-
-    // Discover plugins from filesystem (non-blocking — errors logged, not thrown)
-    try {
-      await pluginLoader.discover();
-    } catch (error) {
-      app.log.error({ err: error }, 'Plugin discovery failed during startup');
-    }
-
-    await toolsService.syncExecutorPolicy();
+  registerQueueHandlers({
+    queueService,
+    agentService,
+    chatEngineService,
+    toolExecutor,
+    agentRunner,
+    agentRunService,
+    taskCoordinator,
+    heartbeatRuntime,
+    auditService
   });
 
-  app.addHook('onClose', async () => {
-    await cronRuntime.stop();
-    await heartbeatRuntime.stop();
-    await queueService.close();
+  registerLifecycleHooks({
+    app,
+    state,
+    repositoryDriver,
+    apiKeyService,
+    authApiKey,
+    auditService,
+    enableHeartbeatScheduler,
+    canProcessAsyncJobs,
+    heartbeatRuntime,
+    cronRuntime,
+    pluginLoader,
+    toolsService,
+    queueService
   });
 
-  app.get('/health', async () => {
-    const jobs = await queueService.listPendingJobs();
-    const queueStats = summarizeQueueJobs(jobs);
-
-    return {
-      status: readOnlyMode ? 'degraded' : 'ok',
-      mode: readOnlyMode ? 'read_only' : 'normal',
-      queueDriver,
-      queue: {
-        agentRunConcurrency,
-        toolExecuteConcurrency,
-        ...queueStats
-      },
-      migration: migrationState
-        ? {
-            status: migrationState.status,
-            pendingCount: migrationState.pendingCount,
-            appliedCount: migrationState.appliedCount,
-            errorMessage: migrationState.errorMessage
-          }
-        : null
-    };
+  registerHttpInfrastructure({
+    app,
+    queueService,
+    queueDriver,
+    agentRunConcurrency,
+    toolExecuteConcurrency,
+    state
   });
 
-  app.register(
-    async (api) => {
-      registerAuthController(api, {
-        apiKeyService,
-        agentService,
-        auditService,
-        signToken: (payload) => api.jwt.sign(payload)
-      });
-
-      api.addHook('preHandler', async (request, reply) => {
-        if (readOnlyMode && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
-          reply.code(503).send({
-            statusCode: 503,
-            code: 'READ_ONLY_MODE',
-            message: 'Application is in read-only mode because database migration failed'
-          });
-          return;
-        }
-
-        await authenticateApiRequest(request, reply, apiKeyService);
-      });
-
-      registerAgentController(api, agentModuleDeps);
-      registerApprovalController(api, {
-        approvalService,
-        agentService,
-        projectService,
-        settingsService,
-        taskService,
-        auditService,
-        inboxService,
-        sessionStore: taskSessionRepository
-      });
-      registerAuditController(api, { auditService });
-      registerBudgetController(api, { budgetUsageService, settingsService });
-      registerDashboardController(api, {
-        agentService,
-        approvalService,
-        auditService,
-        projectService,
-        taskService,
-      });
-      registerCronController(api, {
-        cronService,
-        auditService,
-        settingsService,
-        agentService
-      });
-      registerEngineController(api, {
-        queueService,
-        auditService,
-        approvalService,
-        approvalGuard,
-        settingsService,
-        dailyQuotaGuard,
-        agentRunService,
-        heartbeatRuntime
-      });
-      registerInboxController(api, { inboxService, auditService });
-      registerProjectController(api, {
-        projectService,
-        taskService,
-        approvalService,
-        auditService,
-        approvalGuard,
-        settingsService
-      });
-      registerSettingsController(api, {
-        settingsService,
-        auditService
-      });
-      registerSkillsController(api, {
-        skillsService,
-        auditService
-      });
-      registerToolManagementController(api, {
-        toolsService,
-        auditService
-      });
-      registerPluginsController(api, {
-        pluginService,
-        pluginLoader,
-        auditService,
-        onPluginsRefreshed: async () => {
-          await toolsService.syncExecutorPolicy();
-        }
-      });
-      registerSetupController(api, {
-        agentService,
-        projectService,
-        settingsService,
-        auditService
-      });
-      registerProviderController(api, {
-        adapterRegistry,
-        settingsService,
-        auditService,
-        runtimeMode: options.runtimeMode ?? 'server'
-      });
-      registerTaskController(api, {
-        taskService,
-        agentService,
-        projectService,
-        settingsService,
-        approvalService,
-        auditService,
-        approvalGuard,
-        queueService,
-        eventBus
-      });
-      registerEventGateway(api, { eventBus });
-    },
-    { prefix: '/api/v1' }
-  );
-
-  app.setErrorHandler((error, _request, reply) => {
-    const message = error instanceof Error ? error.message : 'Internal server error';
-    const [code] = message.split(':');
-    const statusCode =
-      typeof (error as { statusCode?: number }).statusCode === 'number'
-        ? (error as { statusCode: number }).statusCode
-        : 400;
-
-    reply.code(statusCode).send({
-      statusCode,
-      code,
-      message
-    });
+  registerApiRoutes({
+    app,
+    readOnlyMode: () => state.readOnlyMode,
+    apiKeyService,
+    agentModuleDeps,
+    approvalService,
+    agentService,
+    projectService,
+    settingsService,
+    taskService,
+    auditService,
+    inboxService,
+    taskSessionRepository,
+    budgetUsageService,
+    cronService,
+    queueService,
+    approvalGuard,
+    dailyQuotaGuard,
+    agentRunService,
+    heartbeatRuntime,
+    skillsService,
+    toolsService,
+    pluginService,
+    pluginLoader,
+    adapterRegistry,
+    eventBus,
+    runtimeMode: options.runtimeMode ?? 'server',
+    onPluginsRefreshed: async () => {
+      await toolsService.syncExecutorPolicy();
+    }
   });
 
   return app;
-}
-
-function normalizePositiveInteger(value: number, fallback: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-
-  return Math.max(1, Math.floor(value));
-}
-
-function resolveDefaultQueueConcurrency(): {
-  agentRunConcurrency: number;
-  toolExecuteConcurrency: number;
-} {
-  const cores = os.availableParallelism();
-  return {
-    agentRunConcurrency: Math.max(2, Math.floor(cores / 2)),
-    toolExecuteConcurrency: Math.max(4, cores)
-  };
-}
-
-function summarizeQueueJobs(jobs: unknown[]): {
-  totalJobs: number;
-  queuedJobs: number;
-  runningJobs: number;
-  completedJobs: number;
-  failedJobs: number;
-  byType: {
-    agentRun: { queued: number; running: number; completed: number; failed: number };
-    toolExecute: { queued: number; running: number; completed: number; failed: number };
-  };
-} {
-  const byType = {
-    agentRun: { queued: 0, running: 0, completed: 0, failed: 0 },
-    toolExecute: { queued: 0, running: 0, completed: 0, failed: 0 }
-  };
-
-  let queuedJobs = 0;
-  let runningJobs = 0;
-  let completedJobs = 0;
-  let failedJobs = 0;
-
-  for (const job of jobs) {
-    if (!isQueueJobRecord(job)) {
-      continue;
-    }
-
-    const lane = job.type === 'agent.run' ? byType.agentRun : byType.toolExecute;
-
-    if (job.status === 'queued') {
-      queuedJobs += 1;
-      lane.queued += 1;
-      continue;
-    }
-
-    if (job.status === 'running') {
-      runningJobs += 1;
-      lane.running += 1;
-      continue;
-    }
-
-    if (job.status === 'completed') {
-      completedJobs += 1;
-      lane.completed += 1;
-      continue;
-    }
-
-    failedJobs += 1;
-    lane.failed += 1;
-  }
-
-  return {
-    totalJobs: jobs.length,
-    queuedJobs,
-    runningJobs,
-    completedJobs,
-    failedJobs,
-    byType
-  };
-}
-
-function isQueueJobRecord(
-  value: unknown
-): value is { type: 'agent.run' | 'tool.execute'; status: 'queued' | 'running' | 'completed' | 'failed' } {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  const record = value as Record<string, unknown>;
-  if (record.type !== 'agent.run' && record.type !== 'tool.execute') {
-    return false;
-  }
-
-  return (
-    record.status === 'queued' ||
-    record.status === 'running' ||
-    record.status === 'completed' ||
-    record.status === 'failed'
-  );
-}
-
-function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
-}
-
-function summarizeToolResult(result: { ok: boolean; output?: unknown; error?: { code: string; message: string } }): string {
-  if (!result.ok) {
-    return result.error?.message ?? 'Tool failed';
-  }
-
-  if (typeof result.output === 'string' && result.output.trim().length > 0) {
-    return result.output.trim().slice(0, 200);
-  }
-
-  if (result.output !== undefined && result.output !== null) {
-    try {
-      return JSON.stringify(result.output).slice(0, 200);
-    } catch {
-      return 'Tool completed';
-    }
-  }
-
-  return 'Tool completed';
-}
-
-function extractHeartbeatTrace(result: AgentRunResult | undefined): unknown {
-  if (!result?.output?.ok) {
-    return null;
-  }
-
-  const output = result.output.output;
-  if (typeof output !== 'object' || output === null) {
-    return null;
-  }
-
-  const record = output as Record<string, unknown>;
-  if (!Array.isArray(record.toolCalls)) {
-    return null;
-  }
-
-  return {
-    totalTurns: typeof record.totalTurns === 'number' ? record.totalTurns : null,
-    finalReply: typeof record.finalReply === 'string' ? record.finalReply : null,
-    toolCalls: record.toolCalls
-  };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function createCorsOriginMatcher(): (
-  origin: string | undefined,
-  callback: (error: Error | null, allow: boolean) => void
-) => void {
-  const configuredOrigins =
-    process.env.CORS_ORIGINS?.split(',')
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0) ?? [];
-
-  const defaultOrigins = ['http://127.0.0.1:5173', 'http://localhost:5173'];
-  const allowedOrigins = new Set([...defaultOrigins, ...configuredOrigins]);
-
-  return (origin, callback) => {
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    callback(null, allowedOrigins.has(origin));
-  };
-}
-
-function createRepositories(
-  repositoryDriver: RepositoryDriver,
-  settingsEncryption: import('./modules/settings/settings.encryption.js').SettingsEncryption | null = null
-): {
-  agentRepository: AgentRepository;
-  agentRunRepository: AgentRunRepository;
-  apiKeyRepository: import('./modules/auth/api-key.service.js').ApiKeyRepository;
-  approvalRepository: ApprovalRepository;
-  auditRepository: AuditRepository;
-  budgetUsageRepository: BudgetUsageRepository;
-  chatConversationRepository: import('./modules/agent/chat-conversation.service.js').ChatConversationRepository;
-  cronRepository: CronRepository;
-  inboxRepository: InboxRepository;
-  pluginRepository: PluginRepositoryInterface;
-  pluginRunRepository: PluginRunRepositoryInterface;
-  projectRepository: ProjectRepository;
-  settingsRepository: SettingsRepository;
-  taskRepository: TaskRepository;
-  taskSessionRepository: import('./repositories/in-memory-task-session.repository.js').InMemoryTaskSessionRepository | import('./repositories/prisma-task-session.repository.js').PrismaTaskSessionRepository;
-} {
-  if (repositoryDriver === 'prisma') {
-    const client = prismaClient;
-    return {
-      agentRepository: new PrismaAgentRepository(client),
-      agentRunRepository: new PrismaAgentRunRepository(client),
-      apiKeyRepository: new PrismaApiKeyRepository(client),
-      approvalRepository: new PrismaApprovalRepository(client),
-      auditRepository: new PrismaAuditRepository(client),
-      budgetUsageRepository: new PrismaBudgetUsageRepository(client),
-      chatConversationRepository: new PrismaChatConversationRepository(client),
-      cronRepository: new PrismaCronRepository(client),
-      inboxRepository: new PrismaInboxRepository(client),
-      pluginRepository: new PrismaPluginRepository(client),
-      pluginRunRepository: new PrismaPluginRunRepository(client),
-      projectRepository: new PrismaProjectRepository(client),
-      settingsRepository: new PrismaSettingsRepository(client, settingsEncryption),
-      taskRepository: new PrismaTaskRepository(client),
-      taskSessionRepository: new PrismaTaskSessionRepository(client)
-    };
-  }
-
-  return {
-    agentRepository: new InMemoryAgentRepository(),
-    agentRunRepository: new InMemoryAgentRunRepository(),
-    apiKeyRepository: new InMemoryApiKeyRepository(),
-    approvalRepository: new InMemoryApprovalRepository(),
-    auditRepository: new InMemoryAuditRepository(),
-    budgetUsageRepository: new InMemoryBudgetUsageRepository(),
-    chatConversationRepository: new InMemoryChatConversationRepository(),
-    cronRepository: new InMemoryCronRepository(),
-    inboxRepository: new InMemoryInboxRepository(),
-    pluginRepository: new InMemoryPluginRepository(),
-    pluginRunRepository: new InMemoryPluginRunRepository(),
-    projectRepository: new InMemoryProjectRepository(),
-    settingsRepository: new InMemorySettingsRepository(),
-    taskRepository: new InMemoryTaskRepository(),
-    taskSessionRepository: new InMemoryTaskSessionRepository()
-  };
 }
