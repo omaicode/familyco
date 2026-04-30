@@ -30,6 +30,7 @@ let pendingRestoreFromTop = false;
 let previousScrollHeight = 0;
 let previousScrollTop = 0;
 let stickToBottom = true;
+let hasPositionedInitialThread = false;
 
 const isStreamingMessage = (message: ThreadMessage): boolean => {
   if (!props.isStreaming || message.direction !== 'agent_to_founder') {
@@ -39,7 +40,7 @@ const isStreamingMessage = (message: ThreadMessage): boolean => {
   return lastAgentMessage?.id === message.id;
 };
 
-const scrollToBottom = (behavior: ScrollBehavior = 'smooth'): void => {
+const scrollToBottom = (behavior: ScrollBehavior = 'auto'): void => {
   const scroller = scrollRef.value;
   if (!scroller) {
     return;
@@ -77,6 +78,14 @@ watch(
       return;
     }
 
+    if (props.thread.length === 0) {
+      pendingRestoreFromTop = false;
+      hasPositionedInitialThread = false;
+      stickToBottom = true;
+      showJumpToLatest.value = false;
+      return;
+    }
+
     if (pendingRestoreFromTop) {
       const delta = scroller.scrollHeight - previousScrollHeight;
       scroller.scrollTop = previousScrollTop + delta;
@@ -85,8 +94,14 @@ watch(
       return;
     }
 
+    if (!hasPositionedInitialThread) {
+      hasPositionedInitialThread = true;
+      scrollToBottom('auto');
+      return;
+    }
+
     if (stickToBottom) {
-      scrollToBottom(props.isStreaming ? 'auto' : 'smooth');
+      scrollToBottom('auto');
     }
   },
   { immediate: true }
@@ -131,7 +146,7 @@ watch(
           v-if="showJumpToLatest"
           type="button"
           class="chat-jump-latest"
-          @click="scrollToBottom()"
+          @click="scrollToBottom('smooth')"
         >
           <ArrowDown :size="14" />
           {{ t('chat.thread.jumpLatest') }}
