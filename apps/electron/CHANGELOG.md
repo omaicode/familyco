@@ -1,5 +1,17 @@
 # @familyco/electron
 
+## 1.1.1
+
+### Patch Changes
+
+- Fixes:
+
+  Fix sqlite vector missing binary files after build
+  Fix auto update
+
+- Updated dependencies
+  - @familyco/server@1.1.1
+
 ## 1.1.0
 
 ### Minor Changes

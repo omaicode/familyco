@@ -24,11 +24,65 @@ interface UpdatePreferences {
   skippedVersion?: string;
 }
 
+const HTML_TAG_REGEX = /<\/?[a-z][^>]*>/i;
+const HTML_ENTITY_REGEX = /&(?:#\d+|#x[0-9a-f]+|[a-z]+);/i;
+
+const decodeCodePoint = (value: number, fallback: string): string => {
+  if (!Number.isInteger(value) || value < 0 || value > 0x10FFFF) {
+    return fallback;
+  }
+
+  try {
+    return String.fromCodePoint(value);
+  } catch {
+    return fallback;
+  }
+};
+
+const decodeHtmlEntities = (value: string): string =>
+  value
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (match, hex: string) => decodeCodePoint(Number.parseInt(hex, 16), match))
+    .replace(/&#(\d+);/g, (match, num: string) => decodeCodePoint(Number.parseInt(num, 10), match));
+
+const stripHtmlToText = (value: string): string => {
+  const withBreaks = value
+    .replace(/<\s*(script|style)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\s*li\b[^>]*>/gi, '- ')
+    .replace(/<\s*\/\s*(p|div|li|h1|h2|h3|h4|h5|h6|tr|table|ul|ol|pre|blockquote)\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ');
+
+  return decodeHtmlEntities(withBreaks)
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .filter((line) => line.length > 0)
+    .join('\n');
+};
+
+const normalizeReleaseNoteText = (value: string): string | undefined => {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  const normalized = HTML_TAG_REGEX.test(trimmed)
+    ? stripHtmlToText(trimmed)
+    : (HTML_ENTITY_REGEX.test(trimmed) ? decodeHtmlEntities(trimmed) : trimmed);
+
+  const clean = normalized.trim();
+  return clean.length > 0 ? clean : undefined;
+};
+
 const formatReleaseNotes = (info: UpdateInfo): string | undefined => {
   const notes = info.releaseNotes as unknown;
   if (typeof notes === 'string') {
-    const normalized = notes.trim();
-    return normalized.length > 0 ? normalized : undefined;
+    return normalizeReleaseNoteText(notes);
   }
 
   if (!Array.isArray(notes)) {
@@ -38,7 +92,7 @@ const formatReleaseNotes = (info: UpdateInfo): string | undefined => {
   const normalized = notes
     .map((entry) => {
       if (typeof entry === 'string') {
-        return entry.trim();
+        return normalizeReleaseNoteText(entry) ?? '';
       }
 
       if (!entry || typeof entry !== 'object') {
@@ -49,8 +103,8 @@ const formatReleaseNotes = (info: UpdateInfo): string | undefined => {
         ? (entry as { version: string }).version.trim()
         : '';
       const note = typeof (entry as { note?: unknown }).note === 'string'
-        ? (entry as { note: string }).note.trim()
-        : '';
+        ? normalizeReleaseNoteText((entry as { note: string }).note)
+        : undefined;
 
       if (!note) {
         return '';
@@ -255,6 +309,11 @@ export function startDesktopUpdater(options: StartDesktopUpdaterOptions): Deskto
 
     isDownloadingUpdate = true;
     try {
+      emitState({
+        status: 'downloading',
+        version: pendingUpdateInfo.version,
+        percent: 0
+      });
       await autoUpdater.downloadUpdate();
       return true;
     } catch (error) {
