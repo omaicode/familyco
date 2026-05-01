@@ -78,6 +78,8 @@ const selectedDocument = computed(() => documents.value.find((item) => item.id =
 const canRetrieve = computed(() => retrieveForm.query.trim().length > 0);
 const shouldShowBinaryPanel = computed(() => serverConverterInstalled.value === false);
 const webBinaryDownloadUrl = computed(() => resolveBinaryDownloadUrl(webBinaryPlatform.value));
+const converterGithubUrl = 'https://github.com/omaicode/familyco-py';
+const converterReleasesUrl = 'https://github.com/omaicode/familyco-py/releases/latest';
 
 const closeChunksModal = (): void => {
   isChunksModalOpen.value = false;
@@ -453,6 +455,19 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
         <strong>{{ t('Knowledge converter is required before indexing documents.') }}</strong>
         <span v-if="isDesktop">{{ t('Download familyco-py from official release to enable document conversion.') }}</span>
         <span v-else>{{ t('For web runtime, place familyco-py in server bin/ (default) or configure binary path manually.') }}</span>
+        <span v-if="isDesktop && desktopBinaryStatus?.path">
+          {{ t('Desktop converter storage path', { path: desktopBinaryStatus.path }) }}
+        </span>
+        <span v-else-if="isDesktop">{{ t('Desktop converter storage path unknown') }}</span>
+        <span v-else>{{ t('Web converter download location hint') }}</span>
+        <div class="knowledge-converter-links">
+          <a class="knowledge-inline-link" :href="converterGithubUrl" target="_blank" rel="noopener noreferrer">
+            {{ t('View converter on GitHub') }}
+          </a>
+          <a class="knowledge-inline-link" :href="converterReleasesUrl" target="_blank" rel="noopener noreferrer">
+            {{ t('View latest release') }}
+          </a>
+        </div>
         <div v-if="isDesktop">
           <button class="fc-btn-secondary" :disabled="isDownloadingBinary || isLoadingBinaryStatus" @click="downloadDesktopBinary">
             {{ isDownloadingBinary ? t('Downloading…') : t('Download converter') }}
@@ -774,6 +789,18 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.knowledge-converter-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.knowledge-inline-link {
+  color: var(--fc-accent);
+  text-decoration: underline;
+  font-weight: 500;
 }
 
 .knowledge-chunk-list,
