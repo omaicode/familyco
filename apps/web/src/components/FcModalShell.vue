@@ -33,25 +33,27 @@ const handleOverlayClick = (): void => {
 </script>
 
 <template>
-  <Transition name="fc-page">
-    <div
-      v-if="open"
-      class="fc-modal-shell__overlay"
-      :class="[overlayAlignClass, overlayClass]"
-      :style="{ zIndex: String(zIndex) }"
-      @click.self="handleOverlayClick"
-    >
+  <Teleport to="body">
+    <Transition name="fc-page">
       <div
-        class="fc-modal-shell__panel"
-        :class="panelClass"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="ariaLabel"
+        v-if="open"
+        class="fc-modal-shell__overlay"
+        :class="[overlayAlignClass, overlayClass]"
+        :style="{ zIndex: String(zIndex) }"
+        @click.self="handleOverlayClick"
       >
-        <slot />
+        <div
+          class="fc-modal-shell__panel"
+          :class="panelClass"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="ariaLabel"
+        >
+          <slot />
+        </div>
       </div>
-    </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>

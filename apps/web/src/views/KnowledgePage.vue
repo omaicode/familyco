@@ -3,6 +3,7 @@ import type { KnowledgeDocumentItem, KnowledgeRetrieveItem, ProjectListItem } fr
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { Database, FileUp, RefreshCw, Search, Download, Trash2 } from 'lucide-vue-next';
 
+import FcModalShell from '../components/FcModalShell.vue';
 import { uiRuntime } from '../runtime';
 import { useI18n } from '../composables/useI18n';
 import { parseApiError } from '../utils/api-error';
@@ -55,6 +56,17 @@ const isRetrieving = ref(false);
 const indexingDocumentIds = ref(new Set<string>());
 const deletingDocumentIds = ref(new Set<string>());
 const activeUploadInputKey = ref(0);
+const isChunksModalOpen = ref(false);
+const isIndexSettingsModalOpen = ref(false);
+const isUploadDragOver = ref(false);
+const indexSettings = reactive({
+  maxChars: 1400,
+  overlapChars: 210
+});
+const indexSettingsDraft = reactive({
+  maxChars: 1400,
+  overlapChars: 210
+});
 
 const desktopBinaryStatus = ref<DesktopKnowledgeBinaryStatus | null>(null);
 const isLoadingBinaryStatus = ref(false);
@@ -67,6 +79,25 @@ const canRetrieve = computed(() => retrieveForm.query.trim().length > 0);
 const shouldShowBinaryPanel = computed(() => serverConverterInstalled.value === false);
 const webBinaryDownloadUrl = computed(() => resolveBinaryDownloadUrl(webBinaryPlatform.value));
 
+const closeChunksModal = (): void => {
+  isChunksModalOpen.value = false;
+};
+
+const openChunksModal = (document: KnowledgeDocumentItem): void => {
+  selectedDocumentId.value = document.id;
+  isChunksModalOpen.value = true;
+};
+
+const openIndexSettingsModal = (): void => {
+  indexSettingsDraft.maxChars = indexSettings.maxChars;
+  indexSettingsDraft.overlapChars = indexSettings.overlapChars;
+  isIndexSettingsModalOpen.value = true;
+};
+
+const closeIndexSettingsModal = (): void => {
+  isIndexSettingsModalOpen.value = false;
+};
+
 const refreshDocuments = async (): Promise<void> => {
   isLoadingDocuments.value = true;
   try {
@@ -78,6 +109,7 @@ const refreshDocuments = async (): Promise<void> => {
     if (selectedDocumentId.value && !documents.value.some((item) => item.id === selectedDocumentId.value)) {
       selectedDocumentId.value = '';
       chunks.value = [];
+      closeChunksModal();
     }
   } catch (error) {
     const parsed = parseApiError(error);
@@ -112,9 +144,7 @@ const loadChunks = async (documentId: string): Promise<void> => {
   }
 };
 
-const onUploadFile = async (event: Event): Promise<void> => {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
+const uploadDocumentFile = async (file: File): Promise<void> => {
   if (!file) {
     return;
   }
@@ -140,6 +170,66 @@ const onUploadFile = async (event: Event): Promise<void> => {
   }
 };
 
+const onUploadFile = async (event: Event): Promise<void> => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) {
+    return;
+  }
+  await uploadDocumentFile(file);
+};
+
+const onUploadDragOver = (event: DragEvent): void => {
+  event.preventDefault();
+  if (isUploading.value) {
+    return;
+  }
+  isUploadDragOver.value = true;
+};
+
+const onUploadDragLeave = (event: DragEvent): void => {
+  event.preventDefault();
+  const currentTarget = event.currentTarget as HTMLElement | null;
+  if (currentTarget?.contains(event.relatedTarget as Node | null)) {
+    return;
+  }
+  isUploadDragOver.value = false;
+};
+
+const onUploadDrop = async (event: DragEvent): Promise<void> => {
+  event.preventDefault();
+  isUploadDragOver.value = false;
+  if (isUploading.value) {
+    return;
+  }
+  const file = event.dataTransfer?.files?.[0];
+  if (!file) {
+    return;
+  }
+  await uploadDocumentFile(file);
+};
+
+const normalizeIndexSettings = (
+  settings: { maxChars: number; overlapChars: number }
+): { maxChars: number; overlapChars: number } => {
+  const maxChars = Math.max(400, Math.min(4000, Number(settings.maxChars) || 1400));
+  const overlapLimit = Math.max(0, Math.min(1600, maxChars - 50));
+  const overlapChars = Math.max(
+    0,
+    Math.min(overlapLimit, Number(settings.overlapChars) || Math.floor(maxChars * 0.15))
+  );
+  return { maxChars, overlapChars };
+};
+
+const applyIndexSettings = (): void => {
+  const normalized = normalizeIndexSettings(indexSettingsDraft);
+  indexSettings.maxChars = normalized.maxChars;
+  indexSettings.overlapChars = normalized.overlapChars;
+  indexSettingsDraft.maxChars = normalized.maxChars;
+  indexSettingsDraft.overlapChars = normalized.overlapChars;
+  closeIndexSettingsModal();
+};
+
 const indexDocument = async (documentId: string): Promise<void> => {
   const next = new Set(indexingDocumentIds.value);
   next.add(documentId);
@@ -147,7 +237,14 @@ const indexDocument = async (documentId: string): Promise<void> => {
 
   try {
     toast.info(t('Indexing started. This may take a few minutes.'), 5000);
-    await uiRuntime.api.indexKnowledgeDocument({ documentId });
+    const normalized = normalizeIndexSettings(indexSettings);
+    indexSettings.maxChars = normalized.maxChars;
+    indexSettings.overlapChars = normalized.overlapChars;
+    await uiRuntime.api.indexKnowledgeDocument({
+      documentId,
+      maxChars: normalized.maxChars,
+      overlapChars: normalized.overlapChars
+    });
     toast.success(t('Knowledge indexing completed.'));
     await refreshDocuments();
     if (selectedDocumentId.value === documentId) {
@@ -374,28 +471,35 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
       </div>
     </article>
 
-    <div class="knowledge-grid">
-      <article class="fc-card">
-        <h4 class="fc-card-title">{{ t('Upload and index') }}</h4>
-        <p class="fc-list-meta">{{ t('Upload internal files and index them into retrievable chunks.') }}</p>
-        <p class="fc-list-meta">{{ t('Tip: Upload a document, click Index, then use Retrieve context.') }}</p>
+    <article class="fc-card">
+      <h4 class="fc-card-title">{{ t('Upload and index') }}</h4>
+      <p class="fc-list-meta">{{ t('Upload internal files and index them into retrievable chunks.') }}</p>
+      <p class="fc-list-meta">{{ t('Tip: Upload a document, click Index, then use Retrieve context.') }}</p>
 
-        <div class="knowledge-filters">
-          <select v-model="selectedProjectId" class="fc-input">
-            <option value="">{{ t('All projects') }}</option>
-            <option v-for="project in projects" :key="project.id" :value="project.id">
-              {{ project.name }}
-            </option>
-          </select>
-          <select v-model="selectedStatus" class="fc-input">
-            <option value="all">{{ t('All statuses') }}</option>
-            <option value="uploaded">{{ t('Uploaded') }}</option>
-            <option value="indexing">{{ t('Indexing') }}</option>
-            <option value="indexed">{{ t('Indexed') }}</option>
-            <option value="failed">{{ t('Failed') }}</option>
-          </select>
-        </div>
+      <div class="knowledge-filters">
+        <select v-model="selectedProjectId" class="fc-input">
+          <option value="">{{ t('All projects') }}</option>
+          <option v-for="project in projects" :key="project.id" :value="project.id">
+            {{ project.name }}
+          </option>
+        </select>
+        <select v-model="selectedStatus" class="fc-input">
+          <option value="all">{{ t('All statuses') }}</option>
+          <option value="uploaded">{{ t('Uploaded') }}</option>
+          <option value="indexing">{{ t('Indexing') }}</option>
+          <option value="indexed">{{ t('Indexed') }}</option>
+          <option value="failed">{{ t('Failed') }}</option>
+        </select>
+      </div>
 
+      <div
+        class="knowledge-upload-zone"
+        :class="{ 'is-drag-over': isUploadDragOver, 'is-disabled': isUploading }"
+        @dragenter.prevent="isUploadDragOver = !isUploading"
+        @dragover="onUploadDragOver"
+        @dragleave="onUploadDragLeave"
+        @drop="onUploadDrop"
+      >
         <label class="knowledge-upload">
           <FileUp :size="16" />
           <span>{{ isUploading ? t('Uploading…') : t('Select document') }}</span>
@@ -406,87 +510,69 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
             @change="onUploadFile"
           />
         </label>
+        <p class="fc-list-meta">{{ t('Drag and drop a file here, or click to choose.') }}</p>
+      </div>
 
-        <div v-if="documents.length === 0" class="fc-empty">
-          <Database :size="20" class="fc-empty-icon" />
-          <h4>{{ t('No knowledge documents yet') }}</h4>
-          <p>{{ t('Upload your first document to begin building retrieval context.') }}</p>
-        </div>
+      <div class="knowledge-settings-inline">
+        <button class="fc-btn-secondary" @click="openIndexSettingsModal">
+          {{ t('Advanced indexing settings') }}
+        </button>
+        <span class="fc-list-meta">
+          {{ t('Current chunking config', { maxChars: indexSettings.maxChars, overlapChars: indexSettings.overlapChars }) }}
+        </span>
+      </div>
 
-        <table v-else class="fc-budget-table">
-          <thead>
-            <tr>
-              <th>{{ t('Document') }}</th>
-              <th>{{ t('Status') }}</th>
-              <th>{{ t('Actions') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="document in documents" :key="document.id">
-              <td>
-                <div style="display:flex;flex-direction:column;gap:4px;">
-                  <strong>{{ document.name }}</strong>
-                  <span class="fc-list-meta">{{ document.fileType }} · {{ document.source }}</span>
-                </div>
-              </td>
-              <td>
-                <span class="fc-list-meta">{{ formatStatus(document.status) }}</span>
-              </td>
-              <td>
-                <div class="fc-inline-actions">
-                  <button class="fc-btn-secondary" @click="selectedDocumentId = document.id">
-                    {{ t('View') }}
-                  </button>
-                  <button
-                    class="fc-btn-secondary"
-                    :disabled="indexingDocumentIds.has(document.id) || document.status === 'indexing'"
-                    @click="indexDocument(document.id)"
-                  >
-                    {{ indexingDocumentIds.has(document.id) ? t('Indexing…') : t('Index') }}
-                  </button>
-                  <button
-                    class="fc-btn-secondary"
-                    :disabled="deletingDocumentIds.has(document.id) || indexingDocumentIds.has(document.id)"
-                    @click="deleteDocument(document)"
-                  >
-                    <Trash2 :size="14" />
-                    {{ deletingDocumentIds.has(document.id) ? t('Deleting…') : t('Delete') }}
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </article>
+      <div v-if="documents.length === 0" class="fc-empty">
+        <Database :size="20" class="fc-empty-icon" />
+        <h4>{{ t('No knowledge documents yet') }}</h4>
+        <p>{{ t('Upload your first document to begin building retrieval context.') }}</p>
+      </div>
 
-      <article class="fc-card">
-        <h4 class="fc-card-title">{{ t('Chunks preview') }}</h4>
-        <p class="fc-list-meta">
-          {{ selectedDocument ? selectedDocument.name : t('Select a document to inspect indexed chunks.') }}
-        </p>
-
-        <div v-if="isLoadingChunks" class="fc-loading">
-          {{ t('Loading chunks…') }}
-        </div>
-        <div v-else-if="!selectedDocumentId" class="fc-empty">
-          <h4>{{ t('No document selected') }}</h4>
-          <p>{{ t('Pick a document from the list to view chunks.') }}</p>
-        </div>
-        <div v-else-if="chunks.length === 0" class="fc-empty">
-          <h4>{{ t('No chunks available') }}</h4>
-          <p>{{ t('Run indexing to generate chunks for this document.') }}</p>
-        </div>
-        <ul v-else class="knowledge-chunk-list">
-          <li v-for="chunk in chunks.slice(0, 20)" :key="chunk.id">
-            <div class="knowledge-chunk-head">
-              <strong>#{{ chunk.chunkIndex }}</strong>
-              <span class="fc-list-meta">{{ chunk.sectionPath || t('No section') }} · {{ chunk.tokenEstimate ?? 0 }} tok</span>
-            </div>
-            <p>{{ chunk.content }}</p>
-          </li>
-        </ul>
-      </article>
-    </div>
+      <table v-else class="fc-table">
+        <thead>
+          <tr>
+            <th>{{ t('Document') }}</th>
+            <th>{{ t('Status') }}</th>
+            <th>{{ t('Actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="document in documents" :key="document.id">
+            <td>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <strong>{{ document.name }}</strong>
+                <span class="fc-list-meta">{{ document.fileType }} · {{ document.source }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="fc-list-meta">{{ formatStatus(document.status) }}</span>
+            </td>
+            <td>
+              <div class="fc-inline-actions">
+                <button class="fc-btn-secondary" @click="openChunksModal(document)">
+                  {{ t('Preview chunks') }}
+                </button>
+                <button
+                  class="fc-btn-secondary"
+                  :disabled="indexingDocumentIds.has(document.id) || document.status === 'indexing'"
+                  @click="indexDocument(document.id)"
+                >
+                  {{ indexingDocumentIds.has(document.id) ? t('Indexing…') : t('Index') }}
+                </button>
+                <button
+                  class="fc-btn-secondary"
+                  :disabled="deletingDocumentIds.has(document.id) || indexingDocumentIds.has(document.id)"
+                  @click="deleteDocument(document)"
+                >
+                  <Trash2 :size="14" />
+                  {{ deletingDocumentIds.has(document.id) ? t('Deleting…') : t('Delete') }}
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </article>
 
     <article class="fc-card" style="margin-top: 14px;">
       <h4 class="fc-card-title">{{ t('Retrieve context') }}</h4>
@@ -527,16 +613,101 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
         </li>
       </ul>
     </article>
+
+    <FcModalShell
+      :open="isChunksModalOpen"
+      :ariaLabel="t('Chunks preview')"
+      panel-class="knowledge-chunks-modal"
+      @close="closeChunksModal"
+    >
+        <div class="knowledge-modal-head">
+          <div>
+            <h4 class="fc-card-title">{{ t('Chunks preview') }}</h4>
+            <p class="fc-list-meta">
+              {{ selectedDocument ? selectedDocument.name : t('Select a document to inspect indexed chunks.') }}
+            </p>
+          </div>
+          <button class="fc-btn-secondary" @click="closeChunksModal">
+            {{ t('Close') }}
+          </button>
+        </div>
+
+        <div v-if="isLoadingChunks" class="fc-loading">
+          {{ t('Loading chunks…') }}
+        </div>
+        <div v-else-if="!selectedDocumentId" class="fc-empty">
+          <h4>{{ t('No document selected') }}</h4>
+          <p>{{ t('Pick a document from the list to view chunks.') }}</p>
+        </div>
+        <div v-else-if="chunks.length === 0" class="fc-empty">
+          <h4>{{ t('No chunks available') }}</h4>
+          <p>{{ t('Run indexing to generate chunks for this document.') }}</p>
+        </div>
+        <ul v-else class="knowledge-chunk-list">
+          <li v-for="chunk in chunks.slice(0, 30)" :key="chunk.id">
+            <div class="knowledge-chunk-head">
+              <strong>#{{ chunk.chunkIndex }}</strong>
+              <span class="fc-list-meta">{{ chunk.sectionPath || t('No section') }} · {{ chunk.tokenEstimate ?? 0 }} tok</span>
+            </div>
+            <p>{{ chunk.content }}</p>
+          </li>
+        </ul>
+    </FcModalShell>
+
+    <FcModalShell
+      :open="isIndexSettingsModalOpen"
+      :ariaLabel="t('Advanced indexing settings')"
+      panel-class="knowledge-settings-modal"
+      @close="closeIndexSettingsModal"
+    >
+      <div class="knowledge-modal-head">
+        <div>
+          <h4 class="fc-card-title">{{ t('Advanced indexing settings') }}</h4>
+          <p class="fc-list-meta">{{ t('Tune chunking so retrieval quality matches your documents.') }}</p>
+        </div>
+        <button class="fc-btn-secondary" @click="closeIndexSettingsModal">
+          {{ t('Close') }}
+        </button>
+      </div>
+
+      <div class="knowledge-index-settings-grid">
+        <label>
+          <span class="fc-list-meta">{{ t('Max chunk length (chars)') }}</span>
+          <input
+            v-model.number="indexSettingsDraft.maxChars"
+            class="fc-input"
+            type="number"
+            min="400"
+            max="4000"
+            step="50"
+          />
+        </label>
+        <label>
+          <span class="fc-list-meta">{{ t('Chunk overlap (chars)') }}</span>
+          <input
+            v-model.number="indexSettingsDraft.overlapChars"
+            class="fc-input"
+            type="number"
+            min="0"
+            max="1600"
+            step="10"
+          />
+        </label>
+      </div>
+
+      <div class="fc-toolbar" style="margin-top: 12px;">
+        <button class="fc-btn-primary" @click="applyIndexSettings">
+          {{ t('Apply settings') }}
+        </button>
+        <button class="fc-btn-secondary" @click="closeIndexSettingsModal">
+          {{ t('Close') }}
+        </button>
+      </div>
+    </FcModalShell>
   </section>
 </template>
 
 <style scoped>
-.knowledge-grid {
-  display: grid;
-  grid-template-columns: 1.15fr 1fr;
-  gap: 14px;
-}
-
 .knowledge-filters {
   display: grid;
   grid-template-columns: 1fr 190px;
@@ -544,19 +715,51 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
   margin: 10px 0;
 }
 
+.knowledge-upload-zone {
+  border: 1px dashed var(--fc-border-subtle);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.knowledge-upload-zone.is-drag-over {
+  border-color: var(--fc-accent);
+  background: color-mix(in srgb, var(--fc-accent) 8%, var(--fc-surface));
+}
+
+.knowledge-upload-zone.is-disabled {
+  opacity: 0.7;
+}
+
 .knowledge-upload {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px dashed var(--fc-border-subtle);
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 6px 0;
   cursor: pointer;
-  margin-bottom: 10px;
 }
 
 .knowledge-upload input {
   display: none;
+}
+
+.knowledge-settings-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.knowledge-index-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.knowledge-index-settings-grid label {
+  display: grid;
+  gap: 6px;
 }
 
 .knowledge-download-row {
@@ -607,13 +810,26 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
   margin: 12px 0;
 }
 
-@media (max-width: 1080px) {
-  .knowledge-grid {
-    grid-template-columns: 1fr;
-  }
+.knowledge-chunks-modal {
+  width: min(980px, 100%);
+}
 
+.knowledge-settings-modal {
+  width: min(700px, 100%);
+}
+
+.knowledge-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 1080px) {
   .knowledge-filters,
-  .knowledge-retrieve-form {
+  .knowledge-retrieve-form,
+  .knowledge-index-settings-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -94,7 +94,7 @@ const navGroups = [
   },
   {
     label: 'Operations',
-    items: uiRuntime.navigation.filter(n => ['/agents', '/knowledge', '/projects', '/tasks', '/cron'].includes(n.path)),
+    items: uiRuntime.navigation.filter(n => ['/agents', '/projects', '/tasks', '/cron', '/knowledge'].includes(n.path)),
   },
   {
     label: 'Governance',
@@ -110,10 +110,10 @@ const quickSwitcherBaseItems = computed<QuickSwitcherItem[]>(() => [
   { id: 'route-dashboard', label: t('Dashboard'), hint: t('Overview'), route: '/dashboard' },
   { id: 'route-chat', label: t('Chat'), hint: t('Overview'), route: '/chat' },
   { id: 'route-agents', label: t('Agents'), hint: t('Operations'), route: '/agents' },
-  { id: 'route-knowledge', label: t('Knowledge'), hint: t('Operations'), route: '/knowledge' },
   { id: 'route-projects', label: t('Projects'), hint: t('Operations'), route: '/projects' },
   { id: 'route-tasks', label: t('Tasks'), hint: t('Operations'), route: '/tasks' },
   { id: 'route-cron', label: t('Cron'), hint: t('Operations'), route: '/cron' },
+  { id: 'route-knowledge', label: t('Knowledge'), hint: t('Operations'), route: '/knowledge' },
   { id: 'route-inbox', label: t('Inbox'), hint: t('Governance'), route: '/inbox' },
   { id: 'route-settings', label: t('Settings'), hint: t('System'), route: '/settings' }
 ]);

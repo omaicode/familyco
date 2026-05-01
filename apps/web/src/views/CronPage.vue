@@ -267,7 +267,7 @@ onMounted(async () => {
       </div>
 
       <article v-else class="fc-card" style="margin-bottom: 16px;">
-        <table class="fc-budget-table">
+        <table class="fc-table">
           <thead>
             <tr>
               <th>{{ t('Name') }}</th>

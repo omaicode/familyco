@@ -844,14 +844,14 @@ body {
   background: var(--fc-primary);
 }
 
-.fc-budget-table {
+.fc-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.8125rem;
 }
 
-.fc-budget-table th,
-.fc-budget-table td {
+.fc-table th,
+.fc-table td {
   text-align: left;
   padding: 8px 6px;
   border-bottom: 1px solid var(--fc-border-subtle);
