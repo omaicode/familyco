@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { KnowledgeDocumentItem, KnowledgeRetrieveItem, ProjectListItem } from '@familyco/ui';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { Database, FileUp, RefreshCw, Search, Download, Trash2 } from 'lucide-vue-next';
+import { Database, FileUp, RefreshCw, Search, Download, Trash2, SlidersHorizontal } from 'lucide-vue-next';
 
 import FcModalShell from '../components/FcModalShell.vue';
 import { uiRuntime } from '../runtime';
@@ -472,9 +472,21 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
     </article>
 
     <article class="fc-card">
-      <h4 class="fc-card-title">{{ t('Upload and index') }}</h4>
-      <p class="fc-list-meta">{{ t('Upload internal files and index them into retrievable chunks.') }}</p>
-      <p class="fc-list-meta">{{ t('Tip: Upload a document, click Index, then use Retrieve context.') }}</p>
+      <div class="knowledge-card-head">
+        <div>
+          <h4 class="fc-card-title">{{ t('Upload and index') }}</h4>
+          <p class="fc-list-meta">{{ t('Upload internal files and index them into retrievable chunks.') }}</p>
+          <p class="fc-list-meta">{{ t('Tip: Upload a document, click Index, then use Retrieve context.') }}</p>
+        </div>
+        <button
+          class="fc-btn-secondary fc-btn-icon knowledge-settings-button"
+          :aria-label="t('Advanced indexing settings')"
+          :title="t('Advanced indexing settings')"
+          @click="openIndexSettingsModal"
+        >
+          <SlidersHorizontal :size="14" />
+        </button>
+      </div>
 
       <div class="knowledge-filters">
         <select v-model="selectedProjectId" class="fc-input">
@@ -511,15 +523,6 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
           />
         </label>
         <p class="fc-list-meta">{{ t('Drag and drop a file here, or click to choose.') }}</p>
-      </div>
-
-      <div class="knowledge-settings-inline">
-        <button class="fc-btn-secondary" @click="openIndexSettingsModal">
-          {{ t('Advanced indexing settings') }}
-        </button>
-        <span class="fc-list-meta">
-          {{ t('Current chunking config', { maxChars: indexSettings.maxChars, overlapChars: indexSettings.overlapChars }) }}
-        </span>
       </div>
 
       <div v-if="documents.length === 0" class="fc-empty">
@@ -715,6 +718,14 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
   margin: 10px 0;
 }
 
+.knowledge-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .knowledge-upload-zone {
   border: 1px dashed var(--fc-border-subtle);
   border-radius: 10px;
@@ -743,12 +754,9 @@ function resolveBinaryDownloadUrl(platform: WebBinaryPlatform): string {
   display: none;
 }
 
-.knowledge-settings-inline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+.knowledge-settings-button {
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .knowledge-index-settings-grid {
