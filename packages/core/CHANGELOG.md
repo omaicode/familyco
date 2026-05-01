@@ -1,5 +1,16 @@
 # @familyco/core
 
+## 1.1.0
+
+### Minor Changes
+
+- v1.1.0
+
+  - Added `Knowledge` feature
+  - Fix scrollbar in `Chat`
+  - Fix CSS colors in `Task Activity`
+  - Refactor composition root for server app
+
 ## 1.0.3
 
 ### Patch Changes
