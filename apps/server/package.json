@@ -1,6 +1,6 @@
 {
   "name": "@familyco/server",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "FamilyCo Fastify server",
   "type": "module",
   "main": "dist/index.js",
@@ -27,6 +27,7 @@
     "@fastify/jwt": "^10.0.0",
     "@fastify/multipart": "^10.0.0",
     "@fastify/websocket": "^11.2.0",
+    "@sqliteai/sqlite-vector": "^0.9.95",
     "ai": "^6.0.168",
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.4.0",

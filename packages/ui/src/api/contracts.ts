@@ -734,6 +734,90 @@ export interface UpdateToolCustomFieldsPayload {
 }
 
 // ---------------------------------------------------------------------------
+// Knowledge
+// ---------------------------------------------------------------------------
+
+export type KnowledgeDocumentStatus = 'uploaded' | 'indexing' | 'indexed' | 'failed';
+
+export interface KnowledgeDocumentItem {
+  id: string;
+  name: string;
+  fileType: string;
+  source: string;
+  projectId: string | null;
+  version: number;
+  status: KnowledgeDocumentStatus;
+  checksum: string;
+  filePath: string;
+  markdownPath: string | null;
+  converterCommand: string | null;
+  converterMeta: Record<string, unknown> | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgeChunkItem {
+  id: string;
+  documentId: string;
+  chunkIndex: number;
+  sectionPath: string | null;
+  page: number | null;
+  content: string;
+  tokenEstimate: number | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface KnowledgeRetrieveItem {
+  id: string;
+  score: number;
+  model: string;
+  documentId: string;
+  documentName: string;
+  projectId: string | null;
+  source: string;
+  chunkIndex: number;
+  sectionPath: string | null;
+  page: number | null;
+  content: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface KnowledgeCommandItem {
+  id: string;
+  description: string;
+}
+
+export interface ListKnowledgeDocumentsQuery {
+  projectId?: string;
+  status?: KnowledgeDocumentStatus;
+  limit?: number;
+}
+
+export interface UploadKnowledgeDocumentPayload {
+  file: Blob;
+  filename: string;
+  projectId?: string;
+  source?: string;
+}
+
+export interface IndexKnowledgeDocumentPayload {
+  documentId: string;
+  commandId?: string;
+  maxChars?: number;
+  overlapChars?: number;
+}
+
+export interface RetrieveKnowledgePayload {
+  query: string;
+  topK?: number;
+  minScore?: number;
+  projectId?: string;
+  documentId?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Plugins
 // ---------------------------------------------------------------------------
 
@@ -858,6 +942,22 @@ export interface FamilyCoApiContracts {
   enableTool: (toolName: string) => Promise<ToolListItem>;
   disableTool: (toolName: string) => Promise<ToolListItem>;
   updateToolCustomFields: (payload: UpdateToolCustomFieldsPayload) => Promise<ToolListItem>;
+  listKnowledgeCommands: () => Promise<{ items: KnowledgeCommandItem[] }>;
+  getKnowledgeConverterStatus: () => Promise<{ installed: boolean; path: string | null }>;
+  listKnowledgeDocuments: (query?: ListKnowledgeDocumentsQuery) => Promise<{ items: KnowledgeDocumentItem[] }>;
+  uploadKnowledgeDocument: (payload: UploadKnowledgeDocumentPayload) => Promise<KnowledgeDocumentItem>;
+  indexKnowledgeDocument: (payload: IndexKnowledgeDocumentPayload) => Promise<{
+    document: KnowledgeDocumentItem;
+    chunkCount: number;
+    embeddingModel: string;
+  }>;
+  deleteKnowledgeDocument: (documentId: string) => Promise<{ ok: boolean }>;
+  listKnowledgeChunks: (documentId: string) => Promise<{ items: KnowledgeChunkItem[] }>;
+  retrieveKnowledge: (payload: RetrieveKnowledgePayload) => Promise<{
+    query: string;
+    topK: number;
+    items: KnowledgeRetrieveItem[];
+  }>;
   listPlugins: () => Promise<PluginsListResponse>;
   getPlugin: (pluginId: string) => Promise<PluginListItem>;
   discoverPlugins: () => Promise<PluginDiscoverResult>;
@@ -1108,6 +1208,60 @@ export const createFamilyCoApiContracts = (client: UIApiClient): FamilyCoApiCont
       `/api/v1/tools/${encodeURIComponent(payload.toolName)}/custom-fields`,
       { customFieldValues: payload.customFieldValues }
     ),
+  listKnowledgeCommands: () => client.get<{ items: KnowledgeCommandItem[] }>('/api/v1/knowledge/commands'),
+  getKnowledgeConverterStatus: () =>
+    client.get<{ installed: boolean; path: string | null }>('/api/v1/knowledge/converter/status'),
+  listKnowledgeDocuments: (query = {}) => {
+    const params = new URLSearchParams();
+    if (query.projectId) {
+      params.set('projectId', query.projectId);
+    }
+    if (query.status) {
+      params.set('status', query.status);
+    }
+    if (typeof query.limit === 'number') {
+      params.set('limit', String(query.limit));
+    }
+    const queryString = params.toString();
+    return client.get<{ items: KnowledgeDocumentItem[] }>(
+      queryString ? `/api/v1/knowledge/documents?${queryString}` : '/api/v1/knowledge/documents'
+    );
+  },
+  uploadKnowledgeDocument: async (payload) => {
+    const formData = new FormData();
+    formData.append('file', payload.file, payload.filename);
+    if (payload.projectId) {
+      formData.append('projectId', payload.projectId);
+    }
+    if (payload.source) {
+      formData.append('source', payload.source);
+    }
+    return client.post<KnowledgeDocumentItem>('/api/v1/knowledge/documents/upload', formData);
+  },
+  indexKnowledgeDocument: (payload) =>
+    client.post<{
+      document: KnowledgeDocumentItem;
+      chunkCount: number;
+      embeddingModel: string;
+    }, { commandId?: string; maxChars?: number; overlapChars?: number }>(
+      `/api/v1/knowledge/documents/${payload.documentId}/index`,
+      {
+        ...(payload.commandId ? { commandId: payload.commandId } : {}),
+        ...(payload.maxChars !== undefined ? { maxChars: payload.maxChars } : {}),
+        ...(payload.overlapChars !== undefined ? { overlapChars: payload.overlapChars } : {})
+      },
+      { timeout: 5 * 60 * 1000 }
+    ),
+  deleteKnowledgeDocument: (documentId) =>
+    client.delete<{ ok: boolean }>(`/api/v1/knowledge/documents/${documentId}`),
+  listKnowledgeChunks: (documentId) =>
+    client.get<{ items: KnowledgeChunkItem[] }>(`/api/v1/knowledge/documents/${documentId}/chunks`),
+  retrieveKnowledge: (payload) =>
+    client.post<{
+      query: string;
+      topK: number;
+      items: KnowledgeRetrieveItem[];
+    }, RetrieveKnowledgePayload>('/api/v1/knowledge/retrieve', payload),
   listPlugins: () => client.get<PluginsListResponse>('/api/v1/plugins'),
   getPlugin: (pluginId) => client.get<PluginListItem>(`/api/v1/plugins/${pluginId}`),
   discoverPlugins: () => client.post<PluginDiscoverResult>('/api/v1/plugins/discover'),

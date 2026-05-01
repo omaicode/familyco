@@ -2,6 +2,7 @@ export type AppRoutePath =
   | '/dashboard'
   | '/chat'
   | '/agents'
+  | '/knowledge'
   | '/projects'
   | '/tasks'
   | '/cron'
@@ -56,6 +57,12 @@ export const appNavigationSections: AppNavigationSection[] = [
     label: 'Cron',
     description: 'Manage recurring schedules, prompts, and execution history.'
   },
+  {
+    path: '/knowledge',
+    label: 'Knowledge',
+    description: 'Upload internal documents, index content, and retrieve relevant context for agents.',
+    primaryActionLabel: 'Upload document'
+  },  
   {
     path: '/inbox',
     label: 'Inbox',

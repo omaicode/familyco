@@ -341,7 +341,7 @@ onMounted(() => {
           <button class="fc-btn-secondary" @click="resetFilters">{{ t('Reset filters') }}</button>
         </div>
 
-        <table class="fc-budget-table">
+        <table class="fc-table">
           <template v-if="filteredTools.length > 0">
           <thead>
             <tr>

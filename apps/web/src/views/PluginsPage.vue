@@ -130,7 +130,7 @@ onMounted(() => {
       </div>
 
       <article v-else class="fc-card">
-        <table class="fc-budget-table">
+        <table class="fc-table">
           <thead>
             <tr>
               <th>{{ t("Name") }}</th>

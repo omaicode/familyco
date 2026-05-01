@@ -19,6 +19,9 @@ export interface FamilyCoColorTokens {
   primary: string;
   primaryHover: string;
   primaryForeground: string;
+  secondary: string;
+  secondaryHover: string;
+  secondaryForeground: string;
   success: string;
   warning: string;
   error: string;
@@ -84,6 +87,9 @@ export const familyCoUILightTheme: FamilyCoUITheme = {
     primary: '#127A70',
     primaryHover: '#0E645C',
     primaryForeground: '#F5FFFD',
+    secondary: '#3F504E',
+    secondaryHover: '#344B41',
+    secondaryForeground: '#F4F8F7',
     success: '#2D8A4C',
     warning: '#B36A1E',
     error: '#C23D3D',
@@ -142,9 +148,12 @@ export const familyCoUIDarkTheme: FamilyCoUITheme = {
     textMuted: '#AFC0CC',
     textFaint: '#8EA0AE',
     borderSubtle: '#2C3E4A',
-    primary: '#36A89B',
-    primaryHover: '#2F9287',
-    primaryForeground: '#08231F',
+    primary: '#4FB8AC',
+    primaryHover: '#67C4BA',
+    primaryForeground: '#041715',
+    secondary: '#7F9F9B',
+    secondaryHover: '#95B2AF',
+    secondaryForeground: '#081311',
     success: '#5EC58A',
     warning: '#E2A45B',
     error: '#E77878',

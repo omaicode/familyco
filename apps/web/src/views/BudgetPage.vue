@@ -130,7 +130,7 @@ const formatTokensK = (value: number): string => (value / 1000).toFixed(1);
       <div class="fc-budget-split">
         <article class="fc-card">
           <h4 class="fc-card-title">{{ t('Usage by adapter') }}</h4>
-          <table class="fc-budget-table">
+          <table class="fc-table">
             <thead>
               <tr>
                 <th>{{ t('Adapter') }}</th>
@@ -173,7 +173,7 @@ const formatTokensK = (value: number): string => (value / 1000).toFixed(1);
       <div class="fc-budget-split" style="margin-top: 14px;">
         <article class="fc-card">
           <h4 class="fc-card-title">{{ t('Usage by model') }}</h4>
-          <table class="fc-budget-table">
+          <table class="fc-table">
             <thead>
               <tr>
                 <th>{{ t('Model') }}</th>
@@ -198,7 +198,7 @@ const formatTokensK = (value: number): string => (value / 1000).toFixed(1);
 
         <article class="fc-card">
           <h4 class="fc-card-title">{{ t('Top costly runs') }}</h4>
-          <table class="fc-budget-table">
+          <table class="fc-table">
             <thead>
               <tr>
                 <th>{{ t('Run') }}</th>
@@ -225,7 +225,7 @@ const formatTokensK = (value: number): string => (value / 1000).toFixed(1);
       <div class="fc-budget-split" style="margin-top: 14px;">
         <article class="fc-card">
           <h4 class="fc-card-title">{{ t('Weekly usage') }}</h4>
-          <table class="fc-budget-table">
+          <table class="fc-table">
             <thead>
               <tr>
                 <th>{{ t('Week') }}</th>
@@ -248,7 +248,7 @@ const formatTokensK = (value: number): string => (value / 1000).toFixed(1);
 
         <article class="fc-card">
           <h4 class="fc-card-title">{{ t('Monthly usage') }}</h4>
-          <table class="fc-budget-table">
+          <table class="fc-table">
             <thead>
               <tr>
                 <th>{{ t('Month') }}</th>
@@ -273,7 +273,7 @@ const formatTokensK = (value: number): string => (value / 1000).toFixed(1);
       <div class="fc-budget-split" style="margin-top: 14px;">
         <article class="fc-card">
           <h4 class="fc-card-title">{{ t('Top costly agents') }}</h4>
-          <table class="fc-budget-table">
+          <table class="fc-table">
             <thead>
               <tr>
                 <th>{{ t('Agent') }}</th>
@@ -296,7 +296,7 @@ const formatTokensK = (value: number): string => (value / 1000).toFixed(1);
 
         <article class="fc-card">
           <h4 class="fc-card-title">{{ t('Top costly projects') }}</h4>
-          <table class="fc-budget-table">
+          <table class="fc-table">
             <thead>
               <tr>
                 <th>{{ t('Project') }}</th>

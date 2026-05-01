@@ -15,6 +15,8 @@ export interface IpcHandlerOptions {
   downloadUpdate?: () => Promise<boolean>;
   installDownloadedUpdate?: () => Promise<boolean>;
   getUpdateState?: () => DesktopUpdateEventPayload;
+  getKnowledgeBinaryStatus?: () => Promise<DesktopInvokeResponseMap['desktop:knowledge:binary:status']>;
+  downloadKnowledgeBinary?: () => Promise<DesktopInvokeResponseMap['desktop:knowledge:binary:download']>;
 }
 
 const withHeaders = (apiKey?: string): HeadersInit => {
@@ -97,6 +99,30 @@ export const registerDesktopIpcHandlers = (options: IpcHandlerOptions): void => 
     }
 
     return options.getUpdateState();
+  });
+
+  ipcMain.handle('desktop:knowledge:binary:status', async () => {
+    if (!options.getKnowledgeBinaryStatus) {
+      return {
+        installed: false,
+        path: '',
+        platform: process.platform,
+        downloadUrl: ''
+      } satisfies DesktopInvokeResponseMap['desktop:knowledge:binary:status'];
+    }
+
+    return options.getKnowledgeBinaryStatus();
+  });
+
+  ipcMain.handle('desktop:knowledge:binary:download', async () => {
+    if (!options.downloadKnowledgeBinary) {
+      return {
+        accepted: false,
+        installed: false
+      } satisfies DesktopInvokeResponseMap['desktop:knowledge:binary:download'];
+    }
+
+    return options.downloadKnowledgeBinary();
   });
 
   ipcMain.handle('desktop:notification:show', async (event, payload: DesktopInvokeRequestMap['desktop:notification:show']) => {

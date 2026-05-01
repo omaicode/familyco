@@ -323,7 +323,7 @@ function closeArtifactModal(): void {
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--fc-surface-2, rgba(255, 255, 255, 0.06));
+  background: var(--fc-surface, rgba(255, 255, 255, 0.06));
   color: var(--fc-text-secondary, #ccc);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -348,7 +348,7 @@ function closeArtifactModal(): void {
 .activity-actor {
   font-size: 12px;
   font-weight: 500;
-  color: var(--fc-text-primary, #e8e8e8);
+  color: var(--fc-text-main, #e8e8e8);
 }
 
 .activity-time {

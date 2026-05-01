@@ -42,8 +42,12 @@ applyTo: "apps/**/src/**/*.{ts,tsx,vue}, packages/**/src/**/*.{ts,tsx,vue}, plug
 
 - Keep pages and components thin. Move orchestration and derived business behavior into composables, services, or shared layers.
 - Reuse shared UI primitives and established patterns instead of adding one-off status, badge, link, or approval widgets.
+- Use `FcModalShell` for modal overlays; do not create custom backdrop/panel implementations in feature pages.
+- Keep primary screens minimal: move advanced or low-frequency controls behind progressive disclosure (modal/drawer/expandable section) instead of always-visible dense forms.
 - Route all user-facing text through i18n and update both English and Vietnamese catalogs when localized text exists.
 - Preserve responsive behavior and avoid broad restyling unless the task explicitly asks for visual changes.
+- For every UI/UX change, ship complete state coverage in the same PR: loading, empty, success, and error states; partial state-only changes are not acceptable.
+- Before finalizing UI edits, enforce consistency checks: no duplicate actions in multiple places, no mixed interaction patterns for the same task, and no hidden side effects behind unlabeled controls.
 
 ## Server And Runtime Rules
 
