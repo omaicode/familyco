@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard, MessagesSquare, Bot, FolderKanban, ListChecks,
-  Inbox, ShieldCheck, Settings, Wallet, Puzzle,
+  Inbox, ShieldCheck, Settings, Wallet, Puzzle, Database,
   Wifi, WifiOff, RefreshCw, AlertTriangle, BookOpen, Wrench, Search, Command, ArrowRight, Clock3
 } from 'lucide-vue-next';
 
@@ -74,6 +74,7 @@ const navIcons: Record<string, typeof LayoutDashboard> = {
   '/dashboard': LayoutDashboard,
   '/chat':      MessagesSquare,
   '/agents':    Bot,
+  '/knowledge': Database,
   '/projects':  FolderKanban,
   '/tasks':     ListChecks,
   '/cron':      Clock3,
@@ -93,7 +94,7 @@ const navGroups = [
   },
   {
     label: 'Operations',
-    items: uiRuntime.navigation.filter(n => ['/agents', '/projects', '/tasks', '/cron'].includes(n.path)),
+    items: uiRuntime.navigation.filter(n => ['/agents', '/knowledge', '/projects', '/tasks', '/cron'].includes(n.path)),
   },
   {
     label: 'Governance',
@@ -109,6 +110,7 @@ const quickSwitcherBaseItems = computed<QuickSwitcherItem[]>(() => [
   { id: 'route-dashboard', label: t('Dashboard'), hint: t('Overview'), route: '/dashboard' },
   { id: 'route-chat', label: t('Chat'), hint: t('Overview'), route: '/chat' },
   { id: 'route-agents', label: t('Agents'), hint: t('Operations'), route: '/agents' },
+  { id: 'route-knowledge', label: t('Knowledge'), hint: t('Operations'), route: '/knowledge' },
   { id: 'route-projects', label: t('Projects'), hint: t('Operations'), route: '/projects' },
   { id: 'route-tasks', label: t('Tasks'), hint: t('Operations'), route: '/tasks' },
   { id: 'route-cron', label: t('Cron'), hint: t('Operations'), route: '/cron' },

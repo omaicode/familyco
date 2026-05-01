@@ -26,6 +26,7 @@ import { registerCronController } from '../modules/cron/index.js';
 import { registerDashboardController } from '../modules/dashboard/index.js';
 import { registerEngineController } from '../modules/engine/index.js';
 import { registerInboxController } from '../modules/inbox/index.js';
+import { registerKnowledgeController } from '../modules/knowledge/index.js';
 import { registerPluginsController } from '../modules/plugins/plugin.controller.js';
 import type { PluginLoaderService } from '../modules/plugins/plugin-loader.service.js';
 import { registerProjectController } from '../modules/project/index.js';
@@ -35,6 +36,7 @@ import { registerSettingsController } from '../modules/settings/index.js';
 import { registerSetupController } from '../modules/setup/index.js';
 import { registerSkillsController } from '../modules/skills/index.js';
 import type { SkillsService } from '../modules/skills/skills.service.js';
+import type { KnowledgeService } from '../modules/knowledge/knowledge.service.js';
 import { type DailyQuotaGuard } from '../modules/shared/daily-quota.guard.js';
 import { registerTaskController } from '../modules/task/index.js';
 import {
@@ -68,6 +70,7 @@ export interface RegisterApiRoutesDeps {
   agentRunService: AgentRunService;
   heartbeatRuntime: HeartbeatRuntimeService;
   skillsService: SkillsService;
+  knowledgeService: KnowledgeService;
   toolsService: ToolManagementService;
   pluginService: PluginService;
   pluginLoader: PluginLoaderService;
@@ -151,6 +154,10 @@ export function registerApiRoutes(deps: RegisterApiRoutesDeps): void {
       });
       registerSkillsController(api, {
         skillsService: deps.skillsService,
+        auditService: deps.auditService
+      });
+      registerKnowledgeController(api, {
+        knowledgeService: deps.knowledgeService,
         auditService: deps.auditService
       });
       registerToolManagementController(api, {

@@ -2,6 +2,7 @@ export type AppRoutePath =
   | '/dashboard'
   | '/chat'
   | '/agents'
+  | '/knowledge'
   | '/projects'
   | '/tasks'
   | '/cron'
@@ -38,6 +39,12 @@ export const appNavigationSections: AppNavigationSection[] = [
     label: 'Agents',
     description: 'Manage L0/L1/L2 agents, permissions, and activity.',
     primaryActionLabel: 'Create agent'
+  },
+  {
+    path: '/knowledge',
+    label: 'Knowledge',
+    description: 'Upload internal documents, index content, and retrieve relevant context for agents.',
+    primaryActionLabel: 'Upload document'
   },
   {
     path: '/projects',

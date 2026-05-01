@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import type {
   AgentRepository,
   AgentRunRepository,
@@ -17,6 +19,7 @@ import { prismaClient } from '@familyco/db';
 import type { SettingsEncryption } from '../modules/settings/settings.encryption.js';
 import type { ApiKeyRepository } from '../modules/auth/api-key.service.js';
 import type { ChatConversationRepository } from '../modules/agent/chat-conversation.service.js';
+import type { KnowledgeRepository } from '../modules/knowledge/knowledge.repository.js';
 import {
   InMemoryAgentRepository,
   InMemoryAgentRunRepository,
@@ -27,6 +30,7 @@ import {
   InMemoryChatConversationRepository,
   InMemoryCronRepository,
   InMemoryInboxRepository,
+  InMemoryKnowledgeRepository,
   InMemoryPluginRepository,
   InMemoryPluginRunRepository,
   InMemoryProjectRepository,
@@ -47,7 +51,8 @@ import {
   PrismaProjectRepository,
   PrismaSettingsRepository,
   PrismaTaskRepository,
-  PrismaTaskSessionRepository
+  PrismaTaskSessionRepository,
+  SqliteVectorKnowledgeRepository
 } from '../repositories/index.js';
 
 export type RepositoryDriver = 'memory' | 'prisma';
@@ -68,6 +73,7 @@ export interface AppRepositories {
   projectRepository: ProjectRepository;
   settingsRepository: SettingsRepository;
   taskRepository: TaskRepository;
+  knowledgeRepository: KnowledgeRepository;
   taskSessionRepository: TaskSessionRepository;
 }
 
@@ -92,6 +98,9 @@ export function createRepositories(
       projectRepository: new PrismaProjectRepository(client),
       settingsRepository: new PrismaSettingsRepository(client, settingsEncryption),
       taskRepository: new PrismaTaskRepository(client),
+      knowledgeRepository: new SqliteVectorKnowledgeRepository({
+        dbPath: resolveKnowledgeDbPath()
+      }),
       taskSessionRepository: new PrismaTaskSessionRepository(client)
     };
   }
@@ -111,6 +120,24 @@ export function createRepositories(
     projectRepository: new InMemoryProjectRepository(),
     settingsRepository: new InMemorySettingsRepository(),
     taskRepository: new InMemoryTaskRepository(),
+    knowledgeRepository: new InMemoryKnowledgeRepository(),
     taskSessionRepository: new InMemoryTaskSessionRepository()
   };
+}
+
+function resolveKnowledgeDbPath(): string {
+  const explicitPath = process.env.FAMILYCO_KNOWLEDGE_DB_PATH?.trim();
+  if (explicitPath && path.isAbsolute(explicitPath)) {
+    return explicitPath;
+  }
+
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  if (databaseUrl?.startsWith('file:')) {
+    const mainDbPath = databaseUrl.slice('file:'.length);
+    if (mainDbPath.length > 0) {
+      return path.join(path.dirname(mainDbPath), 'familyco-knowledge.db');
+    }
+  }
+
+  return path.resolve(process.cwd(), 'knowledge', 'familyco-knowledge.db');
 }

@@ -46,6 +46,7 @@ import { ChatEngineService } from './modules/agent/chat-engine.service.js';
 import { ApiKeyService } from './modules/auth/api-key.service.js';
 import { NotificationService } from './modules/notification/index.js';
 import { PluginLoaderService } from './modules/plugins/plugin-loader.service.js';
+import { KnowledgeContextService, KnowledgeService } from './modules/knowledge/index.js';
 import { createSettingsEncryption } from './modules/settings/settings.encryption.js';
 import { DailyQuotaGuard } from './modules/shared/daily-quota.guard.js';
 import { SkillsService } from './modules/skills/skills.service.js';
@@ -149,6 +150,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     projectRepository,
     settingsRepository,
     taskRepository,
+    knowledgeRepository,
     taskSessionRepository
   } = createRepositories(repositoryDriver, settingsEncryption);
 
@@ -170,6 +172,8 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
   const agentRunService = new AgentRunService(agentRunRepository);
   const settingsService = new SettingsService(settingsRepository);
   const taskService = new TaskService(taskRepository, eventBus);
+  const knowledgeService = new KnowledgeService(knowledgeRepository, settingsService);
+  const knowledgeContextService = new KnowledgeContextService(knowledgeService);
 
   const notificationService = new NotificationService({
     eventBus,
@@ -195,6 +199,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     auditService,
     budgetUsageService,
     settingsService,
+    knowledgeContextService,
     onBudgetNearLimit: async (input) => {
       await notificationService.notifyBudgetNearLimit(input);
     }
@@ -389,6 +394,7 @@ export function createApp(options: CreateAppOptions = {}): FastifyInstance {
     agentRunService,
     heartbeatRuntime,
     skillsService,
+    knowledgeService,
     toolsService,
     pluginService,
     pluginLoader,

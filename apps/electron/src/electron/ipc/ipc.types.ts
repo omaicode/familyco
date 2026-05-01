@@ -8,6 +8,8 @@ export type DesktopInvokeChannel =
   | 'desktop:update:state'
   | 'desktop:notification:show'
   | 'desktop:provider:oauth:start'
+  | 'desktop:knowledge:binary:status'
+  | 'desktop:knowledge:binary:download'
   | 'desktop:dialog:open-directory'
   | 'desktop:window:minimize'
   | 'desktop:window:toggle-maximize'
@@ -72,6 +74,8 @@ export interface DesktopInvokeRequestMap {
   'desktop:provider:oauth:start': {
     providerId: string;
   };
+  'desktop:knowledge:binary:status': Record<string, never>;
+  'desktop:knowledge:binary:download': Record<string, never>;
   'desktop:dialog:open-directory': Record<string, never>;
   'desktop:window:minimize': Record<string, never>;
   'desktop:window:toggle-maximize': Record<string, never>;
@@ -102,6 +106,18 @@ export interface DesktopInvokeResponseMap {
     providerId: string;
     candidateTokens: string[];
     cookieCount: number;
+  };
+  'desktop:knowledge:binary:status': {
+    installed: boolean;
+    path: string;
+    platform: string;
+    downloadUrl: string;
+  };
+  'desktop:knowledge:binary:download': {
+    accepted: boolean;
+    installed: boolean;
+    path?: string;
+    message?: string;
   };
   'desktop:dialog:open-directory': {
     canceled: boolean;

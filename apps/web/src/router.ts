@@ -6,6 +6,7 @@ import DashboardPage from './views/DashboardPage.vue';
 import InboxPage from './views/InboxPage.vue';
 import OnboardingPage from './views/OnboardingPage.vue';
 import ProjectsPage from './views/ProjectsPage.vue';
+import KnowledgePage from './views/KnowledgePage.vue';
 import SettingsPage from './views/SettingsPage.vue';
 import TasksPage from './views/TasksPage.vue';
 import BudgetPage from './views/BudgetPage.vue';
@@ -43,6 +44,11 @@ export const router = createRouter({
       path: '/agents',
       component: AgentsPage,
       meta: { title: 'Agents' }
+    },
+    {
+      path: '/knowledge',
+      component: KnowledgePage,
+      meta: { title: 'Knowledge' }
     },
     {
       path: '/projects',

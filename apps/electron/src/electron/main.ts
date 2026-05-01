@@ -18,6 +18,7 @@ import {
   broadcastDesktopSystemEvent,
   registerDesktopIpcHandlers
 } from './ipc/ipc-handlers.js';
+import { createKnowledgeBinaryRuntime } from './knowledge-binary.js';
 import type { EmbeddedServerRuntime } from './server-bootstrap.js';
 import { startDesktopUpdater, type DesktopUpdaterRuntime } from './updater.js';
 
@@ -92,6 +93,7 @@ const resolveWindowIcon = async (): Promise<Electron.NativeImage | undefined> =>
 let mainWindow: BrowserWindow | null = null;
 let embeddedServer: EmbeddedServerRuntime | null = null;
 let updaterRuntime: DesktopUpdaterRuntime | null = null;
+let knowledgeBinaryRuntime: ReturnType<typeof createKnowledgeBinaryRuntime> | null = null;
 let tray: Tray | null = null;
 let isQuitRequested = false;
 let isShuttingDown = false;
@@ -374,6 +376,10 @@ const startDesktop = async (): Promise<void> => {
     }
   });
 
+  knowledgeBinaryRuntime = createKnowledgeBinaryRuntime({
+    userDataPath: app.getPath('userData')
+  });
+
   registerDesktopIpcHandlers({
     apiBaseUrl: embeddedServer.baseUrl,
     apiKey,
@@ -388,6 +394,23 @@ const startDesktop = async (): Promise<void> => {
     },
     getUpdateState: () => {
       return updaterRuntime ? updaterRuntime.getUpdateState() : { status: 'idle' };
+    },
+    getKnowledgeBinaryStatus: async () => {
+      if (!knowledgeBinaryRuntime) {
+        return {
+          installed: false,
+          path: '',
+          platform: process.platform,
+          downloadUrl: ''
+        };
+      }
+      return knowledgeBinaryRuntime.getStatus();
+    },
+    downloadKnowledgeBinary: async () => {
+      if (!knowledgeBinaryRuntime) {
+        return { accepted: false, installed: false };
+      }
+      return knowledgeBinaryRuntime.downloadBinary();
     }
   });
 
