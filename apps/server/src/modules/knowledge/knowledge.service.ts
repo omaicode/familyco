@@ -171,14 +171,18 @@ export class KnowledgeService {
         inputPath: document.filePath,
         outputDir: tempOutputDir
       });
+      const sanitizedMarkdownFiles = commandResult.markdownFiles.map((item) => ({
+        ...item,
+        content: sanitizeConvertedMarkdown(item.content)
+      }));
 
-      const combinedMarkdown = commandResult.markdownFiles
+      const combinedMarkdown = sanitizedMarkdownFiles
         .map((item) => `# Source: ${path.basename(item.path)}\n\n${item.content.trim()}`)
         .join('\n\n');
 
       const markdownPath = await this.writeCombinedMarkdown(document.id, combinedMarkdown);
       const chunkInputs = chunkMarkdownBySections(
-        commandResult.markdownFiles.map((item) => ({
+        sanitizedMarkdownFiles.map((item) => ({
           sourceFile: item.path,
           content: item.content
         })),
@@ -353,4 +357,26 @@ function normalizeMinScore(value: number | undefined): number {
     return 0.12;
   }
   return Math.max(-1, Math.min(1, value));
+}
+
+export function sanitizeConvertedMarkdown(content: string): string {
+  return content
+    .split(/\r?\n/)
+    .filter((line) => !isTableBorderArtifactLine(line))
+    .join('\n');
+}
+
+function isTableBorderArtifactLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (trimmed.length < 40) {
+    return false;
+  }
+  if (!/^[|-]+$/.test(trimmed)) {
+    return false;
+  }
+
+  const core = trimmed
+    .replace(/^\|+/, '')
+    .replace(/\|+$/, '');
+  return core.length >= 40 && /^-+$/.test(core);
 }
