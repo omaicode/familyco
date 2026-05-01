@@ -33,6 +33,18 @@ interface SidebarCounts {
   pendingApprovals: number;
 }
 
+type DesktopUpdateStatus = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+
+interface DesktopUpdateState {
+  status: DesktopUpdateStatus;
+  version?: string;
+  percent?: number;
+  message?: string;
+  releaseNotes?: string;
+  skippedVersion?: string;
+  currentVersion?: string;
+}
+
 const route = useRoute();
 const router = useRouter();
 const { t, coerceSupportedLocale } = useI18n();
@@ -44,6 +56,22 @@ const browserOnline = ref(uiRuntime.stores.app.state.connection.isBrowserOnline)
 const lastConnectionError = ref<string | null>(uiRuntime.stores.app.state.connection.lastErrorMessage);
 const isReconnecting = ref(false);
 const globalErrorMessage = ref<string | null>(null);
+const isDesktopRuntime = typeof window !== 'undefined' && typeof window.familycoDesktop?.invoke === 'function';
+const desktopUpdate = ref<DesktopUpdateState>({ status: 'idle' });
+const isUpdateBlocking = computed(() => (
+  desktopUpdate.value.status === 'downloading' || desktopUpdate.value.status === 'downloaded'
+));
+const updateProgressPercent = computed(() => {
+  if (desktopUpdate.value.status !== 'downloading') {
+    return 100;
+  }
+
+  if (typeof desktopUpdate.value.percent !== 'number' || !Number.isFinite(desktopUpdate.value.percent)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, desktopUpdate.value.percent));
+});
 
 // Tracks whether settings loaded successfully at least once (for onboarding check)
 const hasCheckedOnboarding = ref(false);
@@ -285,7 +313,7 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
 };
 
 const handleGlobalKeydown = (event: KeyboardEvent): void => {
-  if (isSetupRoute.value) {
+  if (isSetupRoute.value || isUpdateBlocking.value) {
     return;
   }
 
@@ -478,8 +506,31 @@ const retryRuntime = async () => {
   try { await checkHealth(); } finally { isReconnecting.value = false; }
 };
 
+const applyDesktopUpdateState = (payload: DesktopUpdateState): void => {
+  desktopUpdate.value = { ...payload };
+};
+
+const loadDesktopUpdateState = async (): Promise<void> => {
+  if (!isDesktopRuntime || typeof window.familycoDesktop?.invoke !== 'function') {
+    return;
+  }
+
+  try {
+    const payload = await window.familycoDesktop.invoke('desktop:update:state', {}) as DesktopUpdateState;
+    applyDesktopUpdateState(payload);
+  } catch (error) {
+    const message = resolveErrorMessage(error);
+    desktopUpdate.value = {
+      ...desktopUpdate.value,
+      status: 'error',
+      message
+    };
+  }
+};
+
 let healthCheckTimer: ReturnType<typeof setInterval> | null = null;
 let sidebarCountTimer: ReturnType<typeof setInterval> | null = null;
+let unsubscribeDesktopUpdateEvents: (() => void) | null = null;
 
 const refreshSidebarCounts = async (): Promise<void> => {
   try {
@@ -557,6 +608,12 @@ onMounted(async () => {
   // Splash — run health check in parallel
   void checkHealth();
   void refreshSidebarCounts();
+  if (isDesktopRuntime && typeof window.familycoDesktop?.on === 'function') {
+    unsubscribeDesktopUpdateEvents = window.familycoDesktop.on('desktop:update:event', (payload) => {
+      applyDesktopUpdateState(payload as DesktopUpdateState);
+    });
+    await loadDesktopUpdateState();
+  }
 
   // Dismiss splash after boot delay + loading animation
   setTimeout(() => {
@@ -580,6 +637,8 @@ onUnmounted(() => {
   window.removeEventListener('online', handleOnline);
   window.removeEventListener('offline', handleOffline);
   window.removeEventListener('keydown', handleGlobalKeydown);
+  unsubscribeDesktopUpdateEvents?.();
+  unsubscribeDesktopUpdateEvents = null;
   clearShortcutBuffer();
   if (healthCheckTimer) { clearInterval(healthCheckTimer); healthCheckTimer = null; }
   if (sidebarCountTimer) { clearInterval(sidebarCountTimer); sidebarCountTimer = null; }
@@ -727,6 +786,29 @@ onUnmounted(() => {
       </main>
     </div>
   </div>
+
+  <Transition name="fc-banner">
+    <div v-if="isUpdateBlocking" class="fc-update-overlay" role="alert" aria-live="polite" aria-busy="true">
+      <section class="fc-update-progress-card">
+        <div class="fc-update-progress-head">
+          <RefreshCw :size="18" class="fc-spin" />
+          <h4>{{ t('settings.updater.blockingTitle') }}</h4>
+        </div>
+        <p v-if="desktopUpdate.status === 'downloaded'" class="fc-update-progress-message">
+          {{ t('settings.updater.blockingRestarting') }}
+        </p>
+        <p v-else class="fc-update-progress-message">
+          {{ t('settings.updater.blockingMessage') }}
+        </p>
+        <div class="fc-update-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="Math.round(updateProgressPercent)">
+          <div class="fc-update-progress-value" :style="{ width: `${updateProgressPercent.toFixed(2)}%` }" />
+        </div>
+        <p class="fc-update-progress-percent">
+          {{ t('settings.updater.downloadProgress') }}: {{ updateProgressPercent.toFixed(2) }}%
+        </p>
+      </section>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -755,6 +837,69 @@ onUnmounted(() => {
   justify-content: center;
   padding: 11vh 16px 24px;
   z-index: 60;
+}
+
+.fc-update-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: color-mix(in srgb, var(--fc-bg) 65%, transparent);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.fc-update-progress-card {
+  width: min(520px, 100%);
+  border: 1px solid var(--fc-border-subtle);
+  border-radius: 14px;
+  background: var(--fc-surface);
+  box-shadow: 0 16px 44px color-mix(in srgb, var(--fc-text) 26%, transparent);
+  padding: 18px;
+}
+
+.fc-update-progress-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--fc-primary);
+}
+
+.fc-update-progress-head h4 {
+  margin: 0;
+  color: var(--fc-text-main);
+  font-size: 0.98rem;
+}
+
+.fc-update-progress-message {
+  margin: 0 0 14px;
+  color: var(--fc-text-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.fc-update-progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fc-border-subtle) 60%, var(--fc-surface));
+  overflow: hidden;
+}
+
+.fc-update-progress-value {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--fc-primary), color-mix(in srgb, var(--fc-primary) 70%, #ffffff));
+  transition: width 0.2s ease;
+}
+
+.fc-update-progress-percent {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: var(--fc-text-main);
 }
 
 .fc-quick-switcher,
