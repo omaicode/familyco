@@ -9,6 +9,8 @@ publish:
   releaseType: release
 directories:
   output: ../../build
+asarUnpack:
+  - "node_modules/@sqliteai/sqlite-vector-*/vector.*"
 files:
   - from: dist
     to: .

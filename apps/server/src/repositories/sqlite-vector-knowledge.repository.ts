@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -466,5 +466,10 @@ function resolveSqliteVectorExtensionPath(): string {
   if (typeof sqliteVector?.getExtensionPath !== 'function') {
     throw new Error('KNOWLEDGE_VECTOR_EXTENSION_RESOLVE_FAILED');
   }
-  return sqliteVector.getExtensionPath();
+  const extensionPath = sqliteVector.getExtensionPath();
+  const unpackedPath = extensionPath.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
+  if (unpackedPath !== extensionPath && existsSync(unpackedPath)) {
+    return unpackedPath;
+  }
+  return extensionPath;
 }
