@@ -18,7 +18,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
     "@ai-sdk/deepseek": "^2.0.29",
-    "@ai-sdk/openai": "^3.0.52",
+    "@ai-sdk/openai": "^3.0.58",
     "@ai-sdk/vercel": "^2.0.43",
     "@familyco/agent-runtime": "workspace:*",
     "@familyco/core": "workspace:*",
