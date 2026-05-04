@@ -19,7 +19,7 @@
     "@ai-sdk/anthropic": "^3.0.71",
     "@ai-sdk/deepseek": "^2.0.29",
     "@ai-sdk/openai": "^3.0.52",
-    "@ai-sdk/vercel": "^2.0.43",
+    "@ai-sdk/vercel": "^2.0.47",
     "@familyco/agent-runtime": "workspace:*",
     "@familyco/core": "workspace:*",
     "@familyco/db": "workspace:*",
